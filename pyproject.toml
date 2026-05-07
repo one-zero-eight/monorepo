@@ -85,11 +85,14 @@ search = [
 ]
 student-affairs = []
 
+[tool.uv]
+default-groups = "all"
+
+[tool.uv.sources]
+requests-curl = { git = "https://github.com/paivett/requests-curl.git", rev = "82a7fc1" }
+
 [tool.ruff]
 line-length = 120
 lint.extend-select = ["I", "UP", "PL"]
 lint.extend-ignore = ["PLC0415", "PLR"]
 target-version = "py314"
-
-[tool.uv.sources]
-requests-curl = { git = "https://github.com/paivett/requests-curl.git", rev = "82a7fc1" }

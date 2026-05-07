@@ -1,3 +1,9 @@
+### Ours ###
+.env
+settings.yaml
+private.pem
+public.pem
+
 # Created by https://www.toptal.com/developers/gitignore/api/python,linux,windows,vs,jetbrains+all,macos
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,linux,windows,vs,jetbrains+all,macos
 

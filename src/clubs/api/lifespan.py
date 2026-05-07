@@ -9,9 +9,10 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import timeout
 from pymongo.errors import ConnectionFailure
 
-from src.config import settings
 from src.logging_ import logger
-from src.storages.mongo import document_models
+
+from .config import settings
+from .storages.mongo import document_models
 
 
 async def setup_database() -> AsyncIOMotorClient:

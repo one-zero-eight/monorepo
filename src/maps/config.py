@@ -1,18 +1,8 @@
-import os
-from pathlib import Path
+from src.config_root_schema import load_root_settings, require_not_none
+from src.maps.config_schema import MapsSettings
 
-import yaml
-
-from src.config_schema import Scene, Settings
-
-settings_path = os.getenv("SETTINGS_PATH", "settings.yaml")
-settings: Settings = Settings.from_yaml(Path(settings_path))
-
-
-def load_scenes(path: Path = Path("scenes.yaml")) -> list[Scene]:
-    with open(path, encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-        return [Scene.model_validate(scene) for scene in data.get("scenes", [])]
-
-
-scenes: list[Scene] = load_scenes()
+root_settings = load_root_settings()
+settings: MapsSettings = require_not_none(
+    root_settings.maps_service,
+    "Maps service settings are not configured, please check your settings file",
+)

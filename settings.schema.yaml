@@ -1,0 +1,234 @@
+$schema: https://json-schema.org/draft-07/schema
+$defs:
+  AccountsSettings:
+    additionalProperties: false
+    description: InNoHassle Accounts integration settings
+    properties:
+      api_url:
+        default: https://api.innohassle.ru/accounts/v0
+        description: URL of the Accounts API
+        title: Api Url
+        type: string
+      api_jwt_token:
+        anyOf:
+        - format: password
+          type: string
+          writeOnly: true
+        - type: 'null'
+        default: null
+        description: JWT token for accessing the Accounts API as a service
+        title: Api Jwt Token
+    title: AccountsSettings
+    type: object
+  ClubsSettings:
+    additionalProperties: false
+    description: Settings for the application.
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: ''
+        description: Prefix for the API path (e.g. "/api/v0")
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      database_uri:
+        description: MongoDB database settings
+        examples:
+        - mongodb://mongoadmin:secret@127.0.0.1:27017/db?authSource=admin
+        - mongodb://mongoadmin:secret@db:27017/db?authSource=admin
+        format: password
+        title: Database Uri
+        type: string
+        writeOnly: true
+      minio:
+        $ref: '#/$defs/MinioSettings'
+        description: Configuration for S3 object storage
+      superadmin_emails:
+        description: Innomails of superadmins who can set admin roles
+        items:
+          type: string
+        title: Superadmin Emails
+        type: array
+    required:
+    - database_uri
+    - minio
+    - superadmin_emails
+    title: ClubsSettings
+    type: object
+  Environment:
+    enum:
+    - development
+    - production
+    title: Environment
+    type: string
+  MapsSettings:
+    additionalProperties: false
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: ''
+        description: Prefix for the API path (e.g. "/api/v0")
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      static_mount_path:
+        default: /static
+        description: Path to mount static files
+        title: Static Mount Path
+        type: string
+      static_directory:
+        default: src/maps/static
+        description: Path to the directory with static files
+        format: path
+        title: Static Directory
+        type: string
+    title: MapsSettings
+    type: object
+  MinioSettings:
+    additionalProperties: false
+    properties:
+      endpoint:
+        default: 127.0.0.1:9000
+        description: URL of the target service.
+        title: Endpoint
+        type: string
+      secure:
+        default: false
+        description: Use https connection to the service.
+        title: Secure
+        type: boolean
+      region:
+        anyOf:
+        - type: string
+        - type: 'null'
+        default: null
+        description: Region of the service.
+        title: Region
+      bucket:
+        default: search
+        description: Name of the bucket in the service.
+        title: Bucket
+        type: string
+      access_key:
+        description: Access key (user ID) of a user account in the service.
+        examples:
+        - minioadmin
+        title: Access Key
+        type: string
+      secret_key:
+        description: Secret key (password) for the user account.
+        examples:
+        - password
+        format: password
+        title: Secret Key
+        type: string
+        writeOnly: true
+      club_logos_prefix:
+        default: logos/
+        title: Club Logos Prefix
+        type: string
+    required:
+    - access_key
+    - secret_key
+    title: MinioSettings
+    type: object
+  OmnideskSettings:
+    additionalProperties: false
+    properties:
+      base_url:
+        default: https://student-affairs.omnidesk.ru
+        description: 'URL in format: https://mydomain.omnidesk.ru'
+        title: Base Url
+        type: string
+      jwt_marker:
+        description: 'JWT secret marker for user auth in Omnidesk. See instructions:
+          https://support.omnidesk.ru/knowledge_base/item/54180'
+        format: password
+        title: Jwt Marker
+        type: string
+        writeOnly: true
+    required:
+    - jwt_marker
+    title: OmnideskSettings
+    type: object
+  StudentAffairsSettings:
+    additionalProperties: false
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: ''
+        description: Prefix for the API path (e.g. "/api/v0")
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      omnidesk:
+        $ref: '#/$defs/OmnideskSettings'
+        description: Omnidesk integration settings
+    required:
+    - omnidesk
+    title: StudentAffairsSettings
+    type: object
+additionalProperties: false
+properties:
+  $schema:
+    anyOf:
+    - type: string
+    - type: 'null'
+    default: null
+    title: $Schema
+  accounts:
+    $ref: '#/$defs/AccountsSettings'
+    default:
+      api_url: https://api.innohassle.ru/accounts/v0
+      api_jwt_token: null
+    description: Shared InNoHassle Accounts integration settings
+  maps_service:
+    $ref: '#/$defs/MapsSettings'
+    default:
+      environment: development
+      app_root_path: ''
+      cors_allow_origin_regex: .*
+      static_mount_path: /static
+      static_directory: src/maps/static
+  clubs_service:
+    anyOf:
+    - $ref: '#/$defs/ClubsSettings'
+    - type: 'null'
+    default: null
+  student_affairs_service:
+    anyOf:
+    - $ref: '#/$defs/StudentAffairsSettings'
+    - type: 'null'
+    default: null
+title: Settings
+type: object

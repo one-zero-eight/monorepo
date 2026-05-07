@@ -2,20 +2,13 @@ __all__ = ["app"]
 
 
 from fastapi import FastAPI
-from fastapi.exception_handlers import http_exception_handler
-from fastapi.exceptions import RequestValidationError
-from fastapi.requests import Request
-from fastapi.responses import PlainTextResponse
-from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
-from fastapi_swagger import patch_fastapi
-from pydantic import ValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware.cors import CORSMiddleware
-
-import src.logging_  # noqa: F401
 from src.api import docs
 from src.api.lifespan import lifespan
 from src.config import settings
+from starlette.middleware.cors import CORSMiddleware
+
+import src.logging_  # noqa: F401
+from src.fastapi_common import tune_fastapi
 from src.logging_ import logger
 
 # App definition
@@ -37,33 +30,7 @@ app = FastAPI(
     redoc_url=None,
     swagger_ui_oauth2_redirect_url=None,
 )
-app.router.route_class = AutoDeriveResponsesAPIRoute
-patch_fastapi(app)
-
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """
-    Log validation errors and return human-readable error message.
-    Based on https://github.com/dantetemplar/fastapi-how-to-log#exceptions
-    """
-    as_validation_error = ValidationError.from_exception_data(
-        str(request.url.path),
-        line_errors=exc.errors(),  # type: ignore
-    )
-    error_str = str(as_validation_error)
-    logger.warning(error_str, exc_info=False)
-    return PlainTextResponse(error_str, status_code=422)
-
-
-@app.exception_handler(StarletteHTTPException)
-async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
-    """
-    Log raised HTTPException.
-    Based on https://github.com/dantetemplar/fastapi-how-to-log#exceptions
-    """
-    logger.warning(exc, exc_info=exc)
-    return await http_exception_handler(request, exc)
+tune_fastapi(app, logger=logger)
 
 
 # CORS settings
