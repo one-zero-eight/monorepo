@@ -1,6 +1,6 @@
 from pydantic import BaseModel, model_validator
 
-from src.config_primitives import BaseSchema
+from src.common_config import BaseSchema
 
 
 class LegendEntry(BaseSchema):

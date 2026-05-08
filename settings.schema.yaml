@@ -18,6 +18,14 @@ $defs:
         default: null
         description: JWT token for accessing the Accounts API as a service
         title: Api Jwt Token
+      mock:
+        default: false
+        description: 'If true (development only), accept `Authorization: Bearer` values
+          as JSON shaped like
+
+          `UserTokenData` instead of validating a JWT. JWKS fetch is skipped.'
+        title: Mock
+        type: boolean
     title: AccountsSettings
     type: object
   ClubsSettings:
@@ -41,33 +49,35 @@ $defs:
           Specify as a regex: `https://.*.innohassle.ru`'
         title: Cors Allow Origin Regex
         type: string
-      database_uri:
-        description: MongoDB database settings
-        examples:
-        - mongodb://mongoadmin:secret@127.0.0.1:27017/db?authSource=admin
-        - mongodb://mongoadmin:secret@db:27017/db?authSource=admin
-        format: password
-        title: Database Uri
-        type: string
-        writeOnly: true
+      mongo:
+        $ref: '#/$defs/MongoDatabaseSettings'
+        default:
+          uri: '**********'
+        description: Configuration for MongoDB
       minio:
         $ref: '#/$defs/MinioSettings'
+        default:
+          endpoint: 127.0.0.1:9000
+          secure: false
+          region: null
+          bucket: clubs
+          access_key: onezeroeight
+          secret_key: '**********'
+          club_logos_prefix: logos/
         description: Configuration for S3 object storage
       superadmin_emails:
+        default: []
         description: Innomails of superadmins who can set admin roles
         items:
           type: string
         title: Superadmin Emails
         type: array
-    required:
-    - database_uri
-    - minio
-    - superadmin_emails
     title: ClubsSettings
     type: object
   Environment:
     enum:
     - development
+    - testing
     - production
     title: Environment
     type: string
@@ -110,6 +120,9 @@ $defs:
       endpoint:
         default: 127.0.0.1:9000
         description: URL of the target service.
+        examples:
+        - 127.0.0.1:9000
+        - minio:9000
         title: Endpoint
         type: string
       secure:
@@ -125,20 +138,18 @@ $defs:
         description: Region of the service.
         title: Region
       bucket:
-        default: search
+        default: clubs
         description: Name of the bucket in the service.
         title: Bucket
         type: string
       access_key:
+        default: onezeroeight
         description: Access key (user ID) of a user account in the service.
-        examples:
-        - minioadmin
         title: Access Key
         type: string
       secret_key:
+        default: '**********'
         description: Secret key (password) for the user account.
-        examples:
-        - password
         format: password
         title: Secret Key
         type: string
@@ -147,10 +158,23 @@ $defs:
         default: logos/
         title: Club Logos Prefix
         type: string
-    required:
-    - access_key
-    - secret_key
     title: MinioSettings
+    type: object
+  MongoDatabaseSettings:
+    additionalProperties: false
+    properties:
+      uri:
+        default: '**********'
+        description: MongoDB database settings, if you do not specify database name
+          in the uri, it will use the service name (f.e. 'clubs')
+        examples:
+        - mongodb://onezeroeight:herewethinkbig@127.0.0.1:27017/?authSource=admin
+        - mongodb://onezeroeight:herewethinkbig@db:27017/?authSource=admin
+        format: password
+        title: Uri
+        type: string
+        writeOnly: true
+    title: MongoDatabaseSettings
     type: object
   OmnideskSettings:
     additionalProperties: false
@@ -211,6 +235,7 @@ properties:
     default:
       api_url: https://api.innohassle.ru/accounts/v0
       api_jwt_token: null
+      mock: false
     description: Shared InNoHassle Accounts integration settings
   maps_service:
     $ref: '#/$defs/MapsSettings'

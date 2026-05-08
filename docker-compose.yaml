@@ -1,0 +1,40 @@
+# This is a Docker Compose configuration for local use.
+
+# Run all services:
+# docker compose up --build --wait
+
+services:
+  mongodb:
+    # See more: https://hub.docker.com/_/mongo
+    image: "mongo:8.0"
+    restart: no
+    ports:
+      - "27017:27017"
+    volumes:
+      - "mongodb:/data/db"
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh 127.0.0.1:27017/local --quiet
+      timeout: 5s
+      start_period: 30s
+      interval: 1m
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-onezeroeight}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-herewethinkbig}
+
+  minio:
+    # See more: https://hub.docker.com/r/minio/minio
+    image: "minio/minio:RELEASE.2024-05-10T01-41-38Z"
+    restart: no
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - "minio:/data"
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-onezeroeight}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-herewethinkbig}
+
+volumes:
+  mongodb:
+  minio:

@@ -1,39 +1,37 @@
+"""
+Clubs list and management.
+"""
+
+from typing import cast
+
 import beanie.exceptions
 import magic
 import pyvips
 from beanie import PydanticObjectId
 from fastapi import APIRouter, HTTPException, UploadFile
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
+from pymongo.errors import DuplicateKeyError
 from starlette import status
 from starlette.responses import RedirectResponse
 
-import src.modules.clubs.crud as c
-import src.modules.clubs.minio as clubs_minio
-from src.api import docs
-from src.api.dependencies import REQUIRE_ADMIN
-from src.modules.inh_accounts_sdk import inh_accounts
-from src.storages.mongo import Club
+from src.clubs.dependencies import CLUBS_ADMIN_AUTH
+from src.clubs.minio import get_club_logo_url, put_club_logo
+from src.clubs.mongo import Club
+from src.inh_accounts_sdk import inh_accounts
+
+from . import clubs_repo
 
 router = APIRouter(
     prefix="/clubs",
     tags=["Clubs"],
     route_class=AutoDeriveResponsesAPIRoute,
 )
-_description = """
-Clubs list and management.
-"""
-docs.TAGS_INFO.append({"description": _description, "name": str(router.tags[0])})
 
 
-@router.get(
-    "/",
-    responses={
-        status.HTTP_200_OK: {"description": "List of clubs"},
-    },
-)
+@router.get("/", responses={status.HTTP_200_OK: {"description": "List of clubs"}})
 async def get_clubs_list() -> list[Club]:
     """Get list of clubs."""
-    return await c.read_all()
+    return await clubs_repo.read_all()
 
 
 @router.post(
@@ -43,9 +41,9 @@ async def get_clubs_list() -> list[Club]:
         status.HTTP_403_FORBIDDEN: {"description": "Only admin can create the club"},
     },
 )
-async def create_club(club_info: c.CreateClub, _: REQUIRE_ADMIN) -> Club:
+async def create_club(club_info: clubs_repo.CreateClub, _: CLUBS_ADMIN_AUTH) -> Club:
     """Create a new club."""
-    return await c.create(club_info)
+    return await clubs_repo.create(club_info)
 
 
 @router.get(
@@ -57,7 +55,7 @@ async def create_club(club_info: c.CreateClub, _: REQUIRE_ADMIN) -> Club:
 )
 async def get_club_info(id: PydanticObjectId) -> Club:
     """Get club info."""
-    club = await c.read(id)
+    club = await clubs_repo.read(id)
     if not club:
         raise HTTPException(status_code=404, detail="Club not found")
     return club
@@ -72,7 +70,7 @@ async def get_club_info(id: PydanticObjectId) -> Club:
 )
 async def get_club_info_by_slug(slug: str) -> Club:
     """Get club info."""
-    club = await c.read_by_slug(slug)
+    club = await clubs_repo.read_by_slug(slug)
     if not club:
         raise HTTPException(status_code=404, detail="Club not found")
     return club
@@ -86,7 +84,7 @@ async def get_club_info_by_slug(slug: str) -> Club:
         status.HTTP_404_NOT_FOUND: {"description": "Club not found"},
     },
 )
-async def edit_club_info(id: PydanticObjectId, club_info: c.UpdateClub, _: REQUIRE_ADMIN) -> Club:
+async def edit_club_info(id: PydanticObjectId, club_info: clubs_repo.UpdateClub, _: CLUBS_ADMIN_AUTH) -> Club:
     """Edit a club info."""
     # TODO: Allow club leaders to edit some info
     if club_info.new_leader_email:
@@ -96,7 +94,7 @@ async def edit_club_info(id: PydanticObjectId, club_info: c.UpdateClub, _: REQUI
         club_info.leader_innohassle_id = new_leader_data.id
         club_info.new_leader_email = None
 
-    club = await c.update(id, club_info)
+    club = await clubs_repo.update(id, club_info.to_club_schema())
     if club is None:
         raise HTTPException(status_code=404, detail="Club not found")
     return club
@@ -111,22 +109,25 @@ async def edit_club_info(id: PydanticObjectId, club_info: c.UpdateClub, _: REQUI
         status.HTTP_404_NOT_FOUND: {"description": "Club not found"},
     },
 )
-async def edit_club_info_by_slug(slug: str, club_info: c.UpdateClub, _: REQUIRE_ADMIN) -> Club:
+async def edit_club_info_by_slug(slug: str, update_club: clubs_repo.UpdateClub, _: CLUBS_ADMIN_AUTH) -> Club:
     """Edit a club info."""
     # TODO: Allow club leaders to edit some info
-    if club_info.new_leader_email:
-        new_leader_data = await inh_accounts.get_user(email=club_info.new_leader_email)
+    if update_club.new_leader_email:
+        new_leader_data = await inh_accounts.get_user(email=update_club.new_leader_email)
         if not new_leader_data:
             raise HTTPException(status_code=404, detail="New leader email not found")
-        club_info.leader_innohassle_id = new_leader_data.id
-        club_info.new_leader_email = None
+        update_club.leader_innohassle_id = new_leader_data.id
+        update_club.new_leader_email = None
 
-    club = await c.read_by_slug(slug)
+    club = await clubs_repo.read_by_slug(slug)
     if not club:
         raise HTTPException(status_code=404, detail="Club not found")
     try:
-        return await c.update(club.id, club_info)
-    except beanie.exceptions.RevisionIdWasChanged:
+        updated_club = await clubs_repo.update(club.id, update_club.to_club_schema())
+        if updated_club is None:  # pragma: no cover
+            raise HTTPException(status_code=400, detail="Failed to update club info")  # pragma: no cover
+        return updated_club
+    except beanie.exceptions.RevisionIdWasChanged, DuplicateKeyError:
         raise HTTPException(status_code=400, detail="Slug already exists")
 
 
@@ -138,9 +139,9 @@ async def edit_club_info_by_slug(slug: str, club_info: c.UpdateClub, _: REQUIRE_
         status.HTTP_404_NOT_FOUND: {"description": "Club not found"},
     },
 )
-async def delete_club(id: PydanticObjectId, _: REQUIRE_ADMIN) -> None:
+async def delete_club(id: PydanticObjectId, _: CLUBS_ADMIN_AUTH) -> None:
     """Delete a club."""
-    result = c.delete(id)
+    result = await clubs_repo.delete(id)
     if not result:
         raise HTTPException(status_code=404, detail="Club not found")
 
@@ -151,18 +152,18 @@ async def delete_club(id: PydanticObjectId, _: REQUIRE_ADMIN) -> None:
         status.HTTP_307_TEMPORARY_REDIRECT: {"description": "Redirect to the club logo"},
         status.HTTP_404_NOT_FOUND: {"description": "Club not found or no logo available"},
     },
-    response_model=None,
+    response_class=RedirectResponse,
 )
-async def get_club_logo(id: str):
+async def get_club_logo(id: PydanticObjectId) -> RedirectResponse:
     """Get club info."""
-    club = await c.read(id)
+    club = await clubs_repo.read(id)
     if not club:
         raise HTTPException(status_code=404, detail="Club not found")
 
     if not club.logo_file_id:
         raise HTTPException(status_code=404, detail="No logo available")
 
-    return RedirectResponse(url=clubs_minio.get_club_logo_url(club.logo_file_id, 512))
+    return RedirectResponse(url=get_club_logo_url(club.logo_file_id, 512))
 
 
 @router.post(
@@ -174,10 +175,10 @@ async def get_club_logo(id: str):
         status.HTTP_404_NOT_FOUND: {"description": "Club not found"},
     },
 )
-async def set_club_logo(id: PydanticObjectId, logo_file: UploadFile, _: REQUIRE_ADMIN) -> Club:
+async def set_club_logo(id: PydanticObjectId, logo_file: UploadFile, _: CLUBS_ADMIN_AUTH) -> Club:
     """Set a club logo picture."""
     # TODO: Allow club leaders to change logo
-    club = await c.read(id)
+    club = await clubs_repo.read(id)
     if club is None:
         raise HTTPException(status_code=404, detail="Club not found")
 
@@ -190,15 +191,15 @@ async def set_club_logo(id: PydanticObjectId, logo_file: UploadFile, _: REQUIRE_
         raise HTTPException(status_code=400, detail=f"Invalid content type ({content_type})")
 
     # Convert to webp and resize to 512
-    image: pyvips.Image = pyvips.Image.new_from_buffer(bytes_, "")
-    image_bytes = image.write_to_buffer(".webp")
-    image_512: pyvips.Image = pyvips.Image.thumbnail_buffer(bytes_, 512, height=512)
-    image_512_bytes = image_512.write_to_buffer(".webp[Q=95,min-size]")
+    image = cast(pyvips.Image, pyvips.Image.new_from_buffer(bytes_, ""))
+    image_bytes = cast(bytes, image.write_to_buffer(".webp"))
+    image_512 = cast(pyvips.Image, pyvips.Image.thumbnail_buffer(bytes_, 512, height=512))
+    image_512_bytes = cast(bytes, image_512.write_to_buffer(".webp[Q=95,min-size]"))
 
     # Save file
     logo_file_id = str(PydanticObjectId())
-    clubs_minio.put_club_logo(logo_file_id, None, image_bytes, "image/webp")
-    clubs_minio.put_club_logo(logo_file_id, 512, image_512_bytes, "image/webp")
+    put_club_logo(logo_file_id, None, image_bytes, "image/webp")
+    put_club_logo(logo_file_id, 512, image_512_bytes, "image/webp")
 
     club.logo_file_id = logo_file_id
     await club.save()

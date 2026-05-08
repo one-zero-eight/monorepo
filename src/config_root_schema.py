@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import os
-from functools import lru_cache
 from pathlib import Path
 
 import yaml
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, model_validator
 
 from src.clubs.config_schema import ClubsSettings
-from src.config_primitives import BaseSchema
+from src.common_config import BaseSchema, Environment
 from src.maps.config_schema import MapsSettings
 from src.student_affairs.config_schema import StudentAffairsSettings
 
@@ -20,6 +19,11 @@ class AccountsSettings(BaseSchema):
     "URL of the Accounts API"
     api_jwt_token: SecretStr | None = None
     "JWT token for accessing the Accounts API as a service"
+    mock: bool = False
+    """
+    If true (development only), accept `Authorization: Bearer` values as JSON shaped like
+    `UserTokenData` instead of validating a JWT. JWKS fetch is skipped.
+    """
 
 
 class Settings(BaseSchema):
@@ -30,6 +34,23 @@ class Settings(BaseSchema):
     maps_service: MapsSettings = MapsSettings()
     clubs_service: ClubsSettings | None = None
     student_affairs_service: StudentAffairsSettings | None = None
+
+    @model_validator(mode="after")
+    def accounts_mock_requires_development(self) -> Settings:
+        if not self.accounts.mock:
+            return self
+        contexts: list[tuple[str, Environment]] = [("maps_service", self.maps_service.environment)]
+        if self.clubs_service is not None:
+            contexts.append(("clubs_service", self.clubs_service.environment))
+        if self.student_affairs_service is not None:
+            contexts.append(("student_affairs_service", self.student_affairs_service.environment))
+        bad = [(name, env.value) for name, env in contexts if env != Environment.DEVELOPMENT]
+        if bad:
+            names = ", ".join(f"{n}={e}" for n, e in bad)
+            raise ValueError(
+                f"accounts.mock is allowed only when all configured services use environment={Environment.DEVELOPMENT.value!r}; got {names}"
+            )
+        return self
 
     @classmethod
     def from_yaml(cls, path: Path) -> Settings:
@@ -45,15 +66,13 @@ class Settings(BaseSchema):
             yaml.dump(schema, f, sort_keys=False)
 
 
-@lru_cache(maxsize=1)
 def load_root_settings(path: Path | None = None) -> Settings:
     if path is None:
         path = Path(os.getenv("SETTINGS_PATH", "settings.yaml"))
     return Settings.from_yaml(path)
 
 
-
 def require_not_none[T](value: T | None, message: str = "Expected non-None value") -> T:
-    if value is None:
-        raise ValueError(message)
-    return value
+    if value is None:  # pragma: no cover
+        raise ValueError(message)  # pragma: no cover
+    return value  # pragma: no cover

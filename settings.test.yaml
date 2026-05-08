@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=settings.schema.yaml
+$schema: "./settings.schema.yaml"
+accounts:
+  mock: false
+  api_jwt_token: "test-token"
+maps_service:
+  environment: testing
+clubs_service:
+  environment: testing
+  mongo:
+    uri: mongodb://test:test@127.0.0.1:27017/clubs?authSource=admin
+  minio:
+    access_key: onezeroeight
+    secret_key: herewethinkbig
+  superadmin_emails:
+    - "admin@innopolis.university"
+student_affairs_service:
+  environment: testing
+  omnidesk:
+    jwt_marker: "test-marker-0123456789abcdef"

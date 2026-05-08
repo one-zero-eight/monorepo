@@ -1,0 +1,7 @@
+{
+  "cursorpyright.analysis.autoImportCompletions": true,
+  "cursorpyright.analysis.autoSearchPaths": false,
+  "cursorpyright.analysis.diagnosticMode": "workspace",
+  "cursorpyright.analysis.extraPaths": [],
+  "cursorpyright.analysis.typeCheckingMode": "standard"
+}

@@ -4,18 +4,21 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 
-from src.fastapi_common import (
+from src.common_fastapi import (
     MIT_LICENSE_INFO,
     ONE_ZERO_EIGHT_CONTACT_INFO,
-    doc_from_module,
     generate_unique_operation_id,
+    popule_openapi_tags,
     tune_fastapi,
 )
 from src.logging_ import logger
 
 from .config import settings
 
-DESCRIPTION = """
+app = FastAPI(
+    title="InNoHassle Maps API",
+    summary="View maps of Innopolis University in InNoHassle.",
+    description="""
 ### About this project
 
 This is the API for Maps project in InNoHassle ecosystem developed by one-zero-eight community.
@@ -29,17 +32,10 @@ Note: API is unstable. Endpoints and models may change in the future.
 Useful links:
 - [Maps API source code](https://github.com/one-zero-eight/maps)
 - [InNoHassle Website](https://innohassle.ru/)
-"""
-TAGS_INFO = []
-
-app = FastAPI(
-    title="InNoHassle Maps API",
-    summary="View maps of Innopolis University in InNoHassle.",
-    description=DESCRIPTION,
+""",
     version="0.1.0",
     contact=ONE_ZERO_EIGHT_CONTACT_INFO,
     license_info=MIT_LICENSE_INFO,
-    openapi_tags=TAGS_INFO,
     servers=[
         {"url": settings.app_root_path, "description": "Current"},
         {
@@ -51,6 +47,7 @@ app = FastAPI(
             "description": "Staging environment",
         },
     ],
+    openapi_tags=[],
     root_path=settings.app_root_path,
     root_path_in_servers=False,
     generate_unique_id_function=generate_unique_operation_id,
@@ -74,7 +71,7 @@ app.mount(settings.static_mount_path, StaticFiles(directory=settings.static_dire
 
 import src.maps.routes  # noqa: E402, I001
 
-# Import routers above and include them below
+# Import routers above and include them below, also populate openapi_tags here if needed
 app.include_router(src.maps.routes.router)
-TAGS_INFO.append({"name": "Scenes", "description": doc_from_module(src.maps.routes)})
+popule_openapi_tags(app, src.maps.routes)
 # ^

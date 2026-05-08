@@ -1,21 +1,20 @@
+"""
+Club leader information.
+"""
+
 from beanie import PydanticObjectId
 from fastapi import APIRouter, HTTPException
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 from starlette import status
 
-import src.modules.clubs.crud as clubs_crud
-import src.modules.leaders.crud as c
-from src.api import docs
+from src.clubs.modules.clubs import clubs_repo
+from src.clubs.modules.leaders import leaders_repo
 
 router = APIRouter(
     prefix="/leaders",
     tags=["Leaders"],
     route_class=AutoDeriveResponsesAPIRoute,
 )
-_description = """
-Leaders info.
-"""
-docs.TAGS_INFO.append({"description": _description, "name": str(router.tags[0])})
 
 
 @router.get(
@@ -24,10 +23,12 @@ docs.TAGS_INFO.append({"description": _description, "name": str(router.tags[0])}
         status.HTTP_200_OK: {"description": "Info about all club leaders"},
     },
 )
-async def get_all_leaders() -> dict[str, c.Leader | None]:
+async def get_all_leaders() -> dict[str, leaders_repo.Leader | None]:
     """Get all club leaders."""
-    clubs = await clubs_crud.read_all()
-    return await c.read_many_by_innohassle_ids([club.leader_innohassle_id for club in clubs])
+    clubs = await clubs_repo.read_all()
+    return await leaders_repo.read_many_by_innohassle_ids(
+        [club.leader_innohassle_id for club in clubs if club.leader_innohassle_id]
+    )
 
 
 @router.get(
@@ -37,13 +38,16 @@ async def get_all_leaders() -> dict[str, c.Leader | None]:
         status.HTTP_404_NOT_FOUND: {"description": "Club not found"},
     },
 )
-async def get_club_leader_by_id(id: PydanticObjectId) -> c.Leader | None:
+async def get_club_leader_by_id(id: PydanticObjectId) -> leaders_repo.Leader | None:
     """Get club leader info."""
-    club = await clubs_crud.read(id)
+    club = await clubs_repo.read(id)
     if not club:
         raise HTTPException(status_code=404, detail="Club not found")
 
-    return await c.read_by_innohassle_id(club.leader_innohassle_id)
+    if club.leader_innohassle_id is None:
+        return None
+
+    return await leaders_repo.read_by_innohassle_id(club.leader_innohassle_id)
 
 
 @router.get(
@@ -53,10 +57,13 @@ async def get_club_leader_by_id(id: PydanticObjectId) -> c.Leader | None:
         status.HTTP_404_NOT_FOUND: {"description": "Club not found"},
     },
 )
-async def get_club_leader_by_slug(slug: str) -> c.Leader | None:
+async def get_club_leader_by_slug(slug: str) -> leaders_repo.Leader | None:
     """Get club leader info."""
-    club = await clubs_crud.read_by_slug(slug)
+    club = await clubs_repo.read_by_slug(slug)
     if not club:
         raise HTTPException(status_code=404, detail="Club not found")
 
-    return await c.read_by_innohassle_id(club.leader_innohassle_id)
+    if club.leader_innohassle_id is None:
+        return None
+
+    return await leaders_repo.read_by_innohassle_id(club.leader_innohassle_id)

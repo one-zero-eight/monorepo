@@ -1,6 +1,6 @@
 from pydantic import SecretStr
 
-from src.config_primitives import BaseSchema, ServiceSettingsBase
+from src.common_config import BaseSchema, ServiceSettingsBase
 
 
 class OmnideskSettings(BaseSchema):

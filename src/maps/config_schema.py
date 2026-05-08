@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from src.config_primitives import ServiceSettingsBase
+from src.common_config import ServiceSettingsBase
 
 
 class MapsSettings(ServiceSettingsBase):
