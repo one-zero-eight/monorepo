@@ -43,7 +43,7 @@ def search_areas(query: str) -> list[SearchResult]:
     if "[sc]" in query_clean or "[ск]" in query_clean:
         all_scenes = [scene for scene in all_scenes if scene.scene_id == "sport-complex"]
         if "floor" in query_clean:
-            ground_floor = list()
+            ground_floor = []
             for index, area in enumerate(all_scenes[0].areas):
                 if f"floor-{''.join(filter(str.isdigit, query_clean))}" == area.svg_polygon_id:
                     return [SearchResult(scene_id="sport-complex", area_index=index, area=area)]

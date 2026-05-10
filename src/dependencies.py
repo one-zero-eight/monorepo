@@ -1,6 +1,6 @@
 __all__ = ["INH_TOKEN_AUTH", "get_innohassle_token_auth"]
 
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -39,7 +39,7 @@ class IncorrectCredentialsException(HTTPException):
                 detail="Unable to verify credentials",
             )
 
-    responses = {401: {"description": "Unable to verify credentials OR Credentials not provided"}}
+    responses: ClassVar = {401: {"description": "Unable to verify credentials OR Credentials not provided"}}
 
 
 class NotAdminException(HTTPException):
@@ -50,11 +50,11 @@ class NotAdminException(HTTPException):
     def __init__(self):
         super().__init__(status_code=status.HTTP_403_FORBIDDEN, detail=self.responses[403]["description"])
 
-    responses = {403: {"description": "You are not an admin, not allowed to access this endpoint"}}
+    responses: ClassVar = {403: {"description": "You are not an admin, not allowed to access this endpoint"}}
 
 
 async def get_innohassle_token_auth(
-    bearer: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
 ) -> UserTokenData:
     # Prefer header to cookie
     token = bearer and bearer.credentials

@@ -76,7 +76,7 @@ class CleanErrorFilter(logging.Filter):
         return True
 
 
-dictConfig = {
+dict_config = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
@@ -104,7 +104,7 @@ dictConfig = {
     },
 }
 
-logging.config.dictConfig(dictConfig)
+logging.config.dictConfig(dict_config)
 
 # Copy logger from uvicorn
 uvicorn_logger = logging.getLogger("uvicorn")
@@ -122,7 +122,8 @@ exc_logger.addFilter(CleanErrorFilter())
 async def run_endpoint_function(*, dependant: Dependant, values: dict[str, Any], is_coroutine: bool) -> Any:
     # Only called by get_request_handler. Has been split into its own function to
     # facilitate profiling endpoints, since inner functions are harder to profile.
-    assert dependant.call is not None, "dependant.call must be a function"
+    if dependant.call is None:
+        raise RuntimeError("dependant.call is None")
     loop = asyncio.get_running_loop()
     start_time = loop.time()
     if is_coroutine:

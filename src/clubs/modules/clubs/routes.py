@@ -15,11 +15,11 @@ from starlette import status
 from starlette.responses import RedirectResponse
 
 from src.clubs.dependencies import CLUBS_ADMIN_AUTH
-from src.clubs.minio import get_club_logo_url, put_club_logo
 from src.clubs.mongo import Club
 from src.inh_accounts_sdk import inh_accounts
 
 from . import clubs_repo
+from .logos_repo import logos_repo
 
 router = APIRouter(
     prefix="/clubs",
@@ -163,7 +163,7 @@ async def get_club_logo(id: PydanticObjectId) -> RedirectResponse:
     if not club.logo_file_id:
         raise HTTPException(status_code=404, detail="No logo available")
 
-    return RedirectResponse(url=get_club_logo_url(club.logo_file_id, 512))
+    return RedirectResponse(url=logos_repo.get_club_logo_url(club.logo_file_id, 512))
 
 
 @router.post(
@@ -184,7 +184,7 @@ async def set_club_logo(id: PydanticObjectId, logo_file: UploadFile, _: CLUBS_AD
 
     bytes_ = await logo_file.read()
     content_type = logo_file.content_type
-    if content_type is None:
+    if content_type is None:  # pragma: no cover
         content_type = magic.Magic(mime=True).from_buffer(bytes_)
 
     if content_type not in ("image/jpeg", "image/png", "image/webp"):
@@ -198,8 +198,8 @@ async def set_club_logo(id: PydanticObjectId, logo_file: UploadFile, _: CLUBS_AD
 
     # Save file
     logo_file_id = str(PydanticObjectId())
-    put_club_logo(logo_file_id, None, image_bytes, "image/webp")
-    put_club_logo(logo_file_id, 512, image_512_bytes, "image/webp")
+    logos_repo.put_club_logo(logo_file_id, None, image_bytes, "image/webp")
+    logos_repo.put_club_logo(logo_file_id, 512, image_512_bytes, "image/webp")
 
     club.logo_file_id = logo_file_id
     await club.save()

@@ -125,7 +125,7 @@ def popule_openapi_tags(app: FastAPI, router_module: ModuleType) -> None:
         tag_name = router.tags[0]
     else:
         logger.warning(
-            f"router {str(router_module.__name__)} has no tags, so we will not add its documentation to openapi_tags"
+            f"router {router_module.__name__} has no tags, so we will not add its documentation to openapi_tags"
         )
         return
 

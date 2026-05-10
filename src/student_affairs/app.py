@@ -55,7 +55,7 @@ app.add_middleware(
 )
 
 
-import src.student_affairs.routes  # noqa: E402, I001
+import src.student_affairs.routes  # noqa: E402
 
 # Import routers above and include them below, also populate openapi_tags here if needed
 app.include_router(src.student_affairs.routes.router)

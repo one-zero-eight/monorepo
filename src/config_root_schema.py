@@ -1,10 +1,9 @@
-from __future__ import annotations
-
 import os
+from functools import lru_cache
 from pathlib import Path
 
 import yaml
-from pydantic import Field, SecretStr, model_validator
+from pydantic import AliasChoices, Field, SecretStr, model_validator
 
 from src.clubs.config_schema import ClubsSettings
 from src.common_config import BaseSchema, Environment
@@ -27,7 +26,7 @@ class AccountsSettings(BaseSchema):
 
 
 class Settings(BaseSchema):
-    schema_: str | None = Field(None, alias="$schema")
+    schema_: str | None = Field(None, validation_alias=AliasChoices("schema", "$schema", "schema_"))
     accounts: AccountsSettings = AccountsSettings()
     "Shared InNoHassle Accounts integration settings"
 
@@ -66,10 +65,15 @@ class Settings(BaseSchema):
             yaml.dump(schema, f, sort_keys=False)
 
 
+@lru_cache(maxsize=1)
+def _load_root_settings_cached(path: Path) -> Settings:
+    return Settings.from_yaml(path)
+
+
 def load_root_settings(path: Path | None = None) -> Settings:
     if path is None:
         path = Path(os.getenv("SETTINGS_PATH", "settings.yaml"))
-    return Settings.from_yaml(path)
+    return _load_root_settings_cached(path.expanduser().resolve())
 
 
 def require_not_none[T](value: T | None, message: str = "Expected non-None value") -> T:

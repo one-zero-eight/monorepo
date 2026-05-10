@@ -164,12 +164,11 @@ $defs:
     additionalProperties: false
     properties:
       uri:
-        default: '**********'
         description: MongoDB database settings, if you do not specify database name
           in the uri, it will use the service name (f.e. 'clubs')
         examples:
         - mongodb://onezeroeight:herewethinkbig@127.0.0.1:27017/?authSource=admin
-        - mongodb://onezeroeight:herewethinkbig@db:27017/?authSource=admin
+        - mongodb://onezeroeight:herewethinkbig@mongodb:27017/?authSource=admin
         format: password
         title: Uri
         type: string

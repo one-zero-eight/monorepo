@@ -1,4 +1,4 @@
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from src.common_config import BaseSchema
 
@@ -29,7 +29,7 @@ class Area(BaseSchema):
     "ID of the legend (if any)"
     description: str | None = None
     "Description of the area"
-    people: list[str] = []
+    people: list[str] = Field(default_factory=list)
     "List of people for this area"
     prioritized: bool = False
     "Priority for multi-floor areas"
@@ -46,9 +46,9 @@ class Scene(BaseSchema):
     "Title of the scene"
     svg_file: str
     "Path to the SVG file in /static"
-    legend: list[LegendEntry] = []
+    legend: list[LegendEntry] = Field(default_factory=list)
     "Legend of the scene"
-    areas: list[Area] = []
+    areas: list[Area] = Field(default_factory=list)
     "Areas of the scene"
 
 

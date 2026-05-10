@@ -2,20 +2,21 @@ __all__ = [
     "Club",
     "ClubSchema",
     "ClubType",
-    "document_models",
     "LinkSchema",
     "LinkType",
     "User",
     "UserRole",
     "UserSchema",
+    "document_models",
 ]
 
 from enum import StrEnum
+from typing import ClassVar
 
 from pydantic import Field
 from pymongo import IndexModel
 
-from src.common_mongodb import CustomDocument
+from src.common_beanie import BeanieDocument
 from src.common_pydantic import BaseSchema
 
 
@@ -62,9 +63,9 @@ class ClubSchema(BaseSchema):
     "ID of sport type in InnoSport system (None if the club is not sport)"
 
 
-class Club(ClubSchema, CustomDocument):
-    class Settings(CustomDocument.Settings):
-        indexes = [IndexModel("slug", unique=True)]
+class Club(ClubSchema, BeanieDocument):
+    class Settings(BeanieDocument.Settings):
+        indexes: ClassVar = [IndexModel("slug", unique=True)]
 
 
 class UserRole(StrEnum):
@@ -79,9 +80,9 @@ class UserSchema(BaseSchema):
     "System role of the user"
 
 
-class User(UserSchema, CustomDocument):
-    class Settings(CustomDocument.Settings):
-        indexes = [IndexModel("innohassle_id", unique=True)]
+class User(UserSchema, BeanieDocument):
+    class Settings(BeanieDocument.Settings):
+        indexes: ClassVar = [IndexModel("innohassle_id", unique=True)]
 
 
 document_models = [Club, User]

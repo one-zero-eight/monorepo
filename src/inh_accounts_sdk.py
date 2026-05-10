@@ -1,7 +1,7 @@
 # This file should be synced with:
 # https://github.com/one-zero-eight/accounts/blob/main/inh_accounts_sdk.py
 
-import datetime
+import datetime as dt
 import logging
 from logging import Logger
 from typing import Any
@@ -20,7 +20,7 @@ class TelegramInfo(BaseModel):
     last_name: str | None = None
     username: str | None = None
     photo_url: str | None = None
-    updated_at: datetime.datetime
+    updated_at: dt.datetime
 
 
 class InnopolisInfo(BaseModel):
@@ -29,7 +29,7 @@ class InnopolisInfo(BaseModel):
     is_student: bool = False
     is_staff: bool = False
     is_college: bool = False
-    updated_at: datetime.datetime
+    updated_at: dt.datetime
 
 
 class UserSchema(BaseModel):
@@ -67,19 +67,20 @@ class InNoHassleAccounts:
         self.mock = mock
         if logger is None:
             logger = logging.getLogger(__name__)
+        self.logger = logger
         if self.api_jwt_token is None:
-            logger.warning(
+            self.logger.warning(
                 "InNoHassle Accounts API JWT token is not set, you will not be able to call service endpoints that require authorization"
             )
 
     async def update_key_set(self):
         if self.mock:
             self.key_set = {"keys": []}
-            logger.warning("InNoHassle Accounts mock mode: JWKS fetch skipped")
+            self.logger.warning("InNoHassle Accounts mock mode: JWKS fetch skipped")
             return
-        logger.info("Updating key set for InNoHassle Accounts...")
+        self.logger.info("Updating key set for InNoHassle Accounts...")
         self.key_set = await self.get_key_set()
-        logger.info("Key set updated successfully")
+        self.logger.info("Key set updated successfully")
 
     def get_public_key(self) -> RSAKey:
         if self.key_set is None:
@@ -106,7 +107,7 @@ class InNoHassleAccounts:
                 try:
                     return UserTokenData.model_validate_json(raw)
                 except Exception:
-                    logging.warning(f"Invalid mock Bearer JSON for UserTokenData: {raw}", exc_info=True)
+                    self.logger.warning(f"Invalid mock Bearer JSON for UserTokenData: {raw}", exc_info=True)
                     return None
         try:
             payload = self._get_jwt_claims(token)
@@ -121,7 +122,7 @@ class InNoHassleAccounts:
                 telegram_id=telegram_id,
             )
         except JoseError:
-            logging.warning("Invalid token", exc_info=True)
+            self.logger.warning("Invalid token", exc_info=True)
             return None
 
     def get_authorized_client(self) -> httpx.AsyncClient:
@@ -167,7 +168,7 @@ class InNoHassleAccounts:
                 except httpx.HTTPStatusError as e:
                     if e.response.status_code == 404:
                         continue
-                    raise e
+                    raise
             return None
 
     async def get_users(self, innohassle_ids: list[str]) -> dict[str, UserSchema | None]:
@@ -184,8 +185,8 @@ class InNoHassleAccounts:
 
 
 # Project specific code follows
+import src.logging_  # noqa: E402
 from src.config_root_schema import load_root_settings  # noqa: E402
-from src.logging_ import logger  # noqa: E402
 
 root_settings = load_root_settings()
 
@@ -194,7 +195,7 @@ if root_settings.accounts:
         api_url=root_settings.accounts.api_url,
         api_jwt_token=root_settings.accounts.api_jwt_token,
         mock=root_settings.accounts.mock,
-        logger=logger,
+        logger=src.logging_.logger,
     )
 else:
     raise ImportError("InNoHassle Accounts is not configured in ./settings.yaml")  # pragma: no cover

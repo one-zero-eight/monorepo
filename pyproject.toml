@@ -32,10 +32,11 @@ dev = [
     "prek>=0.3.13", # ~6.4 MiB
     "pytest>=9.0.3", # ~366 KiB
     "pytest-asyncio>=1.3.0", # ~15 KiB
-    "pytest-cov>=7.1.0", # ~22 KiB
+    "pytest-cov>=7.1.0",
+    "pytest-durations>=1.6.2",
+    "pytest-xdist>=3.8.0",
     "respx>=0.23.1",
     "ruff>=0.15.12", # ~11.5 MiB
-    "testcontainers>=4.14.2",
     "types-pyyaml>=6.0.12.20260408", # ~20 KiB
 ]
 events = [
@@ -94,13 +95,33 @@ default-groups = "all"
 requests-curl = { git = "https://github.com/paivett/requests-curl.git", rev = "82a7fc1" }
 
 [tool.ruff]
+extend-exclude = [".agents/skills"]
 line-length = 120
-lint.extend-select = ["I", "UP", "PL"]
-lint.extend-ignore = ["PLC0415", "PLR"]
+lint.preview = true
+lint.extend-select = [
+    "E", # pycodestyle error
+    "I", # isort
+    "N", # pep-8 naming
+    "S", # bandit
+    "UP", # pyupgrade
+    "PL", # pylint
+    "A", # flake8-builtins
+    "DTZ", # flake8-datetimez
+    "ICN", # flake8-import-conventions
+]
+lint.extend-ignore = [
+    "PLC0415", # import-outside-top-level
+    "PLR", # pylint refactor
+    "E501", # line-too-long (handled by formatter)
+]
 target-version = "py314"
-
-[tool.ruff.lint.per-file-ignores]
-"tests/conftest.py" = ["E402"]
+[tool.ruff.lint.flake8-builtins]
+ignorelist = ["id"]
+[tool.ruff.lint.flake8-import-conventions]
+banned-from = ["datetime", "time"]
+[tool.ruff.lint.flake8-import-conventions.aliases]
+datetime = "dt"
+time = "tm"
 
 [tool.pytest.ini_options]
 addopts = "--cov=src --cov-report=term-missing"

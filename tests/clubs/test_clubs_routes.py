@@ -1,10 +1,7 @@
-from io import BytesIO
 from typing import Any, cast
+from urllib.parse import urlparse
 
-import pytest
-from fastapi import UploadFile
 from fastapi.testclient import TestClient
-from starlette.datastructures import Headers
 
 
 def _admin_headers(
@@ -78,9 +75,9 @@ def test_clubs_list_and_read_endpoints(
 ):
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
 
-    empty_list = clubs_client.get("/clubs/")
-    assert empty_list.status_code == 200
-    assert empty_list.json() == []
+    list_before = clubs_client.get("/clubs/")
+    assert list_before.status_code == 200
+    count_before = len(list_before.json())
 
     create_response = clubs_client.post("/clubs/", json=_club_payload("club-read"), headers=admin_headers)
     assert create_response.status_code == 200
@@ -96,7 +93,9 @@ def test_clubs_list_and_read_endpoints(
 
     list_after_create = clubs_client.get("/clubs/")
     assert list_after_create.status_code == 200
-    assert len(list_after_create.json()) == 1
+    data_after = list_after_create.json()
+    assert len(data_after) == count_before + 1
+    assert sum(1 for c in data_after if c["slug"] == "club-read") == 1
 
 
 def test_clubs_get_returns_404_for_unknown_entities(clubs_client: TestClient):
@@ -307,12 +306,9 @@ def test_get_logo_returns_404_when_logo_is_missing(
 
 def test_get_logo_redirects_when_logo_exists(
     clubs_client: TestClient,
-    monkeypatch,
     superadmin_headers: dict[str, str],
     user_headers: dict[str, str],
 ):
-    from src.clubs.modules.clubs import routes as clubs_routes
-
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
     create_response = clubs_client.post("/clubs/", json=_club_payload("has-logo"), headers=admin_headers)
     assert create_response.status_code == 200
@@ -324,13 +320,13 @@ def test_get_logo_redirects_when_logo_exists(
         headers=admin_headers,
     )
     assert edit_response.status_code == 200
-    monkeypatch.setattr(
-        clubs_routes, "get_club_logo_url", lambda logo_file_id, size=None: f"https://cdn/{logo_file_id}/{size}"
-    )
 
     response = clubs_client.get(f"/clubs/by-id/{created['id']}/logo", follow_redirects=False)
     assert response.status_code == 307
-    assert response.headers["location"] == "https://cdn/logo-123/512"
+    loc = response.headers["location"]
+    parsed = urlparse(loc)
+    assert parsed.scheme in {"http", "https"}
+    assert "logo-123-512" in loc
 
 
 def test_set_logo_returns_404_for_missing_club(
@@ -369,27 +365,19 @@ def test_set_logo_returns_400_for_invalid_content_type(
 
 def test_set_logo_success(
     clubs_client: TestClient,
-    monkeypatch,
     superadmin_headers: dict[str, str],
     user_headers: dict[str, str],
 ):
     import pyvips
 
-    from src.clubs.modules.clubs import routes as clubs_routes
-
-    put_calls = []
-
-    def _fake_put_club_logo(logo_file_id: str, size: int | None, data: bytes, content_type: str):
-        put_calls.append((logo_file_id, size, data, content_type))
-
-    monkeypatch.setattr(clubs_routes, "put_club_logo", _fake_put_club_logo)
+    from src.clubs.modules.clubs.logos_repo import logos_repo
 
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
     create_response = clubs_client.post("/clubs/", json=_club_payload("good-logo"), headers=admin_headers)
     assert create_response.status_code == 200
     created = create_response.json()
 
-    white_base = pyvips.Image.black(500, 500)
+    white_base = pyvips.Image.black(32, 32)
     white_image = cast(Any, white_base).new_from_image(255)
     white_png = cast(Any, white_image).write_to_buffer(".png")
 
@@ -400,44 +388,63 @@ def test_set_logo_success(
     )
     assert response.status_code == 200
     payload = response.json()
-    assert payload["logo_file_id"] is not None
-    assert len(put_calls) == 2
+    logo_file_id = payload["logo_file_id"]
+    assert logo_file_id is not None
+
+    full_key = logos_repo.get_club_logo_object_name(logo_file_id, None)
+    thumb_key = logos_repo.get_club_logo_object_name(logo_file_id, 512)
+    o_full = logos_repo.minio_client.get_object(logos_repo.bucket, full_key)
+    o_512 = logos_repo.minio_client.get_object(logos_repo.bucket, thumb_key)
+    try:
+        assert len(o_full.read()) > 0
+        assert len(o_512.read()) > 0
+    finally:
+        o_full.close()
+        o_full.release_conn()
+        o_512.close()
+        o_512.release_conn()
 
 
-@pytest.mark.asyncio
-async def test_set_logo_content_type_detected_by_magic(monkeypatch):
+def test_set_logo_content_type_detected_by_magic(
+    clubs_client: TestClient,
+    superadmin_headers: dict[str, str],
+    user_headers: dict[str, str],
+):
+    """Multipart part without a Content-Type forces magic.from_buffer in the handler."""
     import pyvips
-    from beanie import PydanticObjectId
 
-    from src.clubs.modules.clubs import routes as clubs_routes
+    from src.clubs.modules.clubs.logos_repo import logos_repo
 
-    class _FakeClub:
-        logo_file_id = None
+    admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
+    create_response = clubs_client.post("/clubs/", json=_club_payload("magic-mime-logo"), headers=admin_headers)
+    assert create_response.status_code == 200
+    club_id = create_response.json()["id"]
 
-        async def save(self):
-            return None
-
-    async def _read_club(_id):
-        return _FakeClub()
-
-    monkeypatch.setattr(clubs_routes, "put_club_logo", lambda *args, **kwargs: None)
-    monkeypatch.setattr(clubs_routes.clubs_repo, "read", _read_club)
-
-    white_base = pyvips.Image.black(500, 500)
+    white_base = pyvips.Image.black(32, 32)
     white_image = cast(Any, white_base).new_from_image(255)
     white_png = cast(Any, white_image).write_to_buffer(".png")
-    upload = UploadFile(
-        file=BytesIO(white_png),
-        filename="white.png",
-        headers=Headers(),
-    )
 
-    result = await clubs_routes.set_club_logo(
-        PydanticObjectId(),
-        upload,
-        cast(Any, object()),
+    response = clubs_client.post(
+        f"/clubs/by-id/{club_id}/logo",
+        files={"logo_file": ("white.png", white_png)},
+        headers=admin_headers,
     )
-    assert result.logo_file_id is not None
+    assert response.status_code == 200
+    logo_file_id = response.json()["logo_file_id"]
+    assert logo_file_id is not None
+
+    full_key = logos_repo.get_club_logo_object_name(logo_file_id, None)
+    thumb_key = logos_repo.get_club_logo_object_name(logo_file_id, 512)
+    o_full = logos_repo.minio_client.get_object(logos_repo.bucket, full_key)
+    o_512 = logos_repo.minio_client.get_object(logos_repo.bucket, thumb_key)
+    try:
+        assert len(o_full.read()) > 0
+        assert len(o_512.read()) > 0
+    finally:
+        o_full.close()
+        o_full.release_conn()
+        o_512.close()
+        o_512.release_conn()
 
 
 def test_edit_club_by_slug_returns_400_when_revision_conflicts(

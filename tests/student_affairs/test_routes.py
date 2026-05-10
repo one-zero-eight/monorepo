@@ -28,15 +28,18 @@ def test_generate_link_returns_400_when_accounts_user_missing(
     inh_accounts_mock_users: dict,
     make_user_token,
 ):
-    inh_accounts_mock_users.pop("test-user-1", None)
-
-    token = make_user_token(uid="test-user-1", email="test-user-1@innopolis.university")
-    response = student_affairs_client.post(
-        "/sso/generate-link",
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert response.status_code == 400
-    assert response.json()["detail"] == "User not found"
+    popped = inh_accounts_mock_users.pop("test-user-1", None)
+    try:
+        token = make_user_token(uid="test-user-1", email="test-user-1@innopolis.university")
+        response = student_affairs_client.post(
+            "/sso/generate-link",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 400
+        assert response.json()["detail"] == "User not found"
+    finally:
+        if popped is not None:
+            inh_accounts_mock_users["test-user-1"] = popped
 
 
 def test_generate_link_success(

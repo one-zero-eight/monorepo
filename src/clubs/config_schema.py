@@ -1,30 +1,17 @@
-from pydantic import Field, SecretStr
+import datetime as dt
 
-from src.common_config import BaseSchema, MongoDatabaseSettings, ServiceSettingsBase
+from pydantic import Field
 
-
-class MinioSettings(BaseSchema):
-    endpoint: str = Field(default="127.0.0.1:9000", examples=["127.0.0.1:9000", "minio:9000"])
-    "URL of the target service."
-    secure: bool = False
-    "Use https connection to the service."
-    region: str | None = None
-    "Region of the service."
-    bucket: str = "clubs"
-    "Name of the bucket in the service."
-    access_key: str = "onezeroeight"
-    "Access key (user ID) of a user account in the service."
-    secret_key: SecretStr = SecretStr("herewethinkbig")
-    "Secret key (password) for the user account."
-    club_logos_prefix: str = "logos/"
+from src.common_config import MinioSettings, MongoDatabaseSettings, ServiceSettingsBase
 
 
 class ClubsSettings(ServiceSettingsBase):
     """Settings for the application."""
 
-    mongo: MongoDatabaseSettings = MongoDatabaseSettings()
+    mongo: MongoDatabaseSettings = Field(default_factory=MongoDatabaseSettings)
     "Configuration for MongoDB"
-    minio: MinioSettings = MinioSettings()
+    minio: MinioSettings = Field(default_factory=MinioSettings)
     "Configuration for S3 object storage"
-    superadmin_emails: list[str] = []
+    superadmin_emails: list[str] = Field(default_factory=list)
     "Innomails of superadmins who can set admin roles"
+    at: dt.datetime = Field(default_factory=dt.datetime.now)

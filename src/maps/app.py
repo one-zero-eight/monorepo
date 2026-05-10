@@ -69,7 +69,7 @@ app.add_middleware(
 
 app.mount(settings.static_mount_path, StaticFiles(directory=settings.static_directory), name="static")
 
-import src.maps.routes  # noqa: E402, I001
+import src.maps.routes  # noqa: E402
 
 # Import routers above and include them below, also populate openapi_tags here if needed
 app.include_router(src.maps.routes.router)
