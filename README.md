@@ -1,4 +1,4 @@
-Run infra via `docker compose up -d mongodb minio`.
+Run infra via `docker compose up --wait mongodb minio`.
 
 Create `settings.yaml` in monorepo root via `cp settings.example.yaml settings.yaml`. Edit settings in `settings.yaml` if needed.
 
