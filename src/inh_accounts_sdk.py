@@ -1,7 +1,7 @@
 # This file should be synced with:
 # https://github.com/one-zero-eight/accounts/blob/main/inh_accounts_sdk.py
 
-import datetime as dt
+import datetime as dtm
 import logging
 from logging import Logger
 from typing import Any
@@ -20,7 +20,7 @@ class TelegramInfo(BaseModel):
     last_name: str | None = None
     username: str | None = None
     photo_url: str | None = None
-    updated_at: dt.datetime
+    updated_at: dtm.datetime
 
 
 class InnopolisInfo(BaseModel):
@@ -29,7 +29,7 @@ class InnopolisInfo(BaseModel):
     is_student: bool = False
     is_staff: bool = False
     is_college: bool = False
-    updated_at: dt.datetime
+    updated_at: dtm.datetime
 
 
 class UserSchema(BaseModel):

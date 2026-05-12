@@ -1,4 +1,4 @@
-import datetime as dt
+import datetime as dtm
 import urllib.parse
 
 import httpx
@@ -32,8 +32,8 @@ async def generate_signin_link(
     if accounts_user is None:
         raise HTTPException(status_code=400, detail="User not found")
     # Build JWT
-    issued_at = dt.datetime.now(dt.UTC)
-    expire = issued_at + dt.timedelta(minutes=30)
+    issued_at = dtm.datetime.now(dtm.UTC)
+    expire = issued_at + dtm.timedelta(minutes=30)
     payload: dict = {
         "iat": issued_at,
         "exp": expire,

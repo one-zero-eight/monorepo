@@ -120,7 +120,7 @@ ignorelist = ["id"]
 [tool.ruff.lint.flake8-import-conventions]
 banned-from = ["datetime", "time"]
 [tool.ruff.lint.flake8-import-conventions.aliases]
-datetime = "dt"
+datetime = "dtm"
 time = "tm"
 
 [tool.pytest.ini_options]

@@ -1,4 +1,4 @@
-import datetime as dt
+import datetime as dtm
 
 from pydantic import Field
 
@@ -14,4 +14,4 @@ class ClubsSettings(ServiceSettingsBase):
     "Configuration for S3 object storage"
     superadmin_emails: list[str] = Field(default_factory=list)
     "Innomails of superadmins who can set admin roles"
-    at: dt.datetime = Field(default_factory=dt.datetime.now)
+    at: dtm.datetime = Field(default_factory=dtm.datetime.now)
