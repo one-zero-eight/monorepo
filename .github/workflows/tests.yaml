@@ -3,9 +3,16 @@ name: Run tests
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to run tests on
+        required: true
+        default: main
+        type: string
 
 concurrency:
-  group: tests-${{ github.workflow }}-${{ github.ref }}
+  group: tests-${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -52,11 +59,14 @@ jobs:
     steps:
       - name: 👾 Check out repository
         uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref }}
 
       - name: 📦 Install native libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libmagic1 libvips-dev
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: libmagic1 libvips-dev
+          version: 1.0
 
       - name: 📦 Set up uv
         uses: astral-sh/setup-uv@v7
