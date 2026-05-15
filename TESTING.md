@@ -124,3 +124,8 @@ uv run -m pytest tests/path/to/test_file.py::test_name -vv -s
 Coverage is useful for finding untested areas, but it is not the goal by itself.
 
 Prefer meaningful tests for important behavior over shallow tests written only to increase coverage numbers.
+
+
+### Commit messages
+
+Use `test(service, ...): description` or `test: description` format for commit messages when adding or updating only tests or test infrastructure.

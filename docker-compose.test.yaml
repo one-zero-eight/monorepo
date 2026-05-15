@@ -36,6 +36,8 @@ services:
     labels:
       - "lazytainer.group=test-infra"
     command: ["mongod", "--port", "37017"]
+    volumes:
+      - mongodb_test:/data/db
     environment:
       MONGO_INITDB_ROOT_USERNAME: test
       MONGO_INITDB_ROOT_PASSWORD: test
@@ -49,6 +51,12 @@ services:
     labels:
       - "lazytainer.group=test-infra"
     command: server /data --address ":19000" --console-address ":19001"
+    volumes:
+      - minio_test:/data
     environment:
       MINIO_ROOT_USER: test
       MINIO_ROOT_PASSWORD: testsecret
+
+volumes:
+  mongodb_test:
+  minio_test:
