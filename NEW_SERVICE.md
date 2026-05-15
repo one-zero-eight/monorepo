@@ -549,7 +549,6 @@ Add a service block so the API runs with the rest of the dev stack (`docker comp
 ```
 
 - **`APP_MODULE`** must point at `src.<package>.app:app` (the FastAPI instance in `app.py`).
-- **`depends_on`** — only for tier 3 (or any service whose lifespan touches Mongo/MinIO). Simple/very-simple services can omit it (see `maps`, `student-affairs`).
 - **`settings.yaml`** is mounted read-only; ensure `my_service_service` is configured there with correct `mongo` / `minio` endpoints (`mongodb:27017`, `minio:9000` when talking to the compose network, not `localhost`).
 
 `docker-compose.test.yaml` only runs shared test infra (Mongo/MinIO via lazytainer); API services are not added there — tests use `TestClient` and fixtures from [TESTING.md](./TESTING.md).
