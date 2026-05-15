@@ -133,4 +133,5 @@ time = "tm"
 addopts = "--cov=src --cov-report=term-missing"
 
 [tool.coverage.run]
+relative_files = true
 omit = ["*/__main__.py", "*/logging_.py"]
