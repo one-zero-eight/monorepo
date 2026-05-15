@@ -99,6 +99,7 @@ requests-curl = { git = "https://github.com/paivett/requests-curl.git", rev = "8
 extend-exclude = [".agents/skills"]
 line-length = 120
 lint.preview = true
+target-version = "py314"
 lint.extend-select = [
     "E", # pycodestyle error
     "I", # isort
@@ -109,17 +110,15 @@ lint.extend-select = [
     "A", # flake8-builtins
     "DTZ", # flake8-datetimez
     "ICN", # flake8-import-conventions
+    "TID251", # flake8-tidy-imports banned-api
 ]
 lint.extend-ignore = [
     "PLC0415", # import-outside-top-level
     "PLR", # pylint refactor
     "E501", # line-too-long (handled by formatter)
 ]
-target-version = "py314"
-
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"] # assert is standard in pytest
-
 [tool.ruff.lint.flake8-builtins]
 ignorelist = ["id"]
 [tool.ruff.lint.flake8-import-conventions]
@@ -127,6 +126,8 @@ banned-from = ["datetime", "time"]
 [tool.ruff.lint.flake8-import-conventions.aliases]
 datetime = "dtm"
 time = "tm"
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"__future__.annotations".msg = "Python 3.14+ uses deferred annotations by default; do not use this future import."
 
 [tool.pytest.ini_options]
 addopts = "--cov=src --cov-report=term-missing"
