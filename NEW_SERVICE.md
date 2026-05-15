@@ -519,6 +519,41 @@ my-service = [
 ]
 ```
 
+### `docker-compose.yaml`
+
+Add a service block so the API runs with the rest of the dev stack (`docker compose up --build --wait`). The image is built from `api.Dockerfile`; the container always listens on port `8000` (gunicorn), so map the **host** port to `8000` — use the same host port as in `src/my_service/__main__.py` (existing services: maps `8009`, clubs `8014`, student-affairs `8015`).
+
+```yaml
+  my-service:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.my_service.app:app
+    restart: no
+    ports:
+      - "8020:8000"  # host port from __main__.py → container 8000
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 500m
+    depends_on:  # omit if the service does not use Mongo/MinIO
+      mongodb:
+        condition: service_healthy
+      minio:
+        condition: service_started
+```
+
+- **`APP_MODULE`** must point at `src.<package>.app:app` (the FastAPI instance in `app.py`).
+- **`depends_on`** — only for tier 3 (or any service whose lifespan touches Mongo/MinIO). Simple/very-simple services can omit it (see `maps`, `student-affairs`).
+- **`settings.yaml`** is mounted read-only; ensure `my_service_service` is configured there with correct `mongo` / `minio` endpoints (`mongodb:27017`, `minio:9000` when talking to the compose network, not `localhost`).
+
+`docker-compose.test.yaml` only runs shared test infra (Mongo/MinIO via lazytainer); API services are not added there — tests use `TestClient` and fixtures from [TESTING.md](./TESTING.md).
+
 ---
 
 ## Testing
