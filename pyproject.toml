@@ -90,6 +90,7 @@ student-affairs = []
 
 [tool.uv]
 default-groups = "all"
+constraint-dependencies = ["urllib3>=2.7.0"]
 
 [tool.uv.sources]
 requests-curl = { git = "https://github.com/paivett/requests-curl.git", rev = "82a7fc1" }
