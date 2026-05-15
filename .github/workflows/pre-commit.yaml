@@ -16,6 +16,18 @@ jobs:
       - name: 📦 Install the project
         run: uv sync
       - name: 🧪 Run prek
-        run: uv run prek run --show-diff-on-failure --color=always --all-files --hook-stage manual
+        run: |
+          set +e
+          log="$(mktemp)"
+          uv run prek run --show-diff-on-failure --color=never --all-files --hook-stage manual >"$log" 2>&1
+          status=$?
+          {
+            echo "## prek"
+            echo '```text'
+            cat "$log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat "$log"
+          exit "$status"
         env:
           RUFF_FORMAT: github
