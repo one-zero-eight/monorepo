@@ -5,6 +5,8 @@ on: [ push, pull_request ]
 jobs:
   prek:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:

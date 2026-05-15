@@ -65,6 +65,7 @@ jobs:
     name: ⚡️ Deploy to server for ${{ github.event.inputs.environment || 'staging' }}
     needs: build-and-push-image
     runs-on: [self-hosted, innohassle]
+    permissions: {}
     environment:
       # Set the environment name and URL to be displayed in GitHub
       name: ${{ github.event.inputs.environment || 'staging' }}
