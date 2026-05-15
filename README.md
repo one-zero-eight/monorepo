@@ -51,7 +51,7 @@ our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CON
    docker compose up --wait mongodb minio
    ```
 5. Create `settings.yaml` in monorepo root via `cp settings.example.yaml settings.yaml`. Edit settings in `settings.yaml` if needed.
-5. Start development server (and read logs in the terminal):
+6. Start development server (and read logs in the terminal):
 
    For maps service:
    ```bash
