@@ -32,65 +32,65 @@ dev = [
     "prek>=0.3.13", # ~6.4 MiB
     "pytest>=9.0.3", # ~366 KiB
     "pytest-asyncio>=1.3.0", # ~15 KiB
-    "pytest-cov>=7.1.0",
-    "pytest-durations>=1.6.2",
-    "pytest-xdist>=3.8.0",
-    "respx>=0.23.1",
+    "pytest-cov>=7.1.0", # ~22 KiB
+    "pytest-durations>=1.6.2", # ~14 KiB
+    "pytest-xdist>=3.8.0", # ~45 KiB
+    "respx>=0.23.1", # ~25 KiB
     "ruff>=0.15.12", # ~11.5 MiB
     "types-pyyaml>=6.0.12.20260408", # ~20 KiB
 ]
-events = [
-    "alembic>=1.18.4", # ~258 KiB
-    "asyncpg>=0.31.0", # ~3.4 MiB
-    "icalendar>=7.1.0", # ~460 KiB
-    "prometheus-fastapi-instrumentator>=7.1.0", # ~19 KiB
-    "sqlalchemy[postgresql-asyncpg]>=2.0.49", # ~3.4 MiB
-]
-room-booking = [
-    "exchangelib>=5.6.0", # ~238 KiB
-    "requests-curl", # depends on curl runtime
-]
+# events = [
+#    "alembic>=1.18.4", # ~258 KiB
+#    "asyncpg>=0.31.0", # ~3.4 MiB
+#    "icalendar>=7.1.0", # ~460 KiB
+#    "prometheus-fastapi-instrumentator>=7.1.0", # ~19 KiB
+#    "sqlalchemy[postgresql-asyncpg]>=2.0.49", # ~3.4 MiB
+#]
+#room-booking = [
+#    "exchangelib>=5.6.0", # ~238 KiB
+##    "requests-curl", # depends on curl runtime
+#]
 maps = [
     "rapidfuzz>=3.14.5", # ~4.1 MiB
 ]
 clubs = [
     "pyvips>=3.1.1", # ~56 KiB | depends on libvips
 ]
-workshops = [
-    "alembic>=1.18.4", # ~258 KiB
-    "asyncpg>=0.31.0", # ~3.4 MiB
-    "sqlalchemy>=2.0.49", # ~3.4 MiB
-    "sqlmodel>=0.0.38", # ~27 KiB
-]
-forms = [
-    "nanoid>=2.0.0", # ~6 KiB
-]
-guard = [
-    "google-api-python-client>=2.196.0", # ~14.5 MiB
-    "google-auth>=2.51.0", # ~240 KiB
-    "google-auth-oauthlib>=1.4.0", # ~19 KiB
-]
-schedule-builder-backend = [
-    "numpy>=2.4.4", # ~17.8 MiB
-    "openpyxl>=3.1.5", # ~245 KiB
-    "pandas>=3.0.2", # ~11.8 MiB
-]
-search = [
-    "apscheduler>=3.11.2", # ~63 KiB
-    "beautifulsoup4>=4.14.3", # ~105 KiB
-    "fake-useragent>=2.2.0", # ~158 KiB
-    "markdownify>=1.2.2", # ~15 KiB
-    "motor>=3.7.1", # ~73 KiB
-    "openai>=2.35.1", # ~1.2 MiB
-    "requests>=2.33.1", # ~63 KiB
-    "sentencepiece>=0.2.1", # ~1.9 MiB
-    "unicorn>=2.1.4", # ~19.6 MiB
-]
+#workshops = [
+#    "alembic>=1.18.4", # ~258 KiB
+#    "asyncpg>=0.31.0", # ~3.4 MiB
+#    "sqlalchemy>=2.0.49", # ~3.4 MiB
+#    "sqlmodel>=0.0.38", # ~27 KiB
+#]
+#forms = [
+#    "nanoid>=2.0.0", # ~6 KiB
+#]
+#guard = [
+#    "google-api-python-client>=2.196.0", # ~14.5 MiB
+#    "google-auth>=2.51.0", # ~240 KiB
+#    "google-auth-oauthlib>=1.4.0", # ~19 KiB
+#]
+#schedule-builder-backend = [
+#    "numpy>=2.4.4", # ~17.8 MiB
+#    "openpyxl>=3.1.5", # ~245 KiB
+#    "pandas>=3.0.2", # ~11.8 MiB
+#]
+#search = [
+#    "apscheduler>=3.11.2", # ~63 KiB
+#    "beautifulsoup4>=4.14.3", # ~105 KiB
+#    "fake-useragent>=2.2.0", # ~158 KiB
+#    "markdownify>=1.2.2", # ~15 KiB
+#    "motor>=3.7.1", # ~73 KiB
+#    "openai>=2.35.1", # ~1.2 MiB
+#    "requests>=2.33.1", # ~63 KiB
+#    "sentencepiece>=0.2.1", # ~1.9 MiB
+#    "unicorn>=2.1.4", # ~19.6 MiB
+#]
 student-affairs = []
 
 [tool.uv]
 default-groups = "all"
-constraint-dependencies = ["urllib3>=2.7.0"]
+constraint-dependencies = ["urllib3>=2.7.0"] # for security related pins
 
 [tool.uv.sources]
 requests-curl = { git = "https://github.com/paivett/requests-curl.git", rev = "82a7fc1" }

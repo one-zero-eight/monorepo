@@ -1,0 +1,48 @@
+# Prek configuration.
+# https://prek.j178.dev/configuration/
+
+# uv run prek install --overwrite --prepare-hooks -t pre-commit -t commit-msg
+# uv run prek auto-update
+# uv run prek run --all-files
+
+default_stages:
+  - pre-commit
+  - pre-push
+  - commit-msg
+  - manual
+
+repos:
+  # Fix some errors with Ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.13
+    hooks:
+      - id: ruff
+        args: [ --fix, --exit-zero ]
+        name: "ruff: fixing"
+      - id: ruff-format
+        name: "ruff: formatting"
+
+  # Lint Python files with Ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.13
+    hooks:
+      - id: ruff
+        name: "ruff: linting"
+
+  # Check other files
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-added-large-files
+
+  # Local linting
+  - repo: local
+    hooks:
+      - id: generate-settings-schema
+        name: generate settings.schema.yaml
+        language: system
+        entry: uv run ./scripts/generate_settings_schema.py
+        pass_filenames: false
+        files: ^src/config_schema.py$

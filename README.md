@@ -1,9 +1,90 @@
-Run infra via `docker compose up --wait mongodb minio`.
+# InNoHassle monorepo
 
-Create `settings.yaml` in monorepo root via `cp settings.example.yaml settings.yaml`. Edit settings in `settings.yaml` if needed.
+## Table of contents
 
-Run service via `uv run -m src.maps --reload`.
+Did you know that GitHub supports table of
+contents [by default](https://github.blog/changelog/2021-04-13-table-of-contents-support-in-markdown-files/) 🤔
 
+
+## About
+
+This is the monorepo for backend services of InNoHassle ecosystem, all of them are FastAPI ASGI applications.
+
+- Clubs service - Innopolis University student clubs management system to view clubs, add new clubs, and edit their descriptions and logos.
+- Maps - hosting Innopolis University maps to view them on innohassle.ru.
+- Student Affairs - omnidesk authentication via SSO for Student Affairs department to issue tickets.
+
+### Technologies
+
+- [Python 3.14](https://www.python.org/downloads/) & [uv](https://docs.astral.sh/uv/)
+- [FastAPI](https://fastapi.tiangolo.com/)
+- Database and ORM: [MongoDB](https://www.mongodb.com/) & [Beanie](https://beanie-odm.dev/)
+- File storage: [MinIO](https://github.com/minio/minio)
+- Formatting and linting: [Ruff](https://docs.astral.sh/ruff/), [prek](https://prek.j178.dev/)
+- Deployment: [Docker](https://www.docker.com/), [Docker Compose](https://docs.docker.com/compose/),
+  [GitHub Actions](https://github.com/features/actions)
+
+
+## Contributing
+
+We are open to contributions of any kind.
+You can help us with code, bugs, design, documentation, media, new ideas, etc.
+If you are interested in contributing, please read
+our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CONTRIBUTING.md).
+
+
+## Development
+
+### Set up for development
+
+1. Install [uv](https://docs.astral.sh/uv/) and [Docker](https://docs.docker.com/engine/install/)
+2. Install dependencies:
+   ```bash
+   uv sync
+   ```
+3. Run infra:
+   ```bash
+   docker compose up --wait mongodb minio
+   ```
+4. Create `settings.yaml` in monorepo root via `cp settings.example.yaml settings.yaml`. Edit settings in `settings.yaml` if needed.`
+5. Start development server (and read logs in the terminal):
+   
+   For maps service:
+   ```bash
+   uv run -m src.maps --reload
+   ```
+   > It will be available at http://localhost:8009
+
+   For clubs service:
+   ```bash
+   uv run -m src.clubs --reload
+   ```
+   > It will be available at http://localhost:8014
+
+   For student affairs service:
+   ```bash
+   uv run -m src.student_affairs --reload
+   ```
+   > It will be available at http://localhost:8015
+
+
+> [!IMPORTANT]
+> For endpoints requiring authorization click "Authorize" button in Swagger UI
+
+> [!TIP]
+> Edit `settings.yaml` according to your needs, you can view schema in
+> [config_schema.py](src/config_schema.py) and in [settings.schema.yaml](settings.schema.yaml)
+
+**Set up PyCharm integrations**
+
+1. Run configurations ([docs](https://www.jetbrains.com/help/pycharm/run-debug-configuration.html#createExplicitly)).
+   Right-click the `__main__.py` file in the project explorer, select `Run '__main__'` from the context menu.
+2. Ruff ([plugin](https://plugins.jetbrains.com/plugin/20574-ruff)).
+   It will lint and format your code. Make sure to enable `Use ruff format` option in plugin settings.
+3. Pydantic ([plugin](https://plugins.jetbrains.com/plugin/12861-pydantic)). It will fix PyCharm issues with
+   type-hinting.
+4. Conventional commits ([plugin](https://plugins.jetbrains.com/plugin/13389-conventional-commit)). It will help you
+   to write [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/).
 
 ### Testing
 
@@ -31,6 +112,26 @@ To rerun only failed tests, you can use:
 uv run -m pytest --lf
 ```
 
+### How to update dependencies
+
+1. Run `uv sync --upgrade` to update uv.lock file and install the latest versions of the dependencies.
+2. Run `uv tree --outdated --depth=1` will show what package versions are installed and what are the latest versions.
+3. Run `uv run prek auto-update` to update prek hooks.
+
+Also, Dependabot will help you to keep your dependencies up-to-date, see [dependabot.yaml](.github/dependabot.yaml).
+
+### How to dump the database
+
+Requires `mongodb` running (`docker compose up --wait mongodb`).
+
+1. Dump (f.e. /clubs database):
+   ```bash
+   docker compose exec mongodb sh -c 'mongodump "mongodb://$MONGO_INITDB_ROOT_USERNAME:$MONGO_INITDB_ROOT_PASSWORD@127.0.0.1:27017/clubs?authSource=admin" --db=clubs --out=dump/'
+   ```
+2. Restore (f.e. /clubs database):
+   ```bash
+   docker compose exec mongodb sh -c 'mongorestore "mongodb://$MONGO_INITDB_ROOT_USERNAME:$MONGO_INITDB_ROOT_PASSWORD@127.0.0.1:27017/clubs?authSource=admin" --drop dump/clubs'
+   ```
 
 ### Adding a new service
 
