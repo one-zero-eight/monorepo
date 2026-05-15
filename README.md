@@ -2,7 +2,7 @@ Run infra via `docker compose up --wait mongodb minio`.
 
 Create `settings.yaml` in monorepo root via `cp settings.example.yaml settings.yaml`. Edit settings in `settings.yaml` if needed.
 
-Run service via `uv run -m src.maps`.
+Run service via `uv run -m src.maps --reload`.
 
 
 ### Testing
@@ -30,3 +30,8 @@ To rerun only failed tests, you can use:
 ```bash
 uv run -m pytest --lf
 ```
+
+
+### Adding a new service
+
+If you need to scaffold a new service, use the [NEW_SERVICE.md](NEW_SERVICE.md) guide.
