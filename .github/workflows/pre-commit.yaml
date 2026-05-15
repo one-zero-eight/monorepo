@@ -5,11 +5,13 @@ on: [ push, pull_request ]
 jobs:
   prek:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: 👾 Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: 📦 Set up uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v8
         with:
           enable-cache: true
           activate-environment: true
