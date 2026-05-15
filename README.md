@@ -127,10 +127,12 @@ Requires `mongodb` running (`docker compose up --wait mongodb`).
 1. Dump (f.e. /clubs database):
    ```bash
    docker compose exec mongodb sh -c 'mongodump "mongodb://$MONGO_INITDB_ROOT_USERNAME:$MONGO_INITDB_ROOT_PASSWORD@127.0.0.1:27017/clubs?authSource=admin" --db=clubs --out=dump/'
+   docker compose cp mongodb:/dump/clubs ./clubs_dump
    ```
 2. Restore (f.e. /clubs database):
    ```bash
    docker compose exec mongodb sh -c 'mongorestore "mongodb://$MONGO_INITDB_ROOT_USERNAME:$MONGO_INITDB_ROOT_PASSWORD@127.0.0.1:27017/clubs?authSource=admin" --drop dump/clubs'
+   docker compose cp ./clubs_dump mongodb:/dump/clubs
    ```
 
 ### Adding a new service
