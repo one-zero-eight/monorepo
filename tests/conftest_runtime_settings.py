@@ -14,13 +14,13 @@ from src.config_root_schema import AccountsSettings, Settings
 from src.maps.config_schema import MapsSettings
 from src.student_affairs.config_schema import OmnideskSettings, StudentAffairsSettings
 
-# docker-compose.test.yaml (Mongo 37017, MinIO API 19000; MinIO rejects secrets < 8 chars)
-SUITE_MONGO_NETLOC = "127.0.0.1:37017"
-SUITE_MONGO_USER = "test"
-SUITE_MONGO_AUTH = "test"
-SUITE_MINIO_ENDPOINT = "127.0.0.1:19000"
-SUITE_MINIO_ACCESS_KEY = "test"
-SUITE_MINIO_KEY = "testsecret"
+# Host ports for docker-compose.test.yaml and CI service containers; override via SUITE_* env.
+SUITE_MONGO_NETLOC = os.environ.get("SUITE_MONGO_NETLOC", "127.0.0.1:37017")
+SUITE_MONGO_USER = os.environ.get("SUITE_MONGO_USER", "test")
+SUITE_MONGO_AUTH = os.environ.get("SUITE_MONGO_AUTH", "test")
+SUITE_MINIO_ENDPOINT = os.environ.get("SUITE_MINIO_ENDPOINT", "127.0.0.1:19000")
+SUITE_MINIO_ACCESS_KEY = os.environ.get("SUITE_MINIO_ACCESS_KEY", "test")
+SUITE_MINIO_KEY = os.environ.get("SUITE_MINIO_KEY", "testsecret")
 
 
 def is_xdist_worker() -> bool:
