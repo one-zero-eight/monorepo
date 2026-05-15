@@ -1,0 +1,103 @@
+name: Run tests
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Run pytest
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+
+    # Same credentials/ports as docker-compose.test.yaml (mapped to default container ports).
+    services:
+      mongodb:
+        image: mongo:8.0
+        ports:
+          - 37017:27017
+        env:
+          MONGO_INITDB_ROOT_USERNAME: test
+          MONGO_INITDB_ROOT_PASSWORD: test
+        options: >-
+          --health-cmd "mongosh 'mongodb://test:test@localhost:27017/admin' --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      minio:
+        image: minio/minio:RELEASE.2024-05-10T01-41-38Z
+        ports:
+          - 19000:9000
+          - 19001:9001
+        env:
+          MINIO_ROOT_USER: test
+          MINIO_ROOT_PASSWORD: testsecret
+
+    steps:
+      - name: 👾 Check out repository
+        uses: actions/checkout@v5
+
+      - name: 📦 Install native libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libmagic1 libvips-dev
+
+      - name: 📦 Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          activate-environment: true
+
+      - name: 📦 Install the project
+        run: uv sync --frozen
+
+      - name: 🧪 Run tests
+        run: |
+          mkdir -p reports
+          uv run -m pytest \
+            --junitxml=reports/junit.xml \
+            --cov-report=xml:coverage.xml
+
+      - name: 📤 Upload reports
+        uses: actions/upload-artifact@v4
+        if: (!cancelled())
+        with:
+          name: pytest-reports
+          path: |
+            reports/junit.xml
+            coverage.xml
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: 📋 Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: (!cancelled()) && hashFiles('reports/junit.xml') != ''
+        with:
+          files: reports/junit.xml
+          check_name: pytest
+
+      - name: 📊 Post coverage comment
+        uses: py-cov-action/python-coverage-comment-action@v3
+        if: github.event_name == 'pull_request' && (!cancelled()) && hashFiles('coverage.xml') != ''
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: 📊 Coverage summary
+        if: (!cancelled()) && hashFiles('coverage.xml') != ''
+        run: |
+          {
+            echo "## Coverage"
+            echo '```'
+            uv run coverage report --skip-covered
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
