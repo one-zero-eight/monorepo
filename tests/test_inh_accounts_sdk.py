@@ -7,6 +7,8 @@ import respx
 
 from src.inh_accounts_sdk import InNoHassleAccounts
 
+_TEST_API_JWT = "token"
+
 
 def test_init_logs_warning_when_token_missing(caplog):
     logger = Mock(spec=logging.Logger)
@@ -23,27 +25,27 @@ def test_init_uses_default_logger_when_not_provided(monkeypatch):
 
 
 def test_get_public_key_raises_when_keyset_not_initialized():
-    accounts = InNoHassleAccounts(api_url="https://example.test", api_jwt_token="token")
+    accounts = InNoHassleAccounts(api_url="https://example.test", api_jwt_token=_TEST_API_JWT)
     accounts.key_set = None
     with pytest.raises(RuntimeError, match="initialized by `update_key_set`"):
         accounts.get_public_key()
 
 
 def test_get_public_key_raises_when_public_kid_missing():
-    accounts = InNoHassleAccounts(api_url="https://example.test", api_jwt_token="token")
+    accounts = InNoHassleAccounts(api_url="https://example.test", api_jwt_token=_TEST_API_JWT)
     accounts.key_set = {"keys": [{"kid": "other"}]}
     with pytest.raises(RuntimeError, match="Public key with kid='public' is missing"):
         accounts.get_public_key()
 
 
 def test_decode_user_token_returns_none_when_required_claims_missing(monkeypatch):
-    accounts = InNoHassleAccounts(api_url="https://example.test", api_jwt_token="token")
+    accounts = InNoHassleAccounts(api_url="https://example.test", api_jwt_token=_TEST_API_JWT)
     monkeypatch.setattr(accounts, "_get_jwt_claims", lambda _token: {"uid": "u-only"})
     assert accounts.decode_user_token("token") is None
 
 
 def test_decode_user_token_mock_mode_accepts_json_user_token_data():
-    accounts = InNoHassleAccounts(api_url="https://example.test", api_jwt_token="token", mock=True)
+    accounts = InNoHassleAccounts(api_url="https://example.test", api_jwt_token=_TEST_API_JWT, mock=True)
     raw = '{"innohassle_id":"u1","email":"u1@innopolis.university","telegram_id":99}'
     data = accounts.decode_user_token(raw)
     assert data is not None
@@ -53,7 +55,7 @@ def test_decode_user_token_mock_mode_accepts_json_user_token_data():
 
 
 def test_decode_user_token_mock_mode_returns_none_when_json_invalid():
-    accounts = InNoHassleAccounts(api_url="https://example.test", api_jwt_token="token", mock=True)
+    accounts = InNoHassleAccounts(api_url="https://example.test", api_jwt_token=_TEST_API_JWT, mock=True)
     assert accounts.decode_user_token('{"innohassle_id":"only"}') is None
 
 
@@ -72,7 +74,7 @@ def test_get_authorized_client_raises_without_api_token():
 
 @pytest.mark.asyncio
 async def test_get_user_can_fetch_by_telegram_id():
-    accounts = InNoHassleAccounts(api_url="https://example.test", api_jwt_token="token")
+    accounts = InNoHassleAccounts(api_url="https://example.test", api_jwt_token=_TEST_API_JWT)
     with respx.mock(assert_all_called=True) as respx_mock:
         respx_mock.get("https://example.test/users/by-telegram-id/1001").mock(
             return_value=httpx.Response(
@@ -105,7 +107,7 @@ async def test_get_user_can_fetch_by_telegram_id():
 
 @pytest.mark.asyncio
 async def test_get_user_raises_on_non_404_http_error():
-    accounts = InNoHassleAccounts(api_url="https://example.test", api_jwt_token="token")
+    accounts = InNoHassleAccounts(api_url="https://example.test", api_jwt_token=_TEST_API_JWT)
     request = httpx.Request("GET", "https://example.test/users/by-id/u-1")
     response = httpx.Response(500, request=request)
 

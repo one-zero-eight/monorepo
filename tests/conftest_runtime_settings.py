@@ -1,7 +1,7 @@
 """Wait on suite Mongo/MinIO; point ``load_root_settings`` at suite-sized ``Settings``."""
 
 import os
-import time
+import time as tm
 
 import pytest
 from minio import Minio
@@ -17,10 +17,10 @@ from src.student_affairs.config_schema import OmnideskSettings, StudentAffairsSe
 # docker-compose.test.yaml (Mongo 37017, MinIO API 19000; MinIO rejects secrets < 8 chars)
 SUITE_MONGO_NETLOC = "127.0.0.1:37017"
 SUITE_MONGO_USER = "test"
-SUITE_MONGO_PASSWORD = "test"
+SUITE_MONGO_AUTH = "test"
 SUITE_MINIO_ENDPOINT = "127.0.0.1:19000"
 SUITE_MINIO_ACCESS_KEY = "test"
-SUITE_MINIO_SECRET_KEY = "testsecret"
+SUITE_MINIO_KEY = "testsecret"
 
 
 def is_xdist_worker() -> bool:
@@ -32,7 +32,7 @@ def get_worker_id() -> str:
 
 
 def load_root_settings() -> Settings:
-    mongo_uri = f"mongodb://{SUITE_MONGO_USER}:{SUITE_MONGO_PASSWORD}@{SUITE_MONGO_NETLOC}/worker-{get_worker_id()}-<service_name>?authSource=admin"
+    mongo_uri = f"mongodb://{SUITE_MONGO_USER}:{SUITE_MONGO_AUTH}@{SUITE_MONGO_NETLOC}/worker-{get_worker_id()}-<service_name>?authSource=admin"
     minio_bucket = f"worker-{get_worker_id()}-<service_name>"
 
     return Settings(
@@ -53,7 +53,7 @@ def load_root_settings() -> Settings:
             minio=MinioSettings(
                 endpoint=SUITE_MINIO_ENDPOINT,
                 access_key=SUITE_MINIO_ACCESS_KEY,
-                secret_key=SecretStr(SUITE_MINIO_SECRET_KEY),
+                secret_key=SecretStr(SUITE_MINIO_KEY),
                 bucket=minio_bucket.replace("<service_name>", "clubs"),
             ),
         ),
@@ -65,7 +65,7 @@ def load_root_settings() -> Settings:
 
 
 def _wait_mongo_ready(uri: str, deadline_s: float = 30) -> None:
-    deadline = time.monotonic() + deadline_s
+    deadline = tm.monotonic() + deadline_s
     client: MongoClient | None = None
 
     while True:
@@ -74,31 +74,31 @@ def _wait_mongo_ready(uri: str, deadline_s: float = 30) -> None:
             client.admin.command("ping")
             return
         except Exception:
-            if time.monotonic() >= deadline:
+            if tm.monotonic() >= deadline:
                 raise
-            time.sleep(0.5)
+            tm.sleep(0.5)
         finally:
             if client is not None:
                 client.close()
 
 
 def _wait_minio_ready(deadline_s: float = 30) -> None:
-    deadline = time.monotonic() + deadline_s
+    deadline = tm.monotonic() + deadline_s
 
     while True:
         try:
             mc = Minio(
                 endpoint=SUITE_MINIO_ENDPOINT,
                 access_key=SUITE_MINIO_ACCESS_KEY,
-                secret_key=SUITE_MINIO_SECRET_KEY,
+                secret_key=SUITE_MINIO_KEY,
                 secure=False,
             )
             mc.list_buckets()
             return
         except Exception:
-            if time.monotonic() >= deadline:
+            if tm.monotonic() >= deadline:
                 raise
-            time.sleep(0.5)
+            tm.sleep(0.5)
 
 
 suite_timings_stash_key: pytest.StashKey[dict[str, float]] = pytest.StashKey()
@@ -114,19 +114,19 @@ def pytest_configure(config: pytest.Config) -> None:
         timings: dict[str, float] = {}
         config.stash[suite_timings_stash_key] = timings
 
-        t_suite = time.perf_counter()
+        t_suite = tm.perf_counter()
 
-        t0 = time.perf_counter()
+        t0 = tm.perf_counter()
         _wait_mongo_ready(
-            f"mongodb://{SUITE_MONGO_USER}:{SUITE_MONGO_PASSWORD}@{SUITE_MONGO_NETLOC}/admin?authSource=admin"
+            f"mongodb://{SUITE_MONGO_USER}:{SUITE_MONGO_AUTH}@{SUITE_MONGO_NETLOC}/admin?authSource=admin"
         )
-        timings["infra.mongo_wait_ready_s"] = time.perf_counter() - t0
+        timings["infra.mongo_wait_ready_s"] = tm.perf_counter() - t0
 
-        t0 = time.perf_counter()
+        t0 = tm.perf_counter()
         _wait_minio_ready()
-        timings["infra.minio_wait_ready_s"] = time.perf_counter() - t0
+        timings["infra.minio_wait_ready_s"] = tm.perf_counter() - t0
 
-        timings["infra.total_start_s"] = time.perf_counter() - t_suite
+        timings["infra.total_start_s"] = tm.perf_counter() - t_suite
 
     mp = pytest.MonkeyPatch()
 

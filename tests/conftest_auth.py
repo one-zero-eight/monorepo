@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-import datetime
+import datetime as dtm
 import json
 import re
 from collections.abc import Iterator
@@ -54,7 +52,7 @@ def make_user_token(jwt_keypair: tuple[RSAKey, RSAKey]) -> MakeUserToken:
         telegram_id: int | None = None,
         expires_in_seconds: int = 3600,
     ) -> str:
-        now = int(datetime.datetime.now(datetime.UTC).timestamp())
+        now = int(dtm.datetime.now(dtm.UTC).timestamp())
 
         claims: dict[str, Any] = {
             "uid": uid,
@@ -99,7 +97,7 @@ def user_headers(auth_header_factory):
 
 @pytest.fixture(scope="session")
 def inh_accounts_mock_users() -> dict[str, dict[str, Any]]:
-    now = datetime.datetime.now(datetime.UTC).isoformat()
+    now = dtm.datetime.now(dtm.UTC).isoformat()
 
     return {
         "superadmin-1": {

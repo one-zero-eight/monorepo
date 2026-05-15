@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-
 def pytest_configure(config):
     try:
         import pytest_durations.reporting as reporting
