@@ -42,13 +42,17 @@ our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CON
    ```bash
    uv sync
    ```
-3. Run infra:
+3. Install prek hooks:
+   ```bash
+   uv run prek install --overwrite --prepare-hooks -t pre-commit -t commit-msg
+   ```
+4. Run infra:
    ```bash
    docker compose up --wait mongodb minio
    ```
-4. Create `settings.yaml` in monorepo root via `cp settings.example.yaml settings.yaml`. Edit settings in `settings.yaml` if needed.`
+5. Create `settings.yaml` in monorepo root via `cp settings.example.yaml settings.yaml`. Edit settings in `settings.yaml` if needed.
 5. Start development server (and read logs in the terminal):
-   
+
    For maps service:
    ```bash
    uv run -m src.maps --reload
