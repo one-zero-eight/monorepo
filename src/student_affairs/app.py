@@ -3,6 +3,7 @@ __all__ = ["app"]
 
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
@@ -11,16 +12,18 @@ from src.logging_ import logger
 
 from .config import settings
 
+_OMNIDESK_TIMEOUT_S = 30.0
+
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(app: FastAPI):
     from src.inh_accounts_sdk import inh_accounts
-    from src.student_affairs import routes as student_affairs_routes
 
     await inh_accounts.update_key_set()
+    app.state.httpx_client = httpx.AsyncClient(timeout=_OMNIDESK_TIMEOUT_S)
     yield
     await inh_accounts.aclose()
-    await student_affairs_routes.aclose_omnidesk_http()
+    await app.state.httpx_client.aclose()
 
 
 app = FastAPI(
