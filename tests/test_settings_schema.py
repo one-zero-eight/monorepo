@@ -3,13 +3,15 @@ import yaml
 
 from src.config_root_schema import Settings
 
+_TEST_ACCOUNTS = {"api_jwt_token": "test-token"}
+
 
 def test_accounts_mock_rejected_when_maps_not_development(tmp_path):
     settings_path = tmp_path / "settings.yaml"
     settings_path.write_text(
         yaml.safe_dump(
             {
-                "accounts": {"mock": True},
+                "accounts": {**_TEST_ACCOUNTS, "mock": True},
                 "maps_service": {"environment": "testing"},
             },
             sort_keys=False,
@@ -25,7 +27,7 @@ def test_accounts_mock_accepted_when_all_development(tmp_path):
     settings_path.write_text(
         yaml.safe_dump(
             {
-                "accounts": {"mock": True},
+                "accounts": {**_TEST_ACCOUNTS, "mock": True},
                 "maps_service": {"environment": "development"},
             },
             sort_keys=False,
@@ -39,7 +41,7 @@ def test_accounts_mock_accepted_when_all_development(tmp_path):
 def test_accounts_mock_validates_clubs_and_student_affairs_environments():
     loaded = Settings.model_validate(
         {
-            "accounts": {"mock": True},
+            "accounts": {**_TEST_ACCOUNTS, "mock": True},
             "maps_service": {"environment": "development"},
             "clubs_service": {"environment": "development"},
             "student_affairs_service": {
@@ -56,7 +58,7 @@ def test_accounts_mock_rejected_when_clubs_not_development():
     with pytest.raises(ValueError, match="clubs_service"):
         Settings.model_validate(
             {
-                "accounts": {"mock": True},
+                "accounts": {**_TEST_ACCOUNTS, "mock": True},
                 "maps_service": {"environment": "development"},
                 "clubs_service": {"environment": "testing"},
             }
