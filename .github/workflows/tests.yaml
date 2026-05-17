@@ -82,17 +82,15 @@ jobs:
         run: uv sync --frozen
 
       - name: 🧪 Run tests
+        env:
+          PYTHONUNBUFFERED: "1"
         run: |
-          set +e
+          set -o pipefail
           mkdir -p reports
-          log=reports/pytest.log
           uv run -m pytest \
             --color=no \
             --junitxml=reports/junit.xml \
-            --cov-report=xml:coverage.xml >"$log" 2>&1
-          status=$?
-          cat "$log"
-          exit "$status"
+            --cov-report=xml:coverage.xml 2>&1 | tee reports/pytest.log
 
       - name: 📤 Upload reports
         uses: actions/upload-artifact@v7
