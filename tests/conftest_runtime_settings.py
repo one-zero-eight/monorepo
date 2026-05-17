@@ -4,9 +4,13 @@ import os
 import time as tm
 
 import pytest
+import urllib3
 from minio import Minio
+from minio.error import MinioException
 from pydantic import SecretStr
 from pymongo import MongoClient
+from pymongo.errors import PyMongoError
+from urllib3.exceptions import HTTPError
 
 from src.clubs.config_schema import ClubsSettings
 from src.common_config import Environment, MinioSettings, MongoDatabaseSettings
@@ -63,41 +67,24 @@ def load_root_settings() -> Settings:
     )
 
 
-def _wait_mongo_ready(uri: str, deadline_s: float = 30) -> None:
-    deadline = tm.monotonic() + deadline_s
-    client: MongoClient | None = None
-
-    while True:
-        try:
-            client = MongoClient(uri, serverSelectionTimeoutMS=1000)
-            client.admin.command("ping")
-            return
-        except Exception:
-            if tm.monotonic() >= deadline:
-                raise
-            tm.sleep(0.5)
-        finally:
-            if client is not None:
-                client.close()
+def _wait_mongo_ready(uri: str, timeout_s: float = 1) -> None:
+    client = MongoClient(uri, serverSelectionTimeoutMS=int(timeout_s * 1000))
+    try:
+        client.admin.command("ping")
+    finally:
+        client.close()
 
 
-def _wait_minio_ready(deadline_s: float = 30) -> None:
-    deadline = tm.monotonic() + deadline_s
-
-    while True:
-        try:
-            mc = Minio(
-                endpoint=SUITE_MINIO_ENDPOINT,
-                access_key=SUITE_MINIO_ACCESS_KEY,
-                secret_key=SUITE_MINIO_KEY,
-                secure=False,
-            )
-            mc.list_buckets()
-            return
-        except Exception:
-            if tm.monotonic() >= deadline:
-                raise
-            tm.sleep(0.5)
+def _wait_minio_ready(timeout_s: float = 1) -> None:
+    http = urllib3.PoolManager(timeout=urllib3.Timeout(connect=timeout_s, read=timeout_s))
+    mc = Minio(
+        endpoint=SUITE_MINIO_ENDPOINT,
+        access_key=SUITE_MINIO_ACCESS_KEY,
+        secret_key=SUITE_MINIO_KEY,
+        secure=False,
+        http_client=http,
+    )
+    mc.list_buckets()
 
 
 suite_timings_stash_key: pytest.StashKey[dict[str, float]] = pytest.StashKey()
@@ -116,14 +103,26 @@ def pytest_configure(config: pytest.Config) -> None:
         t_suite = tm.perf_counter()
 
         t0 = tm.perf_counter()
-        _wait_mongo_ready(
-            f"mongodb://{SUITE_MONGO_USER}:{SUITE_MONGO_AUTH}@{SUITE_MONGO_NETLOC}/admin?authSource=admin"
-        )
-        timings["infra.mongo_wait_ready_s"] = tm.perf_counter() - t0
+        try:
+            _wait_minio_ready()
+        except (MinioException, HTTPError, OSError) as exc:
+            pytest.exit(
+                f"MinIO not ready, run it with `docker compose -f docker-compose.test.yaml up --wait` and try again:\n{exc}",
+                returncode=1,
+            )
+        timings["infra.minio_wait_ready_s"] = tm.perf_counter() - t0
 
         t0 = tm.perf_counter()
-        _wait_minio_ready()
-        timings["infra.minio_wait_ready_s"] = tm.perf_counter() - t0
+        try:
+            _wait_mongo_ready(
+                f"mongodb://{SUITE_MONGO_USER}:{SUITE_MONGO_AUTH}@{SUITE_MONGO_NETLOC}/admin?authSource=admin"
+            )
+        except PyMongoError as exc:
+            pytest.exit(
+                f"MongoDB not ready, run it with `docker compose -f docker-compose.test.yaml up --wait` and try again:\n{exc}",
+                returncode=1,
+            )
+        timings["infra.mongo_wait_ready_s"] = tm.perf_counter() - t0
 
         timings["infra.total_start_s"] = tm.perf_counter() - t_suite
 
