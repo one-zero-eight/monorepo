@@ -85,18 +85,12 @@ jobs:
         run: |
           set +e
           mkdir -p reports
-          log="$(mktemp)"
+          log=reports/pytest.log
           uv run -m pytest \
             --color=no \
             --junitxml=reports/junit.xml \
             --cov-report=xml:coverage.xml >"$log" 2>&1
           status=$?
-          {
-            echo "## pytest"
-            echo '```text'
-            cat "$log"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
           cat "$log"
           exit "$status"
 
@@ -132,4 +126,17 @@ jobs:
             echo '```'
             uv run coverage report --skip-covered
             echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 📋 pytest log
+        if: (!cancelled()) && hashFiles('reports/pytest.log') != ''
+        run: |
+          {
+            echo "<details>"
+            echo "<summary>pytest output</summary>"
+            echo ""
+            echo '```text'
+            cat reports/pytest.log
+            echo '```'
+            echo "</details>"
           } >> "$GITHUB_STEP_SUMMARY"
