@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=settings.schema.yaml
+$schema: "./settings.schema.yaml"
+accounts:
+  # get from https://api.innohassle.ru/accounts/v0/tokens/generate-service-token?sub=monorepo-local-dev&scopes=users&scopes=sport&only_for_me=true
+  api_jwt_token: null
+maps_service: {}
+student_affairs_service: null # to run student affairs service you should get omnidesk credentials
+clubs_service: {}

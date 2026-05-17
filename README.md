@@ -50,7 +50,10 @@ our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CON
    ```bash
    docker compose up --wait mongodb minio
    ```
-5. Create `settings.yaml` in monorepo root via `cp settings.example.yaml settings.yaml`. Edit settings in `settings.yaml` if needed.
+5. Create `settings.yaml` in monorepo and set up accounts API JWT token:
+   ```bash
+   uv run scripts/prepare.py
+   ```
 6. Start development server (and read logs in the terminal):
 
    For maps service:

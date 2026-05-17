@@ -1,4 +1,5 @@
 from enum import StrEnum
+from functools import cache
 from pathlib import Path
 
 from pydantic import Field, SecretStr
@@ -27,32 +28,27 @@ class ServiceSettingsBase(BaseSchema):
     """
 
 
+@cache
 def is_running_in_docker() -> bool:  # pragma: no cover
-    def _check() -> bool:
-        # Common in many Docker containers
-        if Path("/.dockerenv").exists():
-            return True
-
+    # Common in many Docker containers
+    if Path("/.dockerenv").exists():
+        result = True
+    else:
         # Works on many Linux hosts/containers
         cgroup_paths = [
             Path("/proc/self/cgroup"),
             Path("/proc/1/cgroup"),
         ]
-
         markers = ("docker", "containerd", "kubepods", "podman", "lxc")
-
+        result = False
         for path in cgroup_paths:
             try:
                 content = path.read_text()
             except OSError:
                 continue
-
             if any(marker in content for marker in markers):
-                return True
-
-        return False
-
-    result = _check()
+                result = True
+                break
 
     if result:
         logger.info("Running in Docker, using MongoDB at mongodb:27017, MinIO at minio:9000")

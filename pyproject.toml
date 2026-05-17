@@ -116,6 +116,7 @@ lint.extend-ignore = [
     "PLC0415", # import-outside-top-level
     "PLR", # pylint refactor
     "E501", # line-too-long (handled by formatter)
+    "PLW1514", # unspecified-encoding in open(...) function
 ]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"] # assert is standard in pytest

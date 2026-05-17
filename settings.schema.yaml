@@ -10,14 +10,11 @@ $defs:
         title: Api Url
         type: string
       api_jwt_token:
-        anyOf:
-        - format: password
-          type: string
-          writeOnly: true
-        - type: 'null'
-        default: null
         description: JWT token for accessing the Accounts API as a service
+        format: password
         title: Api Jwt Token
+        type: string
+        writeOnly: true
       mock:
         default: false
         description: 'If true (development only), accept `Authorization: Bearer` values
@@ -26,6 +23,8 @@ $defs:
           `UserTokenData` instead of validating a JWT. JWKS fetch is skipped.'
         title: Mock
         type: boolean
+    required:
+    - api_jwt_token
     title: AccountsSettings
     type: object
   ClubsSettings:
@@ -51,27 +50,20 @@ $defs:
         type: string
       mongo:
         $ref: '#/$defs/MongoDatabaseSettings'
-        default:
-          uri: '**********'
         description: Configuration for MongoDB
       minio:
         $ref: '#/$defs/MinioSettings'
-        default:
-          endpoint: 127.0.0.1:9000
-          secure: false
-          region: null
-          bucket: clubs
-          access_key: onezeroeight
-          secret_key: '**********'
-          club_logos_prefix: logos/
         description: Configuration for S3 object storage
       superadmin_emails:
-        default: []
         description: Innomails of superadmins who can set admin roles
         items:
           type: string
         title: Superadmin Emails
         type: array
+      at:
+        format: date-time
+        title: At
+        type: string
     title: ClubsSettings
     type: object
   Environment:
@@ -118,7 +110,6 @@ $defs:
     additionalProperties: false
     properties:
       endpoint:
-        default: 127.0.0.1:9000
         description: URL of the target service.
         examples:
         - 127.0.0.1:9000
@@ -231,10 +222,6 @@ properties:
     title: $Schema
   accounts:
     $ref: '#/$defs/AccountsSettings'
-    default:
-      api_url: https://api.innohassle.ru/accounts/v0
-      api_jwt_token: null
-      mock: false
     description: Shared InNoHassle Accounts integration settings
   maps_service:
     $ref: '#/$defs/MapsSettings'
@@ -254,5 +241,7 @@ properties:
     - $ref: '#/$defs/StudentAffairsSettings'
     - type: 'null'
     default: null
+required:
+- accounts
 title: Settings
 type: object

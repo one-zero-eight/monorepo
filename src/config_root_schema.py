@@ -3,7 +3,7 @@ from functools import lru_cache
 from pathlib import Path
 
 import yaml
-from pydantic import AliasChoices, Field, SecretStr, model_validator
+from pydantic import Field, SecretStr, model_validator
 
 from src.clubs.config_schema import ClubsSettings
 from src.common_config import BaseSchema, Environment
@@ -16,7 +16,7 @@ class AccountsSettings(BaseSchema):
 
     api_url: str = "https://api.innohassle.ru/accounts/v0"
     "URL of the Accounts API"
-    api_jwt_token: SecretStr | None = None
+    api_jwt_token: SecretStr
     "JWT token for accessing the Accounts API as a service"
     mock: bool = False
     """
@@ -26,8 +26,8 @@ class AccountsSettings(BaseSchema):
 
 
 class Settings(BaseSchema):
-    schema_: str | None = Field(None, validation_alias=AliasChoices("schema", "$schema", "schema_"))
-    accounts: AccountsSettings = AccountsSettings()
+    schema_: str | None = Field(None, alias="$schema")
+    accounts: AccountsSettings
     "Shared InNoHassle Accounts integration settings"
 
     maps_service: MapsSettings = MapsSettings()
