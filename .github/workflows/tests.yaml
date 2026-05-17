@@ -83,10 +83,22 @@ jobs:
 
       - name: 🧪 Run tests
         run: |
+          set +e
           mkdir -p reports
+          log="$(mktemp)"
           uv run -m pytest \
+            --color=no \
             --junitxml=reports/junit.xml \
-            --cov-report=xml:coverage.xml
+            --cov-report=xml:coverage.xml >"$log" 2>&1
+          status=$?
+          {
+            echo "## pytest"
+            echo '```text'
+            cat "$log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat "$log"
+          exit "$status"
 
       - name: 📤 Upload reports
         uses: actions/upload-artifact@v7
