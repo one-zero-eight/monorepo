@@ -73,6 +73,23 @@ def test_get_authorized_client_raises_without_api_token():
 
 
 @pytest.mark.asyncio
+async def test_http_client_is_reused_across_requests():
+    accounts = InNoHassleAccounts(api_url="https://example.test", api_jwt_token=_TEST_API_JWT)
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.get("https://example.test/users/by-id/u-1").mock(
+            return_value=httpx.Response(404, json={"detail": "Not found"})
+        )
+        respx_mock.get("https://example.test/users/by-id/u-2").mock(
+            return_value=httpx.Response(404, json={"detail": "Not found"})
+        )
+        client_before = accounts.get_authorized_client()
+        await accounts.get_user(innohassle_id="u-1")
+        await accounts.get_user(innohassle_id="u-2")
+        assert accounts.get_authorized_client() is client_before
+    await accounts.aclose()
+
+
+@pytest.mark.asyncio
 async def test_get_user_can_fetch_by_telegram_id():
     accounts = InNoHassleAccounts(api_url="https://example.test", api_jwt_token=_TEST_API_JWT)
     with respx.mock(assert_all_called=True) as respx_mock:

@@ -1,5 +1,4 @@
 import datetime as dtm
-import urllib.parse
 
 import httpx
 from fastapi import APIRouter, HTTPException
@@ -15,6 +14,23 @@ router = APIRouter(route_class=AutoDeriveResponsesAPIRoute)
 
 omnidesk_default_redirect_to = f"{settings.omnidesk.base_url}/user/cases/"
 omnidesk_jwt_access_base_url = f"{settings.omnidesk.base_url}/access/jwt"
+
+_omnidesk_http: httpx.AsyncClient | None = None
+_OMNIDESK_TIMEOUT_S = 30.0
+
+
+def _get_omnidesk_client() -> httpx.AsyncClient:
+    global _omnidesk_http  # noqa: PLW0603
+    if _omnidesk_http is None:
+        _omnidesk_http = httpx.AsyncClient(base_url=settings.omnidesk.base_url, timeout=_OMNIDESK_TIMEOUT_S)
+    return _omnidesk_http
+
+
+async def aclose_omnidesk_http() -> None:
+    global _omnidesk_http  # noqa: PLW0603
+    if _omnidesk_http is not None:
+        await _omnidesk_http.aclose()
+        _omnidesk_http = None
 
 
 @router.post("/sso/generate-link")
@@ -44,13 +60,8 @@ async def generate_signin_link(
     key = jwk.import_key(settings.omnidesk.jwt_marker.get_secret_value(), "oct")
     encoded_jwt = jwt.encode({"alg": "HS256"}, payload, key)
 
-    # Build endpoint for getting redirect link
+    # Receive redirect link from Omnidesk
     query_params = {"jwt": encoded_jwt, "return_to": return_to or omnidesk_default_redirect_to}
-    endpoint = f"{omnidesk_jwt_access_base_url}?{urllib.parse.urlencode(query_params)}"
-
-    # Receive redirect link
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.get(endpoint)
-        resp.raise_for_status()
-        redirect_url = resp.text
-        return redirect_url
+    resp = await _get_omnidesk_client().get("/access/jwt", params=query_params)
+    resp.raise_for_status()
+    return resp.text

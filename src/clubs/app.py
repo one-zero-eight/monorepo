@@ -36,6 +36,7 @@ async def lifespan(app: FastAPI):
 
     yield
 
+    await inh_accounts.aclose()
     await beanie_store.close()
 
 

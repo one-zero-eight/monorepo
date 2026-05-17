@@ -15,9 +15,12 @@ from .config import settings
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     from src.inh_accounts_sdk import inh_accounts
+    from src.student_affairs import routes as student_affairs_routes
 
     await inh_accounts.update_key_set()
     yield
+    await inh_accounts.aclose()
+    await student_affairs_routes.aclose_omnidesk_http()
 
 
 app = FastAPI(

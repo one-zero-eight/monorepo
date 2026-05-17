@@ -54,6 +54,7 @@ class InNoHassleAccounts:
     mock: bool
     PUBLIC_KID = "public"
     key_set: dict[str, Any] | None = None
+    _http: httpx.AsyncClient | None = None
 
     def __init__(
         self,
@@ -73,6 +74,24 @@ class InNoHassleAccounts:
                 "InNoHassle Accounts API JWT token is not set, you will not be able to call service endpoints that require authorization"
             )
 
+    def _ensure_http_client(self) -> httpx.AsyncClient:
+        if self._http is None:
+            headers: dict[str, str] = {}
+            if self.api_jwt_token is not None:
+                token = (
+                    self.api_jwt_token.get_secret_value()
+                    if isinstance(self.api_jwt_token, SecretStr)
+                    else self.api_jwt_token
+                )
+                headers["Authorization"] = f"Bearer {token}"
+            self._http = httpx.AsyncClient(base_url=self.api_url, headers=headers)
+        return self._http
+
+    async def aclose(self) -> None:
+        if self._http is not None:
+            await self._http.aclose()
+            self._http = None
+
     async def update_key_set(self):
         if self.mock:
             self.key_set = {"keys": []}
@@ -91,10 +110,10 @@ class InNoHassleAccounts:
         return RSAKey.import_key(key_data)
 
     async def get_key_set(self) -> dict[str, Any]:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.api_url}/.well-known/jwks.json")
-            response.raise_for_status()
-            return response.json()
+        client = self._ensure_http_client()
+        response = await client.get("/.well-known/jwks.json")
+        response.raise_for_status()
+        return response.json()
 
     def decode_user_token(self, token: str) -> UserTokenData | None:
         """
@@ -128,12 +147,7 @@ class InNoHassleAccounts:
     def get_authorized_client(self) -> httpx.AsyncClient:
         if self.api_jwt_token is None:
             raise ValueError("API JWT token is not set")
-        return httpx.AsyncClient(
-            headers={
-                "Authorization": f"Bearer {self.api_jwt_token.get_secret_value() if isinstance(self.api_jwt_token, SecretStr) else self.api_jwt_token}"
-            },
-            base_url=self.api_url,
-        )
+        return self._ensure_http_client()
 
     def _get_jwt_claims(self, token: str) -> dict[str, Any]:
         pub_key = self.get_public_key()
@@ -152,36 +166,33 @@ class InNoHassleAccounts:
         Get user by one of the provided identifiers.
         If multiple identifiers are provided, the first one that exists will be returned.
         """
-        async with self.get_authorized_client() as client:
-            urls = []
-            if innohassle_id:
-                urls.append(f"/users/by-id/{innohassle_id}")
-            if email:
-                urls.append(f"/users/by-innomail/{email}")
-            if telegram_id:
-                urls.append(f"/users/by-telegram-id/{telegram_id}")
-            for url in urls:
-                response = await client.get(url)
-                try:
-                    response.raise_for_status()
-                    return UserSchema.model_validate(response.json())
-                except httpx.HTTPStatusError as e:
-                    if e.response.status_code == 404:
-                        continue
-                    raise
-            return None
+        client = self.get_authorized_client()
+        urls = []
+        if innohassle_id:
+            urls.append(f"/users/by-id/{innohassle_id}")
+        if email:
+            urls.append(f"/users/by-innomail/{email}")
+        if telegram_id:
+            urls.append(f"/users/by-telegram-id/{telegram_id}")
+        for url in urls:
+            response = await client.get(url)
+            try:
+                response.raise_for_status()
+                return UserSchema.model_validate(response.json())
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 404:
+                    continue
+                raise
+        return None
 
     async def get_users(self, innohassle_ids: list[str]) -> dict[str, UserSchema | None]:
         """
         Get multiple users by ids.
         """
-        async with self.get_authorized_client() as client:
-            response = await client.post(
-                f"{self.api_url}/users/by-id/get-bulk",
-                json=innohassle_ids,
-            )
-            response.raise_for_status()
-            return {k: UserSchema.model_validate(v) if v else None for k, v in response.json().items()}
+        client = self.get_authorized_client()
+        response = await client.post("/users/by-id/get-bulk", json=innohassle_ids)
+        response.raise_for_status()
+        return {k: UserSchema.model_validate(v) if v else None for k, v in response.json().items()}
 
 
 # Project specific code follows
