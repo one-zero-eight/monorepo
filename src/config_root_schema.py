@@ -26,7 +26,7 @@ class AccountsSettings(BaseSchema):
 
 
 class Settings(BaseSchema):
-    schema_: str | None = Field(None, alias="$schema")
+    schema_: str | None = Field(default=None, alias="$schema", init=False)
     accounts: AccountsSettings
     "Shared InNoHassle Accounts integration settings"
 

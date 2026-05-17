@@ -36,7 +36,6 @@ def load_root_settings() -> Settings:
     minio_bucket = f"worker-{get_worker_id()}-<service_name>"
 
     return Settings(
-        schema_=None,
         accounts=AccountsSettings(
             mock=False,
             api_jwt_token=SecretStr("test-token"),
