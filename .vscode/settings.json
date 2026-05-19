@@ -1,7 +1,13 @@
 {
-  "cursorpyright.analysis.autoImportCompletions": true,
-  "cursorpyright.analysis.autoSearchPaths": false,
-  "cursorpyright.analysis.diagnosticMode": "workspace",
-  "cursorpyright.analysis.extraPaths": [],
-  "cursorpyright.analysis.typeCheckingMode": "standard"
+  "python.languageServer": "None",
+  "python.analysis.typeCheckingMode": "off",
+
+  "cursorpyright.disableLanguageServices": true,
+  "cursorpyright.analysis.typeCheckingMode": "off",
+
+  "basedpyright.disableLanguageServices": true,
+  "basedpyright.analysis.typeCheckingMode": "off",
+
+  "pyright.disableLanguageServices": true,
+  "pyright.analysis.typeCheckingMode": "off"
 }

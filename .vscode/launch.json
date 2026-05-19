@@ -1,0 +1,32 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "maps",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src.maps",
+      "args": ["--reload"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "clubs",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src.clubs",
+      "args": ["--reload"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "student affairs",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src.student_affairs",
+      "args": ["--reload"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    }
+  ]
+}

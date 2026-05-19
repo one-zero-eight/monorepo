@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "ms-python.python",
+    "charliermarsh.ruff",
+    "astral-sh.ty",
+    "redhat.vscode-yaml",
+    "github.vscode-github-actions"
+  ]
+}
