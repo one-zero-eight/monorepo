@@ -2,6 +2,7 @@
 
 import io
 import uuid
+from typing import cast
 
 import pytest
 from fastapi.testclient import TestClient
@@ -50,7 +51,9 @@ def test_clubs_cleanup_gives_empty_minio_prefix_then_one_object(
     clubs_client: TestClient,
     _run: int,
 ) -> None:
-    minio = clubs_client.app.state.minio_store
+    from fastapi import FastAPI
+
+    minio = cast(FastAPI, clubs_client.app).state.minio_store
     bucket = minio.bucket_name
     mc = minio.client
 

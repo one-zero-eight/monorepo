@@ -2,7 +2,7 @@ __all__ = ["BeanieDocument", "BeanieStore", "setup_beanie"]
 
 import os
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from beanie import Document, PydanticObjectId, UnionDoc, View, init_beanie
 from pydantic import ConfigDict, Field, SecretStr
@@ -15,13 +15,16 @@ from src.logging_ import logger
 class BeanieDocument(Document):
     model_config = ConfigDict(json_schema_serialization_defaults_required=True)
 
-    id: PydanticObjectId = Field(  # type: ignore[assignment]
-        default_factory=lambda: (
-            None
-        ),  # We use lambda because we dont want to have "None" default in openapi schema, yet we want to have None default in python
-        description="MongoDB document ObjectID",
-        serialization_alias="id",
-    )
+    if TYPE_CHECKING:
+        id: PydanticObjectId
+    else:
+        id: PydanticObjectId = Field(
+            default_factory=lambda: (
+                None
+            ),  # We use lambda because we dont want to have "None" default in openapi schema, yet we want to have None default in python
+            description="MongoDB document ObjectID",
+            serialization_alias="id",
+        )
 
     class Settings:
         keep_nulls = False

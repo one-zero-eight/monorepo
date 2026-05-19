@@ -133,7 +133,7 @@ async def run_endpoint_function(*, dependant: Dependant, values: dict[str, Any],
     finish_time = loop.time()
     duration = finish_time - start_time
     callback = dependant.call
-    func_name = callback.__name__
+    func_name = getattr(callback, "__name__", repr(callback))
     pathname = inspect.getsourcefile(callback) or "unknown"
     lineno = inspect.getsourcelines(callback)[1]
     record = logging.LogRecord(
@@ -152,4 +152,4 @@ async def run_endpoint_function(*, dependant: Dependant, values: dict[str, Any],
 
 
 # monkey patch fastapi to log endpoint function duration and link to source code
-fastapi.routing.run_endpoint_function = run_endpoint_function
+fastapi.routing.run_endpoint_function = run_endpoint_function  # ty: ignore[invalid-assignment]

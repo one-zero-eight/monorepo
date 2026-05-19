@@ -38,6 +38,7 @@ dev = [
     "pytest-xdist>=3.8.0", # ~45 KiB
     "respx>=0.23.1", # ~25 KiB
     "ruff>=0.15.13", # ~11.5 MiB
+    "ty>=0.0.37", # ~11 MiB
     "types-pyyaml>=6.0.12.20260510", # ~20 KiB
 ]
 # events = [
@@ -131,6 +132,9 @@ datetime = "dtm"
 time = "tm"
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "__future__.annotations".msg = "Python 3.14+ uses deferred annotations by default; do not use this future import."
+
+[tool.ty.src]
+exclude = [".agents/skills"]
 
 [tool.pytest.ini_options]
 addopts = "--cov=src --cov-report=term-missing --memray"

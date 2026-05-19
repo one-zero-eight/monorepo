@@ -56,8 +56,9 @@ class NotAdminException(HTTPException):
 async def get_innohassle_token_auth(
     bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
 ) -> UserTokenData:
-    # Prefer header to cookie
-    token = bearer and bearer.credentials
+    if bearer is None:
+        raise IncorrectCredentialsException(no_credentials=True)
+    token = bearer.credentials
     if not token:
         raise IncorrectCredentialsException(no_credentials=True)
     token_data = inh_accounts.decode_user_token(token)

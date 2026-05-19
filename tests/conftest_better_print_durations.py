@@ -18,4 +18,4 @@ def pytest_configure(config):
             max=format_seconds(time_value.max),
         )
 
-    reporting.ReportRowT.from_time_value = from_time_value
+    reporting.ReportRowT.from_time_value = from_time_value  # ty: ignore[invalid-assignment]

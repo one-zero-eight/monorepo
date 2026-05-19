@@ -379,7 +379,7 @@ def test_set_logo_success(
 
     white_base = pyvips.Image.black(32, 32)
     white_image = cast(Any, white_base).new_from_image(255)
-    white_png = cast(Any, white_image).write_to_buffer(".png")
+    white_png = white_image.write_to_buffer(".png")
 
     response = clubs_client.post(
         f"/clubs/by-id/{created['id']}/logo",
@@ -422,7 +422,7 @@ def test_set_logo_content_type_detected_by_magic(
 
     white_base = pyvips.Image.black(32, 32)
     white_image = cast(Any, white_base).new_from_image(255)
-    white_png = cast(Any, white_image).write_to_buffer(".png")
+    white_png = white_image.write_to_buffer(".png")
 
     response = clubs_client.post(
         f"/clubs/by-id/{club_id}/logo",
