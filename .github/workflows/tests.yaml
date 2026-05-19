@@ -89,6 +89,7 @@ jobs:
           mkdir -p reports
           uv run -m pytest \
             --color=no \
+            --memray \
             --junitxml=reports/junit.xml \
             --cov-report=xml:coverage.xml 2>&1 | tee reports/pytest.log
 

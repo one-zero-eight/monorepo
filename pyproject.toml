@@ -137,7 +137,7 @@ time = "tm"
 exclude = [".agents/skills"]
 
 [tool.pytest.ini_options]
-addopts = "--cov=src --cov-report=term-missing --memray"
+addopts = "--cov=src --cov-report=term-missing"
 
 [tool.coverage.run]
 relative_files = true
