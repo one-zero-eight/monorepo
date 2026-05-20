@@ -307,6 +307,8 @@ scenes:
         room_booking_id: "308"
       - title: "309"
         svg_polygon_id: "309"
+        description: |
+          Organizational and Technical Department
       - title: "309a"
         svg_polygon_id: "309a"
         room_booking_id: "309A"
@@ -315,6 +317,12 @@ scenes:
         svg_polygon_id: "310"
       - title: "310a"
         svg_polygon_id: "310a"
+        description: |
+          College Innopolis
+      - title: "College Innopolis"
+        svg_polygon_id: "college"
+        description: |
+          College Innopolis
       - title: "311"
         svg_polygon_id: "311"
       - title: "311a"
@@ -410,9 +418,9 @@ scenes:
       - title: "401"
         svg_polygon_id: "401"
         people:
-          - Leplat Valentin
+          - Valentin Leplat
           - Леплат Валентин
-          - Maloletov Alexander Vasilievich
+          - Alexander Maloletov
           - Малолетов Александр Васильевич
       - title: "402"
         svg_polygon_id: "402"
@@ -421,14 +429,14 @@ scenes:
       - title: "404"
         svg_polygon_id: "404"
         people:
-          - Zouev Eugene Alexandrovich
+          - Eugene Zouev
           - Зуев Евгений Александрович
       - title: "405"
         svg_polygon_id: "405"
         people:
-          - Gelvanovsky Georgy Vladislavovich
+          - Georgy Gelvanovsky
           - Гелвановский Георгий Владиславович
-          - Saduov Ruslan Talgatovich
+          - Ruslan Saduov
           - Садуов Руслан Талгатович
       - title: "406"
         ru_title: Методический отдел
@@ -438,7 +446,7 @@ scenes:
       - title: "407"
         svg_polygon_id: "407"
         people:
-          - Mazzara Manuel
+          - Manuel Mazzara
           - Маццара Мануэль
       - title: "408"
         svg_polygon_id: "408"
@@ -447,17 +455,17 @@ scenes:
       - title: "410"
         svg_polygon_id: "410"
         people:
-          - Lukmanov Rustam Abubakirovich
+          - Rustam Lukmanov
           - Лукманов Рустам Абубакирович
       - title: "411"
         svg_polygon_id: "411"
         people:
-          - Kholodov Yaroslav Alexandrovich
+          - Yaroslav Kholodov
           - Холодов Ярослав Александрович
       - title: "411a"
         svg_polygon_id: "411a"
         people:
-          - Mayorga Sergio
+          - Sergio Mayorga
           - Майорга Сергей Татарин
       - title: "412"
         svg_polygon_id: "412"
@@ -469,6 +477,11 @@ scenes:
         svg_polygon_id: "415"
       - title: "416"
         svg_polygon_id: "416"
+        description: |
+          Director's office
+        people:
+          - Dmitriy Vandyukov
+          - Вандюков Дмитрий Владимирович
       - title: "417"
         svg_polygon_id: "417"
       - title: "418"
@@ -486,10 +499,12 @@ scenes:
         svg_polygon_id: "422"
       - title: "423"
         svg_polygon_id: "423"
-        description: "Rector's office"
       - title: "424"
         svg_polygon_id: "424"
-        description: "Director's office"
+        description: "Rector's office"
+        people:
+          - Alexander Gasnikov
+          - Гасников Александр Владимирович
       - title: "425"
         svg_polygon_id: "425"
         room_booking_id: "425"
@@ -590,24 +605,24 @@ scenes:
       - title: "464"
         svg_polygon_id: "464"
         people:
-          - Frolov Andrey Nikolaevich
+          - Andrey Frolov
           - Фролов Андрей Николаевич
-          - Konyukhov Ivan Vladimirovich
+          - Ivan Konyukhov
           - Конюхов Иван Владимирович
       - title: "465"
         svg_polygon_id: "465"
         people:
-          - Maslovskaya Anna Gennadievna
+          - Anna Maslovskaya
           - Масловская Анна Геннадьевна
       - title: "466"
         svg_polygon_id: "466"
         people:
-          - Khan Adil Mehmood
+          - Adil Khan Mehmood
           - Хан Адил Мехмуд
       - title: "467"
         svg_polygon_id: "467"
         people:
-          - Burmyakov Artem Sergeevich
+          - Artem Burmyakov
           - Бурмяков Артем Сергеевич
       - title: "468"
         svg_polygon_id: "468"
@@ -615,21 +630,23 @@ scenes:
         svg_polygon_id: "469"
       - title: "470"
         svg_polygon_id: "470"
+        description: |
+          Vice-rector for Academic Affairs' office
         people:
-          - Bobrov Evgeny Sergeevich
+          - Evgeny Bobrov
           - Бобров Евгений Сергеевич
       - title: "471"
         svg_polygon_id: "471"
         people:
-          - Zlatanov Nikola
+          - Nikola Zlatanov
           - Златанов Никола
       - title: "472"
         ru_title: Руководители центров и отделов ВО
         svg_polygon_id: "472"
         people:
-          - Venediktova Darina Anatolyevna
+          - Darina Venediktova
           - Венедиктова Дарина Анатольевна
-          - Ushakov Dmitry
+          - Dmitry Ushakov
           - Ушаков Дмитрий
         description: |
           Heads of departments of the Higher Education
@@ -638,14 +655,14 @@ scenes:
       - title: "474"
         svg_polygon_id: "474"
         people:
-          - Succi Giancarlo
+          - Giancarlo Succi
           - Суччи Джанкарло
           - Paolo Ciancarini
           - Паоло Чанкарини
       - title: "475"
         svg_polygon_id: "475"
         people:
-          - Ivanov Vladimir Vladimirovich
+          - Vladimir Ivanov
           - Иванов Владимир Владимирович
       - title: "476"
         svg_polygon_id: "476"
