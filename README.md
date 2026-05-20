@@ -56,6 +56,30 @@ our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CON
    ```
 6. Start development server (and read logs in the terminal):
 
+   <details>
+   <summary>For VSCode</summary>
+   In the left menu of the IDE go to "Run and Debug" tab, choose the service name and click play button to start the API.
+   After that, open the URL from console in your browser to view Swagger.
+   </details>
+
+   <details>
+   <summary>For PyCharm</summary>
+   In the top-right corner of the IDE choose the service name and click green play button to start the API ([see docs](https://www.jetbrains.com/help/pycharm/run-debug-configuration.html#createExplicitly)).
+   After that, open the URL from console in your browser to view Swagger.
+
+    **Set up PyCharm plugins**
+
+    1. Ruff ([plugin](https://plugins.jetbrains.com/plugin/20574-ruff)).
+       It will lint and format your code. Make sure to enable `Use ruff format` option in plugin settings.
+    2. Pydantic ([plugin](https://plugins.jetbrains.com/plugin/12861-pydantic)). It will fix PyCharm issues with
+       type-hinting.
+    3. Conventional commits ([plugin](https://plugins.jetbrains.com/plugin/13389-conventional-commit)). It will help you
+       to write [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/).
+   </details>
+
+   <details>
+   <summary>Using console</summary>
+
    For maps service:
    ```bash
    uv run -m src.maps --reload
@@ -73,6 +97,7 @@ our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CON
    uv run -m src.student_affairs --reload
    ```
    > It will be available at http://localhost:8015
+   </details>
 
 
 > [!IMPORTANT]
@@ -81,17 +106,6 @@ our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CON
 > [!TIP]
 > Edit `settings.yaml` according to your needs, you can view schema in
 > [config_schema.py](src/config_schema.py) and in [settings.schema.yaml](settings.schema.yaml)
-
-**Set up PyCharm integrations**
-
-1. Run configurations ([docs](https://www.jetbrains.com/help/pycharm/run-debug-configuration.html#createExplicitly)).
-   Right-click the `__main__.py` file in the project explorer, select `Run '__main__'` from the context menu.
-2. Ruff ([plugin](https://plugins.jetbrains.com/plugin/20574-ruff)).
-   It will lint and format your code. Make sure to enable `Use ruff format` option in plugin settings.
-3. Pydantic ([plugin](https://plugins.jetbrains.com/plugin/12861-pydantic)). It will fix PyCharm issues with
-   type-hinting.
-4. Conventional commits ([plugin](https://plugins.jetbrains.com/plugin/13389-conventional-commit)). It will help you
-   to write [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/).
 
 ### Testing
 
