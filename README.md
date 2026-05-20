@@ -21,7 +21,9 @@ This is the monorepo for backend services of InNoHassle ecosystem, all of them a
 - Database and ORM: [MongoDB](https://www.mongodb.com/) & [Beanie](https://beanie-odm.dev/)
 - File storage: [MinIO](https://github.com/minio/minio)
 - Formatting and linting: [Ruff](https://docs.astral.sh/ruff/), [prek](https://prek.j178.dev/)
-- Deployment: [Docker](https://www.docker.com/), [Docker Compose](https://docs.docker.com/compose/),
+- Type checking: [ty](https://docs.astral.sh/ty/)
+- Testing: [pytest](https://docs.pytest.org)
+- CI/CD: [Docker](https://www.docker.com/), [Docker Compose](https://docs.docker.com/compose/),
   [GitHub Actions](https://github.com/features/actions)
 
 
