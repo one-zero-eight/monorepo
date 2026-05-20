@@ -2,11 +2,14 @@
 # Builder stage. Build dependencies.
 FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS builder
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean \
+    && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache \
+    && apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+    build-essential
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -36,11 +39,13 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PATH="/app/.venv/bin:$PATH"
 
-RUN apt-get update \
-    && apt-get install --no-install-recommends -y \
-        libmagic1 \
-        libvips-dev \
-    && rm -rf /var/lib/apt/lists/*
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean \
+    && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache \
+    && apt-get update && apt-get install --no-install-recommends -y \
+    libmagic1 \
+    libvips-dev
 
 
 RUN groupadd -g 1500 uv && \
