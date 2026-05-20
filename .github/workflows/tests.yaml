@@ -82,6 +82,7 @@ jobs:
         run: uv sync --frozen
 
       - name: 🧪 Run tests
+        id: tests
         env:
           PYTHONUNBUFFERED: "1"
         run: |
@@ -91,7 +92,16 @@ jobs:
             --color=no \
             --memray \
             --junitxml=reports/junit.xml \
-            --cov-report=xml:coverage.xml 2>&1 | tee reports/pytest.log
+            --cov-report=xml:coverage.xml \
+            --cov-report=markdown:coverage.md 2>&1 | tee reports/pytest.log
+
+          grep -v "100% |" coverage.md > coverage-skip-covered.md
+          delimiter="$(openssl rand -hex 16)"
+          {
+            echo "coverage_md<<$delimiter"
+            cat coverage-skip-covered.md
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
 
       - name: 📤 Upload reports
         uses: actions/upload-artifact@v7
@@ -109,23 +119,13 @@ jobs:
         if: (!cancelled()) && hashFiles('reports/junit.xml') != ''
         with:
           files: reports/junit.xml
-          check_name: pytest
+          check_run: false
+          comment_title: |
+            Coverage
 
-      - name: 📊 Post coverage comment
-        uses: py-cov-action/python-coverage-comment-action@v3
-        if: github.event_name == 'pull_request' && (!cancelled()) && hashFiles('coverage.xml') != ''
-        with:
-          GITHUB_TOKEN: ${{ github.token }}
+            ${{ steps.tests.outputs.coverage_md }}
 
-      - name: 📊 Coverage summary
-        if: (!cancelled()) && hashFiles('coverage.xml') != ''
-        run: |
-          {
-            echo "## Coverage"
-            echo '```'
-            uv run coverage report --skip-covered
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+            ## Tests
 
       - name: 📋 pytest log
         if: (!cancelled()) && hashFiles('reports/pytest.log') != ''
