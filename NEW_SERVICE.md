@@ -553,6 +553,62 @@ Add a service block so the API runs with the rest of the dev stack (`docker comp
 
 `docker-compose.test.yaml` only runs shared test infra (Mongo/MinIO via lazytainer); API services are not added there — tests use `TestClient` and fixtures from [TESTING.md](./TESTING.md).
 
+### `.vscode/launch.json`
+
+Add new launch configuration for VSCode:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+     ...
+    {
+      "name": "my service",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src.my_service",
+      "args": ["--reload"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    ...
+  ]
+}
+```
+
+### `.idea/runConfigurations/my_service.xml`
+
+Add new run configuration for PyCharm:
+
+```xml
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="my service" type="PythonConfigurationType" factoryName="Python">
+    <option name="SCRIPT_NAME" value="src.my_service" />
+    <module name="monorepo" />
+    <option name="ENV_FILES" value="" />
+    <option name="INTERPRETER_OPTIONS" value="" />
+    <option name="PARENT_ENVS" value="true" />
+    <envs>
+      <env name="PYTHONUNBUFFERED" value="1" />
+    </envs>
+    <option name="SDK_HOME" value="" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <option name="IS_MODULE_SDK" value="true" />
+    <option name="ADD_CONTENT_ROOTS" value="true" />
+    <option name="ADD_SOURCE_ROOTS" value="true" />
+    <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+    <option name="RUN_TOOL" value="true" />
+    <option name="PARAMETERS" value="--reload" />
+    <option name="SHOW_COMMAND_LINE" value="false" />
+    <option name="EMULATE_TERMINAL" value="false" />
+    <option name="MODULE_MODE" value="true" />
+    <option name="REDIRECT_INPUT" value="false" />
+    <option name="INPUT_FILE" value="" />
+    <method v="2" />
+  </configuration>
+</component>
+```
+
 ---
 
 ## Testing
