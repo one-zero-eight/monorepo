@@ -51,7 +51,7 @@ jobs:
 
       - name: 🐳 Build and push Docker image
         id: build
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@v7.1.0
         with:
           context: .
           push: ${{ github.repository_owner == 'one-zero-eight' && 'true' || 'false' }}
