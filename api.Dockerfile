@@ -25,7 +25,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 ###########################################################
 # Production stage.
-FROM python:3.14-slim-bookworm AS production
+FROM python:3.14.5-slim-bookworm AS production
 
 ARG APP_MODULE
 ENV APP_MODULE=${APP_MODULE}
