@@ -21,7 +21,7 @@ dependencies = [
     "pydantic>=2.13.4", # ~461 KiB
     "pydantic-settings>=2.14.1", # ~60 KiB
     "python-magic>=0.4.27", # ~14 KiB | depends on libmagic
-    "python-multipart>=0.0.28", # ~29 KiB
+    "python-multipart>=0.0.29", # ~29 KiB
     "pytz>=2026.2", # ~498 KiB
     "pyyaml>=6.0.3", # ~861 KiB
     "uvicorn>=0.47.0", # ~69 KiB
@@ -29,7 +29,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "prek>=0.4.0", # ~6.4 MiB
+    "prek>=0.4.1", # ~6.4 MiB
     "pytest>=9.0.3", # ~366 KiB
     "pytest-asyncio>=1.3.0", # ~15 KiB
     "pytest-cov>=7.1.0", # ~22 KiB
@@ -37,9 +37,9 @@ dev = [
     "pytest-memray>=1.8.0",
     "pytest-xdist>=3.8.0", # ~45 KiB
     "respx>=0.23.1", # ~25 KiB
-    "ruff>=0.15.13", # ~11.5 MiB
-    "ty>=0.0.37", # ~11 MiB
-    "types-pyyaml>=6.0.12.20260510", # ~20 KiB
+    "ruff>=0.15.14", # ~11.5 MiB
+    "ty>=0.0.38", # ~11 MiB
+    "types-pyyaml>=6.0.12.20260518", # ~20 KiB
 ]
 # events = [
 #    "alembic>=1.18.4", # ~258 KiB
