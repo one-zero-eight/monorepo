@@ -14,13 +14,13 @@ dependencies = [
     "fastapi>=0.136.1", # ~115 KiB
     "fastapi-derive-responses>=0.1.7", # ~8 KiB
     "fastapi-swagger>=0.4.50", # ~435 KiB
+    "filetype>=1.2.0", # ~19 KiB
     "gunicorn>=26.0.0", # ~207 KiB
     "httpx>=0.28.1", # ~72 KiB
     "joserfc>=1.6.5", # ~69 KiB
     "minio>=7.2.20", # ~92 KiB
     "pydantic>=2.13.4", # ~461 KiB
     "pydantic-settings>=2.14.1", # ~60 KiB
-    "python-magic>=0.4.27", # ~14 KiB | depends on libmagic
     "python-multipart>=0.0.28", # ~29 KiB
     "pytz>=2026.2", # ~498 KiB
     "pyyaml>=6.0.3", # ~861 KiB
@@ -34,7 +34,7 @@ dev = [
     "pytest-asyncio>=1.3.0", # ~15 KiB
     "pytest-cov>=7.1.0", # ~22 KiB
     "pytest-durations>=1.6.2", # ~14 KiB
-    "pytest-memray>=1.8.0",
+    "pytest-memray>=1.8.0; sys_platform != 'win32'",
     "pytest-xdist>=3.8.0", # ~45 KiB
     "respx>=0.23.1", # ~25 KiB
     "ruff>=0.15.13", # ~11.5 MiB
@@ -56,7 +56,7 @@ maps = [
     "rapidfuzz>=3.14.5", # ~4.1 MiB
 ]
 clubs = [
-    "pyvips>=3.1.1", # ~56 KiB | depends on libvips
+    "pyvips[binary]>=3.1.1", # ~56 KiB + binary wheel | includes libvips on common platforms
 ]
 #workshops = [
 #    "alembic>=1.18.4", # ~258 KiB

@@ -405,18 +405,18 @@ def test_set_logo_success(
         o_512.release_conn()
 
 
-def test_set_logo_content_type_detected_by_magic(
+def test_set_logo_content_type_detected_from_buffer(
     clubs_client: TestClient,
     superadmin_headers: dict[str, str],
     user_headers: dict[str, str],
 ):
-    """Multipart part without a Content-Type forces magic.from_buffer in the handler."""
+    """Multipart part without a Content-Type forces MIME detection from the file bytes."""
     import pyvips
 
     from src.clubs.modules.clubs.logos_repo import logos_repo
 
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
-    create_response = clubs_client.post("/clubs/", json=_club_payload("magic-mime-logo"), headers=admin_headers)
+    create_response = clubs_client.post("/clubs/", json=_club_payload("detected-mime-logo"), headers=admin_headers)
     assert create_response.status_code == 200
     club_id = create_response.json()["id"]
 

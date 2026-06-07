@@ -5,7 +5,7 @@ Clubs list and management.
 from typing import cast
 
 import beanie.exceptions
-import magic
+import filetype
 import pyvips
 from beanie import PydanticObjectId
 from fastapi import APIRouter, HTTPException, UploadFile
@@ -185,7 +185,8 @@ async def set_club_logo(id: PydanticObjectId, logo_file: UploadFile, _: CLUBS_AD
     bytes_ = await logo_file.read()
     content_type = logo_file.content_type
     if content_type is None:  # pragma: no cover
-        content_type = magic.Magic(mime=True).from_buffer(bytes_)
+        kind = filetype.guess(bytes_)
+        content_type = kind.mime if kind else None
 
     if content_type not in ("image/jpeg", "image/png", "image/webp"):
         raise HTTPException(status_code=400, detail=f"Invalid content type ({content_type})")

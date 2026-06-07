@@ -27,7 +27,7 @@ services:
       - "lazytainer.group.test-infra.sleepMethod=stop"
       - "lazytainer.group.test-infra.minPacketThreshold=1"
 
-  mongodb:
+  test-mongodb:
     image: "mongo:8.0"
     restart: no
     network_mode: service:lazytainer
@@ -42,7 +42,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: test
       MONGO_INITDB_ROOT_PASSWORD: test
 
-  minio:
+  test-minio:
     image: "minio/minio:RELEASE.2024-05-10T01-41-38Z"
     restart: no
     network_mode: service:lazytainer
