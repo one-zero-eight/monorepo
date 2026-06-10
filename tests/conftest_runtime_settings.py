@@ -17,6 +17,7 @@ from src.common_config import Environment, MinioSettings, MongoDatabaseSettings
 from src.config_root_schema import AccountsSettings, Settings
 from src.maps.config_schema import MapsSettings
 from src.student_affairs.config_schema import OmnideskSettings, StudentAffairsSettings
+from src.when2meet.config_schema import When2MeetSettings
 
 # Host ports for docker-compose.test.yaml and CI service containers; override via SUITE_* env.
 SUITE_MONGO_NETLOC = os.environ.get("SUITE_MONGO_NETLOC", "127.0.0.1:37017")
@@ -63,6 +64,9 @@ def load_root_settings() -> Settings:
         student_affairs_service=StudentAffairsSettings(
             environment=Environment.TESTING,
             omnidesk=OmnideskSettings(jwt_marker=SecretStr("test-marker-0123456789abcdef")),
+        ),
+        when2meet_service=When2MeetSettings(
+            environment=Environment.TESTING,
         ),
     )
 

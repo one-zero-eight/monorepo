@@ -27,6 +27,15 @@
       "args": ["--reload"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "when2meet",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src.when2meet",
+      "args": ["--reload"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
     }
   ]
 }

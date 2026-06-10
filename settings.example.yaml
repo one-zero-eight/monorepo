@@ -6,3 +6,4 @@ accounts:
 maps_service: {}
 student_affairs_service: null # to run student affairs service you should get omnidesk credentials
 clubs_service: {}
+when2meet_service: {}

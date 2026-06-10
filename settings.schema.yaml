@@ -212,6 +212,33 @@ $defs:
     - omnidesk
     title: StudentAffairsSettings
     type: object
+  When2MeetSettings:
+    additionalProperties: false
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: ''
+        description: Prefix for the API path (e.g. "/api/v0")
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      service_name:
+        default: when2meet
+        description: Human-readable service name returned by the health endpoint
+        title: Service Name
+        type: string
+    title: When2MeetSettings
+    type: object
 additionalProperties: false
 properties:
   $schema:
@@ -239,6 +266,11 @@ properties:
   student_affairs_service:
     anyOf:
     - $ref: '#/$defs/StudentAffairsSettings'
+    - type: 'null'
+    default: null
+  when2meet_service:
+    anyOf:
+    - $ref: '#/$defs/When2MeetSettings'
     - type: 'null'
     default: null
 required:

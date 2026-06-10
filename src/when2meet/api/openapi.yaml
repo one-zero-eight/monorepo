@@ -1,0 +1,23 @@
+openapi: 3.1.0
+info:
+  title: When2Meet API
+  version: 0.1.0
+  summary: When2Meet service API.
+paths:
+  /health:
+    get:
+      tags:
+        - When2Meet
+      operationId: when2meet_health
+      summary: Health
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+              example:
+                status: ok
