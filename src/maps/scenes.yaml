@@ -1,20 +1,53 @@
+# Scenes configuration for maps PDF generation
+# Available fields:
+#   scene_id: unique identifier
+#   svg_file: filename in src/maps/static
+#   title: title of the map
+#   orientation: horizontal or vertical
+#   map_x, map_y: coordinates of the map top-left corner
+#   title_x, title_y: coordinates of the title
+#   title_font_size: size of the title font (default 20)
+#   title_font_family: font family (default "sans-serif", e.g. "serif", "monospace")
+#   legend_emoji_font_family: font family list for emojis (default common emoji fonts)
+#   legend_x, legend_y: coordinates of the legend
+#   legend_font_size: size of the legend font (default 10)
+#   legend_item_height: height of each legend item (default 15)
+#   legend_icon_spacing: space between icon and text (default 25)
+#   legend_width: width of the legend area (default 200)
+#   scale: manual scale factor for the SVG map (overrides auto-scale)
+#   legend: list of legend items
+#     legend_id: text label
+#     color: color hex (optional, if emoji is not used)
+#     emoji: emoji character (optional, if color is not used)
+#   areas: list of clickable areas on the map
+
 scenes:
   - scene_id: "university-floor-1"
     svg_file: "university-floor-1.svg"
     title: "Floor 1"
+    orientation: "horizontal"
+    map_x: -30
+    map_y: 70
+    title_x: 320
+    title_y: -150
+    title_font_size: 24
+    title_font_family: "serif"
+    legend_emoji_font_family: "'Apple Color Emoji', sans-serif"
+    legend_x: 890
+    legend_y: 30
+    legend_icon_spacing: 17
+    legend_font_size: 14
+    scale: 0.35
+    legend_item_height: 20
     legend:
       - legend_id: "Reception"
         color: "#ffe302"
-      - legend_id: "Cloakroom"
-        color: "#91a3b0"
       - legend_id: "Elevator"
         color: "#17b69c"
       - legend_id: "Dining area"
         color: "#9adbf8"
       - legend_id: "Lecture hall"
         color: "#b3dd36"
-      - legend_id: "Applicant reception"
-        color: "#2d4485"
       - legend_id: "Storage"
         color: "#ffcb7d"
       - legend_id: "Medical point — 1st floor of 4th campus"
@@ -137,9 +170,25 @@ scenes:
   - scene_id: "university-floor-2"
     svg_file: "university-floor-2.svg"
     title: "Floor 2"
+    orientation: "horizontal"
+    map_x: -30
+    map_y: 70
+    title_x: 320
+    title_y: -150
+    title_font_size: 24
+    title_font_family: "serif"
+    legend_emoji_font_family: "'Apple Color Emoji', sans-serif"
+    legend_x: 890
+    legend_y: 30
+    legend_icon_spacing: 17
+    legend_font_size: 14
+    scale: 0.35
+    legend_item_height: 20
     legend:
       - legend_id: "Elevator"
         color: "#17b69c"
+      - legend_id: "Dining area"
+        color: "#9adbf8"
       - legend_id: "Lecture hall"
         color: "#b3dd36"
       - legend_id: "Meeting rooms"
@@ -250,6 +299,20 @@ scenes:
   - scene_id: "university-floor-3"
     svg_file: "university-floor-3.svg"
     title: "Floor 3"
+    orientation: "horizontal"
+    map_x: 28
+    map_y: 70
+    title_x: 320
+    title_y: -150
+    title_font_size: 24
+    title_font_family: "serif"
+    legend_emoji_font_family: "'Apple Color Emoji', sans-serif"
+    legend_x: 890
+    legend_y: 30
+    legend_icon_spacing: 17
+    legend_font_size: 14
+    scale: 0.32
+    legend_item_height: 20
     legend:
       - legend_id: "Elevator"
         color: "#17b69c"
@@ -387,6 +450,20 @@ scenes:
   - scene_id: "university-floor-4"
     svg_file: "university-floor-4.svg"
     title: "Floor 4"
+    orientation: "horizontal"
+    map_x: 0
+    map_y: 70
+    title_x: 320
+    title_y: -150
+    title_font_size: 24
+    title_font_family: "serif"
+    legend_emoji_font_family: "'Apple Color Emoji', sans-serif"
+    legend_x: 890
+    legend_y: 30
+    legend_icon_spacing: 17
+    legend_font_size: 14
+    scale: 0.33
+    legend_item_height: 20
     legend:
       - legend_id: "Elevator"
         color: "#17b69c"
@@ -674,6 +751,20 @@ scenes:
   - scene_id: "university-floor-5"
     svg_file: "university-floor-5.svg"
     title: "Floor 5"
+    orientation: "horizontal"
+    map_x: 0
+    map_y: 70
+    title_x: 320
+    title_y: -150
+    title_font_size: 24
+    title_font_family: "serif"
+    legend_emoji_font_family: "'Apple Color Emoji', sans-serif"
+    legend_x: 890
+    legend_y: 30
+    legend_icon_spacing: 17
+    legend_font_size: 14
+    scale: 0.33
+    legend_item_height: 20
     legend:
       - legend_id: "Elevator"
         color: "#17b69c"
@@ -730,6 +821,20 @@ scenes:
   - scene_id: "university-floor-0"
     svg_file: "university-floor-0.svg"
     title: "Floor -1"
+    orientation: "horizontal"
+    map_x: -30
+    map_y: 70
+    title_x: 320
+    title_y: -150
+    title_font_size: 24
+    title_font_family: "serif"
+    legend_emoji_font_family: "'Apple Color Emoji', sans-serif"
+    legend_x: 890
+    legend_y: 30
+    legend_icon_spacing: 17
+    legend_font_size: 14
+    scale: 0.35
+    legend_item_height: 20
     legend:
       - legend_id: "Elevator"
         color: "#17b69c"
@@ -751,27 +856,13 @@ scenes:
   - scene_id: "sport-complex"
     svg_file: "sport-complex.svg"
     title: "Sport Complex"
-    legend:
-      - legend_id: "Reception"
-        color: "#ffe302"
-      - legend_id: "Cloakroom"
-        color: "#91a3b0"
-      - legend_id: "Elevator"
-        color: "#17b69c"
-      - legend_id: "InnoMax Cafe"
-        color: "#9adbf8"
-      - legend_id: "Changing room"
-        color: "#b3dd36"
-      - legend_id: "Sales department"
-        color: "#2d4485"
-      - legend_id: "Sauna"
-        color: "#ffcb7d"
-      - legend_id: "Training halls"
-        color: "#9681f2"
-      - legend_id: "Swimming pool"
-        color: "#6d9add"
-      - legend_id: "Music Room"
-        color: "#dd7168"
+    orientation: "vertical"
+    map_x: 20
+    map_y: 50
+    title_x: 450
+    title_y: -400
+    title_font_size: 28
+    title_font_family: "monospace"
     areas:
       - title: Music Room
         ru_title: Музыкальная Комната
@@ -872,6 +963,36 @@ scenes:
   - scene_id: "campus"
     svg_file: "campus.svg"
     title: "Campus"
+    orientation: "horizontal"
+    map_x: -750
+    map_y: -400
+    title_x: 675
+    title_y: -320
+    title_font_size: 28
+    title_font_family: "monospace"
+    scale: 1.95
+    legend_x: 870
+    legend_y: 240
+    legend_font_size: 14
+    legend_item_height: 18
+    legend_emoji_font_family: "Apple Color Emoji, sans-serif"
+    legend:
+      - legend_id: "Dorms Administration"
+        emoji: "👩"
+      - legend_id: "Dorms Reception"
+        emoji: "💸"
+      - legend_id: "First-aid post"
+        emoji: "🚑"
+      - legend_id: "Table tennis"
+        emoji: "🏓"
+      - legend_id: "Security guards' lockers \n for prohibited items"
+        emoji: "🗄️"
+      - legend_id: "Bicycles Storage"
+        emoji: "🚲"
+      - legend_id: "Geek cafe"
+        emoji: "🥣"
+      - legend_id: "Ski Equipment Pick-Up Point"
+        emoji: "⛷️"
     areas:
       - title: Innopolis University
         ru_title: Университет Иннополис

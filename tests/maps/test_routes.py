@@ -27,3 +27,10 @@ def test_search_endpoint_returns_results(maps_client: TestClient):
     assert isinstance(payload, list)
     assert len(payload) > 0
     assert payload[0]["scene_id"] == "university-floor-3"
+
+
+def test_pdf_endpoint_returns_pdf(maps_client: TestClient):
+    response = maps_client.get("/pdf")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert len(response.content) > 0

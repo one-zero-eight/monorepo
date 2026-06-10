@@ -9,6 +9,7 @@ requires-python = ">=3.14"
 dependencies = [
     "aiofiles>=25.1.0", # ~14 KiB
     "beanie>=2.1.0", # ~91 KiB
+    "cairosvg>=2.9.0",
     "colorlog>=6.10.1", # ~11 KiB
     "cryptography>=48.0.0", # ~7.6 MiB
     "fastapi>=0.136.1", # ~115 KiB
@@ -21,6 +22,7 @@ dependencies = [
     "minio>=7.2.20", # ~92 KiB
     "pydantic>=2.13.4", # ~461 KiB
     "pydantic-settings>=2.14.1", # ~60 KiB
+    "pypdf>=6.13.0",
     "python-multipart>=0.0.28", # ~29 KiB
     "pytz>=2026.2", # ~498 KiB
     "pyyaml>=6.0.3", # ~861 KiB

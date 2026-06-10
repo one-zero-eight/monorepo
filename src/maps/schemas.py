@@ -8,6 +8,8 @@ class LegendEntry(BaseSchema):
     "ID of the legend"
     color: str | None = None
     "Color of the legend"
+    emoji: str | None = None
+    "Emoji for the legend"
     legend: str | None = None
     "Description of the legend (may contain multiple lines)"
 
@@ -46,6 +48,36 @@ class Scene(BaseSchema):
     "Title of the scene"
     svg_file: str
     "Path to the SVG file in /static"
+    orientation: str = "horizontal"
+    "Orientation of the scene (horizontal or vertical)"
+    map_x: float | None = None
+    "X coordinate of the map"
+    map_y: float | None = None
+    "Y coordinate of the map"
+    title_x: float | None = None
+    "X coordinate of the title"
+    title_y: float | None = None
+    "Y coordinate of the title"
+    title_font_size: int = 20
+    "Font size of the title"
+    title_font_family: str = "sans-serif"
+    "Font family of the title"
+    legend_emoji_font_family: str = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Twemoji Mozilla', 'EmojiOne Color', 'Symbola', 'Android Emoji', sans-serif"
+    "Font family for emojis in the legend"
+    legend_x: float | None = None
+    "X coordinate of the legend"
+    legend_y: float | None = None
+    "Y coordinate of the legend"
+    legend_font_size: int = 10
+    "Font size of the legend"
+    legend_item_height: int = 15
+    "Height of each legend item"
+    legend_icon_spacing: int = 25
+    "Spacing between the icon (color/emoji) and the text"
+    legend_width: int = 200
+    "Width of the legend"
+    scale: float | None = None
+    "Scale of the map"
     legend: list[LegendEntry] = Field(default_factory=list)
     "Legend of the scene"
     areas: list[Area] = Field(default_factory=list)
