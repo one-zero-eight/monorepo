@@ -196,6 +196,9 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 reports/
+!src/when2meet/reports/
+!src/when2meet/reports/week2/
+!src/when2meet/reports/week2/**
 cover/
 
 # Translations
