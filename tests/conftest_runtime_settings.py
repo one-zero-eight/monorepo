@@ -67,6 +67,10 @@ def load_root_settings() -> Settings:
         ),
         when2meet_service=When2MeetSettings(
             environment=Environment.TESTING,
+            app_root_path="/api/v0",
+            mongo=MongoDatabaseSettings(
+                uri=SecretStr(mongo_uri.replace("<service_name>", "when2meet")),
+            ),
         ),
     )
 
