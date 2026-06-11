@@ -18,7 +18,7 @@ class BeanieDocument(Document):
     if TYPE_CHECKING:
         id: PydanticObjectId
     else:
-        id: PydanticObjectId = Field(
+        id: PydanticObjectId | None = Field(
             default_factory=lambda: (
                 None
             ),  # We use lambda because we dont want to have "None" default in openapi schema, yet we want to have None default in python
