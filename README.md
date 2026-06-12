@@ -114,7 +114,7 @@ our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CON
 
 > [!TIP]
 > Edit `settings.yaml` according to your needs, you can view schema in
-> [config_schema.py](src/config_schema.py) and in [settings.schema.yaml](settings.schema.yaml)
+> [settings.schema.yaml](settings.schema.yaml)
 
 ### Testing
 
