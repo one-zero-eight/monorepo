@@ -5,16 +5,72 @@
   },
   "item": [
     {
-      "name": "Health",
-      "request": {
-        "method": "GET",
-        "url": {
-          "raw": "{{base_url}}/health",
-          "host": ["{{base_url}}"],
-          "path": ["health"]
+      "name": "Events",
+      "item": [
+        {
+          "name": "Create Event",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/events/",
+              "host": ["{{base_url}}"],
+              "path": ["events", ""]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Team Meeting\",\n  \"description\": \"Weekly sync\",\n  \"slots\": [\n    \"2023-10-27T10:00:00Z\",\n    \"2023-10-27T11:00:00Z\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Event",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/events/:event_id",
+              "host": ["{{base_url}}"],
+              "path": ["events", ":event_id"],
+              "variable": [
+                {
+                  "key": "event_id",
+                  "value": "653b8f8f8f8f8f8f8f8f8f8f"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Participant",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{base_url}}/events/:event_id/participants",
+              "host": ["{{base_url}}"],
+              "path": ["events", ":event_id", "participants"],
+              "variable": [
+                {
+                  "key": "event_id",
+                  "value": "653b8f8f8f8f8f8f8f8f8f8f"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alice\",\n  \"availability\": [\n    \"2023-10-27T10:00:00Z\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
         }
-      },
-      "response": []
+      ]
     }
   ],
   "variable": [
