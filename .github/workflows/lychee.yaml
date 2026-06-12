@@ -3,6 +3,9 @@ name: Links
 on:
   push:
 
+permissions:
+  contents: read
+
 jobs:
   linkChecker:
     runs-on: ubuntu-latest
