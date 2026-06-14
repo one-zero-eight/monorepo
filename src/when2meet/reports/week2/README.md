@@ -130,4 +130,4 @@ Smoke checks: [mvp-v0-report.md#smoke-check](mvp-v0-report.md#smoke-check).
 
 - Summary: [customer-meeting-summary.md](customer-meeting-summary.md)
 - Transcript (published): [customer-meeting-transcript.md](customer-meeting-transcript.md)
-- [customer-meeting-notes.md](customer-meeting-notes.md) — not used (recording and sharing permitted)
+- Customer meeting notes: not used (recording and sharing permitted)
