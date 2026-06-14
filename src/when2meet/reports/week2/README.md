@@ -63,15 +63,14 @@ REST API consumed by the frontend; documented and runnable locally.
 
 ### Excluded Lychee links
 
-Links excluded from automated checking (private or local-only). Each was opened manually in a browser before submission.
+Links excluded from automated checking in [lychee.yaml](https://github.com/one-zero-eight/monorepo/blob/main/.github/workflows/lychee.yaml). Each was opened manually in a browser before submission.
 
-| URL | Reason | Manually verified |
+| URL / pattern | Reason | Manually verified |
 | --- | --- | --- |
+| `*.innohassle.ru` (workflow regex) | InnoHassle services are not reliably reachable outside Russia; GitHub Actions cannot check them | Yes — `pre.innohassle.ru/when-to-meet` and `api.innohassle.ru/when2meet/v0/docs` load from Russia |
 | `http://localhost:8020` | Local dev server | Yes — Swagger loads when service runs |
 | `http://localhost:8020/docs` | Local Swagger UI | Yes |
 | `https://disk.yandex.ru/i/NtGKNllihRGJ4Q` | Video host; may be slow for CI | Yes — video plays |
-| `https://pre.innohassle.ru/when-to-meet` | Staging frontend | Yes — frontend loads |
-| `https://api.innohassle.ru/when2meet/v0/docs` | Hosted Swagger UI | Yes — loads in browser |
 
 ## Screenshots
 
