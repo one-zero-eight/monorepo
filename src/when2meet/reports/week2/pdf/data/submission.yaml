@@ -1,9 +1,9 @@
 submission:
     project_name: "When2Meet for InNoHassle"
     team_number: "21"
-    commit_hash: "8c7b02a9b3e4f9b71a1bacb14fd26118452789c2"
-    readme_permalink: "https://github.com/one-zero-eight/monorepo/blob/8c7b02a9b3e4f9b71a1bacb14fd26118452789c2/src/when2meet/reports/week2/README.md"
-    tree_permalink: "https://github.com/one-zero-eight/monorepo/tree/8c7b02a9b3e4f9b71a1bacb14fd26118452789c2/src/when2meet"
+    commit_hash: "7e09f774952c455da82295e42c4f4d4a2d632b4a"
+    readme_permalink: "https://github.com/one-zero-eight/monorepo/blob/7e09f774952c455da82295e42c4f4d4a2d632b4a/src/when2meet/reports/week2/README.md"
+    tree_permalink: "https://github.com/one-zero-eight/monorepo/tree/7e09f774952c455da82295e42c4f4d4a2d632b4a/src/when2meet"
     test_credentials: "Not required — no authentication in MVP v0."
     mit_consent: |
         Customer directed the team to develop When2Meet in the public MIT-licensed
