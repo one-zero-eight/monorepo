@@ -7,3 +7,9 @@ maps_service: {}
 student_affairs_service: null # to run student affairs service you should get omnidesk credentials
 clubs_service: {}
 when2meet_service: {}
+guard_service: # to run guard service you should provide a Google service account file
+  google:
+    service_account_file_path: service_account.json
+forms_service:
+  links:
+    signature_secret: null # secret used to sign and verify form payloads

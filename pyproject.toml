@@ -64,14 +64,14 @@ clubs = [
 #    "sqlalchemy>=2.0.49", # ~3.4 MiB
 #    "sqlmodel>=0.0.38", # ~27 KiB
 #]
-#forms = [
-#    "nanoid>=2.0.0", # ~6 KiB
-#]
-#guard = [
-#    "google-api-python-client>=2.196.0", # ~14.5 MiB
-#    "google-auth>=2.51.0", # ~240 KiB
-#    "google-auth-oauthlib>=1.4.0", # ~19 KiB
-#]
+forms = [
+    "nanoid>=2.0.0", # ~6 KiB
+]
+guard = [
+    "google-api-python-client>=2.196.0", # ~14.5 MiB
+    "google-auth>=2.51.0", # ~240 KiB
+    "google-auth-oauthlib>=1.4.0", # ~19 KiB
+]
 #schedule-builder-backend = [
 #    "numpy>=2.4.4", # ~17.8 MiB
 #    "openpyxl>=3.1.5", # ~245 KiB

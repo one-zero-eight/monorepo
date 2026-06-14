@@ -115,6 +115,49 @@ services:
         reservations:
           memory: 500m
 
+  guard:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.guard.app:app
+    restart: no
+    ports:
+      - "8013:8000"
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+      - "./service_account.json:/app/service_account.json:ro"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 500m
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  forms:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.forms.app:app
+    restart: no
+    ports:
+      - "8017:8000"
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 500m
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
 volumes:
   mongodb:
   minio:

@@ -15,6 +15,8 @@ from urllib3.exceptions import HTTPError
 from src.clubs.config_schema import ClubsSettings
 from src.common_config import Environment, MinioSettings, MongoDatabaseSettings
 from src.config_root_schema import AccountsSettings, Settings
+from src.forms.config_schema import FormsSettings, LinksSettings
+from src.guard.config_schema import GuardSettings
 from src.maps.config_schema import MapsSettings
 from src.student_affairs.config_schema import OmnideskSettings, StudentAffairsSettings
 from src.when2meet.config_schema import When2MeetSettings
@@ -71,6 +73,19 @@ def load_root_settings() -> Settings:
             mongo=MongoDatabaseSettings(
                 uri=SecretStr(mongo_uri.replace("<service_name>", "when2meet")),
             ),
+        ),
+        guard_service=GuardSettings(
+            environment=Environment.TESTING,
+            mongo=MongoDatabaseSettings(
+                uri=SecretStr(mongo_uri.replace("<service_name>", "guard")),
+            ),
+        ),
+        forms_service=FormsSettings(
+            environment=Environment.TESTING,
+            mongo=MongoDatabaseSettings(
+                uri=SecretStr(mongo_uri.replace("<service_name>", "forms")),
+            ),
+            links=LinksSettings(signature_secret=SecretStr("test-secret")),
         ),
     )
 
