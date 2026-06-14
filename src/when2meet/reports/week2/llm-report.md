@@ -14,7 +14,7 @@ No LLM was used for implementing MVP v0 backend code, writing user stories, prio
 | Tool | Purpose |
 | --- | --- |
 | [speech2text.ru](https://speech2text.ru/) | Transcribe the customer meeting recording into Russian text |
-| LLM translation (tool not fixed to a single vendor) | Translate transcribed meeting content into English for [meeting-transcription.md](meeting-transcription.md) and [customer-meeting-transcript.md](customer-meeting-transcript.md) |
+| LLM translation (tool not fixed to a single vendor) | Translate transcribed meeting content into English for [customer-meeting-transcript.md](customer-meeting-transcript.md) |
 
 ## What was produced without LLM assistance
 
