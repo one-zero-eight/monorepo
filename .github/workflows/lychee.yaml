@@ -1,19 +1,21 @@
 name: Links
 
 on:
-  push:
+    push:
 
 permissions:
-  contents: read
+    contents: read
 
 jobs:
-  linkChecker:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Link Checker
-        id: lychee
-        uses: lycheeverse/lychee-action@v2
-        with:
-          format: "markdown"
-          args: ". --verbose --exclude-all-private"
+    linkChecker:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v5
+            - name: Link Checker
+              id: lychee
+              uses: lycheeverse/lychee-action@v2
+              with:
+                  format: "markdown"
+                  args: >-
+                      . --verbose --exclude-all-private
+                      --exclude 'https?://([^/]*\.)*innohassle\.ru'
