@@ -19,7 +19,6 @@ env:
 
 jobs:
   build-and-push-image:
-    if: false
     runs-on: ubuntu-latest
     permissions: # Permissions granted to the 'GITHUB_TOKEN'
       contents: read
@@ -54,6 +53,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
+          file: ./api.Dockerfile
           push: ${{ github.repository_owner == 'one-zero-eight' && 'true' || 'false' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
