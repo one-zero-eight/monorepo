@@ -7,6 +7,8 @@ from pydantic import Field, SecretStr, model_validator
 
 from src.clubs.config_schema import ClubsSettings
 from src.common_config import BaseSchema, Environment
+from src.forms.config_schema import FormsSettings
+from src.guard.config_schema import GuardSettings
 from src.maps.config_schema import MapsSettings
 from src.student_affairs.config_schema import StudentAffairsSettings
 from src.when2meet.config_schema import When2MeetSettings
@@ -35,6 +37,8 @@ class Settings(BaseSchema):
     clubs_service: ClubsSettings | None = None
     student_affairs_service: StudentAffairsSettings | None = None
     when2meet_service: When2MeetSettings | None = None
+    guard_service: GuardSettings | None = None
+    forms_service: FormsSettings | None = None
 
     @model_validator(mode="after")
     def accounts_mock_requires_development(self) -> Settings:
@@ -47,6 +51,10 @@ class Settings(BaseSchema):
             contexts.append(("student_affairs_service", self.student_affairs_service.environment))
         if self.when2meet_service is not None:
             contexts.append(("when2meet_service", self.when2meet_service.environment))
+        if self.guard_service is not None:
+            contexts.append(("guard_service", self.guard_service.environment))
+        if self.forms_service is not None:
+            contexts.append(("forms_service", self.forms_service.environment))
         bad = [(name, env.value) for name, env in contexts if env != Environment.DEVELOPMENT]
         if bad:
             names = ", ".join(f"{n}={e}" for n, e in bad)

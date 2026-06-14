@@ -3,6 +3,7 @@
 settings.yaml
 private.pem
 public.pem
+service_account.json
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,linux,windows,vs,jetbrains+all,macos
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,linux,windows,vs,jetbrains+all,macos

@@ -73,6 +73,124 @@ $defs:
     - production
     title: Environment
     type: string
+  FormsSettings:
+    additionalProperties: false
+    description: Settings for the application.
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: ''
+        description: Prefix for the API path (e.g. "/api/v0")
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      mongo:
+        $ref: '#/$defs/MongoDatabaseSettings'
+        description: Configuration for MongoDB
+      links:
+        $ref: '#/$defs/LinksSettings'
+    required:
+    - links
+    title: FormsSettings
+    type: object
+  GoogleServiceSettings:
+    additionalProperties: false
+    description: Google API settings (Service Account + Drive)
+    properties:
+      service_account_file_path:
+        default: service_account.json
+        description: 'Path to the Google service account file with credentials.
+
+
+          Plain ``Path`` (not ``FilePath``): the monorepo loads the whole root ``Settings``
+          for
+
+          every service, so requiring the file to exist here would break other services
+          that do
+
+          not mount it. Existence is enforced lazily where the file is actually read.'
+        format: path
+        title: Service Account File Path
+        type: string
+      subject:
+        anyOf:
+        - type: string
+        - type: 'null'
+        default: null
+        description: Email address to impersonate for domain-wide delegation (e.g.,
+          service@innoguard.ru)
+        title: Subject
+      drive_folder_id:
+        anyOf:
+        - type: string
+        - type: 'null'
+        default: null
+        description: Google Drive folder ID where new files will be created (optional)
+        title: Drive Folder Id
+    title: GoogleServiceSettings
+    type: object
+  GuardSettings:
+    additionalProperties: false
+    description: Settings for the application.
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: ''
+        description: Prefix for the API path (e.g. "/api/v0")
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      mongo:
+        $ref: '#/$defs/MongoDatabaseSettings'
+        description: Configuration for MongoDB
+      innohassle_url:
+        default: https://innohassle.ru
+        description: URL of the InNoHassle to use for links
+        title: Innohassle Url
+        type: string
+      base_url:
+        default: https://innohassle.ru
+        description: Base URL for generating join links
+        title: Base Url
+        type: string
+      google:
+        $ref: '#/$defs/GoogleServiceSettings'
+    title: GuardSettings
+    type: object
+  LinksSettings:
+    additionalProperties: false
+    description: Links and signature settings
+    properties:
+      signature_secret:
+        description: Secret used to sign and verify form payload
+        format: password
+        title: Signature Secret
+        type: string
+        writeOnly: true
+    required:
+    - signature_secret
+    title: LinksSettings
+    type: object
   MapsSettings:
     additionalProperties: false
     properties:
@@ -237,6 +355,9 @@ $defs:
         description: Human-readable service name returned by the health endpoint
         title: Service Name
         type: string
+      mongo:
+        $ref: '#/$defs/MongoDatabaseSettings'
+        description: Configuration for MongoDB
     title: When2MeetSettings
     type: object
 additionalProperties: false
@@ -271,6 +392,16 @@ properties:
   when2meet_service:
     anyOf:
     - $ref: '#/$defs/When2MeetSettings'
+    - type: 'null'
+    default: null
+  guard_service:
+    anyOf:
+    - $ref: '#/$defs/GuardSettings'
+    - type: 'null'
+    default: null
+  forms_service:
+    anyOf:
+    - $ref: '#/$defs/FormsSettings'
     - type: 'null'
     default: null
 required:

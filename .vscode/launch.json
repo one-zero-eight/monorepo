@@ -36,6 +36,24 @@
       "args": ["--reload"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "guard",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src.guard",
+      "args": ["--reload"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "forms",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src.forms",
+      "args": ["--reload"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
     }
   ]
 }
