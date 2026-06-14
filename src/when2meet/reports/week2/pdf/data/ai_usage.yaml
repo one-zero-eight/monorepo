@@ -1,0 +1,3 @@
+tools:
+    - "speech2text.ru — speech-to-text for the customer meeting recording."
+    - "LLM — translation of transcribed meeting text from Russian to English only."

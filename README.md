@@ -13,7 +13,7 @@ This is the monorepo for backend services of InNoHassle ecosystem, all of them a
 - Clubs service - Innopolis University student clubs management system to view clubs, add new clubs, and edit their descriptions and logos.
 - Maps - hosting Innopolis University maps to view them on innohassle.ru.
 - Student Affairs - omnidesk authentication via SSO for Student Affairs department to issue tickets.
-- When2Meet - service for meeting availability planning.
+- When2Meet - service for meeting availability planning. SWP Week 2 report: [reports/week2/README.md](src/when2meet/reports/week2/README.md), MVP v0: [mvp-v0-report.md](src/when2meet/reports/week2/mvp-v0-report.md).
 
 ### Technologies
 

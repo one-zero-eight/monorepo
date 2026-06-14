@@ -4,7 +4,8 @@ The When2Meet service provides an API for creating events and managing participa
 
 ## Base URL
 
-By default, the service runs on `http://localhost:8020`.
+- **Hosted:** `https://api.innohassle.ru/when2meet/v0` — [Swagger UI](https://api.innohassle.ru/when2meet/v0/docs)
+- **Local development:** `http://localhost:8020` (`/api/v0`)
 
 ## Endpoints
 
