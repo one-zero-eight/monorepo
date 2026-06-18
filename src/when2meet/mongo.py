@@ -1,5 +1,6 @@
 __all__ = ["Event", "Participant", "document_models"]
 import datetime as dtm
+from typing import Any, ClassVar
 
 from beanie import Document, PydanticObjectId
 from pydantic import ConfigDict, Field
@@ -12,6 +13,15 @@ class Participant(BaseSchema):
     "Name of the participant"
     availability: list[dtm.datetime]
     "List of slots the participant is available for"
+    if_needed: list[dtm.datetime] = Field(default_factory=list)
+    "List of slots the participant is available for if needed"
+    user_id: str | None = None
+    "ID of the user who is this participant (if authenticated)"
+
+
+class TimeRange(BaseSchema):
+    start: str
+    end: str
 
 
 class Event(Document):
@@ -28,8 +38,17 @@ class Event(Document):
     "All possible slots for the event"
     participants: list[Participant] = Field(default_factory=list)
     "List of participants and their availability"
-    created_at: dtm.datetime = Field(default_factory=lambda: dtm.datetime.now(dtm.UTC))
+    created_at: dtm.datetime = Field(default_factory=lambda: dtm.datetime.now(dtm.UTC).replace(microsecond=0))
     "Time when the event was created"
+
+    timezone: str = "UTC"
+    "IANA timezone name"
+    owner_id: str | None = None
+    "ID of the user who created the event"
+    specific_time: bool = False
+    "Whether the event has specific time slots"
+    time_range: TimeRange | None = None
+    "Optional metadata for display/edit"
 
     # Define id field locally to avoid issues with shared BeanieDocument
     id: PydanticObjectId | None = Field(
@@ -43,6 +62,15 @@ class Event(Document):
         name = "events"
         keep_nulls = False
         max_nesting_depth = 1
+        indexes: ClassVar[list[Any]] = [
+            "owner_id",
+            [("created_at", -1)],
+            "participants.user_id",
+            [
+                ("name", "text"),
+                ("description", "text"),
+            ],
+        ]
 
 
 document_models = [Event]

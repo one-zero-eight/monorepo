@@ -20,14 +20,17 @@ from .config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from src.inh_accounts_sdk import inh_accounts
     from src.when2meet.mongo import document_models
 
+    await inh_accounts.update_key_set()
     beanie_store = await setup_beanie(settings.mongo.uri, settings.service_name, document_models)
     app.state.beanie_store = beanie_store
 
     yield
 
     await beanie_store.close()
+    await inh_accounts.aclose()
 
 
 app = FastAPI(
