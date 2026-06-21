@@ -114,7 +114,7 @@
 
 = Repository submission
 
-*Commit hash (protected default branch):* `#submission.at("commit_hash")`
+*Commit hash (protected default branch):* #raw(submission.at("commit_hash"))
 
 - Week 3 report index: #link(submission.at("readme_permalink"))[README.md permalink]
 - Product tree at submission commit: #link(submission.at("tree_permalink"))[monorepo/src/when2meet permalink]
