@@ -1,0 +1,19 @@
+name: Course Task
+description: Assignment or course-administration task (does not count toward PBI minimum)
+title: "[When2Meet] "
+labels: ["course-task"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What the assignment requires
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Expected evidence or deliverable
+      description: File path, report section, or link to artifact
+    validations:
+      required: true

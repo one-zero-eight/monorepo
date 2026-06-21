@@ -1,0 +1,70 @@
+name: User Story
+description: User story PBI for When2Meet / InNoHassle
+title: "US-XXX: "
+labels: ["when2meet"]
+body:
+  - type: input
+    id: stable_id
+    attributes:
+      label: Stable user-story ID
+      placeholder: US-001
+    validations:
+      required: true
+  - type: textarea
+    id: user_story
+    attributes:
+      label: User story statement
+      description: As a [role], I want [action], so that [value].
+      placeholder: As a meeting organizer, I want to ...
+    validations:
+      required: true
+  - type: dropdown
+    id: moscow
+    attributes:
+      label: MoSCoW priority
+      options:
+        - Must Have
+        - Should Have
+        - Could Have
+        - Won't Have
+    validations:
+      required: true
+  - type: dropdown
+    id: requirement_status
+    attributes:
+      label: Requirement status
+      options:
+        - Active
+        - Removed
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Notes, constraints, assumptions, open questions
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance criteria
+      description: At least three for MVP v1 / Sprint-ready items (AC1, AC2, AC3…)
+    validations:
+      required: true
+  - type: input
+    id: story_points
+    attributes:
+      label: Story points
+      placeholder: "1"
+  - type: input
+    id: reviewer
+    attributes:
+      label: Reviewer (GitHub username)
+  - type: dropdown
+    id: mvp_version
+    attributes:
+      label: MVP version
+      options:
+        - mvp-v1
+        - mvp-v2
+        - mvp-v3
+        - none

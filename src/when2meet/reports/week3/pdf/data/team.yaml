@@ -1,0 +1,47 @@
+team:
+  - name: "Nikita Lisitskiy"
+    email: "n.lisitckii@innopolis.university"
+    github: "keamka"
+    scrum_role: "Product Owner"
+    tech_responsibility: "Backend, product coordination"
+    contributions:
+      - "Product Backlog migration and Sprint 1 planning"
+      - "Sprint Review with customer (presenter)"
+      - "Backend event and participant APIs"
+
+  - name: "Vladislav Konovalov"
+    email: "vl.konovalov@innopolis.university"
+    github: "dofi4ka"
+    scrum_role: "Scrum Master"
+    tech_responsibility: "DevOps, frontend, reporting"
+    contributions:
+      - "Week 3 report index and Moodle PDF sources"
+      - "Issue templates and PR template extension"
+      - "Deployment and repository screenshots"
+
+  - name: "Mikhail Istomin"
+    email: "m.istomin@innopolis.university"
+    github: "PoweredDeveloper"
+    scrum_role: "Developer"
+    tech_responsibility: "Frontend"
+    contributions:
+      - "MVP v1 frontend implementation (website PR #309)"
+      - "Wire UI to When2Meet API"
+
+  - name: "Dmitrii Chudin"
+    email: "d.chudin@innopolis.university"
+    github: "GrigsyChudin"
+    scrum_role: "Developer"
+    tech_responsibility: "Backend"
+    contributions:
+      - "Database schema and meeting CRUD APIs"
+      - "Participant availability persistence"
+
+  - name: "Timur Khasanov"
+    email: "t.khasanov@innopolis.university"
+    github: "l1berty-dev"
+    scrum_role: "Developer"
+    tech_responsibility: "Backend, QA"
+    contributions:
+      - "Backlog refinement and acceptance criteria"
+      - "MVP v1 demo video and transcript QA"

@@ -1,0 +1,41 @@
+name: Bug Report
+description: Defect in When2Meet product increment
+title: "[When2Meet] "
+labels: ["when2meet", "bug"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem description
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: pre.innohassle.ru/when2meet, browser, commit hash
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance criteria for the fix
+      description: How we know the bug is resolved
+    validations:
+      required: true

@@ -1,0 +1,13 @@
+images:
+  - file: product-backlog-view.png
+    caption: Product Backlog — InNoHassle project, When2Meet tab
+  - file: sprint-backlog-view.png
+    caption: Sprint Backlog — Sprint 1 milestone items
+  - file: sprint-milestone.png
+    caption: Sprint 1 milestone — goal and closed issues
+  - file: mvp-version-field-filtered.png
+    caption: MVP v1 scope — project grouped by MVP version
+  - file: delivered-mvp-v1.png
+    caption: Deployed MVP v1 on pre.innohassle.ru/when2meet
+  - file: reviewed-issue-linked-MR.png
+    caption: Reviewed issue-linked PR #309 (website)
