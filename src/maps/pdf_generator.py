@@ -263,7 +263,7 @@ def generate_all_maps_pdf():
             # Its content starts at -buffer.
             new_page.merge_translated_page(overlay_page, -buffer, -buffer)
 
-        except Exception:
+        except Exception:  # noqa: BLE001
             logger.exception("Failed to process map SVG %s", svg_path)
             continue
 
