@@ -1,60 +1,24 @@
-# Scenes configuration for maps PDF generation
+# Scenes configuration for maps
 # Available fields:
 #   scene_id: unique identifier
 #   svg_file: filename in src/maps/static
-#   title: title of the map
-#   orientation: horizontal or vertical
-#   map_x, map_y: coordinates of the map top-left corner
-#   title_x, title_y: coordinates of the title
-#   title_font_size: size of the title font (default 20)
-#   title_font_family: font family (default "sans-serif", e.g. "serif", "monospace")
-#   legend_emoji_font_family: font family list for emojis (default common emoji fonts)
-#   legend_x, legend_y: coordinates of the legend
-#   legend_font_size: size of the legend font (default 10)
-#   legend_item_height: height of each legend item (default 15)
-#   legend_icon_spacing: space between icon and text (default 25)
-#   legend_width: width of the legend area (default 200)
-#   scale: manual scale factor for the SVG map (overrides auto-scale)
-#   legend: list of legend items
-#     legend_id: text label
-#     color: color hex (optional, if emoji is not used)
-#     emoji: emoji character (optional, if color is not used)
+#   title: title of the scene
+#   pdf_export: PDF layout settings
+#     orientation: horizontal or vertical
 #   areas: list of clickable areas on the map
+# Title lives in each SVG as <g id="title">
+# Legend lives in each SVG as <g id="legend"> in map coordinates.
 
 scenes:
   - scene_id: "university-floor-1"
     svg_file: "university-floor-1.svg"
     title: "Floor 1"
-    orientation: "horizontal"
-    map_x: -30
-    map_y: 70
-    title_x: 320
-    title_y: -150
-    title_font_size: 24
-    title_font_family: "serif"
-    legend_emoji_font_family: "'Apple Color Emoji', sans-serif"
-    legend_x: 890
-    legend_y: 30
-    legend_icon_spacing: 17
-    legend_font_size: 14
-    scale: 0.35
-    legend_item_height: 20
-    legend:
-      - legend_id: "Reception"
-        color: "#ffe302"
-      - legend_id: "Elevator"
-        color: "#17b69c"
-      - legend_id: "Dining area"
-        color: "#9adbf8"
-      - legend_id: "Lecture hall"
-        color: "#b3dd36"
-      - legend_id: "Storage"
-        color: "#ffcb7d"
-      - legend_id: "Medical point — 1st floor of 4th campus"
+    pdf_export:
+      orientation: horizontal
     areas:
       - title: "Dorms 1-5"
-        svg_polygon_id: "dorms-1"
-        scene_pointer: "campus"
+        svg_polygon_id: dorms-1
+        scene_pointer: campus
       - title: "1.1"
         svg_polygon_id: "1.1"
         room_booking_id: "1.1"
@@ -89,11 +53,11 @@ scenes:
         room_booking_id: "106"
         prioritized: true
         description: "Big lecture room «South»"
-      - title: "106a"
-        svg_polygon_id: "106a"
+      - title: 106a
+        svg_polygon_id: 106a
         description: "Admission office"
-      - title: "105B"
-        svg_polygon_id: "105b"
+      - title: 105B
+        svg_polygon_id: 105b
         description: "Admission office managers"
       - title: "107"
         svg_polygon_id: "107"
@@ -139,9 +103,9 @@ scenes:
             Mon-Fri: 8:00 — 18:00
             Sat-Sun: 10:30 — 16:00
           Telegram channel: https://t.me/coffeecava
-      - title: Neuro coffee
+      - title: "Neuro coffee"
         svg_polygon_id: neuro-coffee
-      - title: In Joy
+      - title: "In Joy"
         svg_polygon_id: injoy
       - title: Happiness
         svg_polygon_id: happiness
@@ -154,51 +118,27 @@ scenes:
         ru_title: Гараж
         svg_polygon_id: garage-1
         description: "Entrance is on the -1 floor"
-      - title: Reading Hall
+      - title: "Reading Hall"
         ru_title: Читалка
         svg_polygon_id: reading-hall-1
         prioritized: true
       - title: "Main Hall"
-        svg_polygon_id: "main-hall"
-      - title: "Atrium"
-        svg_polygon_id: "atrium"
-      - title: "Reception"
-        svg_polygon_id: "reception"
+        svg_polygon_id: main-hall
+      - title: Atrium
+        svg_polygon_id: atrium
+      - title: Reception
+        svg_polygon_id: reception
       - title: "Merch Shop"
-        svg_polygon_id: "merch"
-
+        svg_polygon_id: merch
   - scene_id: "university-floor-2"
     svg_file: "university-floor-2.svg"
     title: "Floor 2"
-    orientation: "horizontal"
-    map_x: -30
-    map_y: 70
-    title_x: 320
-    title_y: -150
-    title_font_size: 24
-    title_font_family: "serif"
-    legend_emoji_font_family: "'Apple Color Emoji', sans-serif"
-    legend_x: 890
-    legend_y: 30
-    legend_icon_spacing: 17
-    legend_font_size: 14
-    scale: 0.35
-    legend_item_height: 20
-    legend:
-      - legend_id: "Elevator"
-        color: "#17b69c"
-      - legend_id: "Dining area"
-        color: "#9adbf8"
-      - legend_id: "Lecture hall"
-        color: "#b3dd36"
-      - legend_id: "Meeting rooms"
-        color: "#9681f2"
-      - legend_id: "Personnel and Corporate Culture Development Center"
-        color: "#dd7168"
+    pdf_export:
+      orientation: horizontal
     areas:
       - title: "Dorms 6-7"
-        svg_polygon_id: "dorms-6"
-        scene_pointer: "campus"
+        svg_polygon_id: dorms-6
+        scene_pointer: campus
       - title: "105"
         svg_polygon_id: "105"
         room_booking_id: "105"
@@ -237,8 +177,8 @@ scenes:
         svg_polygon_id: "206"
       - title: "207"
         svg_polygon_id: "207"
-      - title: "207a"
-        svg_polygon_id: "207a"
+      - title: 207a
+        svg_polygon_id: 207a
       - title: "208"
         svg_polygon_id: "208"
       - title: "209"
@@ -246,29 +186,29 @@ scenes:
         room_booking_id: "209"
       - title: "210"
         svg_polygon_id: "210"
-      - title: "210a"
-        svg_polygon_id: "210a"
+      - title: 210a
+        svg_polygon_id: 210a
         description: |
           Library.
           Schedule: Tue, Wed 14:00-18:00; Fri 13:00-16:45
           Books list: https://portal.university.innopolis.ru/reading_hall
           Telegram channel: https://t.me/+H0MsiY00PoI4Yzcy
-      - title: "Library"
-        svg_polygon_id: "library-mark"
+      - title: Library
+        svg_polygon_id: library-mark
         description: |
           Schedule: Tue, Wed 14:00-18:00; Fri 13:00-16:45
           Books list: https://portal.university.innopolis.ru/reading_hall
           Telegram channel: https://t.me/+H0MsiY00PoI4Yzcy
-      - title: "BookCrossing"
+      - title: BookCrossing
         ru_title: БукКроссинг
-        svg_polygon_id: "bookcrossing"
+        svg_polygon_id: bookcrossing
         description: |
           Bring the books you want to share to office 433, get a sticker and leave here;
           You can borrow any book from there, but don't forget to return it after reading;
           Here you can find review cards and put them in the books you have read for future readers!
-      - title: "BookCrossing"
+      - title: BookCrossing
         ru_title: БукКроссинг
-        svg_polygon_id: "bc-mark"
+        svg_polygon_id: bc-mark
         description: |
           Bring the books you want to share to office 433, get a sticker and leave here;
           You can borrow any book from there, but don't forget to return it after reading;
@@ -278,8 +218,8 @@ scenes:
         description: "Personnel and Corporate Culture Development Center"
       - title: "212"
         svg_polygon_id: "212"
-      - title: "212a"
-        svg_polygon_id: "212a"
+      - title: 212a
+        svg_polygon_id: 212a
       - title: "213"
         svg_polygon_id: "213"
       - title: Canteen
@@ -293,33 +233,14 @@ scenes:
         ru_title: Гараж
         svg_polygon_id: garage-2
         description: "Entrance is on the -1 floor"
-      - title: Reading Hall
+      - title: "Reading Hall"
         ru_title: Читалка
         svg_polygon_id: reading-hall-2
   - scene_id: "university-floor-3"
     svg_file: "university-floor-3.svg"
     title: "Floor 3"
-    orientation: "horizontal"
-    map_x: 28
-    map_y: 70
-    title_x: 320
-    title_y: -150
-    title_font_size: 24
-    title_font_family: "serif"
-    legend_emoji_font_family: "'Apple Color Emoji', sans-serif"
-    legend_x: 890
-    legend_y: 30
-    legend_icon_spacing: 17
-    legend_font_size: 14
-    scale: 0.32
-    legend_item_height: 20
-    legend:
-      - legend_id: "Elevator"
-        color: "#17b69c"
-      - legend_id: "Dining area"
-        color: "#9adbf8"
-      - legend_id: "Meeting rooms"
-        color: "#9681f2"
+    pdf_export:
+      orientation: horizontal
     areas:
       - title: "3.1"
         svg_polygon_id: "3.1"
@@ -344,10 +265,10 @@ scenes:
         room_booking_id: "301"
       - title: "302"
         svg_polygon_id: "302"
-      - title: "302/1"
-        svg_polygon_id: "302-1"
-      - title: "302/2"
-        svg_polygon_id: "302-2"
+      - title: 302/1
+        svg_polygon_id: 302-1
+      - title: 302/2
+        svg_polygon_id: 302-2
       - title: "303"
         svg_polygon_id: "303"
         room_booking_id: "303"
@@ -360,8 +281,8 @@ scenes:
       - title: "306"
         svg_polygon_id: "306"
         room_booking_id: "306"
-      - title: "306a"
-        svg_polygon_id: "306a"
+      - title: 306a
+        svg_polygon_id: 306a
       - title: "307"
         svg_polygon_id: "307"
         room_booking_id: "307"
@@ -372,35 +293,35 @@ scenes:
         svg_polygon_id: "309"
         description: |
           Organizational and Technical Department
-      - title: "309a"
-        svg_polygon_id: "309a"
-        room_booking_id: "309A"
+      - title: 309a
+        svg_polygon_id: 309a
+        room_booking_id: 309A
         description: "Clubs room"
       - title: "310"
         svg_polygon_id: "310"
-      - title: "310a"
-        svg_polygon_id: "310a"
+      - title: 310a
+        svg_polygon_id: 310a
         description: |
           College Innopolis
       - title: "College Innopolis"
-        svg_polygon_id: "college"
+        svg_polygon_id: college
         description: |
           College Innopolis
       - title: "311"
         svg_polygon_id: "311"
-      - title: "311a"
-        svg_polygon_id: "311a"
+      - title: 311a
+        svg_polygon_id: 311a
       - title: "312"
         svg_polygon_id: "312"
         room_booking_id: "312"
-      - title: "312a"
-        svg_polygon_id: "312a"
-      - title: "312b"
-        svg_polygon_id: "312b"
-      - title: "312c"
-        svg_polygon_id: "312c"
-      - title: "312d"
-        svg_polygon_id: "312d"
+      - title: 312a
+        svg_polygon_id: 312a
+      - title: 312b
+        svg_polygon_id: 312b
+      - title: 312c
+        svg_polygon_id: 312c
+      - title: 312d
+        svg_polygon_id: 312d
       - title: "313"
         svg_polygon_id: "313"
         room_booking_id: "313"
@@ -441,44 +362,17 @@ scenes:
         ru_title: Столовая
         svg_polygon_id: canteen-3
         description: "This is the canteen for events. The main canteen entrance is on the 1st floor."
-      - title: Reading Hall
+      - title: "Reading Hall"
         ru_title: Читалка
         svg_polygon_id: reading-hall-3
-      - title: Green Stairs
-        ru_title: Зелёные Ступеньки
+      - title: "Green Stairs"
+        ru_title: "Зелёные Ступеньки"
         svg_polygon_id: green-stairs
   - scene_id: "university-floor-4"
     svg_file: "university-floor-4.svg"
     title: "Floor 4"
-    orientation: "horizontal"
-    map_x: 0
-    map_y: 70
-    title_x: 320
-    title_y: -150
-    title_font_size: 24
-    title_font_family: "serif"
-    legend_emoji_font_family: "'Apple Color Emoji', sans-serif"
-    legend_x: 890
-    legend_y: 30
-    legend_icon_spacing: 17
-    legend_font_size: 14
-    scale: 0.33
-    legend_item_height: 20
-    legend:
-      - legend_id: "Elevator"
-        color: "#17b69c"
-      - legend_id: "Coffice"
-        color: "#9adbf8"
-      - legend_id: "Meeting rooms"
-        color: "#9681f2"
-      - legend_id: "IT Equipment Storage"
-        color: "#ffcb7d"
-      - legend_id: "Administration"
-        color: "#6d9bde"
-        legend: "423 — Rector's office\n424 — Director's office"
-      - legend_id: "Recruitment"
-        color: "#de766d"
-        legend: "433 — Recruitment sector\n455 — Human  resources department"
+    pdf_export:
+      orientation: horizontal
     areas:
       - title: "4.2"
         svg_polygon_id: "4.2"
@@ -495,10 +389,10 @@ scenes:
       - title: "401"
         svg_polygon_id: "401"
         people:
-          - Valentin Leplat
-          - Леплат Валентин
-          - Alexander Maloletov
-          - Малолетов Александр Васильевич
+          - "Valentin Leplat"
+          - "Леплат Валентин"
+          - "Alexander Maloletov"
+          - "Малолетов Александр Васильевич"
       - title: "402"
         svg_polygon_id: "402"
       - title: "403"
@@ -506,25 +400,25 @@ scenes:
       - title: "404"
         svg_polygon_id: "404"
         people:
-          - Eugene Zouev
-          - Зуев Евгений Александрович
+          - "Eugene Zouev"
+          - "Зуев Евгений Александрович"
       - title: "405"
         svg_polygon_id: "405"
         people:
-          - Georgy Gelvanovsky
-          - Гелвановский Георгий Владиславович
-          - Ruslan Saduov
-          - Садуов Руслан Талгатович
+          - "Georgy Gelvanovsky"
+          - "Гелвановский Георгий Владиславович"
+          - "Ruslan Saduov"
+          - "Садуов Руслан Талгатович"
       - title: "406"
-        ru_title: Методический отдел
+        ru_title: "Методический отдел"
         svg_polygon_id: "406"
         description: |
           Methodological department
       - title: "407"
         svg_polygon_id: "407"
         people:
-          - Manuel Mazzara
-          - Маццара Мануэль
+          - "Manuel Mazzara"
+          - "Маццара Мануэль"
       - title: "408"
         svg_polygon_id: "408"
       - title: "409"
@@ -532,18 +426,18 @@ scenes:
       - title: "410"
         svg_polygon_id: "410"
         people:
-          - Rustam Lukmanov
-          - Лукманов Рустам Абубакирович
+          - "Rustam Lukmanov"
+          - "Лукманов Рустам Абубакирович"
       - title: "411"
         svg_polygon_id: "411"
         people:
-          - Yaroslav Kholodov
-          - Холодов Ярослав Александрович
-      - title: "411a"
-        svg_polygon_id: "411a"
+          - "Yaroslav Kholodov"
+          - "Холодов Ярослав Александрович"
+      - title: 411a
+        svg_polygon_id: 411a
         people:
-          - Sergio Mayorga
-          - Майорга Сергей Татарин
+          - "Sergio Mayorga"
+          - "Майорга Сергей Татарин"
       - title: "412"
         svg_polygon_id: "412"
       - title: "413"
@@ -557,14 +451,14 @@ scenes:
         description: |
           Director's office
         people:
-          - Dmitriy Vandyukov
-          - Вандюков Дмитрий Владимирович
+          - "Dmitriy Vandyukov"
+          - "Вандюков Дмитрий Владимирович"
       - title: "417"
         svg_polygon_id: "417"
       - title: "418"
         svg_polygon_id: "418"
-      - title: "418a"
-        svg_polygon_id: "418a"
+      - title: 418a
+        svg_polygon_id: 418a
       - title: "419"
         svg_polygon_id: "419"
       - title: "420"
@@ -580,8 +474,8 @@ scenes:
         svg_polygon_id: "424"
         description: "Rector's office"
         people:
-          - Alexander Gasnikov
-          - Гасников Александр Владимирович
+          - "Alexander Gasnikov"
+          - "Гасников Александр Владимирович"
       - title: "425"
         svg_polygon_id: "425"
         room_booking_id: "425"
@@ -620,20 +514,20 @@ scenes:
         svg_polygon_id: "441"
       - title: "442"
         svg_polygon_id: "442"
-      - title: "443a"
-        svg_polygon_id: "443a"
-      - title: "443b"
-        svg_polygon_id: "443b"
-      - title: "443c"
-        svg_polygon_id: "443c"
+      - title: 443a
+        svg_polygon_id: 443a
+      - title: 443b
+        svg_polygon_id: 443b
+      - title: 443c
+        svg_polygon_id: 443c
       - title: "444"
         svg_polygon_id: "444"
       - title: "445"
         svg_polygon_id: "445"
       - title: "446"
         svg_polygon_id: "446"
-      - title: "446a"
-        svg_polygon_id: "446a"
+      - title: 446a
+        svg_polygon_id: 446a
       - title: "447"
         svg_polygon_id: "447"
       - title: "448"
@@ -642,14 +536,14 @@ scenes:
         svg_polygon_id: "449"
       - title: "450"
         svg_polygon_id: "450"
-      - title: "450a"
-        svg_polygon_id: "450a"
+      - title: 450a
+        svg_polygon_id: 450a
       - title: "451"
         svg_polygon_id: "451"
         description: "IT department"
-      - title: "Coffice"
-        svg_polygon_id: "coffice"
-        description: "Кофис"
+      - title: Coffice
+        svg_polygon_id: coffice
+        description: Кофис
       - title: "452"
         svg_polygon_id: "452"
         room_booking_id: "452"
@@ -682,25 +576,25 @@ scenes:
       - title: "464"
         svg_polygon_id: "464"
         people:
-          - Andrey Frolov
-          - Фролов Андрей Николаевич
-          - Ivan Konyukhov
-          - Конюхов Иван Владимирович
+          - "Andrey Frolov"
+          - "Фролов Андрей Николаевич"
+          - "Ivan Konyukhov"
+          - "Конюхов Иван Владимирович"
       - title: "465"
         svg_polygon_id: "465"
         people:
-          - Anna Maslovskaya
-          - Масловская Анна Геннадьевна
+          - "Anna Maslovskaya"
+          - "Масловская Анна Геннадьевна"
       - title: "466"
         svg_polygon_id: "466"
         people:
-          - Adil Khan Mehmood
-          - Хан Адил Мехмуд
+          - "Adil Khan Mehmood"
+          - "Хан Адил Мехмуд"
       - title: "467"
         svg_polygon_id: "467"
         people:
-          - Artem Burmyakov
-          - Бурмяков Артем Сергеевич
+          - "Artem Burmyakov"
+          - "Бурмяков Артем Сергеевич"
       - title: "468"
         svg_polygon_id: "468"
       - title: "469"
@@ -710,87 +604,71 @@ scenes:
         description: |
           Vice-rector for Academic Affairs' office
         people:
-          - Evgeny Bobrov
-          - Бобров Евгений Сергеевич
+          - "Evgeny Bobrov"
+          - "Бобров Евгений Сергеевич"
       - title: "471"
         svg_polygon_id: "471"
         people:
-          - Nikola Zlatanov
-          - Златанов Никола
+          - "Nikola Zlatanov"
+          - "Златанов Никола"
       - title: "472"
-        ru_title: Руководители центров и отделов ВО
+        ru_title: "Руководители центров и отделов ВО"
         svg_polygon_id: "472"
-        people:
-          - Darina Venediktova
-          - Венедиктова Дарина Анатольевна
-          - Dmitry Ushakov
-          - Ушаков Дмитрий
         description: |
           Heads of departments of the Higher Education
+        people:
+          - "Darina Venediktova"
+          - "Венедиктова Дарина Анатольевна"
+          - "Dmitry Ushakov"
+          - "Ушаков Дмитрий"
       - title: "473"
         svg_polygon_id: "473"
       - title: "474"
         svg_polygon_id: "474"
         people:
-          - Giancarlo Succi
-          - Суччи Джанкарло
-          - Paolo Ciancarini
-          - Паоло Чанкарини
+          - "Giancarlo Succi"
+          - "Суччи Джанкарло"
+          - "Paolo Ciancarini"
+          - "Паоло Чанкарини"
       - title: "475"
         svg_polygon_id: "475"
         people:
-          - Vladimir Ivanov
-          - Иванов Владимир Владимирович
+          - "Vladimir Ivanov"
+          - "Иванов Владимир Владимирович"
       - title: "476"
         svg_polygon_id: "476"
         description: |
           Department of Education
           Working hours: 9:00 — 18:00 (weekdays)
           Telegram bot: https://t.me/education_support_bot
-
   - scene_id: "university-floor-5"
     svg_file: "university-floor-5.svg"
     title: "Floor 5"
-    orientation: "horizontal"
-    map_x: 0
-    map_y: 70
-    title_x: 320
-    title_y: -150
-    title_font_size: 24
-    title_font_family: "serif"
-    legend_emoji_font_family: "'Apple Color Emoji', sans-serif"
-    legend_x: 890
-    legend_y: 30
-    legend_icon_spacing: 17
-    legend_font_size: 14
-    scale: 0.33
-    legend_item_height: 20
-    legend:
-      - legend_id: "Elevator"
-        color: "#17b69c"
+    pdf_export:
+      orientation: horizontal
     areas:
       - title: "501"
         svg_polygon_id: "501"
-      - title: "502a"
-        svg_polygon_id: "502a"
-      - title: "502b"
-        svg_polygon_id: "502b"
+      - title: 502a
+        svg_polygon_id: 502a
+      - title: 502b
+        svg_polygon_id: 502b
       - title: "503"
         svg_polygon_id: "503"
-        description: "InnoCyberPolygon"
-      - title: "504a"
-        svg_polygon_id: "504a"
-      - title: "504b"
-        svg_polygon_id: "504b"
-      - title: "504c"
-        svg_polygon_id: "504c"
+        description: InnoCyberPolygon
+      - title: 504a
+        svg_polygon_id: 504a
+      - title: 504b
+        svg_polygon_id: 504b
+      - title: 504c
+        svg_polygon_id: 504c
       - title: "505"
         svg_polygon_id: "505"
       - title: "506"
         svg_polygon_id: "506"
         people:
-          - Reza Mohammad Bahrami
-          - Реза Мохамммад Бахрами
+          - "Reza Mohammad Bahrami"
+          - "Реза Мохамммад Бахрами"
       - title: "507"
         svg_polygon_id: "507"
       - title: "508"
@@ -813,34 +691,18 @@ scenes:
         svg_polygon_id: "516"
       - title: "VK Zone"
         ru_title: "ВК Зона"
-        svg_polygon_id: "vk"
-        description: "Coworking"
-      - title: Fifth floor printer
+        svg_polygon_id: vk
+        description: Coworking
+      - title: "Fifth floor printer"
         svg_polygon_id: printer-5f
-
   - scene_id: "university-floor-0"
     svg_file: "university-floor-0.svg"
     title: "Floor -1"
-    orientation: "horizontal"
-    map_x: -30
-    map_y: 70
-    title_x: 320
-    title_y: -150
-    title_font_size: 24
-    title_font_family: "serif"
-    legend_emoji_font_family: "'Apple Color Emoji', sans-serif"
-    legend_x: 890
-    legend_y: 30
-    legend_icon_spacing: 17
-    legend_font_size: 14
-    scale: 0.35
-    legend_item_height: 20
-    legend:
-      - legend_id: "Elevator"
-        color: "#17b69c"
+    pdf_export:
+      orientation: horizontal
     areas:
-      - title: "105a"
-        svg_polygon_id: "105a"
+      - title: 105a
+        svg_polygon_id: 105a
         description: "Robotics lab"
       - title: Garage
         ru_title: Гараж
@@ -848,34 +710,28 @@ scenes:
         prioritized: true
       - title: "Game club"
         ru_title: "Игровой клуб"
-        svg_polygon_id: "gameclub"
-      - title: "Cloakroom"
-        ru_title: "Гардероб"
-        svg_polygon_id: "cloakroom"
-
+        svg_polygon_id: gameclub
+      - title: Cloakroom
+        ru_title: Гардероб
+        svg_polygon_id: cloakroom
   - scene_id: "sport-complex"
     svg_file: "sport-complex.svg"
     title: "Sport Complex"
-    orientation: "vertical"
-    map_x: 20
-    map_y: 50
-    title_x: 450
-    title_y: -400
-    title_font_size: 28
-    title_font_family: "monospace"
+    pdf_export:
+      orientation: vertical
     areas:
-      - title: Music Room
-        ru_title: Музыкальная Комната
+      - title: "Music Room"
+        ru_title: "Музыкальная Комната"
         svg_polygon_id: music-room
         description: |
           Room 020
           Website: https://innohassle.ru/music-room
           Telegram bot: https://t.me/InnoMusicRoomBot
-      - title: Big Hall
-        ru_title: Большой Зал
+      - title: "Big Hall"
+        ru_title: "Большой Зал"
         svg_polygon_id: big-hall
-      - title: Sales Department
-        ru_title: Отдел Продаж
+      - title: "Sales Department"
+        ru_title: "Отдел Продаж"
         svg_polygon_id: sales-department
         description: |
           Working hours:
@@ -886,7 +742,7 @@ scenes:
       - title: Reception
         ru_title: Ресепшен
         svg_polygon_id: reception
-      - title: Changing Rooms
+      - title: "Changing Rooms"
         ru_title: Раздевалки
         svg_polygon_id: changing-room-1
         prioritized: true
@@ -897,18 +753,18 @@ scenes:
       - title: Hammam
         ru_title: Хаммам
         svg_polygon_id: hammam-1.2
-      - title: Finnish Sauna
-        ru_title: Финская Сауна
+      - title: "Finnish Sauna"
+        ru_title: "Финская Сауна"
         svg_polygon_id: finnish-sauna-1
         prioritized: true
-      - title: Finnish Sauna
-        ru_title: Финская Сауна
+      - title: "Finnish Sauna"
+        ru_title: "Финская Сауна"
         svg_polygon_id: finnish-sauna-2
-      - title: Swimming Pool
+      - title: "Swimming Pool"
         ru_title: Бассейн
         svg_polygon_id: swimming-pool
-      - title: InnoMax Cafe
-        ru_title: Кафе Инномакс
+      - title: "InnoMax Cafe"
+        ru_title: "Кафе Инномакс"
         svg_polygon_id: innomax
         description: |
           Working hours:
@@ -919,17 +775,17 @@ scenes:
         svg_polygon_id: "221"
       - title: "223"
         svg_polygon_id: "223"
-      - title: Boxing Gym — 203
-        ru_title: Зал для бокса - 203
+      - title: "Boxing Gym — 203"
+        ru_title: "Зал для бокса - 203"
         svg_polygon_id: "203"
       - title: "232"
         svg_polygon_id: "232"
       - title: "233"
         svg_polygon_id: "233"
-      - title: Table Tennis Zone
-        ru_title: Зона Настольного Тенниса
+      - title: "Table Tennis Zone"
+        ru_title: "Зона Настольного Тенниса"
         svg_polygon_id: table-tennis-zone
-      - title: Changing Rooms
+      - title: "Changing Rooms"
         ru_title: Раздевалки
         svg_polygon_id: changing-room-2
       - title: Hammam
@@ -940,16 +796,16 @@ scenes:
         svg_polygon_id: hammam-2.2
       - title: "3rd floor"
         ru_title: "3-й этаж"
-        svg_polygon_id: "floor-3"
+        svg_polygon_id: floor-3
       - title: "2nd floor"
         ru_title: "2-й этаж"
-        svg_polygon_id: "floor-2"
+        svg_polygon_id: floor-2
       - title: "1st floor"
         ru_title: "1-й этаж"
-        svg_polygon_id: "floor-1"
+        svg_polygon_id: floor-1
       - title: "ground floor"
         ru_title: "0-й этаж"
-        svg_polygon_id: "floor-0"
+        svg_polygon_id: floor-0
       - title: "3.1"
         svg_polygon_id: "3.1"
       - title: "3.2"
@@ -963,69 +819,41 @@ scenes:
   - scene_id: "campus"
     svg_file: "campus.svg"
     title: "Campus"
-    orientation: "horizontal"
-    map_x: -750
-    map_y: -400
-    title_x: 675
-    title_y: -320
-    title_font_size: 28
-    title_font_family: "monospace"
-    scale: 1.95
-    legend_x: 870
-    legend_y: 240
-    legend_font_size: 14
-    legend_item_height: 18
-    legend_emoji_font_family: "Apple Color Emoji, sans-serif"
-    legend:
-      - legend_id: "Dorms Administration"
-        emoji: "👩"
-      - legend_id: "Dorms Reception"
-        emoji: "💸"
-      - legend_id: "First-aid post"
-        emoji: "🚑"
-      - legend_id: "Table tennis"
-        emoji: "🏓"
-      - legend_id: "Security guards' lockers \n for prohibited items"
-        emoji: "🗄️"
-      - legend_id: "Bicycles Storage"
-        emoji: "🚲"
-      - legend_id: "Geek cafe"
-        emoji: "🥣"
-      - legend_id: "Ski Equipment Pick-Up Point"
-        emoji: "⛷️"
+    pdf_export:
+      orientation: horizontal
     areas:
-      - title: Innopolis University
-        ru_title: Университет Иннополис
+      - title: "Innopolis University"
+        ru_title: "Университет Иннополис"
         svg_polygon_id: iu
-      - title: Football Stadium
-        ru_title: Футбольный Стадион
+      - title: "Football Stadium"
+        ru_title: "Футбольный Стадион"
         svg_polygon_id: stadium
-      - title: Hockey Box
-        ru_title: Хоккейная Коробка
+      - title: "Hockey Box"
+        ru_title: "Хоккейная Коробка"
         svg_polygon_id: hockey-box
-      - title: Tennis Court 1
-        ru_title: Теннисный Корт 1
+      - title: "Tennis Court 1"
+        ru_title: "Теннисный Корт 1"
         svg_polygon_id: tc-1
-      - title: Tennis Court 2
-        ru_title: Теннисный Корт 2
+      - title: "Tennis Court 2"
+        ru_title: "Теннисный Корт 2"
         svg_polygon_id: tc-2
-      - title: Tennis Court 3
-        ru_title: Теннисный Корт 3
+      - title: "Tennis Court 3"
+        ru_title: "Теннисный Корт 3"
         svg_polygon_id: tc-3
-      - title: Tennis Court 4
-        ru_title: Теннисный Корт 4
+      - title: "Tennis Court 4"
+        ru_title: "Теннисный Корт 4"
         svg_polygon_id: tc-4
-      - title: Basketball Court 1
-        ru_title: Баскетбольная Площадка 1
+      - title: "Basketball Court 1"
+        ru_title: "Баскетбольная Площадка 1"
         svg_polygon_id: bc-1
-      - title: Basketball Court 2
-        ru_title: Баскетбольная Площадка 2
+      - title: "Basketball Court 2"
+        ru_title: "Баскетбольная Площадка 2"
         svg_polygon_id: bc-2
-      - title: Volleyball Court
-        ru_title: Волейбольная Площадка
+      - title: "Volleyball Court"
+        ru_title: "Волейбольная Площадка"
         svg_polygon_id: vc-1
-      - title: Beach Volleyball Court
-        ru_title: Площадка для пляжного волейбола
+      - title: "Beach Volleyball Court"
+        ru_title: "Площадка для пляжного волейбола"
         svg_polygon_id: vc-2
       - title: Parking
         ru_title: Парковка
@@ -1043,99 +871,99 @@ scenes:
         ru_title: Парковка
         svg_polygon_id: parking-d-1
         description: "The parking near the first dormitory."
-      - title: Sport Complex
+      - title: "Sport Complex"
         ru_title: Спорткомлекс
         svg_polygon_id: sc
       - title: Roundabout
-        ru_title: Перекресток с круговым движением
+        ru_title: "Перекресток с круговым движением"
         svg_polygon_id: roundabout
-      - title: Dormitory 1
-        ru_title: Общежитие 1
+      - title: "Dormitory 1"
+        ru_title: "Общежитие 1"
         svg_polygon_id: d-1
         description: |
           Geek Cafe (10:00 — 22:00 (every day), Telegram channel: https://t.me/geek_cafe);
           Transition to IU is on the 2nd floor.
-      - title: Geek Cafe
-        ru_title: Гик Кафе
+      - title: "Geek Cafe"
+        ru_title: "Гик Кафе"
         svg_polygon_id: d-1-note
         description: |
           Working hours: 10:00 — 22:00 (every day)
           Telegram channel: https://t.me/geek_cafe
-      - title: Dormitory 2
-        ru_title: Общежитие 2
+      - title: "Dormitory 2"
+        ru_title: "Общежитие 2"
         svg_polygon_id: d-2
         description: |
           Bicycles Storage;
           Transition to IU is on the 2nd floor.
-      - title: Bicycles Storage
-        ru_title: Помещение хранения велосипедов
+      - title: "Bicycles Storage"
+        ru_title: "Помещение хранения велосипедов"
         svg_polygon_id: d-2-note
-      - title: Dormitory 3
-        ru_title: Общежитие 3
+      - title: "Dormitory 3"
+        ru_title: "Общежитие 3"
+        svg_polygon_id: d-3
         description: |
           Security guards' lockers for prohibited items;
           Transition to IU is on the 2nd floor.
-        svg_polygon_id: d-3
-      - title: Security guards' lockers for prohibited items
-        ru_title: Камеры хранения запрещенных вещей
+      - title: "Security guards' lockers for prohibited items"
+        ru_title: "Камеры хранения запрещенных вещей"
         svg_polygon_id: d-3-note
-      - title: Dormitory 4
-        ru_title: Общежитие 4
+      - title: "Dormitory 4"
+        ru_title: "Общежитие 4"
         svg_polygon_id: d-4
         description: |
           First-aid post (the 1st floor, Telegram chat: https://t.me/joinchat/CYQdEE7F09Mkbmp_G9r0Bw, hotline: +79655962805, go to room 4-101 in night emergency cases);
           Tennis Tables;
           Transition to IU is on the 2nd floor.
-      - title: First-aid post and Tennis Tables
-        ru_title: Медпункт и Теннисные Столы
+      - title: "First-aid post and Tennis Tables"
+        ru_title: "Медпункт и Теннисные Столы"
+        svg_polygon_id: d-4-note
         description: |
           First-aid post (the 1st floor, Telegram chat: https://t.me/joinchat/CYQdEE7F09Mkbmp_G9r0Bw, hotline: +79655962805, go to room 4-101 in night emergency cases)
-        svg_polygon_id: d-4-note
-      - title: Dormitory 5
-        ru_title: Общежитие 5
+      - title: "Dormitory 5"
+        ru_title: "Общежитие 5"
         svg_polygon_id: d-5
         description: |
           Reception (9:00 — 19:30 (every day), the 1st floor);
           Administration (9:00 — 18:00 (Mon-Fri), the 1st floor);
           Transition to IU is on the 2nd floor.
-      - title: Reception and Dorms Administration
-        ru_title: Ресепшн и Администрация Жилого Комплекса
+      - title: "Reception and Dorms Administration"
+        ru_title: "Ресепшн и Администрация Жилого Комплекса"
         svg_polygon_id: d-5-note
         description: |
           Reception (9:00 — 19:30 (every day), the 1st floor);
           Administration (9:00 — 18:00 (Mon-Fri), the 1st floor)
-      - title: Dormitory 6
-        ru_title: Общежитие 6
+      - title: "Dormitory 6"
+        ru_title: "Общежитие 6"
         svg_polygon_id: d-6
         description: "Transition to IU is on the 3rd floor."
-      - title: Dormitory 7
-        ru_title: Общежитие 7
+      - title: "Dormitory 7"
+        ru_title: "Общежитие 7"
         svg_polygon_id: d-7
         description: |
           Ski equipment pick-up point (9:00 — 21:00 (every day), room 7-127 next to the security post, website https://portal.university.innopolis.ru/booking/index.php, Telegram https://t.me/sportrentui);
           Transition to IU is on the 3rd floor.
-      - title: Ski Equipment Pick-Up Point
-        ru_title: Прокат Горнолыжного Снаряжения
+      - title: "Ski Equipment Pick-Up Point"
+        ru_title: "Прокат Горнолыжного Снаряжения"
         svg_polygon_id: d-7-note
         description: |
           9:00 — 21:00 (every day), room 7-127 next to the security post, website https://portal.university.innopolis.ru/booking/index.php, Telegram https://t.me/sportrentui
-      - title: Pedestrian Crossing
-        ru_title: Пешеходный переход
+      - title: "Pedestrian Crossing"
+        ru_title: "Пешеходный переход"
         svg_polygon_id: p-1
         description: "In front of tennis courts."
-      - title: Pedestrian Crossing
-        ru_title: Пешеходный переход
+      - title: "Pedestrian Crossing"
+        ru_title: "Пешеходный переход"
         svg_polygon_id: p-2
         description: "In front of the stadium."
-      - title: Pedestrian Crossing
-        ru_title: Пешеходный переход
+      - title: "Pedestrian Crossing"
+        ru_title: "Пешеходный переход"
         svg_polygon_id: p-3
         description: "In front of the sport complex."
-      - title: Pedestrian Crossing
-        ru_title: Пешеходный переход
+      - title: "Pedestrian Crossing"
+        ru_title: "Пешеходный переход"
         svg_polygon_id: p-4
         description: "Between IU and sport complex."
-      - title: Pedestrian Crossing
-        ru_title: Пешеходный переход
+      - title: "Pedestrian Crossing"
+        ru_title: "Пешеходный переход"
         svg_polygon_id: p-5
         description: "In front of IU."

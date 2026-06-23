@@ -12,7 +12,7 @@ from src.logging_ import logger
 
 from . import maps_repo
 from .config import settings
-from .pdf_generator import generate_all_maps_pdf
+from .pdf_export import generate_all_maps_pdf
 from .schemas import Scene, SearchResult
 
 router = APIRouter(tags=["Scenes"], route_class=AutoDeriveResponsesAPIRoute)
@@ -32,7 +32,5 @@ def search_areas(query: str = Query(..., min_length=1)) -> list[SearchResult]:
 
 @router.get("/pdf")
 def export_pdf() -> FileResponse:
-    pdf_path = settings.static_directory / "all_maps.pdf"
-    if not pdf_path.exists():
-        generate_all_maps_pdf()
+    pdf_path = generate_all_maps_pdf(settings.static_directory, maps_repo.get_all_scenes())
     return FileResponse(pdf_path, filename="maps.pdf", media_type="application/pdf")
