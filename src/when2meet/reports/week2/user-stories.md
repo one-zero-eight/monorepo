@@ -18,11 +18,11 @@ Selected **Must Have** stories for the first deliverable:
 
 ## US-001: Create a new meeting
 
-**Requirement status:** Active  
+**Requirement status:** Active
 **MoSCoW priority:** Must Have
 
-As a meeting organizator,  
-I want to create a new meeting,  
+As a meeting organizator,
+I want to create a new meeting,
 so that I will predefine appropriate time.
 
 ### Notes and constraints
@@ -33,11 +33,11 @@ so that I will predefine appropriate time.
 
 ## US-002: Share a meeting
 
-**Requirement status:** Active  
+**Requirement status:** Active
 **MoSCoW priority:** Must Have
 
-As a meeting organizator,  
-I want to share a meeting,  
+As a meeting organizator,
+I want to share a meeting,
 so that I will collect users opinions about their comfortable time.
 
 ### Notes and constraints
@@ -47,11 +47,11 @@ so that I will collect users opinions about their comfortable time.
 
 ## US-003: Join meeting and submit availability
 
-**Requirement status:** Active  
+**Requirement status:** Active
 **MoSCoW priority:** Must Have
 
-As a meeting participant,  
-I want to connect to the meeting via link, and put time that appropriate to me to share my opinion with other participants,  
+As a meeting participant,
+I want to connect to the meeting via link, and put time that appropriate to me to share my opinion with other participants,
 so that the organizer can see when I am available.
 
 ### Notes and constraints
@@ -61,11 +61,11 @@ so that the organizer can see when I am available.
 
 ## US-004: See calendar events while choosing time
 
-**Requirement status:** Active  
+**Requirement status:** Active
 **MoSCoW priority:** Should Have
 
-As a meeting participant,  
-I want to connect be aware about events in my calendar during shoosing time for meeting,  
+As a meeting participant,
+I want to connect be aware about events in my calendar during shoosing time for meeting,
 so that I will avoid events collision.
 
 ### Notes and constraints
@@ -75,7 +75,7 @@ so that I will avoid events collision.
 
 ## US-005: MEOW button
 
-**Requirement status:** Active  
+**Requirement status:** Active
 **MoSCoW priority:** Won't Have
 
 Provide a MEOW button, to make a funny kitten sound.
@@ -86,10 +86,10 @@ Provide a MEOW button, to make a funny kitten sound.
 
 ## US-006: View availability heat map
 
-**Requirement status:** Active  
+**Requirement status:** Active
 **MoSCoW priority:** Must Have
 
-As a meeting participant,  
+As a meeting participant,
 I want to see other participants opinion on the heat map, to know which time is relevant for them.
 
 ### Notes and constraints
@@ -99,11 +99,11 @@ I want to see other participants opinion on the heat map, to know which time is 
 
 ## US-007: Book a room for the best time
 
-**Requirement status:** Active  
+**Requirement status:** Active
 **MoSCoW priority:** Should Have
 
-As a meeting organizator,  
-I want to book a room within best time,  
+As a meeting organizator,
+I want to book a room within best time,
 so that I will not spend time seeking available room.
 
 ### Notes and constraints
@@ -113,10 +113,10 @@ so that I will not spend time seeking available room.
 
 ## US-008: Organizer reminders to participants
 
-**Requirement status:** Active  
+**Requirement status:** Active
 **MoSCoW priority:** Could Have
 
-As a meeting organizator,  
+As a meeting organizator,
 I want to have an opportunity to provide a reminder to users about the meeting, so they will be engaged to provide their responses.
 
 ### Notes and constraints
@@ -126,10 +126,10 @@ I want to have an opportunity to provide a reminder to users about the meeting, 
 
 ## US-009: Participant reminders to pick time
 
-**Requirement status:** Active  
+**Requirement status:** Active
 **MoSCoW priority:** Could Have
 
-As a meeting participant,  
+As a meeting participant,
 I want to recieve a reminders about picking time, so I will not forget about giving availability feedback.
 
 ### Notes and constraints
@@ -138,11 +138,11 @@ I want to recieve a reminders about picking time, so I will not forget about giv
 
 ## US-010: Edit or cancel a meeting
 
-**Requirement status:** Active  
+**Requirement status:** Active
 **MoSCoW priority:** Could Have
 
-As a meeting organizer,  
-I want to be able to edit the details of an existing meeting (such as name and description) or cancel it entirely,  
+As a meeting organizer,
+I want to be able to edit the details of an existing meeting (such as name and description) or cancel it entirely,
 so that I can adapt to changing plans and prevent participants from interacting with outdated or unnecessary events.
 
 ### Notes and constraints

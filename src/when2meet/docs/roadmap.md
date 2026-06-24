@@ -2,8 +2,8 @@
 
 
 ## Sprint 1 — MVP v1
-**Milestone:** [Sprint 1](https://github.com/one-zero-eight/monorepo/milestone/1)  
-**Dates:** Week 3 — 15 June 2026 to 21 June 2026  
+**Milestone:** [Sprint 1](https://github.com/one-zero-eight/monorepo/milestone/1)
+**Dates:** Week 3 — 15 June 2026 to 21 June 2026
 
 **Sprint Goal:** To release a basic working version of the service (MVP v1), which will allow organizers to create meetings and share an invitation link, and participants to mark their free time on the grid and see a general heatmap of the availability of all participants.
 
@@ -16,8 +16,8 @@
 - [US-006](https://github.com/one-zero-eight/monorepo/issues?q=is%3Aissue%20US-006) — View aggregated participant availability as a heatmap
 
 ## Sprint 2 — Meeting management and calendar context
-**Milestone:** [Sprint 2](https://github.com/one-zero-eight/monorepo/milestone/2)  
-**Dates:** Week 4 — 22 June 2026 to 28 June 2026  
+**Milestone:** [Sprint 2](https://github.com/one-zero-eight/monorepo/milestone/2)
+**Dates:** Week 4 — 22 June 2026 to 28 June 2026
 
 **Sprint Goal:** Improve scheduling decisions with calendar awareness and organizer controls.
 
