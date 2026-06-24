@@ -44,8 +44,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache \
     && apt-get update && apt-get install --no-install-recommends -y \
     curl \
-    libmagic1 \
-    libvips-dev
+    libmagic1
 
 
 RUN groupadd -g 1500 uv && \

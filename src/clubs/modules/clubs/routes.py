@@ -2,14 +2,14 @@
 Clubs list and management.
 """
 
-from typing import cast
+from io import BytesIO
 
 import beanie.exceptions
 import filetype
-import pyvips
 from beanie import PydanticObjectId
 from fastapi import APIRouter, HTTPException, UploadFile
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
+from PIL import Image
 from pymongo.errors import DuplicateKeyError
 from starlette import status
 from starlette.responses import RedirectResponse
@@ -192,10 +192,17 @@ async def set_club_logo(id: PydanticObjectId, logo_file: UploadFile, _: CLUBS_AD
         raise HTTPException(status_code=400, detail=f"Invalid content type ({content_type})")
 
     # Convert to webp and resize to 512
-    image = cast(pyvips.Image, pyvips.Image.new_from_buffer(bytes_, ""))
-    image_bytes = cast(bytes, image.write_to_buffer(".webp"))
-    image_512 = cast(pyvips.Image, pyvips.Image.thumbnail_buffer(bytes_, 512, height=512))
-    image_512_bytes = cast(bytes, image_512.write_to_buffer(".webp[Q=95,min-size]"))
+    image = Image.open(BytesIO(bytes_))
+
+    full_buf = BytesIO()
+    image.save(full_buf, format="WEBP")
+    image_bytes = full_buf.getvalue()
+
+    thumb = image.copy()
+    thumb.thumbnail((512, 512), Image.Resampling.LANCZOS)
+    thumb_buf = BytesIO()
+    thumb.save(thumb_buf, format="WEBP", quality=95, method=6)
+    image_512_bytes = thumb_buf.getvalue()
 
     # Save file
     logo_file_id = str(PydanticObjectId())
