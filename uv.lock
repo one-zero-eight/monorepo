@@ -851,7 +851,6 @@ source = { virtual = "." }
 dependencies = [
     { name = "aiofiles" },
     { name = "beanie" },
-    { name = "cairosvg" },
     { name = "colorlog" },
     { name = "cryptography" },
     { name = "fastapi" },
@@ -864,7 +863,6 @@ dependencies = [
     { name = "minio" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
-    { name = "pypdf" },
     { name = "python-multipart" },
     { name = "pytz" },
     { name = "pyyaml" },
@@ -897,6 +895,8 @@ guard = [
     { name = "google-auth-oauthlib" },
 ]
 maps = [
+    { name = "cairosvg" },
+    { name = "pypdf" },
     { name = "rapidfuzz" },
 ]
 room-booking = [
@@ -909,7 +909,6 @@ room-booking = [
 requires-dist = [
     { name = "aiofiles", specifier = ">=25.1.0" },
     { name = "beanie", specifier = ">=2.1.0" },
-    { name = "cairosvg", specifier = ">=2.9.0" },
     { name = "colorlog", specifier = ">=6.10.1" },
     { name = "cryptography", specifier = ">=48.0.0" },
     { name = "fastapi", specifier = ">=0.136.1" },
@@ -922,7 +921,6 @@ requires-dist = [
     { name = "minio", specifier = ">=7.2.20" },
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pydantic-settings", specifier = ">=2.14.1" },
-    { name = "pypdf", specifier = ">=6.13.0" },
     { name = "python-multipart", specifier = ">=0.0.28" },
     { name = "pytz", specifier = ">=2026.2" },
     { name = "pyyaml", specifier = ">=6.0.3" },
@@ -950,7 +948,11 @@ guard = [
     { name = "google-auth", specifier = ">=2.51.0" },
     { name = "google-auth-oauthlib", specifier = ">=1.4.0" },
 ]
-maps = [{ name = "rapidfuzz", specifier = ">=3.14.5" }]
+maps = [
+    { name = "cairosvg", specifier = ">=2.9.0" },
+    { name = "pypdf", specifier = ">=6.13.0" },
+    { name = "rapidfuzz", specifier = ">=3.14.5" },
+]
 room-booking = [
     { name = "email-validator", specifier = ">=2.0.0" },
     { name = "exchangelib", specifier = ">=5.6.0" },
