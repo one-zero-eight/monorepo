@@ -13,3 +13,21 @@ guard_service: # to run guard service you should provide a Google service accoun
 forms_service:
   links:
     signature_secret: null # secret used to sign and verify form payloads
+room_booking_service: # configure exchange credentials, api_key, and access_lists for local dev
+  api_key: null
+  exchange: # to create room booking you should provide exchange credentials from outlook account
+    ews_endpoint: https://mail.innopolis.ru/EWS/Exchange.asmx
+    username: null
+    password: null
+    ews_callback_url: null
+    bmp:
+      username: null
+      password: null
+  access_lists:
+    "309A": []
+    "108": []
+    "107": []
+    "106": []
+    "105": []
+    "300": []
+    "321": []

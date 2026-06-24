@@ -18,6 +18,7 @@ from src.config_root_schema import AccountsSettings, Settings
 from src.forms.config_schema import FormsSettings, LinksSettings
 from src.guard.config_schema import GuardSettings
 from src.maps.config_schema import MapsSettings
+from src.room_booking.config_schema import BmpExchange, Exchange, RoomBookingSettings
 from src.student_affairs.config_schema import OmnideskSettings, StudentAffairsSettings
 from src.when2meet.config_schema import When2MeetSettings
 
@@ -86,6 +87,18 @@ def load_root_settings() -> Settings:
                 uri=SecretStr(mongo_uri.replace("<service_name>", "forms")),
             ),
             links=LinksSettings(signature_secret=SecretStr("test-secret")),
+        ),
+        room_booking_service=RoomBookingSettings(
+            environment=Environment.TESTING,
+            api_key=SecretStr("test-room-booking-api-key"),
+            exchange=Exchange(
+                username="test@innopolis.ru",
+                password=SecretStr("test-password"),
+                bmp=BmpExchange(
+                    username="bmp-test@innopolis.ru",
+                    password=SecretStr("bmp-test-password"),
+                ),
+            ),
         ),
     )
 

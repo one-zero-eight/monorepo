@@ -50,10 +50,11 @@ dev = [
 #    "prometheus-fastapi-instrumentator>=7.1.0", # ~19 KiB
 #    "sqlalchemy[postgresql-asyncpg]>=2.0.49", # ~3.4 MiB
 #]
-#room-booking = [
-#    "exchangelib>=5.6.0", # ~238 KiB
-##    "requests-curl", # depends on curl runtime
-#]
+room-booking = [
+    "exchangelib>=5.6.0", # ~238 KiB
+    "email-validator>=2.0.0",
+    "requests-curl",
+]
 maps = [
     "rapidfuzz>=3.14.5", # ~4.1 MiB
 ]

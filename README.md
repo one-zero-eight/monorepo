@@ -14,6 +14,7 @@ This is the monorepo for backend services of InNoHassle ecosystem, all of them a
 - Forms - managing Yandex Forms links and generating signed prefilled URLs for authenticated users.
 - Guard - gating access to Google Spreadsheets by requiring InNoHassle Accounts authentication before adding users.
 - Maps - hosting Innopolis University maps to view them on innohassle.ru.
+- Room booking - view and manage room bookings at innohassle.ru via integration with Microsoft Outlook.
 - Student Affairs - omnidesk authentication via SSO for Student Affairs department to issue tickets.
 - When2Meet - service for meeting availability planning. SWP Week 2 report: [reports/week2/README.md](src/when2meet/reports/week2/README.md), MVP v0: [mvp-v0-report.md](src/when2meet/reports/week2/mvp-v0-report.md).
 
