@@ -68,11 +68,8 @@ app.add_middleware(
 )
 
 import src.forms.modules.links.routes  # noqa: E402
-import src.forms.modules.user.routes  # noqa: E402
 
 # Import routers above and include them below [do not edit this comment]
 app.include_router(src.forms.modules.links.routes.router)
 popule_openapi_tags(app, src.forms.modules.links.routes)
-app.include_router(src.forms.modules.user.routes.router)
-popule_openapi_tags(app, src.forms.modules.user.routes)
 # ^

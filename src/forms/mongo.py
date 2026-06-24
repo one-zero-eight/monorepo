@@ -1,14 +1,10 @@
 __all__ = [
     "Link",
     "LinkSchema",
-    "User",
-    "UserRole",
-    "UserSchema",
     "document_models",
 ]
 
 import datetime as dtm
-from enum import StrEnum
 from typing import ClassVar
 
 from pydantic import Field
@@ -36,21 +32,4 @@ class Link(LinkSchema, BeanieDocument):
         ]
 
 
-class UserRole(StrEnum):
-    DEFAULT = "default"
-    ADMIN = "admin"
-
-
-class UserSchema(BaseSchema):
-    innohassle_id: str
-    role: UserRole = UserRole.DEFAULT
-
-
-class User(UserSchema, BeanieDocument):
-    class Settings(BeanieDocument.Settings):
-        indexes: ClassVar = [
-            IndexModel("innohassle_id", unique=True),
-        ]
-
-
-document_models = [Link, User]
+document_models = [Link]
