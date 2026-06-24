@@ -62,24 +62,60 @@ class EventUpdate(BaseSchema):
 
 
 class ParticipantUpdate(BaseSchema):
-    name: str
-    "Name of the participant"
     availability: list[dtm.datetime]
     "List of slots the participant is available for"
-    if_needed: list[dtm.datetime] | None = None
-    "List of slots the participant is available for if needed"
 
-    @field_validator("availability", "if_needed", mode="after")
+    @field_validator("availability", mode="after")
     @classmethod
-    def validate_slots(cls, v: list[dtm.datetime] | None) -> list[dtm.datetime] | None:
-        if v is None:
-            return None
+    def validate_slots(cls, v: list[dtm.datetime]) -> list[dtm.datetime]:
         return [normalize_datetime(x) for x in v]
+
+
+class ParticipantView(BaseSchema):
+    user_id: str
+    "InNoHassle Accounts user ID"
+    email: str | None = None
+    "Innopolis email"
+    first_name: str | None = None
+    "Participant first name"
+    last_name: str | None = None
+    "Participant last name"
+    telegram: str | None = None
+    "Telegram @username if linked"
+    availability: list[dtm.datetime]
+    "List of slots the participant is available for"
+
+
+class EventView(BaseSchema):
+    id: PydanticObjectId
+    "Event ID"
+    slug: str
+    "Short URL-safe public event reference"
+    name: str
+    "Name of the event"
+    description: str | None = None
+    "Description of the event"
+    slots: list[dtm.datetime]
+    "All possible slots for the event"
+    participants: list[ParticipantView]
+    "Participants with profile data and availability"
+    created_at: dtm.datetime
+    "Time when the event was created"
+    timezone: str = "UTC"
+    "IANA timezone name"
+    owner_id: str | None = None
+    "ID of the user who created the event"
+    specific_time: bool = False
+    "Whether the event has specific time slots"
+    time_range: TimeRange | None = None
+    "Optional metadata for display/edit"
 
 
 class EventSummary(BaseSchema):
     id: PydanticObjectId
     "Event ID"
+    slug: str
+    "Short URL-safe public event reference"
     name: str
     "Name of the event"
     description: str | None = None

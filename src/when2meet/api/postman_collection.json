@@ -3,27 +3,80 @@
     "name": "When2Meet API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
   "item": [
     {
       "name": "Events",
       "item": [
         {
+          "name": "List My Events",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/events/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events",
+                ""
+              ]
+            }
+          }
+        },
+        {
           "name": "Create Event",
           "request": {
             "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/events/",
-              "host": ["{{base_url}}"],
-              "path": ["events", ""]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events",
+                ""
+              ]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Team Meeting\",\n  \"description\": \"Weekly sync\",\n  \"slots\": [\n    \"2023-10-27T10:00:00Z\",\n    \"2023-10-27T11:00:00Z\"\n  ]\n}",
+              "raw": "{\n  \"name\": \"Team Meeting\",\n  \"description\": \"Weekly sync\",\n  \"slots\": [\n    \"2026-06-15T10:00:00Z\",\n    \"2026-06-15T11:00:00Z\"\n  ],\n  \"timezone\": \"Europe/Moscow\",\n  \"specific_time\": true,\n  \"time_range\": {\n    \"start\": \"10:00\",\n    \"end\": \"12:00\"\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
+            }
+          }
+        },
+        {
+          "name": "List Participating Events",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/events/participating",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events",
+                "participating"
+              ]
             }
           }
         },
@@ -32,41 +85,151 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{base_url}}/events/:event_id",
-              "host": ["{{base_url}}"],
-              "path": ["events", ":event_id"],
+              "raw": "{{base_url}}/events/:event_ref",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events",
+                ":event_ref"
+              ],
               "variable": [
                 {
-                  "key": "event_id",
-                  "value": "653b8f8f8f8f8f8f8f8f8f8f"
+                  "key": "event_ref",
+                  "value": "k7xm2pqa",
+                  "description": "Event slug or ObjectId"
                 }
               ]
             }
           }
         },
         {
-          "name": "Update Participant",
+          "name": "Update Event",
           "request": {
-            "method": "PUT",
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
-              "raw": "{{base_url}}/events/:event_id/participants",
-              "host": ["{{base_url}}"],
-              "path": ["events", ":event_id", "participants"],
+              "raw": "{{base_url}}/events/:event_ref",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events",
+                ":event_ref"
+              ],
               "variable": [
                 {
-                  "key": "event_id",
-                  "value": "653b8f8f8f8f8f8f8f8f8f8f"
+                  "key": "event_ref",
+                  "value": "k7xm2pqa",
+                  "description": "Event slug or ObjectId"
                 }
               ]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Alice\",\n  \"availability\": [\n    \"2023-10-27T10:00:00Z\"\n  ]\n}",
+              "raw": "{\n  \"name\": \"Updated Team Meeting\",\n  \"description\": \"Updated weekly sync\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
+            }
+          }
+        },
+        {
+          "name": "Delete Event",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/events/:event_ref",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events",
+                ":event_ref"
+              ],
+              "variable": [
+                {
+                  "key": "event_ref",
+                  "value": "k7xm2pqa",
+                  "description": "Event slug or ObjectId"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update My Availability",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/events/:event_ref/participants",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events",
+                ":event_ref",
+                "participants"
+              ],
+              "variable": [
+                {
+                  "key": "event_ref",
+                  "value": "k7xm2pqa",
+                  "description": "Event slug or ObjectId"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"availability\": [\n    \"2026-06-15T10:00:00Z\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Participant",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/events/:event_ref/participants/:user_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "events",
+                ":event_ref",
+                "participants",
+                ":user_id"
+              ],
+              "variable": [
+                {
+                  "key": "event_ref",
+                  "value": "k7xm2pqa",
+                  "description": "Event slug or ObjectId"
+                },
+                {
+                  "key": "user_id",
+                  "value": "5eb7cf5a86d9755df3a6c593",
+                  "description": "InNoHassle Accounts user ID"
+                }
+              ]
             }
           }
         }
@@ -76,7 +239,11 @@
   "variable": [
     {
       "key": "base_url",
-      "value": "http://localhost:8020"
+      "value": "http://localhost:8020/api/v0"
+    },
+    {
+      "key": "token",
+      "value": ""
     }
   ]
 }
