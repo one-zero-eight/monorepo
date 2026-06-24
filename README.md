@@ -66,6 +66,32 @@ our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CON
    <summary>For VSCode</summary>
    In the left menu of the IDE go to "Run and Debug" tab, choose the service name and click play button to start the API.
    After that, open the URL from console in your browser to view Swagger.
+
+   **Set up VSCode plugins**
+
+   Go to Extensions and install the following plugins (recommendations in [.vscode/extensions.json](.vscode/extensions.json)):
+   - Python (by Microsoft)
+   - Ruff (by Charlie Marsh)
+   - ty (by astral-sh)
+
+   Also, if you will use **ty** typechecker, you should disable others in VSCode settings:
+
+   ```json
+   {
+      "python.languageServer": "None",
+      "python.analysis.typeCheckingMode": "off",
+
+      "cursorpyright.disableLanguageServices": true,
+      "cursorpyright.analysis.typeCheckingMode": "off",
+
+      "basedpyright.disableLanguageServices": true,
+      "basedpyright.analysis.typeCheckingMode": "off",
+
+      "pyright.disableLanguageServices": true,
+      "pyright.analysis.typeCheckingMode": "off"
+   }
+   ```
+
    </details>
 
    <details>
