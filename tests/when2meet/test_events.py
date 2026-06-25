@@ -36,6 +36,14 @@ def test_get_event_by_slug(when2meet_client: TestClient, user_headers):
     assert response.json()["slug"] == slug
 
 
+def test_get_event_not_found(when2meet_client: TestClient, user_headers):
+    """Verify unknown event references return the public 404 contract."""
+    response = when2meet_client.get("/api/v0/events/missing-event", headers=user_headers)
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Event not found"
+
+
 def test_get_my_events(when2meet_client: TestClient, user_headers, auth_header_factory):
     """Verify filtering events owned by the user."""
     when2meet_client.post(
@@ -102,6 +110,18 @@ def test_patch_event_owner(when2meet_client: TestClient, user_headers, auth_head
         f"/api/v0/events/{event_id}", json={"name": "Hacker Name"}, headers=other_headers
     )
     assert patch_resp.status_code == 403
+
+
+def test_patch_event_not_found(when2meet_client: TestClient, user_headers):
+    """Verify updating an unknown event keeps the API contract stable."""
+    patch_resp = when2meet_client.patch(
+        "/api/v0/events/missing-event",
+        json={"name": "Updated Name"},
+        headers=user_headers,
+    )
+
+    assert patch_resp.status_code == 404
+    assert patch_resp.json()["detail"] == "Event not found"
 
 
 def test_patch_event_invalid_slots(when2meet_client: TestClient, user_headers):
@@ -245,6 +265,18 @@ def test_update_participant_invalid_slot(when2meet_client: TestClient, user_head
     assert "not available for this event" in response.json()["detail"]
 
 
+def test_update_participant_event_not_found(when2meet_client: TestClient, user_headers):
+    """Verify participant updates fail clearly for unknown event references."""
+    response = when2meet_client.put(
+        "/api/v0/events/missing-event/participants",
+        json={"availability": ["2026-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Event not found"
+
+
 def test_delete_participant(when2meet_client: TestClient, user_headers, auth_header_factory):
     """Verify participant deletion by owner or participant themselves."""
     create_resp = when2meet_client.post(
@@ -281,6 +313,21 @@ def test_delete_participant(when2meet_client: TestClient, user_headers, auth_hea
     random_headers = auth_header_factory("random-user", "random@example.com")
     del_resp = when2meet_client.delete(f"/api/v0/events/{event_id}/participants/other-user", headers=random_headers)
     assert del_resp.status_code == 403
+
+
+def test_delete_participant_not_found(when2meet_client: TestClient, user_headers):
+    """Verify participant deletion distinguishes missing participant from missing event."""
+    create_resp = when2meet_client.post(
+        "/api/v0/events",
+        json={"name": "Participant Missing", "slots": ["2026-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_resp.json()["id"]
+
+    del_resp = when2meet_client.delete(f"/api/v0/events/{event_id}/participants/missing-user", headers=user_headers)
+
+    assert del_resp.status_code == 404
+    assert del_resp.json()["detail"] == "Participant not found"
 
 
 def test_events_query_param_does_not_search(when2meet_client: TestClient, user_headers):
