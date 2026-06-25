@@ -10,6 +10,7 @@ from src.common_config import BaseSchema, Environment
 from src.forms.config_schema import FormsSettings
 from src.guard.config_schema import GuardSettings
 from src.maps.config_schema import MapsSettings
+from src.room_booking.config_schema import RoomBookingSettings
 from src.student_affairs.config_schema import StudentAffairsSettings
 from src.when2meet.config_schema import When2MeetSettings
 
@@ -39,6 +40,7 @@ class Settings(BaseSchema):
     when2meet_service: When2MeetSettings | None = None
     guard_service: GuardSettings | None = None
     forms_service: FormsSettings | None = None
+    room_booking_service: RoomBookingSettings | None = None
 
     @model_validator(mode="after")
     def accounts_mock_requires_development(self) -> Settings:
@@ -55,6 +57,8 @@ class Settings(BaseSchema):
             contexts.append(("guard_service", self.guard_service.environment))
         if self.forms_service is not None:
             contexts.append(("forms_service", self.forms_service.environment))
+        if self.room_booking_service is not None:
+            contexts.append(("room_booking_service", self.room_booking_service.environment))
         bad = [(name, env.value) for name, env in contexts if env != Environment.DEVELOPMENT]
         if bad:
             names = ", ".join(f"{n}={e}" for n, e in bad)

@@ -7,39 +7,39 @@ urls = { homepage = "https://t.me/one_zero_eight" }
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "aiofiles>=25.1.0", # ~14 KiB
-    "beanie>=2.1.0", # ~91 KiB
-    "colorlog>=6.10.1", # ~11 KiB
-    "cryptography>=48.0.0", # ~7.6 MiB
-    "fastapi>=0.136.1", # ~115 KiB
-    "fastapi-derive-responses>=0.1.7", # ~8 KiB
-    "fastapi-swagger>=0.4.50", # ~435 KiB
-    "filetype>=1.2.0", # ~19 KiB
-    "gunicorn>=26.0.0", # ~207 KiB
-    "httpx>=0.28.1", # ~72 KiB
-    "joserfc>=1.6.5", # ~69 KiB
-    "minio>=7.2.20", # ~92 KiB
-    "pydantic>=2.13.4", # ~461 KiB
-    "pydantic-settings>=2.14.1", # ~60 KiB
-    "python-multipart>=0.0.28", # ~29 KiB
-    "pytz>=2026.2", # ~498 KiB
-    "pyyaml>=6.0.3", # ~861 KiB
-    "uvicorn>=0.47.0", # ~69 KiB
+    "aiofiles>=25.1.0", # ~43 KiB
+    "beanie>=2.1.0", # ~347 KiB
+    "colorlog>=6.10.1", # ~27 KiB
+    "cryptography>=48.0.0", # ~13.7 MiB
+    "fastapi>=0.136.1", # ~737 KiB
+    "fastapi-derive-responses>=0.1.7", # ~25 KiB
+    "fastapi-swagger>=0.4.50", # ~1.6 MiB
+    "filetype>=1.2.0", # ~71 KiB
+    "gunicorn>=26.0.0", # ~761 KiB
+    "httpx>=0.28.1", # ~288 KiB
+    "joserfc>=1.6.5", # ~212 KiB
+    "minio>=7.2.20", # ~381 KiB
+    "pydantic>=2.13.4", # ~1.8 MiB
+    "pydantic-settings>=2.14.1", # ~225 KiB
+    "python-multipart>=0.0.28", # ~101 KiB
+    "pytz>=2026.2", # ~988 KiB
+    "pyyaml>=6.0.3", # ~2.7 MiB
+    "uvicorn>=0.47.0", # ~229 KiB
 ]
 
 [dependency-groups]
 dev = [
-    "prek>=0.4.0", # ~6.4 MiB
-    "pytest>=9.0.3", # ~366 KiB
-    "pytest-asyncio>=1.3.0", # ~15 KiB
-    "pytest-cov>=7.1.0", # ~22 KiB
-    "pytest-durations>=1.6.2", # ~14 KiB
-    "pytest-memray>=1.8.0; sys_platform != 'win32'",
-    "pytest-xdist>=3.8.0", # ~45 KiB
-    "respx>=0.23.1", # ~25 KiB
-    "ruff>=0.15.13", # ~11.5 MiB
-    "ty>=0.0.37", # ~11 MiB
-    "types-pyyaml>=6.0.12.20260510", # ~20 KiB
+    "prek>=0.4.0", # ~14.0 MiB
+    "pytest>=9.0.4", # ~1.3 MiB
+    "pytest-asyncio>=1.3.0", # ~45 KiB
+    "pytest-cov>=7.1.0", # ~71 KiB
+    "pytest-durations>=1.6.2", # ~34 KiB
+    "pytest-memray>=1.8.0; sys_platform != 'win32'", # ~48 KiB
+    "pytest-xdist>=3.8.0", # ~142 KiB
+    "respx>=0.23.1", # ~87 KiB
+    "ruff>=0.15.13", # ~27.0 MiB
+    "ty>=0.0.37", # ~25.0 MiB
+    "types-pyyaml>=6.0.12.20260510", # ~65 KiB
 ]
 # events = [
 #    "alembic>=1.18.4", # ~258 KiB
@@ -48,15 +48,18 @@ dev = [
 #    "prometheus-fastapi-instrumentator>=7.1.0", # ~19 KiB
 #    "sqlalchemy[postgresql-asyncpg]>=2.0.49", # ~3.4 MiB
 #]
-#room-booking = [
-#    "exchangelib>=5.6.0", # ~238 KiB
-##    "requests-curl", # depends on curl runtime
-#]
+room-booking = [
+    "exchangelib>=5.6.0", # ~871 KiB
+    "email-validator>=2.0.0", # ~99 KiB
+    "requests-curl", # ~27 KiB
+]
 maps = [
-    "rapidfuzz>=3.14.5", # ~4.1 MiB
+    "cairosvg>=2.9.0", # ~156 KiB
+    "pypdf>=6.13.0", # ~1.4 MiB
+    "rapidfuzz>=3.14.5", # ~11.5 MiB
 ]
 clubs = [
-    "pyvips[binary]>=3.1.1", # ~56 KiB + binary wheel | includes libvips on common platforms
+    "pillow>=12.2.0", # ~18.6 MiB
 ]
 #workshops = [
 #    "alembic>=1.18.4", # ~258 KiB
@@ -65,12 +68,12 @@ clubs = [
 #    "sqlmodel>=0.0.38", # ~27 KiB
 #]
 forms = [
-    "nanoid>=2.0.0", # ~6 KiB
+    "nanoid>=2.0.0", # ~9 KiB
 ]
 guard = [
-    "google-api-python-client>=2.196.0", # ~14.5 MiB
-    "google-auth>=2.51.0", # ~240 KiB
-    "google-auth-oauthlib>=1.4.0", # ~19 KiB
+    "google-api-python-client>=2.196.0", # ~95.4 MiB
+    "google-auth>=2.51.0", # ~871 KiB
+    "google-auth-oauthlib>=1.4.0", # ~52 KiB
 ]
 #schedule-builder-backend = [
 #    "numpy>=2.4.4", # ~17.8 MiB

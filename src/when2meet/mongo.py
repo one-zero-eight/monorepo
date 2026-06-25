@@ -4,19 +4,16 @@ from typing import Any, ClassVar
 
 from beanie import Document, PydanticObjectId
 from pydantic import ConfigDict, Field
+from pymongo import IndexModel
 
 from src.common_pydantic import BaseSchema
 
 
 class Participant(BaseSchema):
-    name: str
-    "Name of the participant"
+    user_id: str
+    "InNoHassle Accounts user ID"
     availability: list[dtm.datetime]
     "List of slots the participant is available for"
-    if_needed: list[dtm.datetime] = Field(default_factory=list)
-    "List of slots the participant is available for if needed"
-    user_id: str | None = None
-    "ID of the user who is this participant (if authenticated)"
 
 
 class TimeRange(BaseSchema):
@@ -34,6 +31,8 @@ class Event(Document):
     "Name of the event"
     description: str | None = None
     "Description of the event"
+    slug: str
+    "Short URL-safe public event reference"
     slots: list[dtm.datetime]
     "All possible slots for the event"
     participants: list[Participant] = Field(default_factory=list)
@@ -63,6 +62,7 @@ class Event(Document):
         keep_nulls = False
         max_nesting_depth = 1
         indexes: ClassVar[list[Any]] = [
+            IndexModel("slug", unique=True),
             "owner_id",
             [("created_at", -1)],
             "participants.user_id",

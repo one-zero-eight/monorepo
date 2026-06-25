@@ -1,12 +1,15 @@
-from beanie import PydanticObjectId
+import httpx
 from fastapi import APIRouter, HTTPException, status
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
+from pydantic import ValidationError
 
 from src.dependencies import INH_TOKEN_AUTH
+from src.inh_accounts_sdk import UserSchema, inh_accounts
+from src.logging_ import logger
 from src.when2meet.mongo import Event
 
 from . import events_repo
-from .schemas import EventCreate, EventSummary, EventUpdate, ParticipantUpdate
+from .schemas import EventCreate, EventSummary, EventUpdate, EventView, ParticipantUpdate, ParticipantView
 
 router = APIRouter(
     prefix="/events",
@@ -15,18 +18,65 @@ router = APIRouter(
 )
 
 
+def split_innopolis_name(name: str | None) -> tuple[str | None, str | None]:
+    if not name:
+        return None, None
+    parts = name.split()
+    if not parts:
+        return None, None
+    return parts[0], " ".join(parts[1:]) or None
+
+
+def build_participant_view(participant, user: UserSchema | None) -> ParticipantView:
+    innopolis_first_name = None
+    innopolis_last_name = None
+    email = None
+
+    if user and user.innopolis_info:
+        email = user.innopolis_info.email
+        innopolis_first_name, innopolis_last_name = split_innopolis_name(user.innopolis_info.name)
+
+    telegram_info = user.telegram_info if user else None
+    telegram_username = telegram_info.username if telegram_info else None
+
+    return ParticipantView(
+        user_id=participant.user_id,
+        email=email,
+        first_name=(telegram_info.first_name if telegram_info else None) or innopolis_first_name,
+        last_name=(telegram_info.last_name if telegram_info else None) or innopolis_last_name,
+        telegram=f"@{telegram_username.lstrip('@')}" if telegram_username else None,
+        availability=participant.availability,
+    )
+
+
+async def event_view(event: Event) -> EventView:
+    user_ids = list(dict.fromkeys(p.user_id for p in event.participants))
+    users: dict[str, UserSchema | None] = {}
+
+    if user_ids:
+        try:
+            users = await inh_accounts.get_users(user_ids)
+        except httpx.HTTPError, ValidationError, ValueError:
+            logger.warning("Failed to enrich When2Meet participants from Accounts", exc_info=True)
+
+    return EventView(
+        **event.model_dump(exclude={"participants"}),
+        participants=[build_participant_view(p, users.get(p.user_id)) for p in event.participants],
+    )
+
+
 @router.get(
     "/",
     responses={
-        status.HTTP_200_OK: {"description": "List of events matching the query"},
+        status.HTTP_200_OK: {"description": "List of events owned by the user"},
     },
 )
-async def search_events(q: str, auth: INH_TOKEN_AUTH) -> list[EventSummary]:
-    """Search for events by name or description."""
-    events = await events_repo.search(q)
+async def get_my_events(auth: INH_TOKEN_AUTH) -> list[EventSummary]:
+    """Get events owned by the authenticated user."""
+    events = await events_repo.get_my_events(auth.innohassle_id)
     return [
         EventSummary(
-            **e.model_dump(include={"id", "name", "description", "created_at"}),
+            **e.model_dump(include={"id", "slug", "name", "description", "created_at"}),
             participants_count=len(e.participants),
         )
         for e in events
@@ -40,27 +90,10 @@ async def search_events(q: str, auth: INH_TOKEN_AUTH) -> list[EventSummary]:
     },
     status_code=status.HTTP_201_CREATED,
 )
-async def create_event(event_in: EventCreate, auth: INH_TOKEN_AUTH) -> Event:
+async def create_event(event_in: EventCreate, auth: INH_TOKEN_AUTH) -> EventView:
     """Create a new event with time slots."""
-    return await events_repo.create(event_in, owner_id=auth.innohassle_id)
-
-
-@router.get(
-    "/mine",
-    responses={
-        status.HTTP_200_OK: {"description": "List of events owned by the user"},
-    },
-)
-async def get_my_events(auth: INH_TOKEN_AUTH) -> list[EventSummary]:
-    """Get events owned by the authenticated user."""
-    events = await events_repo.get_my_events(auth.innohassle_id)
-    return [
-        EventSummary(
-            **e.model_dump(include={"id", "name", "description", "created_at"}),
-            participants_count=len(e.participants),
-        )
-        for e in events
-    ]
+    event = await events_repo.create(event_in, owner_id=auth.innohassle_id)
+    return await event_view(event)
 
 
 @router.get(
@@ -74,7 +107,7 @@ async def get_participating_events(auth: INH_TOKEN_AUTH) -> list[EventSummary]:
     events = await events_repo.get_participating_events(auth.innohassle_id)
     return [
         EventSummary(
-            **e.model_dump(include={"id", "name", "description", "created_at"}),
+            **e.model_dump(include={"id", "slug", "name", "description", "created_at"}),
             participants_count=len(e.participants),
         )
         for e in events
@@ -82,22 +115,22 @@ async def get_participating_events(auth: INH_TOKEN_AUTH) -> list[EventSummary]:
 
 
 @router.get(
-    "/{event_id}",
+    "/{event_ref}",
     responses={
         status.HTTP_200_OK: {"description": "Event info"},
         status.HTTP_404_NOT_FOUND: {"description": "Event not found"},
     },
 )
-async def get_event(event_id: PydanticObjectId, auth: INH_TOKEN_AUTH) -> Event:
+async def get_event(event_ref: str, auth: INH_TOKEN_AUTH) -> EventView:
     """Get event details and participants' availability."""
-    event = await events_repo.read(event_id)
+    event = await events_repo.read_by_ref(event_ref)
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
-    return event
+    return await event_view(event)
 
 
 @router.patch(
-    "/{event_id}",
+    "/{event_ref}",
     responses={
         status.HTTP_200_OK: {"description": "Event updated"},
         status.HTTP_403_FORBIDDEN: {"description": "Not an owner"},
@@ -105,12 +138,12 @@ async def get_event(event_id: PydanticObjectId, auth: INH_TOKEN_AUTH) -> Event:
     },
 )
 async def update_event(
-    event_id: PydanticObjectId,
+    event_ref: str,
     event_update: EventUpdate,
     auth: INH_TOKEN_AUTH,
-) -> Event:
+) -> EventView:
     """Update event details (owner only)."""
-    event = await events_repo.read(event_id)
+    event = await events_repo.read_by_ref(event_ref)
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
@@ -127,20 +160,15 @@ async def update_event(
                 if slot not in new_slots_set:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Participant {p.name} has availability at {slot} which is not in the new slots",
-                    )
-            for slot in p.if_needed:
-                if slot not in new_slots_set:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Participant {p.name} has 'if_needed' at {slot} which is not in the new slots",
+                        detail=f"Participant {p.user_id} has availability at {slot} which is not in the new slots",
                     )
 
-    return await events_repo.update_event(event, event_update)
+    event = await events_repo.update_event(event, event_update)
+    return await event_view(event)
 
 
 @router.delete(
-    "/{event_id}",
+    "/{event_ref}",
     responses={
         status.HTTP_204_NO_CONTENT: {"description": "Event deleted"},
         status.HTTP_403_FORBIDDEN: {"description": "Not an owner"},
@@ -148,9 +176,9 @@ async def update_event(
     },
     status_code=status.HTTP_204_NO_CONTENT,
 )
-async def delete_event(event_id: PydanticObjectId, auth: INH_TOKEN_AUTH):
+async def delete_event(event_ref: str, auth: INH_TOKEN_AUTH):
     """Delete an event (owner only)."""
-    event = await events_repo.read(event_id)
+    event = await events_repo.read_by_ref(event_ref)
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
@@ -164,7 +192,7 @@ async def delete_event(event_id: PydanticObjectId, auth: INH_TOKEN_AUTH):
 
 
 @router.put(
-    "/{event_id}/participants",
+    "/{event_ref}/participants",
     responses={
         status.HTTP_200_OK: {"description": "Participant availability updated"},
         status.HTTP_400_BAD_REQUEST: {"description": "Invalid availability slots"},
@@ -172,12 +200,12 @@ async def delete_event(event_id: PydanticObjectId, auth: INH_TOKEN_AUTH):
     },
 )
 async def update_participant(
-    event_id: PydanticObjectId,
+    event_ref: str,
     participant_in: ParticipantUpdate,
     auth: INH_TOKEN_AUTH,
-) -> Event:
+) -> EventView:
     """Add or update a participant's availability for an event."""
-    event = await events_repo.read(event_id)
+    event = await events_repo.read_by_ref(event_ref)
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
@@ -189,24 +217,12 @@ async def update_participant(
                 detail=f"Slot {slot} is not available for this event",
             )
 
-    if participant_in.if_needed:
-        for slot in participant_in.if_needed:
-            if slot not in event_slots_set:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Slot {slot} (if_needed) is not available for this event",
-                )
-            if slot in participant_in.availability:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Slot {slot} cannot be both available and if_needed",
-                )
-
-    return await events_repo.update_participant(event, participant_in, user_id=auth.innohassle_id)
+    event = await events_repo.update_participant(event, participant_in, user_id=auth.innohassle_id)
+    return await event_view(event)
 
 
 @router.delete(
-    "/{event_id}/participants/{name}",
+    "/{event_ref}/participants/{user_id}",
     responses={
         status.HTTP_200_OK: {"description": "Participant removed"},
         status.HTTP_403_FORBIDDEN: {"description": "Not allowed to remove this participant"},
@@ -214,16 +230,16 @@ async def update_participant(
     },
 )
 async def delete_participant(
-    event_id: PydanticObjectId,
-    name: str,
+    event_ref: str,
+    user_id: str,
     auth: INH_TOKEN_AUTH,
-) -> Event:
+) -> EventView:
     """Remove a participant from an event (owner or the participant themselves)."""
-    event = await events_repo.read(event_id)
+    event = await events_repo.read_by_ref(event_ref)
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
-    participant = next((p for p in event.participants if p.name == name), None)
+    participant = next((p for p in event.participants if p.user_id == user_id), None)
     if not participant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Participant not found")
 
@@ -237,4 +253,5 @@ async def delete_participant(
             detail="Only the owner or the participant themselves can remove this participant",
         )
 
-    return await events_repo.delete_participant(event, name)
+    event = await events_repo.delete_participant(event, user_id)
+    return await event_view(event)

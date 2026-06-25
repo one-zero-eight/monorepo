@@ -7,7 +7,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     rm -f /etc/apt/apt.conf.d/docker-clean \
     && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache \
     && apt-get update && apt-get install -y --no-install-recommends \
-    build-essential
+    build-essential \
+    git
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -42,8 +43,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     rm -f /etc/apt/apt.conf.d/docker-clean \
     && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache \
     && apt-get update && apt-get install --no-install-recommends -y \
-    libmagic1 \
-    libvips-dev
+    curl \
+    libmagic1
 
 
 RUN groupadd -g 1500 uv && \

@@ -11,7 +11,10 @@ contents [by default](https://github.blog/changelog/2021-04-13-table-of-contents
 This is the monorepo for backend services of InNoHassle ecosystem, all of them are FastAPI ASGI applications.
 
 - Clubs service - Innopolis University student clubs management system to view clubs, add new clubs, and edit their descriptions and logos.
+- Forms - managing Yandex Forms links and generating signed prefilled URLs for authenticated users.
+- Guard - gating access to Google Spreadsheets by requiring InNoHassle Accounts authentication before adding users.
 - Maps - hosting Innopolis University maps to view them on innohassle.ru.
+- Room booking - view and manage room bookings at innohassle.ru via integration with Microsoft Outlook.
 - Student Affairs - omnidesk authentication via SSO for Student Affairs department to issue tickets.
 - When2Meet - service for meeting availability planning. SWP Week 2 report: [reports/week2/README.md](src/when2meet/reports/week2/README.md), MVP v0: [mvp-v0-report.md](src/when2meet/reports/week2/mvp-v0-report.md).
 
@@ -63,6 +66,32 @@ our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CON
    <summary>For VSCode</summary>
    In the left menu of the IDE go to "Run and Debug" tab, choose the service name and click play button to start the API.
    After that, open the URL from console in your browser to view Swagger.
+
+   **Set up VSCode plugins**
+
+   Go to Extensions and install the following plugins (recommendations in [.vscode/extensions.json](.vscode/extensions.json)):
+   - Python (by Microsoft)
+   - Ruff (by Charlie Marsh)
+   - ty (by astral-sh)
+
+   Also, if you will use **ty** typechecker, you should disable others in VSCode settings:
+
+   ```json
+   {
+      "python.languageServer": "None",
+      "python.analysis.typeCheckingMode": "off",
+
+      "cursorpyright.disableLanguageServices": true,
+      "cursorpyright.analysis.typeCheckingMode": "off",
+
+      "basedpyright.disableLanguageServices": true,
+      "basedpyright.analysis.typeCheckingMode": "off",
+
+      "pyright.disableLanguageServices": true,
+      "pyright.analysis.typeCheckingMode": "off"
+   }
+   ```
+
    </details>
 
    <details>

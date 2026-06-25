@@ -54,6 +54,15 @@
       "args": ["--reload"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "room booking",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src.room_booking",
+      "args": ["--reload"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
     }
   ]
 }

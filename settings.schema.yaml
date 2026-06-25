@@ -1,5 +1,22 @@
 $schema: https://json-schema.org/draft-07/schema
 $defs:
+  AccessToRoom:
+    additionalProperties: false
+    properties:
+      email:
+        description: Email of the user
+        title: Email
+        type: string
+      reason:
+        default: ''
+        description: Reason for access (f.e. 'Leader of 'one-zero-eight' club', or
+          `Academic Tutorship`)
+        title: Reason
+        type: string
+    required:
+    - email
+    title: AccessToRoom
+    type: object
   AccountsSettings:
     additionalProperties: false
     description: InNoHassle Accounts integration settings
@@ -26,6 +43,26 @@ $defs:
     required:
     - api_jwt_token
     title: AccountsSettings
+    type: object
+  BmpExchange:
+    additionalProperties: false
+    description: Dedicated BMP mailbox; bookings go to the default calendar with Auto
+      markers.
+    properties:
+      username:
+        description: BMP account email
+        title: Username
+        type: string
+      password:
+        description: Password for the BMP account
+        format: password
+        title: Password
+        type: string
+        writeOnly: true
+    required:
+    - username
+    - password
+    title: BmpExchange
     type: object
   ClubsSettings:
     additionalProperties: false
@@ -73,6 +110,41 @@ $defs:
     - production
     title: Environment
     type: string
+  Exchange:
+    additionalProperties: false
+    description: Exchange (Outlook) integration settings
+    properties:
+      ews_endpoint:
+        default: https://mail.innopolis.ru/EWS/Exchange.asmx
+        description: URL of the EWS endpoint
+        title: Ews Endpoint
+        type: string
+      username:
+        description: Username for accessing the EWS endpoint (email)
+        title: Username
+        type: string
+      password:
+        description: Password for accessing the EWS endpoint
+        format: password
+        title: Password
+        type: string
+        writeOnly: true
+      ews_callback_url:
+        anyOf:
+        - type: string
+        - type: 'null'
+        default: null
+        description: URL of the EWS callback for push subscription
+        title: Ews Callback Url
+      bmp:
+        $ref: '#/$defs/BmpExchange'
+        description: Dedicated BMP account and Auto calendar
+    required:
+    - username
+    - password
+    - bmp
+    title: Exchange
+    type: object
   FormsSettings:
     additionalProperties: false
     description: Settings for the application.
@@ -303,6 +375,69 @@ $defs:
     - jwt_marker
     title: OmnideskSettings
     type: object
+  RoomBookingSettings:
+    additionalProperties: false
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: ''
+        description: Prefix for the API path (e.g. "/api/v0")
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      api_key:
+        description: Secret key for accessing API by external services
+        format: password
+        title: Api Key
+        type: string
+        writeOnly: true
+      access_lists:
+        additionalProperties:
+          items:
+            $ref: '#/$defs/AccessToRoom'
+          type: array
+        description: Dictionary of access lists (room id -> access list)
+        title: Access Lists
+        type: object
+      ttl_bookings_from_account_calendar:
+        default: 60
+        description: TTL for the bookings from account calendar cache in seconds
+        title: Ttl Bookings From Account Calendar
+        type: integer
+      ttl_bookings_from_busy_info:
+        default: 60
+        description: TTL for the bookings from busy info cache in seconds
+        title: Ttl Bookings From Busy Info
+        type: integer
+      recently_canceled_booking_ttl_sec:
+        default: 300
+        description: TTL for the recently-canceled booking IDs cache in seconds (skip
+          cancel if already canceled within this window)
+        title: Recently Canceled Booking Ttl Sec
+        type: integer
+      exchange:
+        $ref: '#/$defs/Exchange'
+      bmp_batch_confirm_timeout_s:
+        default: 180
+        description: Seconds to wait for each room meeting response during BMP batch
+          booking confirm
+        title: Bmp Batch Confirm Timeout S
+        type: integer
+    required:
+    - api_key
+    - exchange
+    title: RoomBookingSettings
+    type: object
   StudentAffairsSettings:
     additionalProperties: false
     properties:
@@ -402,6 +537,11 @@ properties:
   forms_service:
     anyOf:
     - $ref: '#/$defs/FormsSettings'
+    - type: 'null'
+    default: null
+  room_booking_service:
+    anyOf:
+    - $ref: '#/$defs/RoomBookingSettings'
     - type: 'null'
     default: null
 required:

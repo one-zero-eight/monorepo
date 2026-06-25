@@ -1,21 +1,6 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 from src.common_config import BaseSchema
-
-
-class LegendEntry(BaseSchema):
-    legend_id: str
-    "ID of the legend"
-    color: str | None = None
-    "Color of the legend"
-    legend: str | None = None
-    "Description of the legend (may contain multiple lines)"
-
-    @model_validator(mode="after")
-    def set_legend_as_legend_id(self):
-        if self.legend is None:
-            self.legend = self.legend_id
-        return self
 
 
 class Area(BaseSchema):
@@ -39,6 +24,11 @@ class Area(BaseSchema):
     "Maps scene name with which the area is associated"
 
 
+class PdfExport(BaseSchema):
+    orientation: str = "horizontal"
+    "Orientation of the PDF page (horizontal or vertical)"
+
+
 class Scene(BaseSchema):
     scene_id: str
     "ID of the scene"
@@ -46,8 +36,8 @@ class Scene(BaseSchema):
     "Title of the scene"
     svg_file: str
     "Path to the SVG file in /static"
-    legend: list[LegendEntry] = Field(default_factory=list)
-    "Legend of the scene"
+    pdf_export: PdfExport = Field(default_factory=PdfExport)
+    "PDF export layout settings"
     areas: list[Area] = Field(default_factory=list)
     "Areas of the scene"
 

@@ -16,8 +16,27 @@ info:
 servers:
   - url: /api/v0
     description: MVP v0
+security:
+  - Bearer: []
 paths:
   /events/:
+    get:
+      tags:
+        - Events
+      summary: Get My Events
+      description: Get events owned by the authenticated user.
+      operationId: events_get_my_events
+      responses:
+        "200":
+          description: List of events owned by the user
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EventSummary"
+        "401":
+          description: Unable to verify credentials OR Credentials not provided
     post:
       tags:
         - Events
@@ -25,25 +44,45 @@ paths:
       description: Create a new event with time slots.
       operationId: events_create_event
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/EventCreate"
-        required: true
       responses:
         "201":
           description: New event is created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Event"
+                $ref: "#/components/schemas/EventView"
+        "401":
+          description: Unable to verify credentials OR Credentials not provided
         "422":
           description: Validation Error
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
-  /events/{event_id}:
+  /events/participating:
+    get:
+      tags:
+        - Events
+      summary: Get Participating Events
+      description: Get events where the authenticated user is a participant.
+      operationId: events_get_participating_events
+      responses:
+        "200":
+          description: List of events where the user is a participant
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EventSummary"
+        "401":
+          description: Unable to verify credentials OR Credentials not provided
+  /events/{event_ref}:
     get:
       tags:
         - Events
@@ -51,18 +90,16 @@ paths:
       description: Get event details and participants' availability.
       operationId: events_get_event
       parameters:
-        - name: event_id
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/PydanticObjectId"
+        - $ref: "#/components/parameters/EventRef"
       responses:
         "200":
           description: Event info
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Event"
+                $ref: "#/components/schemas/EventView"
+        "401":
+          description: Unable to verify credentials OR Credentials not provided
         "404":
           description: Event not found
         "422":
@@ -71,19 +108,73 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
-  /events/{event_id}/participants:
+    patch:
+      tags:
+        - Events
+      summary: Update Event
+      description: Update event details (owner only).
+      operationId: events_update_event
+      parameters:
+        - $ref: "#/components/parameters/EventRef"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventUpdate"
+      responses:
+        "200":
+          description: Event updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventView"
+        "400":
+          description: Invalid slots
+        "401":
+          description: Unable to verify credentials OR Credentials not provided
+        "403":
+          description: Not an owner
+        "404":
+          description: Event not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+    delete:
+      tags:
+        - Events
+      summary: Delete Event
+      description: Delete an event (owner only).
+      operationId: events_delete_event
+      parameters:
+        - $ref: "#/components/parameters/EventRef"
+      responses:
+        "204":
+          description: Event deleted
+        "401":
+          description: Unable to verify credentials OR Credentials not provided
+        "403":
+          description: Not an owner
+        "404":
+          description: Event not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+  /events/{event_ref}/participants:
     put:
       tags:
         - Events
       summary: Update Participant
-      description: Add or update a participant's availability for an event.
+      description: Add or update the authenticated participant's availability for an event.
       operationId: events_update_participant
       parameters:
-        - name: event_id
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/PydanticObjectId"
+        - $ref: "#/components/parameters/EventRef"
       requestBody:
         required: true
         content:
@@ -96,9 +187,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Event"
+                $ref: "#/components/schemas/EventView"
         "400":
           description: Invalid availability slots
+        "401":
+          description: Unable to verify credentials OR Credentials not provided
         "404":
           description: Event not found
         "422":
@@ -107,154 +200,330 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
+  /events/{event_ref}/participants/{user_id}:
+    delete:
+      tags:
+        - Events
+      summary: Delete Participant
+      description: Remove a participant from an event (owner or participant themselves).
+      operationId: events_delete_participant
+      parameters:
+        - $ref: "#/components/parameters/EventRef"
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: InNoHassle Accounts user ID
+      responses:
+        "200":
+          description: Participant removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventView"
+        "401":
+          description: Unable to verify credentials OR Credentials not provided
+        "403":
+          description: Not allowed to remove this participant
+        "404":
+          description: Event or participant not found
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
 components:
+  securitySchemes:
+    Bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: InNoHassle Accounts user JWT.
+  parameters:
+    EventRef:
+      name: event_ref
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Event ObjectId or short slug.
+      examples:
+        slug:
+          value: k7xm2pqa
+        object_id:
+          value: 5eb7cf5a86d9755df3a6c593
   schemas:
-    Event:
+    EventCreate:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - slots
       properties:
-        id:
-          anyOf:
-            - $ref: "#/components/schemas/PydanticObjectId"
-            - type: "null"
-          description: MongoDB document ObjectID
         name:
           type: string
-          title: Name
+          description: Name of the event
         description:
-          anyOf:
-            - type: string
-            - type: "null"
-          title: Description
+          type:
+            - string
+            - "null"
+          default: null
+          description: Description of the event
         slots:
+          type: array
           items:
             type: string
             format: date-time
-          type: array
-          title: Slots
-        participants:
-          items:
-            $ref: "#/components/schemas/Participant"
-          type: array
-          title: Participants
-        created_at:
+          description: All possible slots for the event
+        timezone:
           type: string
-          format: date-time
-          title: Created At
+          default: UTC
+          description: IANA timezone name
+        specific_time:
+          type: boolean
+          default: false
+          description: Whether the event has specific time slots
+        time_range:
+          anyOf:
+            - $ref: "#/components/schemas/TimeRange"
+            - type: "null"
+          default: null
+          description: Optional metadata for display/edit
+    EventUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type:
+            - string
+            - "null"
+          description: Name of the event
+        description:
+          type:
+            - string
+            - "null"
+          description: Description of the event
+        slots:
+          anyOf:
+            - type: array
+              items:
+                type: string
+                format: date-time
+            - type: "null"
+          description: All possible slots for the event
+        timezone:
+          type:
+            - string
+            - "null"
+          description: IANA timezone name
+        specific_time:
+          type:
+            - boolean
+            - "null"
+          description: Whether the event has specific time slots
+        time_range:
+          anyOf:
+            - $ref: "#/components/schemas/TimeRange"
+            - type: "null"
+          description: Optional metadata for display/edit
+    EventSummary:
       type: object
       required:
         - id
+        - slug
+        - name
+        - description
+        - created_at
+        - participants_count
+        - date_range_label
+      properties:
+        id:
+          $ref: "#/components/schemas/PydanticObjectId"
+        slug:
+          type: string
+          description: Short URL-safe public event reference
+        name:
+          type: string
+          description: Name of the event
+        description:
+          type:
+            - string
+            - "null"
+          description: Description of the event
+        created_at:
+          type: string
+          format: date-time
+          description: Time when the event was created
+        participants_count:
+          type: integer
+          description: Number of participants in the event
+        date_range_label:
+          type:
+            - string
+            - "null"
+          default: null
+          description: Optional; frontend can derive from slots
+    EventView:
+      type: object
+      required:
+        - id
+        - slug
         - name
         - description
         - slots
         - participants
         - created_at
-      title: Event
-    EventCreate:
+        - timezone
+        - owner_id
+        - specific_time
+        - time_range
       properties:
+        id:
+          $ref: "#/components/schemas/PydanticObjectId"
+        slug:
+          type: string
+          description: Short URL-safe public event reference
         name:
           type: string
-          title: Name
           description: Name of the event
         description:
-          anyOf:
-            - type: string
-            - type: "null"
-          title: Description
+          type:
+            - string
+            - "null"
           description: Description of the event
         slots:
+          type: array
           items:
             type: string
             format: date-time
-          type: array
-          title: Slots
           description: All possible slots for the event
-      additionalProperties: false
-      type: object
-      required:
-        - name
-        - slots
-      title: EventCreate
-    HTTPValidationError:
-      properties:
-        detail:
-          items:
-            $ref: "#/components/schemas/ValidationError"
+        participants:
           type: array
-          title: Detail
-      type: object
-      title: HTTPValidationError
-    Participant:
-      properties:
-        name:
+          items:
+            $ref: "#/components/schemas/ParticipantView"
+          description: Participants with profile data and availability
+        created_at:
           type: string
-          title: Name
-          description: Name of the participant
-        availability:
-          items:
-            type: string
-            format: date-time
-          type: array
-          title: Availability
-          description: List of slots the participant is available for
-      additionalProperties: false
-      type: object
-      required:
-        - name
-        - availability
-      title: Participant
+          format: date-time
+          description: Time when the event was created
+        timezone:
+          type: string
+          default: UTC
+          description: IANA timezone name
+        owner_id:
+          type:
+            - string
+            - "null"
+          description: ID of the user who created the event
+        specific_time:
+          type: boolean
+          default: false
+          description: Whether the event has specific time slots
+        time_range:
+          anyOf:
+            - $ref: "#/components/schemas/TimeRange"
+            - type: "null"
+          description: Optional metadata for display/edit
     ParticipantUpdate:
+      type: object
+      additionalProperties: false
+      required:
+        - availability
       properties:
-        name:
-          type: string
-          title: Name
-          description: Name of the participant
         availability:
+          type: array
           items:
             type: string
             format: date-time
-          type: array
-          title: Availability
           description: List of slots the participant is available for
-      additionalProperties: false
+    ParticipantView:
       type: object
+      additionalProperties: false
       required:
-        - name
+        - user_id
+        - email
+        - first_name
+        - last_name
+        - telegram
         - availability
-      title: ParticipantUpdate
+      properties:
+        user_id:
+          type: string
+          description: InNoHassle Accounts user ID
+        email:
+          type:
+            - string
+            - "null"
+          description: Innopolis email
+        first_name:
+          type:
+            - string
+            - "null"
+          description: Participant first name
+        last_name:
+          type:
+            - string
+            - "null"
+          description: Participant last name
+        telegram:
+          type:
+            - string
+            - "null"
+          description: Telegram @username if linked
+        availability:
+          type: array
+          items:
+            type: string
+            format: date-time
+          description: List of slots the participant is available for
+    TimeRange:
+      type: object
+      additionalProperties: false
+      required:
+        - start
+        - end
+      properties:
+        start:
+          type: string
+        end:
+          type: string
     PydanticObjectId:
       type: string
       maxLength: 24
       minLength: 24
       pattern: ^[0-9a-f]{24}$
       example: 5eb7cf5a86d9755df3a6c593
-    ValidationError:
+    HTTPValidationError:
+      type: object
       properties:
-        loc:
-          items:
-            anyOf:
-              - type: string
-              - type: integer
+        detail:
           type: array
-          title: Location
-        msg:
-          type: string
-          title: Message
-        type:
-          type: string
-          title: Error Type
-        input:
-          title: Input
-        ctx:
-          type: object
-          title: Context
+          items:
+            $ref: "#/components/schemas/ValidationError"
+      title: HTTPValidationError
+    ValidationError:
       type: object
       required:
         - loc
         - msg
         - type
-      title: ValidationError
+      properties:
+        loc:
+          type: array
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+        input:
+          title: Input
+        ctx:
+          type: object
 tags:
   - name: Events
-    description: Operations for creating and managing events, including tracking
-      participant availability and scheduling time slots.
-  - name: Events
-    description: ""
+    description: Operations for creating and managing events, including tracking participant availability and scheduling time slots.

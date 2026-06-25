@@ -1,7 +1,14 @@
-from typing import Any, cast
+from io import BytesIO
 from urllib.parse import urlparse
 
 from fastapi.testclient import TestClient
+from PIL import Image
+
+
+def _white_png() -> bytes:
+    buf = BytesIO()
+    Image.new("RGB", (32, 32), color=(255, 255, 255)).save(buf, format="PNG")
+    return buf.getvalue()
 
 
 def _admin_headers(
@@ -368,8 +375,6 @@ def test_set_logo_success(
     superadmin_headers: dict[str, str],
     user_headers: dict[str, str],
 ):
-    import pyvips
-
     from src.clubs.modules.clubs.logos_repo import logos_repo
 
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
@@ -377,9 +382,7 @@ def test_set_logo_success(
     assert create_response.status_code == 200
     created = create_response.json()
 
-    white_base = pyvips.Image.black(32, 32)
-    white_image = cast(Any, white_base).new_from_image(255)
-    white_png = white_image.write_to_buffer(".png")
+    white_png = _white_png()
 
     response = clubs_client.post(
         f"/clubs/by-id/{created['id']}/logo",
@@ -411,8 +414,6 @@ def test_set_logo_content_type_detected_from_buffer(
     user_headers: dict[str, str],
 ):
     """Multipart part without a Content-Type forces MIME detection from the file bytes."""
-    import pyvips
-
     from src.clubs.modules.clubs.logos_repo import logos_repo
 
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
@@ -420,9 +421,7 @@ def test_set_logo_content_type_detected_from_buffer(
     assert create_response.status_code == 200
     club_id = create_response.json()["id"]
 
-    white_base = pyvips.Image.black(32, 32)
-    white_image = cast(Any, white_base).new_from_image(255)
-    white_png = white_image.write_to_buffer(".png")
+    white_png = _white_png()
 
     response = clubs_client.post(
         f"/clubs/by-id/{club_id}/logo",

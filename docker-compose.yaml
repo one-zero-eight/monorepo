@@ -158,6 +158,24 @@ services:
       mongodb:
         condition: service_healthy
 
+  room-booking:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.room_booking.app:app
+    restart: no
+    ports:
+      - "8008:8000"
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 500m
+
 volumes:
   mongodb:
   minio:
