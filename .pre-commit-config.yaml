@@ -14,7 +14,7 @@ default_stages:
 repos:
   # Fix some errors with Ruff
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.13
+    rev: v0.15.20
     hooks:
       - id: ruff
         args: [ --fix, --exit-zero ]
@@ -24,7 +24,7 @@ repos:
 
   # Lint Python files with Ruff
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.13
+    rev: v0.15.20
     hooks:
       - id: ruff
         name: "ruff: linting"
