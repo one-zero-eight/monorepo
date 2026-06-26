@@ -25,8 +25,8 @@ def build_participant_view(participant, user: UserSchema | None) -> ParticipantV
 
     return ParticipantView(
         user_id=participant.user_id,
-        email=user.innopolis_info.email if user else None,
-        name=user.innopolis_info.name if user else None,
+        email=user.innopolis_info.email if user and user.innopolis_info else None,
+        name=user.innopolis_info.name if user and user.innopolis_info else None,
         telegram=f"@{telegram_username.lstrip('@')}" if telegram_username else None,
         availability=participant.availability,
     )
