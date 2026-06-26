@@ -180,8 +180,7 @@ def test_update_participant_upserts_by_authenticated_user(when2meet_client: Test
     part = data["participants"][0]
     assert part["user_id"] == "test-user-1"
     assert part["email"] == "test-user-1@innopolis.university"
-    assert part["first_name"] == "Test"
-    assert part["last_name"] == "One"
+    assert part["name"] == "Test User One"
     assert part["telegram"] == "@test_user_one"
     assert part["availability"] == ["2026-06-15T10:00:00Z"]
 
@@ -223,8 +222,7 @@ def test_participant_profile_fallback_when_accounts_user_missing(
     participant = response.json()["participants"][0]
     assert participant["user_id"] == "other-user"
     assert participant["email"] is None
-    assert participant["first_name"] is None
-    assert participant["last_name"] is None
+    assert participant["name"] is None
     assert participant["telegram"] is None
     assert participant["availability"] == ["2026-06-15T10:00:00Z"]
 

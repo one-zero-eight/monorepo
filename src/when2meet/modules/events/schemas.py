@@ -76,10 +76,8 @@ class ParticipantView(BaseSchema):
     "InNoHassle Accounts user ID"
     email: str | None = None
     "Innopolis email"
-    first_name: str | None = None
-    "Participant first name"
-    last_name: str | None = None
-    "Participant last name"
+    name: str | None = None
+    "Full name of the participant"
     telegram: str | None = None
     "Telegram @username if linked"
     availability: list[dtm.datetime]
