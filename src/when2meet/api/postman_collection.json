@@ -1,14 +1,27 @@
 {
   "info": {
-    "name": "When2Meet API",
+    "name": "InNoHassle When2Meet API",
+    "description": "Service foundation for When2Meet designed during SWP course. MVP v0.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000/api/v0",
+      "type": "string"
+    },
+    {
+      "key": "bearer_token",
+      "value": "YOUR_JWT_TOKEN_HERE",
+      "type": "string"
+    }
+  ],
   "auth": {
     "type": "bearer",
     "bearer": [
       {
         "key": "token",
-        "value": "{{token}}",
+        "value": "{{bearer_token}}",
         "type": "string"
       }
     ]
@@ -18,19 +31,21 @@
       "name": "Events",
       "item": [
         {
-          "name": "List My Events",
+          "name": "Get My Events",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
-              "raw": "{{base_url}}/events/",
+              "raw": "{{baseUrl}}/events/",
               "host": [
-                "{{base_url}}"
+                "{{baseUrl}}"
               ],
               "path": [
                 "events",
                 ""
               ]
-            }
+            },
+            "description": "Get events owned by the authenticated user."
           }
         },
         {
@@ -43,51 +58,50 @@
                 "value": "application/json"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Event Name\",\n  \"description\": \"Event description goes here\",\n  \"slots\": [\n    \"2026-06-26T17:36:00Z\"\n  ],\n  \"timezone\": \"UTC\",\n  \"specific_time\": false,\n  \"time_range\": {\n    \"start\": \"09:00\",\n    \"end\": \"18:00\"\n  }\n}"
+            },
             "url": {
-              "raw": "{{base_url}}/events/",
+              "raw": "{{baseUrl}}/events/",
               "host": [
-                "{{base_url}}"
+                "{{baseUrl}}"
               ],
               "path": [
                 "events",
                 ""
               ]
             },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Team Meeting\",\n  \"description\": \"Weekly sync\",\n  \"slots\": [\n    \"2026-06-15T10:00:00Z\",\n    \"2026-06-15T11:00:00Z\"\n  ],\n  \"timezone\": \"Europe/Moscow\",\n  \"specific_time\": true,\n  \"time_range\": {\n    \"start\": \"10:00\",\n    \"end\": \"12:00\"\n  }\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
+            "description": "Create a new event with time slots."
           }
         },
         {
-          "name": "List Participating Events",
+          "name": "Get Participating Events",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
-              "raw": "{{base_url}}/events/participating",
+              "raw": "{{baseUrl}}/events/participating",
               "host": [
-                "{{base_url}}"
+                "{{baseUrl}}"
               ],
               "path": [
                 "events",
                 "participating"
               ]
-            }
+            },
+            "description": "Get events where the authenticated user is a participant."
           }
         },
         {
           "name": "Get Event",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
-              "raw": "{{base_url}}/events/:event_ref",
+              "raw": "{{baseUrl}}/events/:event_ref",
               "host": [
-                "{{base_url}}"
+                "{{baseUrl}}"
               ],
               "path": [
                 "events",
@@ -96,11 +110,11 @@
               "variable": [
                 {
                   "key": "event_ref",
-                  "value": "k7xm2pqa",
-                  "description": "Event slug or ObjectId"
+                  "value": "example_event_slug_or_id"
                 }
               ]
-            }
+            },
+            "description": "Get event details and participants' availability."
           }
         },
         {
@@ -113,10 +127,14 @@
                 "value": "application/json"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Event Name\",\n  \"description\": \"Updated description\",\n  \"slots\": [\n    \"2026-06-26T17:36:00Z\",\n    \"2026-06-27T10:00:00Z\"\n  ],\n  \"timezone\": \"UTC\",\n  \"specific_time\": true\n}"
+            },
             "url": {
-              "raw": "{{base_url}}/events/:event_ref",
+              "raw": "{{baseUrl}}/events/:event_ref",
               "host": [
-                "{{base_url}}"
+                "{{baseUrl}}"
               ],
               "path": [
                 "events",
@@ -125,30 +143,22 @@
               "variable": [
                 {
                   "key": "event_ref",
-                  "value": "k7xm2pqa",
-                  "description": "Event slug or ObjectId"
+                  "value": "example_event_slug_or_id"
                 }
               ]
             },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Updated Team Meeting\",\n  \"description\": \"Updated weekly sync\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
+            "description": "Update event details (owner only)."
           }
         },
         {
           "name": "Delete Event",
           "request": {
             "method": "DELETE",
+            "header": [],
             "url": {
-              "raw": "{{base_url}}/events/:event_ref",
+              "raw": "{{baseUrl}}/events/:event_ref",
               "host": [
-                "{{base_url}}"
+                "{{baseUrl}}"
               ],
               "path": [
                 "events",
@@ -157,15 +167,15 @@
               "variable": [
                 {
                   "key": "event_ref",
-                  "value": "k7xm2pqa",
-                  "description": "Event slug or ObjectId"
+                  "value": "example_event_slug_or_id"
                 }
               ]
-            }
+            },
+            "description": "Delete an event (owner only)."
           }
         },
         {
-          "name": "Update My Availability",
+          "name": "Update Participant",
           "request": {
             "method": "PUT",
             "header": [
@@ -174,10 +184,14 @@
                 "value": "application/json"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"availability\": [\n    \"2026-06-26T17:36:00Z\"\n  ]\n}"
+            },
             "url": {
-              "raw": "{{base_url}}/events/:event_ref/participants",
+              "raw": "{{baseUrl}}/events/:event_ref/participants",
               "host": [
-                "{{base_url}}"
+                "{{baseUrl}}"
               ],
               "path": [
                 "events",
@@ -187,30 +201,22 @@
               "variable": [
                 {
                   "key": "event_ref",
-                  "value": "k7xm2pqa",
-                  "description": "Event slug or ObjectId"
+                  "value": "example_event_slug_or_id"
                 }
               ]
             },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"availability\": [\n    \"2026-06-15T10:00:00Z\"\n  ]\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
+            "description": "Add or update a participant's availability for an event."
           }
         },
         {
           "name": "Delete Participant",
           "request": {
             "method": "DELETE",
+            "header": [],
             "url": {
-              "raw": "{{base_url}}/events/:event_ref/participants/:user_id",
+              "raw": "{{baseUrl}}/events/:event_ref/participants/:user_id",
               "host": [
-                "{{base_url}}"
+                "{{baseUrl}}"
               ],
               "path": [
                 "events",
@@ -221,29 +227,18 @@
               "variable": [
                 {
                   "key": "event_ref",
-                  "value": "k7xm2pqa",
-                  "description": "Event slug or ObjectId"
+                  "value": "example_event_slug_or_id"
                 },
                 {
                   "key": "user_id",
-                  "value": "5eb7cf5a86d9755df3a6c593",
-                  "description": "InNoHassle Accounts user ID"
+                  "value": "example_user_id"
                 }
               ]
-            }
+            },
+            "description": "Remove a participant from an event (owner or the participant themselves)."
           }
         }
       ]
-    }
-  ],
-  "variable": [
-    {
-      "key": "base_url",
-      "value": "http://localhost:8020/api/v0"
-    },
-    {
-      "key": "token",
-      "value": ""
     }
   ]
 }

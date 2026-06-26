@@ -18,32 +18,15 @@ router = APIRouter(
 )
 
 
-def split_innopolis_name(name: str | None) -> tuple[str | None, str | None]:
-    if not name:
-        return None, None
-    parts = name.split()
-    if not parts:
-        return None, None
-    return parts[0], " ".join(parts[1:]) or None
-
-
 def build_participant_view(participant, user: UserSchema | None) -> ParticipantView:
-    innopolis_first_name = None
-    innopolis_last_name = None
-    email = None
-
-    if user and user.innopolis_info:
-        email = user.innopolis_info.email
-        innopolis_first_name, innopolis_last_name = split_innopolis_name(user.innopolis_info.name)
 
     telegram_info = user.telegram_info if user else None
     telegram_username = telegram_info.username if telegram_info else None
 
     return ParticipantView(
         user_id=participant.user_id,
-        email=email,
-        first_name=(telegram_info.first_name if telegram_info else None) or innopolis_first_name,
-        last_name=(telegram_info.last_name if telegram_info else None) or innopolis_last_name,
+        email=user.innopolis_info.email if user and user.innopolis_info else None,
+        name=user.innopolis_info.name if user and user.innopolis_info else None,
         telegram=f"@{telegram_username.lstrip('@')}" if telegram_username else None,
         availability=participant.availability,
     )
