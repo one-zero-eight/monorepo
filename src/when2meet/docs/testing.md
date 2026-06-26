@@ -29,7 +29,8 @@ uv run -m pytest tests/when2meet --cov=src/when2meet --cov-report=term-missing
 Run the additional QA check:
 
 ```bash
-uv run python src/when2meet/scripts/check_openapi_contract.py
+docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest dir --no-banner --redact --verbose /repo/src/when2meet
+docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest dir --no-banner --redact --verbose /repo/tests/when2meet
 ```
 
 ## Critical Modules
@@ -82,11 +83,14 @@ They cover important interactions between product components:
 
 ## Additional QA Check
 
-The selected additional automated QA check is the When2Meet OpenAPI contract drift check.
+The selected additional automated QA check is When2Meet secret scanning.
 
-It compares the committed API contract in `src/when2meet/api/openapi.yaml` with the schema generated from the current FastAPI app. It fails when the backend API changes but the committed contract is not updated.
+It scans only When2Meet product files for committed secrets:
 
-This check addresses the risk of frontend or integration consumers relying on stale API documentation. That risk matters because When2Meet is an API-backed scheduling product; route, payload, auth, or response-shape drift can break clients even when backend tests still pass.
+- `src/when2meet`
+- `tests/when2meet`
+
+The check addresses the risk of accidentally committing API tokens, JWTs, private keys, service credentials, or other sensitive values in product code, tests, API artifacts, docs, and reports. That risk matters because When2Meet depends on authenticated InNoHassle Accounts identity data and API-backed scheduling flows.
 
 The check runs in CI in:
 
@@ -112,9 +116,9 @@ Pytest results are unit/integration test evidence.
 
 Coverage reports are coverage evidence for critical modules.
 
-The OpenAPI contract drift workflow is additional QA check evidence.
+The When2Meet secret scan workflow is additional QA check evidence.
 
-QRT evidence must be kept separate from automated test, coverage, lint, type, build, link-checking, and OpenAPI drift evidence. Automated checks can support confidence in the product, but they do not replace QRT evidence unless the process requirements explicitly allow that specific evidence type.
+QRT evidence must be kept separate from automated test, coverage, lint, type, build, link-checking, and secret-scanning evidence. Automated checks can support confidence in the product, but they do not replace QRT evidence unless the process requirements explicitly allow that specific evidence type.
 
 ## Maintenance
 
