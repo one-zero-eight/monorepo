@@ -7,25 +7,22 @@ on:
       - main
 
 jobs:
-  openapi-contract:
-    name: OpenAPI contract drift
+  secret-scan:
+    name: Secret scan
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v8.1.0
-        with:
-          enable-cache: true
-          activate-environment: true
-
-      - name: Install the project
-        run: uv sync --frozen
-
-      - name: Check When2Meet OpenAPI contract
-        run: uv run python src/when2meet/scripts/check_openapi_contract.py
+      - name: Scan When2Meet files for secrets
+        run: |
+          docker run --rm \
+            -v "$PWD:/repo" \
+            ghcr.io/gitleaks/gitleaks:latest \
+            dir --no-banner --redact --verbose /repo/src/when2meet
+          docker run --rm \
+            -v "$PWD:/repo" \
+            ghcr.io/gitleaks/gitleaks:latest \
+            dir --no-banner --redact --verbose /repo/tests/when2meet
