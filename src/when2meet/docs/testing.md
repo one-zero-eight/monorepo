@@ -61,7 +61,7 @@ They cover:
 - deterministic sorting of event slots;
 - participant availability normalization;
 - rejection of unknown request fields;
-- Innopolis name splitting used for participant display fallback.
+- `EventUpdate` keeps missing fields unset for PATCH payloads.
 
 ## Integration Tests
 
