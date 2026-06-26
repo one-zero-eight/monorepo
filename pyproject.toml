@@ -120,6 +120,7 @@ lint.extend-select = [
 lint.extend-ignore = [
     "PLC0415", # import-outside-top-level
     "PLR", # pylint refactor
+    "PLW0717", # too-many-statements-in-try-clause — broad try/except at route boundaries is intentional
     "E501", # line-too-long (handled by formatter)
     "PLW1514", # unspecified-encoding in open(...) function
 ]
