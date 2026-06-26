@@ -11,6 +11,7 @@ from fastapi.requests import Request
 from fastapi.responses import JSONResponse, Response
 from starlette.middleware.cors import CORSMiddleware
 
+from src.common_config import Environment
 from src.common_fastapi import (
     MIT_LICENSE_INFO,
     ONE_ZERO_EIGHT_CONTACT_INFO,
@@ -59,39 +60,48 @@ async def lifespan(_app: FastAPI):
 
     await inh_accounts.update_key_set()
 
-    await _log_bmp_calendar()
+    exchange_subscription_task: asyncio.Task[None] | None = None
+    if settings.environment != Environment.TESTING:
+        await _log_bmp_calendar()
 
-    await bmp_repository.start_inbox_poller()
-    await exchange_booking_repository.start_inbox_poller()
+        await bmp_repository.start_inbox_poller()
+        await exchange_booking_repository.start_inbox_poller()
 
-    async def print_exchanglelib_status_and_start_subscription():
-        status = await exchange_booking_repository.get_server_status()
-        if status:
-            logger.info(f"Exchange server status: {status}")
-        else:
-            logger.error("Failed to get exchange server status")
+        async def print_exchanglelib_status_and_start_subscription():
+            status = await exchange_booking_repository.get_server_status()
+            if status:
+                logger.info(f"Exchange server status: {status}")
+            else:
+                logger.error("Failed to get exchange server status")
 
-        if settings.exchange.ews_callback_url is not None:
-            logger.info(f"Starting exchange subscription to {settings.exchange.ews_callback_url}")
+            if settings.exchange.ews_callback_url is not None:
+                logger.info(f"Starting exchange subscription to {settings.exchange.ews_callback_url}")
 
-            while True:
-                now = tm.monotonic()
-                if (
-                    exchange_booking_repository.last_callback_time is None
-                    or (now - exchange_booking_repository.last_callback_time) > 60 * 2
-                ):
-                    subscription = await exchange_booking_repository.push_subscription(
-                        callback_url=settings.exchange.ews_callback_url
-                    )
-                    logger.info(f"Exchange subscription started: {subscription=}")
-                await asyncio.sleep(60)
+                while True:
+                    now = tm.monotonic()
+                    if (
+                        exchange_booking_repository.last_callback_time is None
+                        or (now - exchange_booking_repository.last_callback_time) > 60 * 2
+                    ):
+                        subscription = await exchange_booking_repository.push_subscription(
+                            callback_url=settings.exchange.ews_callback_url
+                        )
+                        logger.info(f"Exchange subscription started: {subscription=}")
+                    await asyncio.sleep(60)
 
-    asyncio.create_task(print_exchanglelib_status_and_start_subscription())
+        exchange_subscription_task = asyncio.create_task(print_exchanglelib_status_and_start_subscription())
 
     yield
 
-    await bmp_repository.stop_inbox_poller()
-    await exchange_booking_repository.stop_inbox_poller()
+    if settings.environment != Environment.TESTING:
+        if exchange_subscription_task is not None:
+            exchange_subscription_task.cancel()
+            try:
+                await exchange_subscription_task
+            except asyncio.CancelledError:
+                pass
+        await bmp_repository.stop_inbox_poller()
+        await exchange_booking_repository.stop_inbox_poller()
 
 
 app = FastAPI(

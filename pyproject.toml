@@ -35,6 +35,7 @@ dev = [
     "pytest-cov>=7.1.0", # ~71 KiB
     "pytest-durations>=1.6.2", # ~34 KiB
     "pytest-memray>=1.8.0; sys_platform != 'win32'", # ~48 KiB
+    "pytest-socket>=0.8.0", # ~8 KiB
     "pytest-xdist>=3.8.0", # ~142 KiB
     "respx>=0.23.1", # ~87 KiB
     "ruff>=0.15.13", # ~27.0 MiB
@@ -140,7 +141,7 @@ time = "tm"
 exclude = [".agents/skills"]
 
 [tool.pytest.ini_options]
-addopts = "--cov=src --cov-report=term-missing"
+addopts = "--cov=src --cov-report=term-missing --disable-socket --allow-hosts=127.0.0.1,localhost"
 
 [tool.coverage.run]
 relative_files = true
