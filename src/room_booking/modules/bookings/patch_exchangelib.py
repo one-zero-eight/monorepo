@@ -53,7 +53,7 @@ def get_free_busy_info(self, accounts, start, end, merged_free_busy_interval=30,
     )
 
 
-exchangelib.protocol.Protocol.get_free_busy_info = get_free_busy_info  # ty: ignore[invalid-assignment]
+exchangelib.protocol.Protocol.get_free_busy_info = get_free_busy_info
 
 # Optimize request to get calendar items
 original_normalize_fields = exchangelib.folders.base.BaseFolder.normalize_fields
@@ -69,4 +69,4 @@ def normalize_fields(self, fields):
     return result
 
 
-exchangelib.folders.base.BaseFolder.normalize_fields = normalize_fields  # ty: ignore[invalid-assignment]
+exchangelib.folders.base.BaseFolder.normalize_fields = normalize_fields
