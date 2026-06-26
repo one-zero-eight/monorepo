@@ -1,12 +1,13 @@
 version: 2
 updates:
-  # Enable version updates for python packages
-  - package-ecosystem: "pip"
+  # Enable version updates for python packages (uv lock + pyproject.toml)
+  - package-ecosystem: "uv"
     directory: "/"
     schedule:
       interval: "weekly"
     cooldown:
       default-days: 7
+    versioning-strategy: increase
     groups:
       python-dependencies:
         patterns:
