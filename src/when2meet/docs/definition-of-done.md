@@ -1,6 +1,6 @@
 # Definition of Done
 
-A Product Backlog Item may be moved to **Done** only when all applicable conditions below are satisfied.  
+A Product Backlog Item may be moved to **Done** only when all applicable conditions below are satisfied.
 A condition may be marked **N/A** only with a clear justification in the pull request.
 
 ## 1. Acceptance criteria and product behaviour
