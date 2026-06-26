@@ -10,36 +10,36 @@ dependencies = [
     "aiofiles>=25.1.0", # ~43 KiB
     "beanie>=2.1.0", # ~347 KiB
     "colorlog>=6.10.1", # ~27 KiB
-    "cryptography>=48.0.0", # ~13.7 MiB
-    "fastapi>=0.136.1", # ~737 KiB
+    "cryptography>=49.0.0", # ~13.7 MiB
+    "fastapi>=0.137.2", # ~737 KiB
     "fastapi-derive-responses>=0.1.7", # ~25 KiB
     "fastapi-swagger>=0.4.50", # ~1.6 MiB
     "filetype>=1.2.0", # ~71 KiB
     "gunicorn>=26.0.0", # ~761 KiB
     "httpx>=0.28.1", # ~288 KiB
-    "joserfc>=1.6.5", # ~212 KiB
+    "joserfc>=1.7.1", # ~212 KiB
     "minio>=7.2.20", # ~381 KiB
     "pydantic>=2.13.4", # ~1.8 MiB
     "pydantic-settings>=2.14.1", # ~225 KiB
-    "python-multipart>=0.0.28", # ~101 KiB
+    "python-multipart>=0.0.32", # ~101 KiB
     "pytz>=2026.2", # ~988 KiB
     "pyyaml>=6.0.3", # ~2.7 MiB
-    "uvicorn>=0.47.0", # ~229 KiB
+    "uvicorn>=0.49.0", # ~229 KiB
 ]
 
 [dependency-groups]
 dev = [
-    "prek>=0.4.0", # ~14.0 MiB
-    "pytest>=9.0.4", # ~1.3 MiB
-    "pytest-asyncio>=1.3.0", # ~45 KiB
+    "prek>=0.4.5", # ~14.0 MiB
+    "pytest>=9.1.0", # ~1.3 MiB
+    "pytest-asyncio>=1.4.0", # ~45 KiB
     "pytest-cov>=7.1.0", # ~71 KiB
     "pytest-durations>=1.6.2", # ~34 KiB
     "pytest-memray>=1.8.0; sys_platform != 'win32'", # ~48 KiB
     "pytest-xdist>=3.8.0", # ~142 KiB
     "respx>=0.23.1", # ~87 KiB
-    "ruff>=0.15.13", # ~27.0 MiB
-    "ty>=0.0.37", # ~25.0 MiB
-    "types-pyyaml>=6.0.12.20260510", # ~65 KiB
+    "ruff>=0.15.18", # ~27.0 MiB
+    "ty>=0.0.51", # ~25.0 MiB
+    "types-pyyaml>=6.0.12.20260518", # ~65 KiB
 ]
 # events = [
 #    "alembic>=1.18.4", # ~258 KiB
@@ -50,12 +50,12 @@ dev = [
 #]
 room-booking = [
     "exchangelib>=5.6.0", # ~871 KiB
-    "email-validator>=2.0.0", # ~99 KiB
+    "email-validator>=2.3.0", # ~99 KiB
     "requests-curl", # ~27 KiB
 ]
 maps = [
     "cairosvg>=2.9.0", # ~156 KiB
-    "pypdf>=6.13.0", # ~1.4 MiB
+    "pypdf>=6.13.3", # ~1.4 MiB
     "rapidfuzz>=3.14.5", # ~11.5 MiB
 ]
 clubs = [
@@ -71,8 +71,8 @@ forms = [
     "nanoid>=2.0.0", # ~9 KiB
 ]
 guard = [
-    "google-api-python-client>=2.196.0", # ~95.4 MiB
-    "google-auth>=2.51.0", # ~871 KiB
+    "google-api-python-client>=2.197.0", # ~95.4 MiB
+    "google-auth>=2.55.0", # ~871 KiB
     "google-auth-oauthlib>=1.4.0", # ~52 KiB
 ]
 #schedule-builder-backend = [
