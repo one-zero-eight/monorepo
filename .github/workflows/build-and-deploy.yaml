@@ -94,7 +94,7 @@ jobs:
     needs: build-and-push-image
     if: github.repository_owner == 'one-zero-eight'
     name: Deploy to ${{ github.event.inputs.environment || 'staging' }}
-    runs-on: [self-hosted, innohassle]
+    runs-on: ubuntu-latest
     permissions: {}
     environment:
       name: ${{ github.event.inputs.environment || 'staging' }}
