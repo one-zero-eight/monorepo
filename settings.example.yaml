@@ -2,9 +2,11 @@
 $schema: "./settings.schema.yaml"
 accounts:
   # get from https://api.innohassle.ru/accounts/v0/tokens/generate-service-token?sub=monorepo-local-dev&scopes=users&scopes=sport&only_for_me=true
-  api_jwt_token: null
+  api_jwt_token: change-me
 maps_service: {}
-student_affairs_service: null # to run student affairs service you should get omnidesk credentials
+student_affairs_service: # to run student affairs service you should get omnidesk credentials
+  omnidesk:
+    jwt_marker: change-me-0123456789abcdef
 clubs_service: {}
 when2meet_service: {}
 guard_service: # to run guard service you should provide a Google service account file
@@ -12,17 +14,17 @@ guard_service: # to run guard service you should provide a Google service accoun
     service_account_file_path: service_account.json
 forms_service:
   links:
-    signature_secret: null # secret used to sign and verify form payloads
+    signature_secret: change-me # secret used to sign and verify form payloads
 room_booking_service: # configure exchange credentials, api_key, and access_lists for local dev
-  api_key: null
+  api_key: change-me
   exchange: # to create room booking you should provide exchange credentials from outlook account
     ews_endpoint: https://mail.innopolis.ru/EWS/Exchange.asmx
-    username: null
-    password: null
+    username: change-me@innopolis.university
+    password: change-me
     ews_callback_url: null
     bmp:
-      username: null
-      password: null
+      username: change-me@innopolis.university
+      password: change-me
   access_lists:
     "309A": []
     "108": []
