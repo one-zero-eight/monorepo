@@ -9,6 +9,7 @@ student_affairs_service: # to run student affairs service you should get omnides
     jwt_marker: change-me-0123456789abcdef
 clubs_service: {}
 when2meet_service: {}
+tabletennis_service: {}
 guard_service: # to run guard service you should provide a Google service account file
   google:
     service_account_file_path: service_account.json

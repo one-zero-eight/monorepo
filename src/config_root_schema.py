@@ -12,6 +12,7 @@ from src.guard.config_schema import GuardSettings
 from src.maps.config_schema import MapsSettings
 from src.room_booking.config_schema import RoomBookingSettings
 from src.student_affairs.config_schema import StudentAffairsSettings
+from src.tabletennis.config_schema import TabletennisSettings
 from src.when2meet.config_schema import When2MeetSettings
 
 
@@ -38,6 +39,7 @@ class Settings(BaseSchema):
     clubs_service: ClubsSettings | None = None
     student_affairs_service: StudentAffairsSettings | None = None
     when2meet_service: When2MeetSettings | None = None
+    tabletennis_service: TabletennisSettings | None = None
     guard_service: GuardSettings | None = None
     forms_service: FormsSettings | None = None
     room_booking_service: RoomBookingSettings | None = None
@@ -53,6 +55,8 @@ class Settings(BaseSchema):
             contexts.append(("student_affairs_service", self.student_affairs_service.environment))
         if self.when2meet_service is not None:
             contexts.append(("when2meet_service", self.when2meet_service.environment))
+        if self.tabletennis_service is not None:
+            contexts.append(("tabletennis_service", self.tabletennis_service.environment))
         if self.guard_service is not None:
             contexts.append(("guard_service", self.guard_service.environment))
         if self.forms_service is not None:

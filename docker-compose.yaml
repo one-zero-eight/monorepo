@@ -115,6 +115,24 @@ services:
         reservations:
           memory: 500m
 
+  tabletennis:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.tabletennis.app:app
+    restart: no
+    ports:
+      - "8023:8000"
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 500m
+
   guard:
     build:
       context: .

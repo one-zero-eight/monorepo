@@ -63,6 +63,15 @@
       "args": ["--reload"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "table tennis",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src.tabletennis",
+      "args": ["--reload"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
     }
   ]
 }

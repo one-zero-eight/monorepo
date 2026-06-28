@@ -20,6 +20,7 @@ from src.guard.config_schema import GuardSettings
 from src.maps.config_schema import MapsSettings
 from src.room_booking.config_schema import BmpExchange, Exchange, RoomBookingSettings
 from src.student_affairs.config_schema import OmnideskSettings, StudentAffairsSettings
+from src.tabletennis.config_schema import TabletennisSettings
 from src.when2meet.config_schema import When2MeetSettings
 
 # Host ports for docker-compose.test.yaml and CI service containers; override via SUITE_* env.
@@ -74,6 +75,9 @@ def load_root_settings() -> Settings:
             mongo=MongoDatabaseSettings(
                 uri=SecretStr(mongo_uri.replace("<service_name>", "when2meet")),
             ),
+        ),
+        tabletennis_service=TabletennisSettings(
+            environment=Environment.TESTING,
         ),
         guard_service=GuardSettings(
             environment=Environment.TESTING,

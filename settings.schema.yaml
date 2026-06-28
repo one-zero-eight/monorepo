@@ -469,6 +469,28 @@ $defs:
     - omnidesk
     title: StudentAffairsSettings
     type: object
+  TabletennisSettings:
+    additionalProperties: false
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: ''
+        description: Prefix for the API path (e.g. "/api/v0")
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+    title: TabletennisSettings
+    type: object
   When2MeetSettings:
     additionalProperties: false
     properties:
@@ -531,6 +553,11 @@ properties:
   when2meet_service:
     anyOf:
     - $ref: '#/$defs/When2MeetSettings'
+    - type: 'null'
+    default: null
+  tabletennis_service:
+    anyOf:
+    - $ref: '#/$defs/TabletennisSettings'
     - type: 'null'
     default: null
   guard_service:
