@@ -110,6 +110,16 @@ It is intentionally distinct from:
 
 Link checking remains useful repository QA, but it does not count as the Assignment 4 additional QA check.
 
+## Automated Quality Requirement Tests
+
+| QRT | Linked QR | Command or test | Latest result | Evidence |
+|---|---|---|---|---|
+| [QRT-001](quality-requirement-tests.md#qrt-001-critical-module-line-coverage) | QR-001 Testability | `pytest tests/when2meet/test_quality_requirements.py::test_qrt_critical_modules_line_coverage_meets_threshold` | Passing in CI when `coverage.xml` is produced | [test_quality_requirements.py](../../../tests/when2meet/test_quality_requirements.py) |
+| [QRT-002](quality-requirement-tests.md#qrt-002-owner-only-event-mutation) | QR-002 Confidentiality | `pytest tests/when2meet/test_quality_requirements.py::test_qrt_non_owner_cannot_patch_or_delete_event` | Passing | [test_quality_requirements.py](../../../tests/when2meet/test_quality_requirements.py) |
+| [QRT-003](quality-requirement-tests.md#qrt-003-event-read-response-time) | QR-003 Time behaviour | `pytest tests/when2meet/test_quality_requirements.py::test_qrt_get_event_completes_within_time_budget` | Passing | [test_quality_requirements.py](../../../tests/when2meet/test_quality_requirements.py) |
+
+Quality requirement definitions: [quality-requirements.md](quality-requirements.md).
+
 ## Evidence Types
 
 Pytest results are unit/integration test evidence.
@@ -118,7 +128,7 @@ Coverage reports are coverage evidence for critical modules.
 
 The When2Meet secret scan workflow is additional QA check evidence.
 
-QRT evidence must be kept separate from automated test, coverage, lint, type, build, link-checking, and secret-scanning evidence. Automated checks can support confidence in the product, but they do not replace QRT evidence unless the process requirements explicitly allow that specific evidence type.
+QRT evidence is documented in [quality-requirement-tests.md](quality-requirement-tests.md) and implemented in `tests/when2meet/test_quality_requirements.py`. QRT evidence is kept separate from generic unit tests, coverage, lint, type, build, link-checking, and secret-scanning evidence unless process requirements explicitly allow a specific overlap.
 
 ## Maintenance
 

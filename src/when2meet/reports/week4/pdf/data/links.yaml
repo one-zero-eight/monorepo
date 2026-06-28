@@ -1,0 +1,20 @@
+links:
+  public:
+    week4_readme: "https://github.com/one-zero-eight/monorepo/blob/24f9c3790aca035d8c58eb9828d7491e70dded5c/src/when2meet/reports/week4/README.md"
+    product_tree: "https://github.com/one-zero-eight/monorepo/tree/24f9c3790aca035d8c58eb9828d7491e70dded5c/src/when2meet"
+    deployed_product: "https://pre.innohassle.ru/when2meet"
+    demo_video: "https://disk.yandex.ru/i/QcdKlW0IIW_yDg"
+    customer_summary: "https://github.com/one-zero-eight/monorepo/blob/24f9c3790aca035d8c58eb9828d7491e70dded5c/src/when2meet/reports/week4/customer-review-summary.md"
+    sprint_milestone: "https://github.com/one-zero-eight/monorepo/milestone/2"
+    product_backlog: "https://github.com/orgs/one-zero-eight/projects/4/views/19"
+    sprint_backlog: "https://github.com/orgs/one-zero-eight/projects/4/views/20"
+    ci_tests: "https://github.com/one-zero-eight/monorepo/actions/runs/28267305034/job/83756940196"
+    ci_secret_scan: "https://github.com/one-zero-eight/monorepo/actions/runs/28267305006/job/83756939812"
+    ci_lychee: "https://github.com/one-zero-eight/monorepo/actions/runs/28267305019/job/83756939927"
+  private:
+    sprint_review_uat_recording: "https://disk.yandex.ru/d/jo8QQJMKFZPHgQ"
+    uat_timecode_review: "00:00:01 – 00:06:20"
+    uat_timecode_uat: "00:06:21 – 00:11:10"
+    rehearsed_presentation_video: "https://disk.yandex.ru/i/EHwGq5F69xCz1g"
+    presentation_slides: "https://docs.google.com/presentation/d/13dyS33eQJj3EYIsjgGx3esRw8aiWcjPSPp3x0VwqTHg/edit?usp=sharing"
+    private_access_instructions: "Skipped — product uses InnoHassle SSO on the public pre-production URL."
