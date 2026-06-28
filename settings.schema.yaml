@@ -339,6 +339,10 @@ $defs:
         default: logos/
         title: Club Logos Prefix
         type: string
+      club_description_images_prefix:
+        default: description-images/
+        title: Club Description Images Prefix
+        type: string
     title: MinioSettings
     type: object
   MongoDatabaseSettings:

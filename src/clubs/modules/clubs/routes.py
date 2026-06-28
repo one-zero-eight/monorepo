@@ -14,11 +14,13 @@ from pymongo.errors import DuplicateKeyError
 from starlette import status
 from starlette.responses import RedirectResponse
 
-from src.clubs.dependencies import CLUBS_ADMIN_AUTH
+from src.clubs.dependencies import CLUB_LEADER_OR_ADMIN, CLUBS_ADMIN_AUTH
 from src.clubs.mongo import Club
+from src.common_pydantic import BaseSchema
 from src.inh_accounts_sdk import inh_accounts
 
 from . import clubs_repo
+from .description_images_repo import description_images_repo
 from .logos_repo import logos_repo
 
 router = APIRouter(
@@ -212,3 +214,58 @@ async def set_club_logo(id: PydanticObjectId, logo_file: UploadFile, _: CLUBS_AD
     club.logo_file_id = logo_file_id
     await club.save()
     return club
+
+
+class DescriptionImageUploadResponse(BaseSchema):
+    image_id: str
+    "File ID to reference in club description"
+
+
+@router.get(
+    "/description-images/{image_id}",
+    responses={
+        status.HTTP_307_TEMPORARY_REDIRECT: {"description": "Redirect to the description image"},
+        status.HTTP_404_NOT_FOUND: {"description": "Image not found"},
+    },
+    response_class=RedirectResponse,
+)
+async def get_description_image(image_id: str) -> RedirectResponse:
+    """Get a club description image."""
+    if not description_images_repo.exists(image_id):
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    return RedirectResponse(url=description_images_repo.get_url(image_id))
+
+
+@router.post(
+    "/by-id/{id}/description-images",
+    responses={
+        status.HTTP_200_OK: {"description": "Description image uploaded successfully"},
+        status.HTTP_400_BAD_REQUEST: {"description": "Invalid content type"},
+        status.HTTP_403_FORBIDDEN: {"description": "Only club leader or admin can upload description images"},
+        status.HTTP_404_NOT_FOUND: {"description": "Club not found"},
+    },
+)
+async def upload_description_image(
+    _: CLUB_LEADER_OR_ADMIN,
+    image_file: UploadFile,
+) -> DescriptionImageUploadResponse:
+    """Upload an image for use in club description."""
+    bytes_ = await image_file.read()
+    content_type = image_file.content_type
+    if content_type is None:  # pragma: no cover
+        kind = filetype.guess(bytes_)
+        content_type = kind.mime if kind else None
+
+    if content_type not in ("image/jpeg", "image/png", "image/webp"):
+        raise HTTPException(status_code=400, detail=f"Invalid content type ({content_type})")
+
+    image = Image.open(BytesIO(bytes_))
+    buf = BytesIO()
+    image.save(buf, format="WEBP", quality=90)
+    image_bytes = buf.getvalue()
+
+    image_id = str(PydanticObjectId())
+    description_images_repo.put(image_id, image_bytes, "image/webp")
+
+    return DescriptionImageUploadResponse(image_id=image_id)
