@@ -122,9 +122,9 @@ Monorepo-wide coverage may be lower when only When2Meet tests run.
 
 | Type              | Location                                                                                                                                                   |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unit tests        | [tests/when2meet/test_event_schemas.py](../../../tests/when2meet/test_event_schemas.py)                                                                    |
-| Integration tests | [tests/when2meet/test_events.py](../../../tests/when2meet/test_events.py), [test_when2meet_startup.py](../../../tests/when2meet/test_when2meet_startup.py) |
-| Automated QRTs    | [tests/when2meet/test_quality_requirements.py](../../../tests/when2meet/test_quality_requirements.py)                                                      |
+| Unit tests        | [tests/when2meet/test_event_schemas.py](../../../../tests/when2meet/test_event_schemas.py)                                                                    |
+| Integration tests | [tests/when2meet/test_events.py](../../../../tests/when2meet/test_events.py), [test_when2meet_startup.py](../../../../tests/when2meet/test_when2meet_startup.py) |
+| Automated QRTs    | [tests/when2meet/test_quality_requirements.py](../../../../tests/when2meet/test_quality_requirements.py)                                                      |
 
 
 ### Additional QA check
@@ -135,7 +135,7 @@ Monorepo-wide coverage may be lower when only When2Meet tests run.
 | Item               | Detail                                                                                                       |
 | ------------------ | ------------------------------------------------------------------------------------------------------------ |
 | Objective          | Prevent committed API tokens, JWTs, and credentials in When2Meet paths                                       |
-| CI workflow        | [when2meet-qa.yaml](../../../.github/workflows/when2meet-qa.yaml) job `Secret scan`                          |
+| CI workflow        | [when2meet-qa.yaml](../../../../.github/workflows/when2meet-qa.yaml) job `Secret scan`                          |
 | Options considered | OpenAPI drift, dependency audit, license scan, container scan — see [docs/testing.md](../../docs/testing.md) |
 | Limitations        | Does not prove frontend/browser compatibility or deployed-environment contract drift                         |
 
@@ -145,9 +145,9 @@ Monorepo-wide coverage may be lower when only When2Meet tests run.
 
 | Item                            | Link                                                                                                                              |
 | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| CI pipeline (pytest + coverage) | [tests.yaml](../../../.github/workflows/tests.yaml)                                                                               |
-| Additional QA (secret scan)     | [when2meet-qa.yaml](../../../.github/workflows/when2meet-qa.yaml)                                                                 |
-| Link checking                   | [lychee.yaml](../../../.github/workflows/lychee.yaml)                                                                             |
+| CI pipeline (pytest + coverage) | [tests.yaml](../../../../.github/workflows/tests.yaml)                                                                               |
+| Additional QA (secret scan)     | [when2meet-qa.yaml](../../../../.github/workflows/when2meet-qa.yaml)                                                                 |
+| Link checking                   | [lychee.yaml](../../../../.github/workflows/lychee.yaml)                                                                             |
 | Latest passing tests job        | [Run tests #28267305034](https://github.com/one-zero-eight/monorepo/actions/runs/28267305034/job/83756940196)                      |
 | Latest passing secret scan job  | [When2Meet QA #28267305006](https://github.com/one-zero-eight/monorepo/actions/runs/28267305006/job/83756939812)                   |
 | Latest passing link check job   | [Lychee #28267305019](https://github.com/one-zero-eight/monorepo/actions/runs/28267305019/job/83756939927)                         |
