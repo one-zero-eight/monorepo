@@ -1,0 +1,17 @@
+images:
+  - file: ../images/sprint-milestone.png
+    caption: "Sprint 2 milestone / Sprint backlog (GitHub Project view 20)"
+  - file: ../images/product-backlog.png
+    caption: "Product backlog (GitHub Project view 19)"
+  - file: ../images/latest-ci-run.png
+    caption: "Latest protected-default-branch CI runs (tests, secret scan, Lychee)"
+  - file: ../images/coverage-report.png
+    caption: "When2Meet critical-module coverage in CI"
+  - file: ../images/secret-scan-result.png
+    caption: "When2Meet QA — secret scan job"
+  - file: ../images/reviewed-pr.png
+    caption: "Example reviewed issue-linked PR (#88)"
+  - file: ../images/deployed-product.png
+    caption: "Deployed product at pre.innohassle.ru/when2meet"
+  - file: ../images/branch-protection.png
+    caption: "Protected default branch settings (reused from Week 2)"

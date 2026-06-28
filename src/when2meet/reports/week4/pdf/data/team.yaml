@@ -1,0 +1,53 @@
+team:
+  - name: "Nikita Lisitskiy"
+    email: "n.lisitckii@innopolis.university"
+    github: "keamka"
+    scrum_role: "Product Owner"
+    tech_responsibility: "Backend, product coordination"
+    contributions:
+      - "Sprint Planning and backlog refinement for Sprint 2"
+      - "Led customer-executed UAT during Sprint Review"
+      - "Facilitated Sprint Review with customer"
+
+  - name: "Vladislav Konovalov"
+    email: "vl.konovalov@innopolis.university"
+    github: "dofi4ka"
+    scrum_role: "Scrum Master"
+    tech_responsibility: "DevOps, frontend, reporting"
+    contributions:
+      - "Configured When2Meet secret-scan CI and docs/testing.md"
+      - "Deployed Sprint increment to pre.innohassle.ru/when2meet"
+      - "Prepared Week 4 public report and Moodle PDF sources"
+
+  - name: "Mikhail Istomin"
+    email: "m.istomin@innopolis.university"
+    github: "PoweredDeveloper"
+    scrum_role: "Developer"
+    tech_responsibility: "Frontend, prototype design"
+    contributions:
+      - "Implemented Sprint 2 frontend increment (event modes, sharing, room booking UI)"
+      - "Demonstrated delivered increment in Sprint Review"
+
+  - name: "Dmitrii Chudin"
+    email: "d.chudin@innopolis.university"
+    github: "GrigsyChudin"
+    scrum_role: "Developer"
+    tech_responsibility: "Backend"
+    contributions:
+      - "Backend/API support for Sprint 2 event and participant flows"
+
+  - name: "Timur Khasanov"
+    email: "t.khasanov@innopolis.university"
+    github: "l1berty-dev"
+    scrum_role: "Developer"
+    tech_responsibility: "Backend, QA, documentation"
+    contributions:
+      - "Recorded public Sprint 2 demo video (< 2 min)"
+      - "Drafted customer review summary and transcript processing"
+      - "Performed link and access QA"
+
+non_participants:
+  - name: "Vladislav Konovalov"
+    note: "Did not attend the 2026-06-27 Sprint Review/UAT recording; participated in other Sprint activities."
+  - name: "Dmitrii Chudin"
+    note: "Did not attend the 2026-06-27 Sprint Review/UAT recording; participated in other Sprint activities."
