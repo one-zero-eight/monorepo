@@ -1,0 +1,127 @@
+# Example workflow for repos that build a Docker image and deploy via the deployer API.
+#
+# Copy to .github/workflows/build-and-deploy.yaml in your application repo and adjust:
+#   - file: ./api.Dockerfile          (path to your Dockerfile)
+#   - org secrets:
+#       DEPLOYER_STAGING_URL
+#       DEPLOYER_STAGING_WEBHOOK_SECRET
+#       DEPLOYER_PRODUCTION_URL
+#       DEPLOYER_PRODUCTION_WEBHOOK_SECRET
+#   - repository key                   (must match deployer settings.yaml repositories map)
+#   - service options                  (must match docker-compose service names)
+#
+
+name: Build and deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy to
+        type: choice
+        required: true
+        default: staging
+        options:
+          - staging
+          - production
+      service:
+        description: Compose service to deploy
+        type: choice
+        required: true
+        default: all
+        options:
+          - all
+          - maps
+          - clubs
+          - student-affairs
+          - when2meet
+          - guard
+          - forms
+          - room-booking
+  push:
+    branches:
+      - main
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      pull-requests: write
+      security-events: write
+
+    outputs:
+      imageid: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./api.Dockerfile
+          push: ${{ github.repository_owner == 'one-zero-eight' && 'true' || 'false' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-and-push-image
+    if: github.repository_owner == 'one-zero-eight'
+    name: Deploy to ${{ github.event.inputs.environment || 'staging' }}
+    runs-on: [self-hosted, innohassle]
+    permissions: {}
+    environment:
+      name: ${{ github.event.inputs.environment || 'staging' }}
+    concurrency:
+      group: deploy-${{ github.event.inputs.environment || 'staging' }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Deploy via deployer API
+        env:
+          DEPLOYER_URL: ${{ github.event.inputs.environment == 'production' && secrets.DEPLOYER_PRODUCTION_URL || secrets.DEPLOYER_STAGING_URL }}
+          WEBHOOK_SECRET: ${{ github.event.inputs.environment == 'production' && secrets.DEPLOYER_PRODUCTION_WEBHOOK_SECRET || secrets.DEPLOYER_STAGING_WEBHOOK_SECRET }}
+          REPOSITORY: ${{ github.repository }}
+          IMAGE_ID: ${{ needs.build-and-push-image.outputs.imageid }}
+          REF: ${{ github.ref_name }}
+          SERVICE: ${{ github.event.inputs.service || 'all' }}
+        run: |
+          set -euo pipefail
+
+          jq -cn \
+            --arg image_id "$IMAGE_ID" \
+            --arg ref "$REF" \
+            --arg service "$SERVICE" \
+            '{image_id: $image_id, ref: $ref, services: (if $service == "" or $service == "all" then [] else [$service] end)}' |
+          curl -fNS \
+            -H "Authorization: Bearer ${WEBHOOK_SECRET}" \
+            -H "Content-Type: application/json" \
+            -X POST \
+            "${DEPLOYER_URL}/deploy?repository=${REPOSITORY}" \
+            -d @-
