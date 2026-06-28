@@ -63,4 +63,6 @@ WORKDIR /app
 USER uv
 
 EXPOSE 8000
+HEALTHCHECK --interval=5s --timeout=5s --retries=12 --start-period=60s \
+    CMD ["curl", "-fsS", "http://127.0.0.1:8000/openapi.json"]
 CMD ["sh", "-c", "exec gunicorn --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --workers \"$WORKERS\" \"$APP_MODULE\" --timeout 300 --forwarded-allow-ips=*"]
