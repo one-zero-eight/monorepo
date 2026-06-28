@@ -4,7 +4,7 @@ InNoHassle service for planning meeting availability (SWP Assignment 4 / Sprint 
 
 - **License:** [MIT License](https://github.com/one-zero-eight/monorepo/blob/main/LICENSE)
 - **Repository:** [one-zero-eight/monorepo](https://github.com/one-zero-eight/monorepo) — `src/when2meet/`
-- **Submission commit:** [`f78ac68`](https://github.com/one-zero-eight/monorepo/commit/f78ac681140982d5b3c12fd68218ad624e02805e) on `main`
+- **Submission commit:** [`c6cc401`](https://github.com/one-zero-eight/monorepo/commit/c6cc40123b5b57902952b848fed0b98f0b27546e) on `main`
 
 ## Sprint 2 summary
 
@@ -243,6 +243,6 @@ Sprint backlog evidence uses the same board as the Sprint milestone view ([view 
 
 Typst sources: [pdf/week4-report.typ](pdf/week4-report.typ) — compile with [pdf/README.md](pdf/README.md).
 
-Built PDF (local): `pdf/week4-report.pdf` — compiled for submission commit [`f78ac68`](https://github.com/one-zero-eight/monorepo/commit/f78ac681140982d5b3c12fd68218ad624e02805e).
+Built PDF (local): `pdf/week4-report.pdf` — compiled for submission commit [`c6cc401`](https://github.com/one-zero-eight/monorepo/commit/c6cc40123b5b57902952b848fed0b98f0b27546e).
 
 Private items in PDF only: university emails, Sprint Review/UAT recording, sanitized transcript, rehearsed presentation video, participation attribution.
