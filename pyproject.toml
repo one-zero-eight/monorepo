@@ -89,6 +89,7 @@ clubs = [
 #    "unicorn>=2.1.4", # ~19.6 MiB
 #]
 student-affairs = []
+board-games = []
 
 [tool.uv]
 default-groups = "all"

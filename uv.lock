@@ -629,6 +629,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
+board-games = []
 clubs = [{ name = "pyvips", extras = ["binary"], specifier = ">=3.1.1" }]
 dev = [
     { name = "prek", specifier = ">=0.4.0" },

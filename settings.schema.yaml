@@ -27,6 +27,38 @@ $defs:
     - api_jwt_token
     title: AccountsSettings
     type: object
+  BoardGamesSettings:
+    additionalProperties: false
+    description: Settings for Board Games service.
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: ''
+        description: Prefix for the API path (e.g. "/api/v0")
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      mongo:
+        $ref: '#/$defs/MongoDatabaseSettings'
+        description: Configuration for MongoDB
+      superadmin_emails:
+        description: Innomails of superadmins who can set admin roles
+        items:
+          type: string
+        title: Superadmin Emails
+        type: array
+    title: BoardGamesSettings
+    type: object
   ClubsSettings:
     additionalProperties: false
     description: Settings for the application.
@@ -99,7 +131,6 @@ $defs:
         title: Static Mount Path
         type: string
       static_directory:
-        default: src/maps/static
         description: Path to the directory with static files
         format: path
         title: Static Directory
@@ -230,7 +261,7 @@ properties:
       app_root_path: ''
       cors_allow_origin_regex: .*
       static_mount_path: /static
-      static_directory: src/maps/static
+      static_directory: src\maps\static
   clubs_service:
     anyOf:
     - $ref: '#/$defs/ClubsSettings'
@@ -239,6 +270,11 @@ properties:
   student_affairs_service:
     anyOf:
     - $ref: '#/$defs/StudentAffairsSettings'
+    - type: 'null'
+    default: null
+  board_games_service:
+    anyOf:
+    - $ref: '#/$defs/BoardGamesSettings'
     - type: 'null'
     default: null
 required:

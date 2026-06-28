@@ -97,6 +97,27 @@ services:
         reservations:
           memory: 500m
 
+  board-games:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.board_games.app:app
+    restart: no
+    ports:
+      - "8016:8000"
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 500m
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
 volumes:
   mongodb:
   minio:

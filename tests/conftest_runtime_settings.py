@@ -12,6 +12,7 @@ from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 from urllib3.exceptions import HTTPError
 
+from src.board_games.config_schema import BoardGamesSettings
 from src.clubs.config_schema import ClubsSettings
 from src.common_config import Environment, MinioSettings, MongoDatabaseSettings
 from src.config_root_schema import AccountsSettings, Settings
@@ -63,6 +64,13 @@ def load_root_settings() -> Settings:
         student_affairs_service=StudentAffairsSettings(
             environment=Environment.TESTING,
             omnidesk=OmnideskSettings(jwt_marker=SecretStr("test-marker-0123456789abcdef")),
+        ),
+        board_games_service=BoardGamesSettings(
+            environment=Environment.TESTING,
+            superadmin_emails=["admin@innopolis.university"],
+            mongo=MongoDatabaseSettings(
+                uri=SecretStr(mongo_uri.replace("<service_name>", "board_games")),
+            ),
         ),
     )
 
