@@ -48,6 +48,7 @@ env:
 
 jobs:
   build-and-push-image:
+    name: Build and push image to GitHub Container Registry
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -120,6 +121,7 @@ jobs:
             --arg service "$SERVICE" \
             '{image_id: $image_id, ref: $ref, services: (if $service == "" or $service == "all" then [] else [$service] end)}' |
           curl -fNS \
+            --connect-timeout 10 \
             -H "Authorization: Bearer ${WEBHOOK_SECRET}" \
             -H "Content-Type: application/json" \
             -X POST \
