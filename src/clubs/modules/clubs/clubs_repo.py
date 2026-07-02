@@ -11,7 +11,11 @@ class UpdateClub(ClubSchema):
     new_leader_email: str | None = None
 
     def to_club_schema(self) -> ClubSchema:
-        return ClubSchema.model_validate(self.model_dump(include=set(ClubSchema.model_fields)))
+        clean_data = self.model_dump(
+            include=set(ClubSchema.model_fields.keys()),
+            exclude_unset=True
+        )
+        return ClubSchema.model_validate(clean_data)
 
 
 async def create(data: CreateClub) -> Club:
@@ -37,7 +41,7 @@ async def read_all() -> list[Club]:
 async def update(id: PydanticObjectId, data: ClubSchema) -> Club | None:
     obj = await Club.get(id)
     if obj:
-        await obj.set(data.model_dump())
+        await obj.set(data.model_dump(exclude_unset=True))
     return obj
 
 
