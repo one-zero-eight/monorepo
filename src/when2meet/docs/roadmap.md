@@ -47,3 +47,13 @@
 - [#98](https://github.com/one-zero-eight/monorepo/issues/98) — Define behaviour when organizer changes slots after participants already replied
 - [#99](https://github.com/one-zero-eight/monorepo/issues/99) — Redesign availability grid interaction and visual design
 - [#100](https://github.com/one-zero-eight/monorepo/issues/100) — Simplify intersection filter UX
+
+## Continuing Work After Sprint 3
+
+**Architecture:** Keep stabilizing the When2Meet service boundaries, especially event persistence, participant reply updates, calendar integration, and room-booking integration. Backend contracts should stay documented and aligned with the frontend flow.
+
+**Quality:** Continue fixing bugs found during Sprint 3 review, regression testing, and customer usage. Add tests for reply editing, slot-grid changes, intersection calculation, calendar overlays, and room-booking edge cases.
+
+**UI and UX:** Continue editing the calendar view UI so busy slots, selected availability, conflicts, and heatmap/intersection states are visually clear on desktop and mobile.
+
+**Process:** Keep linking implementation work to GitHub issues, update acceptance criteria when customer feedback changes scope, and verify completed work against the Definition of Done before closing issues.
