@@ -1,6 +1,9 @@
 from beanie import PydanticObjectId
+from pydantic import Field
 
 from src.clubs.mongo import Club, ClubSchema
+
+CLUB_SCHEMA_FIELDS = set(ClubSchema.model_fields)
 
 
 class CreateClub(ClubSchema):
@@ -8,12 +11,12 @@ class CreateClub(ClubSchema):
 
 
 class UpdateClub(ClubSchema):
-    new_leader_email: str | None = None
+    new_leader_email: str | None = Field(default=None, exclude=True)
 
     def to_club_schema(self) -> ClubSchema:
         clean_data = self.model_dump(
-            include=set(ClubSchema.model_fields.keys()),
-            exclude_unset=True
+            include=CLUB_SCHEMA_FIELDS,
+            exclude_unset=True,
         )
         return ClubSchema.model_validate(clean_data)
 
@@ -39,10 +42,12 @@ async def read_all() -> list[Club]:
 
 
 async def update(id: PydanticObjectId, data: ClubSchema) -> Club | None:
-    obj = await Club.get(id)
-    if obj:
-        await obj.set(data.model_dump(exclude_unset=True))
-    return obj
+    update_data = data.model_dump(include=CLUB_SCHEMA_FIELDS, exclude_unset=True)
+    result = await Club.get_pymongo_collection().update_one(
+        {"_id": id},
+        {"$set": update_data, "$unset": {"new_leader_email": ""}},
+    )
+    return await Club.get(id) if result.matched_count else None
 
 
 async def delete(id: PydanticObjectId) -> bool:
