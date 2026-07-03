@@ -57,7 +57,7 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref }}
 
       - name: 📦 Install native libraries
-        uses: awalsh128/cache-apt-pkgs-action@v1
+        uses: awalsh128/cache-apt-pkgs-action@v1.6.2
         with:
           packages: libmagic1
           version: 1.0
