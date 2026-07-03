@@ -22,3 +22,4 @@ jobs:
                   args: >-
                       . --verbose --exclude-all-private
                       --exclude 'https?://([^/]*\.)*innohassle\.ru'
+                      --exclude 'https?://([^/]*\.)*iso\.org'
