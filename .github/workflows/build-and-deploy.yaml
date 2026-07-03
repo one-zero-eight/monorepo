@@ -108,6 +108,7 @@ jobs:
         env:
           DEPLOYER_URL: ${{ github.event.inputs.environment == 'production' && secrets.DEPLOYER_PRODUCTION_URL || secrets.DEPLOYER_STAGING_URL }}
           WEBHOOK_SECRET: ${{ github.event.inputs.environment == 'production' && secrets.DEPLOYER_PRODUCTION_WEBHOOK_SECRET || secrets.DEPLOYER_STAGING_WEBHOOK_SECRET }}
+          DEPLOYER_PROXY: ${{ secrets.DEPLOYER_PROXY }}
           REPOSITORY: ${{ github.repository }}
           IMAGE_ID: ${{ needs.build-and-push-image.outputs.imageid }}
           REF: ${{ github.ref_name }}
@@ -115,15 +116,23 @@ jobs:
         run: |
           set -euo pipefail
 
+          curl_args=(
+            -fNS
+            --connect-timeout 10
+            -H "Authorization: Bearer ${WEBHOOK_SECRET}"
+            -H "Content-Type: application/json"
+            -X POST
+          )
+
+          if [[ -n "${DEPLOYER_PROXY:-}" ]]; then
+            curl_args+=(--proxy "${DEPLOYER_PROXY}")
+          fi
+
           jq -cn \
             --arg image_id "$IMAGE_ID" \
             --arg ref "$REF" \
             --arg service "$SERVICE" \
             '{image_id: $image_id, ref: $ref, services: (if $service == "" or $service == "all" then [] else [$service] end)}' |
-          curl -fNS \
-            --connect-timeout 10 \
-            -H "Authorization: Bearer ${WEBHOOK_SECRET}" \
-            -H "Content-Type: application/json" \
-            -X POST \
+          curl "${curl_args[@]}" \
             "${DEPLOYER_URL}/deploy?repository=${REPOSITORY}" \
             -d @-
