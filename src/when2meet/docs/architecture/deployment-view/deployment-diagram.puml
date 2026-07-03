@@ -1,0 +1,88 @@
+@startuml deployment-diagram
+' When2Meet — Deployment view
+' Shows the runtime/deployment structure and network boundaries for the hosted MVP.
+
+skinparam monochrome false
+skinparam shadowing false
+skinparam node {
+  BackgroundColor #FFFFFF
+  BorderColor #2C3E50
+}
+skinparam database {
+  BackgroundColor #ECF0F1
+  BorderColor #2C3E50
+}
+
+title When2Meet — Deployment Diagram
+
+node "Customer browser" as Browser {
+  artifact "When2Meet Vue SPA" as SPA
+}
+
+node "Public Internet" as Internet {
+}
+
+node "InNoHassle Edge\n(nginx reverse proxy)" as Edge {
+}
+
+node "Frontend host\n(pre.innohassle.ru)" as FrontendHost {
+  artifact "Static SPA build" as StaticBuild
+}
+
+node "API host\n(api.innohassle.ru)" as APIHost {
+  artifact "When2Meet FastAPI container\n:8020 -> :8000" as APIContainer
+  artifact "Room Booking container\n:8008" as RoomContainer
+}
+
+node "Docker host (shared)" as DockerHost {
+  database "MongoDB container\n:27017\n(events collection)" as Mongo
+  database "MinIO\n:9000/:9001" as Minio
+}
+
+cloud "External InNoHassle Accounts" as AccountsCloud {
+  artifact "Accounts API\n(JWT issuer, JWKS, profiles)" as AccountsAPI
+}
+
+cloud "GitHub Actions CI" as CI {
+  artifact "tests.yaml\nwhen2meet-qa.yaml" as Workflows
+}
+
+' Customer-facing access path
+Browser --> Internet : HTTPS
+Internet --> Edge : HTTPS
+Edge --> FrontendHost : serve SPA
+Edge --> APIHost : /when2meet/v0 -> APIContainer
+
+' Service interactions
+APIContainer --> Mongo : Beanie ODM\n(mongodb://)
+APIContainer --> AccountsAPI : verify JWT + get_users\n(HTTPS)
+APIContainer --> RoomContainer : book room\n(Sprint 3 #93, internal HTTP)
+RoomContainer --> Mongo : room_booking collection
+APIContainer ..> Minio : (reserved for future exports)
+
+' Build / deploy path
+CI --> APIHost : build api.Dockerfile\ndeploy on merge to main
+CI --> FrontendHost : build SPA\ndeploy static assets
+
+note right of Edge
+  Single public entry point; TLS
+  termination and path-based
+  routing to frontend vs API.
+end note
+
+note bottom of DockerHost
+  MongoDB and MinIO run in the
+  same Docker Compose stack as
+  the API; only the API port is
+  exposed through the edge proxy.
+  Mongo is not reachable from the
+  public internet.
+end note
+
+note right of APIContainer
+  One FastAPI process per
+  container, 1 GB memory limit,
+  settings.yaml mounted read-only.
+end note
+
+@enduml
