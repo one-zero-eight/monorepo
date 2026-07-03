@@ -136,16 +136,6 @@ async def update_event(
             detail="Only the owner can update the event",
         )
 
-    if event_update.slots is not None:
-        new_slots_set = set(event_update.slots)
-        for p in event.participants:
-            for slot in p.availability:
-                if slot not in new_slots_set:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Participant {p.user_id} has availability at {slot} which is not in the new slots",
-                    )
-
     event = await events_repo.update_event(event, event_update)
     return await event_view(event)
 
@@ -178,7 +168,6 @@ async def delete_event(event_ref: str, auth: INH_TOKEN_AUTH):
     "/{event_ref}/participants",
     responses={
         status.HTTP_200_OK: {"description": "Participant availability updated"},
-        status.HTTP_400_BAD_REQUEST: {"description": "Invalid availability slots"},
         status.HTTP_404_NOT_FOUND: {"description": "Event not found"},
     },
 )
@@ -191,14 +180,6 @@ async def update_participant(
     event = await events_repo.read_by_ref(event_ref)
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
-
-    event_slots_set = set(event.slots)
-    for slot in participant_in.availability:
-        if slot not in event_slots_set:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Slot {slot} is not available for this event",
-            )
 
     event = await events_repo.update_participant(event, participant_in, user_id=auth.innohassle_id)
     return await event_view(event)

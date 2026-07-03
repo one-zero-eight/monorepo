@@ -149,9 +149,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EventView"
-        "400":
-          description: Participant {p.user_id} has availability at {slot} which is not in
-            the new slots
         "401":
           description: Unable to verify credentials OR Credentials not provided
         "403":
@@ -223,8 +220,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EventView"
-        "400":
-          description: Invalid availability slots
         "401":
           description: Unable to verify credentials OR Credentials not provided
         "404":

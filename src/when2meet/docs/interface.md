@@ -75,9 +75,10 @@ Returns events where the authenticated user is a participant but not the owner.
 - **Request Body:** partial `EventUpdate`
 - **Response:**
   - `200 OK` — `EventView`
-  - `400 Bad Request` — updated slots would remove an already selected participant availability slot.
   - `403 Forbidden` — authenticated user is not the owner.
   - `404 Not Found` — event does not exist.
+
+Participant availability is preserved when slots are removed from the event.
 
 ### Delete Event
 
@@ -103,10 +104,10 @@ Returns events where the authenticated user is a participant but not the owner.
   ```
 - **Response:**
   - `200 OK` — `EventView`
-  - `400 Bad Request` — one or more slots are not part of the event.
   - `404 Not Found` — event does not exist.
 
 The backend takes participant `user_id` from the Bearer token. Request fields such as `user_id`, `name`, and `if_needed` are rejected.
+Availability can include slots outside the current event grid; existing hidden slots are preserved on updates.
 
 ### Delete Participant
 
