@@ -124,8 +124,8 @@ def test_patch_event_not_found(when2meet_client: TestClient, user_headers):
     assert patch_resp.json()["detail"] == "Event not found"
 
 
-def test_patch_event_invalid_slots(when2meet_client: TestClient, user_headers):
-    """Verify that removing active slots is blocked."""
+def test_patch_event_preserves_hidden_participant_slots(when2meet_client: TestClient, user_headers):
+    """Verify removed event slots stay in participant availability."""
     create_resp = when2meet_client.post(
         "/api/v0/events",
         json={"name": "Slot Meeting", "slots": ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z"]},
@@ -142,8 +142,103 @@ def test_patch_event_invalid_slots(when2meet_client: TestClient, user_headers):
     patch_resp = when2meet_client.patch(
         f"/api/v0/events/{event_id}", json={"slots": ["2026-06-15T10:00:00Z"]}, headers=user_headers
     )
-    assert patch_resp.status_code == 400
-    assert "not in the new slots" in patch_resp.json()["detail"]
+    assert patch_resp.status_code == 200
+    assert patch_resp.json()["participants"][0]["availability"] == ["2026-06-15T11:00:00Z"]
+
+    patch_resp = when2meet_client.patch(
+        f"/api/v0/events/{event_id}",
+        json={"slots": ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z"]},
+        headers=user_headers,
+    )
+    assert patch_resp.status_code == 200
+    assert patch_resp.json()["participants"][0]["availability"] == ["2026-06-15T11:00:00Z"]
+
+
+def test_update_participant_keeps_hidden_slots(when2meet_client: TestClient, user_headers):
+    """Verify editing availability does not discard slots hidden by the organizer."""
+    create_resp = when2meet_client.post(
+        "/api/v0/events",
+        json={
+            "name": "Hidden Slot Meeting",
+            "slots": ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z", "2026-06-15T12:00:00Z"],
+        },
+        headers=user_headers,
+    )
+    event_id = create_resp.json()["id"]
+
+    when2meet_client.put(
+        f"/api/v0/events/{event_id}/participants",
+        json={"availability": ["2026-06-15T11:00:00Z"]},
+        headers=user_headers,
+    )
+
+    patch_resp = when2meet_client.patch(
+        f"/api/v0/events/{event_id}",
+        json={"slots": ["2026-06-15T10:00:00Z", "2026-06-15T12:00:00Z"]},
+        headers=user_headers,
+    )
+    assert patch_resp.status_code == 200
+    assert patch_resp.json()["participants"][0]["availability"] == ["2026-06-15T11:00:00Z"]
+
+    update_resp = when2meet_client.put(
+        f"/api/v0/events/{event_id}/participants",
+        json={"availability": ["2026-06-15T12:00:00Z"]},
+        headers=user_headers,
+    )
+    assert update_resp.status_code == 200
+    assert update_resp.json()["participants"][0]["availability"] == [
+        "2026-06-15T11:00:00Z",
+        "2026-06-15T12:00:00Z",
+    ]
+
+    patch_resp = when2meet_client.patch(
+        f"/api/v0/events/{event_id}",
+        json={
+            "slots": ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z", "2026-06-15T12:00:00Z"],
+        },
+        headers=user_headers,
+    )
+    assert patch_resp.status_code == 200
+    assert patch_resp.json()["participants"][0]["availability"] == [
+        "2026-06-15T11:00:00Z",
+        "2026-06-15T12:00:00Z",
+    ]
+
+
+def test_update_participant_deduplicates_hidden_slots_from_full_payload(when2meet_client: TestClient, user_headers):
+    """Verify full frontend payloads do not duplicate previously hidden slots."""
+    create_resp = when2meet_client.post(
+        "/api/v0/events",
+        json={
+            "name": "Full Payload Meeting",
+            "slots": ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z", "2026-06-15T12:00:00Z"],
+        },
+        headers=user_headers,
+    )
+    event_id = create_resp.json()["id"]
+
+    when2meet_client.put(
+        f"/api/v0/events/{event_id}/participants",
+        json={"availability": ["2026-06-15T11:00:00Z"]},
+        headers=user_headers,
+    )
+    when2meet_client.patch(
+        f"/api/v0/events/{event_id}",
+        json={"slots": ["2026-06-15T10:00:00Z", "2026-06-15T12:00:00Z"]},
+        headers=user_headers,
+    )
+
+    update_resp = when2meet_client.put(
+        f"/api/v0/events/{event_id}/participants",
+        json={"availability": ["2026-06-15T11:00:00Z", "2026-06-15T12:00:00Z"]},
+        headers=user_headers,
+    )
+
+    assert update_resp.status_code == 200
+    assert update_resp.json()["participants"][0]["availability"] == [
+        "2026-06-15T11:00:00Z",
+        "2026-06-15T12:00:00Z",
+    ]
 
 
 def test_delete_event(when2meet_client: TestClient, user_headers, auth_header_factory):
@@ -249,8 +344,8 @@ def test_update_participant_rejects_extra_fields(when2meet_client: TestClient, u
     assert resp.status_code == 422
 
 
-def test_update_participant_invalid_slot(when2meet_client: TestClient, user_headers):
-    """Verify that participants cannot pick slots outside the event grid."""
+def test_update_participant_accepts_slots_outside_current_event_grid(when2meet_client: TestClient, user_headers):
+    """Verify participants can save slots outside the current event grid."""
     event_data = {"name": "Slot Bound", "slots": ["2026-06-15T10:00:00Z"]}
     create_response = when2meet_client.post("/api/v0/events", json=event_data, headers=user_headers)
     event_id = create_response.json()["id"]
@@ -259,8 +354,8 @@ def test_update_participant_invalid_slot(when2meet_client: TestClient, user_head
     response = when2meet_client.put(
         f"/api/v0/events/{event_id}/participants", json=participant_data, headers=user_headers
     )
-    assert response.status_code == 400
-    assert "not available for this event" in response.json()["detail"]
+    assert response.status_code == 200
+    assert response.json()["participants"][0]["availability"] == ["2026-06-15T12:00:00Z"]
 
 
 def test_update_participant_event_not_found(when2meet_client: TestClient, user_headers):

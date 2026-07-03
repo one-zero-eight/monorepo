@@ -38,9 +38,11 @@ async def read_by_ref(event_ref: str) -> Event | None:
 
 async def update_participant(event: Event, data: ParticipantUpdate, user_id: str) -> Event:
     """Update or add participant availability."""
+    event_slots_set = set(event.slots)
     for p in event.participants:
         if p.user_id == user_id:
-            p.availability = data.availability
+            hidden_availability = [slot for slot in p.availability if slot not in event_slots_set]
+            p.availability = list(dict.fromkeys(hidden_availability + data.availability))
             break
     else:
         event.participants.append(Participant(user_id=user_id, availability=data.availability))
