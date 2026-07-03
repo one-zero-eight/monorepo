@@ -456,14 +456,14 @@ wheels = [
 
 [[package]]
 name = "fastapi-swagger"
-version = "0.4.50"
+version = "0.4.52"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fastapi" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4a/59/5b244cf500d9a3a9c7fff4e6a8eca6ac394cbb083c5b90a4290bb561dc14/fastapi_swagger-0.4.50.tar.gz", hash = "sha256:62ca5e10d5f87276923c4f1783cce442290fd10ec34349074a89930b8531393c", size = 443143, upload-time = "2026-05-13T02:54:47.9Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7e/15/6f26124dd1f96fcd444489bb95a97bb24dab0a0523aeb6eedc5d94b60fee/fastapi_swagger-0.4.52.tar.gz", hash = "sha256:cc85a316e2c8be8d3e5d6f63f31ef1c3307c3f84593814432f386547f0f84864", size = 446117, upload-time = "2026-06-24T03:26:50.142Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/07/ac/fb1225a5a312c2d89b75ff0cae1e9cf51f809e88b51362ba93cf08f1e6e0/fastapi_swagger-0.4.50-py3-none-any.whl", hash = "sha256:dba5b2d0bc585d37566e8de278cdc1dd663ff757892ca888961b54faccdd71ac", size = 446175, upload-time = "2026-05-13T02:54:45.787Z" },
+    { url = "https://files.pythonhosted.org/packages/ff/b0/2a2f2791dea1da553048bb4b50d601e780dc835862200718f1bb1f4f4e96/fastapi_swagger-0.4.52-py3-none-any.whl", hash = "sha256:59776d860e015c9fcc5a2d699d736a48493f0d60c4d8cc345b6d2b95da6016d6", size = 449194, upload-time = "2026-06-24T03:26:48.831Z" },
 ]
 
 [[package]]
@@ -493,7 +493,7 @@ wheels = [
 
 [[package]]
 name = "google-api-python-client"
-version = "2.197.0"
+version = "2.198.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "google-api-core" },
@@ -502,22 +502,22 @@ dependencies = [
     { name = "httplib2" },
     { name = "uritemplate" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/22/09/081d66357118bd260f8f182cb1b2dd5bd32ca88e3714d7c93896cab946fc/google_api_python_client-2.197.0.tar.gz", hash = "sha256:32e03977eda4a66eafc6ae58dc9ec46426b6025636d5ef019c5703013eddd4e5", size = 14707398, upload-time = "2026-05-28T20:23:12.498Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6b/53/0cd38e3a29d72ce45e27feba2ce1cd8049d69af9c48cb14fb164f1be9133/google_api_python_client-2.198.0.tar.gz", hash = "sha256:dfe3e16fb241af6e9c460a33f65085b3450e05cea09364f6b5d8997fb7e43e2a", size = 15060142, upload-time = "2026-06-25T14:32:42.953Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a0/e5/e9cc221fd75230974d4ef45eb72d2261feca3c110d5554215d516bfe6534/google_api_python_client-2.197.0-py3-none-any.whl", hash = "sha256:0f8b89aa75768161dd4f5092d6bcb386c13236b32e0d9a938c02f71342094d14", size = 15287302, upload-time = "2026-05-28T20:23:09.683Z" },
+    { url = "https://files.pythonhosted.org/packages/d5/92/0fc9e7a09eb240c31b879bd8d2e43f81ed1f86c4798b79ead4a083921ab3/google_api_python_client-2.198.0-py3-none-any.whl", hash = "sha256:fabac935474e817da5e662ff61bf7139439d6f92b32d332a7318a2d45931e03e", size = 15644203, upload-time = "2026-06-25T14:32:39.963Z" },
 ]
 
 [[package]]
 name = "google-auth"
-version = "2.55.0"
+version = "2.55.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
     { name = "pyasn1-modules" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/81/1c/70b23fc52b2bb3c70b379f3bd05c4a60ab3a873e30c6bd21c57e0154848a/google_auth-2.55.0.tar.gz", hash = "sha256:fcd3a130f575fa36403d38774af1c64a4fbfbca09215f0589d2372b5119697cb", size = 349379, upload-time = "2026-06-15T22:33:16.466Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/6f/f3f4ac177c67bbee8fe8e88f2ab4f36af88c44a096e165c5217accf6e5d3/google_auth-2.55.1.tar.gz", hash = "sha256:fb2d9b730f2c9b8d326ec8d7222f21aef2ead15bf0513793d6442485d87af0a1", size = 349527, upload-time = "2026-06-25T23:39:27.182Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/44/71/c0321dc6d63d99946da45f7c06299b934e4f7f7da5c4f14d101bcb39adf1/google_auth-2.55.0-py3-none-any.whl", hash = "sha256:a17cef9dedf98c4ebae2fb0c48c8f75952c877cbc2efe09f329ef16c2783d88a", size = 252400, upload-time = "2026-06-15T22:33:14.992Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/1d/f6d3ca1ad0725f2e08a1c6915640748a52de2e66596160a4d53b010cccf0/google_auth-2.55.1-py3-none-any.whl", hash = "sha256:eada68dfd52b3b81191827601e2a0c3fa12540c818534b630ddc5355769c3995", size = 252349, upload-time = "2026-06-25T23:38:52.946Z" },
 ]
 
 [[package]]
@@ -911,7 +911,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=49.0.0" },
     { name = "fastapi", specifier = ">=0.137.2" },
     { name = "fastapi-derive-responses", specifier = ">=0.1.7" },
-    { name = "fastapi-swagger", specifier = ">=0.4.50" },
+    { name = "fastapi-swagger", specifier = ">=0.4.52" },
     { name = "filetype", specifier = ">=1.2.0" },
     { name = "gunicorn", specifier = ">=26.0.0" },
     { name = "httpx", specifier = ">=0.28.1" },
@@ -943,8 +943,8 @@ dev = [
 ]
 forms = [{ name = "nanoid", specifier = ">=2.0.0" }]
 guard = [
-    { name = "google-api-python-client", specifier = ">=2.197.0" },
-    { name = "google-auth", specifier = ">=2.55.0" },
+    { name = "google-api-python-client", specifier = ">=2.198.0" },
+    { name = "google-auth", specifier = ">=2.55.1" },
     { name = "google-auth-oauthlib", specifier = ">=1.4.0" },
 ]
 maps = [

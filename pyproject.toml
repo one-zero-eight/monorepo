@@ -13,7 +13,7 @@ dependencies = [
     "cryptography>=49.0.0", # ~13.7 MiB
     "fastapi>=0.137.2", # ~737 KiB
     "fastapi-derive-responses>=0.1.7", # ~25 KiB
-    "fastapi-swagger>=0.4.50", # ~1.6 MiB
+    "fastapi-swagger>=0.4.52", # ~1.6 MiB
     "filetype>=1.2.0", # ~71 KiB
     "gunicorn>=26.0.0", # ~761 KiB
     "httpx>=0.28.1", # ~288 KiB
@@ -72,8 +72,8 @@ forms = [
     "nanoid>=2.0.0", # ~9 KiB
 ]
 guard = [
-    "google-api-python-client>=2.197.0", # ~95.4 MiB
-    "google-auth>=2.55.0", # ~871 KiB
+    "google-api-python-client>=2.198.0", # ~95.4 MiB
+    "google-auth>=2.55.1", # ~871 KiB
     "google-auth-oauthlib>=1.4.0", # ~52 KiB
 ]
 #schedule-builder-backend = [
