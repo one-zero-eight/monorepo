@@ -14,11 +14,23 @@ sub-characteristics. The table below is the index; each section that follows
 explains how the current architecture supports that QR, which view(s) show the
 supporting structure, and which ADR(s) captured the load-bearing decision.
 
+## Contents
+
+- [Traceability Index](#traceability-index)
+- [QR-001: Critical module testability](#qr-001-critical-module-testability)
+- [QR-002: Owner-only event mutation](#qr-002-owner-only-event-mutation)
+- [QR-003: Event read response time](#qr-003-event-read-response-time)
+- [QR-004: QA evidence traceability](#qr-004-qa-evidence-traceability)
+- [Maintaining this mapping](#maintaining-this-mapping)
+
+## Traceability Index
+
 | QR | Sub-characteristic | Supporting views | ADRs | QRT |
 |---|---|---|---|---|
 | [QR-001](#qr-001-critical-module-testability) | Testability | Static, Dynamic | [ADR-0001](adr/0001-repository-pattern-for-events-persistence.md) | [QRT-001](../quality-requirement-tests.md#qrt-001-critical-module-line-coverage) |
 | [QR-002](#qr-002-owner-only-event-mutation) | Confidentiality | Static, Dynamic, Deployment | [ADR-0001](adr/0001-repository-pattern-for-events-persistence.md), [ADR-0003](adr/0003-inh-accounts-jwt-verification-and-user-enrichment.md) | [QRT-002](../quality-requirement-tests.md#qrt-002-owner-only-event-mutation) |
 | [QR-003](#qr-003-event-read-response-time) | Time behaviour | Static, Dynamic, Deployment | [ADR-0002](adr/0002-slug-based-public-event-references.md) | [QRT-003](../quality-requirement-tests.md#qrt-003-event-read-response-time) |
+| [QR-004](#qr-004-qa-evidence-traceability) | Maintainability | Static, Dynamic, Deployment | [ADR-0001](adr/0001-repository-pattern-for-events-persistence.md), [ADR-0002](adr/0002-slug-based-public-event-references.md), [ADR-0003](adr/0003-inh-accounts-jwt-verification-and-user-enrichment.md) | [QRT-004](../quality-requirement-tests.md#qrt-004-qa-documentation-and-architecture-traceability) |
 
 ## QR-001: Critical module testability
 
@@ -104,6 +116,30 @@ threaten the 2 s budget.
 (JWKS caching keeps auth local).
 
 **Verification:** [QRT-003](../quality-requirement-tests.md#qrt-003-event-read-response-time).
+
+## QR-004: QA evidence traceability
+
+**Scenario:** when Sprint 5 or later changes testing, QA, Definition of Done,
+CI, or architecture evidence, maintained documentation shall remain navigable
+and shall preserve traceability between required gates, quality requirements,
+automated QRTs, and accepted ADRs.
+
+**How the architecture supports it.** The product architecture is documented
+as a single-service FastAPI API with explicit static, dynamic, deployment, and
+ADR evidence. `QR-004` treats that documentation set as a maintained
+architecture asset: if repository boundaries, slug lookup, JWT verification,
+deployment, workflow, or CI gates change, the QR/QRT/ADR links must change in
+the same increment.
+
+**Supporting views:** [Static](README.md#static-view--component-diagram),
+[Dynamic](README.md#dynamic-view--sequence-diagram),
+[Deployment](README.md#deployment-view--deployment-diagram).
+
+**Decisions of record:** [ADR-0001](adr/0001-repository-pattern-for-events-persistence.md),
+[ADR-0002](adr/0002-slug-based-public-event-references.md),
+[ADR-0003](adr/0003-inh-accounts-jwt-verification-and-user-enrichment.md).
+
+**Verification:** [QRT-004](../quality-requirement-tests.md#qrt-004-qa-documentation-and-architecture-traceability).
 
 ## Maintaining this mapping
 

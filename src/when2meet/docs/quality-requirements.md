@@ -2,6 +2,13 @@
 
 When2Meet quality requirements use [ISO/IEC 25010](https://www.iso.org/standard/35733.html) sub-characteristics. Each requirement has a stable ID, a measurable scenario, and linked automated quality requirement tests in [quality-requirement-tests.md](quality-requirement-tests.md).
 
+## Contents
+
+- [QR-001: Critical module testability](#qr-001-critical-module-testability)
+- [QR-002: Owner-only event mutation](#qr-002-owner-only-event-mutation)
+- [QR-003: Event read response time](#qr-003-event-read-response-time)
+- [QR-004: QA evidence traceability](#qr-004-qa-evidence-traceability)
+
 ## QR-001: Critical module testability
 
 **ISO/IEC 25010 sub-characteristic:** Testability
@@ -37,3 +44,15 @@ When2Meet quality requirements use [ISO/IEC 25010](https://www.iso.org/standard/
 **Linked quality requirement tests:** [QRT-003](quality-requirement-tests.md#qrt-003-event-read-response-time)
 
 **Related ADRs:** [ADR-0002 Slug-based public event references with ObjectId fallback](architecture/adr/0002-slug-based-public-event-references.md)
+
+## QR-004: QA evidence traceability
+
+**ISO/IEC 25010 sub-characteristic:** Maintainability
+
+**Scenario:** When Sprint 5 or later changes testing, QA, Definition of Done, CI, or architecture evidence, maintained documentation shall remain navigable and shall preserve traceability between required gates, quality requirements, automated QRTs, and accepted ADRs.
+
+**Why this matters:** The project relies on long-lived evidence for release decisions. If QA documents drift from CI or architecture decisions, the team can mark work done without keeping Assignment 4 gates active.
+
+**Linked quality requirement tests:** [QRT-004](quality-requirement-tests.md#qrt-004-qa-documentation-and-architecture-traceability)
+
+**Related ADRs:** [ADR-0001 Repository pattern for events persistence](architecture/adr/0001-repository-pattern-for-events-persistence.md), [ADR-0002 Slug-based public event references with ObjectId fallback](architecture/adr/0002-slug-based-public-event-references.md), [ADR-0003 InNoHassle Accounts JWT verification and user enrichment](architecture/adr/0003-inh-accounts-jwt-verification-and-user-enrichment.md)
