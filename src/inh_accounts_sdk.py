@@ -194,6 +194,12 @@ class InNoHassleAccounts:
         response.raise_for_status()
         return {k: UserSchema.model_validate(v) if v else None for k, v in response.json().items()}
 
+    async def get_sport_token(self, innohassle_id: str) -> str:
+        client = self.get_authorized_client()
+        response = await client.get("/tokens/generate-sport-token", params={"innohassle_id": innohassle_id})
+        response.raise_for_status()
+        return response.json()["access_token"]
+
 
 # Project specific code follows
 import src.logging_  # noqa: E402

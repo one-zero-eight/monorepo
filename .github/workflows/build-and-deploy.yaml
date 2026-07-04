@@ -38,6 +38,7 @@ on:
           - guard
           - forms
           - room-booking
+          - schedule
   push:
     branches:
       - main

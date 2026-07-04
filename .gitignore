@@ -5,6 +5,8 @@ private.pem
 public.pem
 service_account.json
 src/maps/static/*.pdf
+src/schedule/predefined/*
+!src/schedule/predefined/.gitkeep
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,linux,windows,vs,jetbrains+all,macos
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,linux,windows,vs,jetbrains+all,macos

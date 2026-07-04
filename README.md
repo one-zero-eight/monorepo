@@ -15,6 +15,7 @@ This is the monorepo for some of the backend services of InNoHassle ecosystem, a
 - Guard - gating access to Google Spreadsheets by requiring InNoHassle Accounts authentication before adding users.
 - Maps - hosting Innopolis University maps to view them on innohassle.ru.
 - Room booking - view and manage room bookings at innohassle.ru via integration with Microsoft Outlook.
+- Schedule - aggregate university schedules, personalize favorites, and export ICS calendars at [innohassle.ru/schedule](https://innohassle.ru/schedule).
 - Student Affairs - omnidesk authentication via SSO for Student Affairs department to issue tickets.
 - Table Tennis - leaderboard and queue for the [Innopolis University table tennis club](https://innohassle.ru/clubs/inno-table-tennis).
 - When2Meet - service for meeting availability planning. SWP Week 2 report: [reports/week2/README.md](src/when2meet/reports/week2/README.md), MVP v0: [mvp-v0-report.md](src/when2meet/reports/week2/mvp-v0-report.md).
@@ -23,7 +24,7 @@ This is the monorepo for some of the backend services of InNoHassle ecosystem, a
 
 - [Python 3.14](https://www.python.org/downloads/) & [uv](https://docs.astral.sh/uv/)
 - [FastAPI](https://fastapi.tiangolo.com/)
-- Database and ORM: [MongoDB](https://www.mongodb.com/) & [Beanie](https://beanie-odm.dev/)
+- Database and ORM: [MongoDB](https://www.mongodb.com/) & [Beanie](https://beanie-odm.dev/); [PostgreSQL](https://www.postgresql.org/) & [SQLAlchemy](https://www.sqlalchemy.org/) (Schedule service)
 - File storage: [MinIO](https://github.com/minio/minio)
 - Formatting and linting: [Ruff](https://docs.astral.sh/ruff/), [prek](https://prek.j178.dev/)
 - Type checking: [ty](https://docs.astral.sh/ty/)
@@ -160,6 +161,12 @@ our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CON
    uv run -m src.tabletennis --reload
    ```
    > It will be available at http://localhost:8023
+
+   For schedule service:
+   ```bash
+   uv run -m src.schedule --reload
+   ```
+   > It will be available at http://localhost:8024
    </details>
 
 

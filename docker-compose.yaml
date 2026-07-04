@@ -194,6 +194,62 @@ services:
         reservations:
           memory: 500m
 
+  postgres:
+    image: "postgres:17.1"
+    restart: no
+    ports:
+      - "5432:5432"
+    volumes:
+      - "postgres:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      timeout: 5s
+      start_period: 30s
+      interval: 1m
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+
+  schedule-alembic-migrate:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.schedule.app:app
+    restart: no
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+    command: alembic -c src/schedule/alembic.ini upgrade head
+
+  schedule:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.schedule.app:app
+    restart: no
+    ports:
+      - "8024:8000"
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+      - "./src/schedule/predefined:/app/src/schedule/predefined:rw"
+    environment:
+      TZ: Europe/Moscow
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 500m
+    depends_on:
+      postgres:
+        condition: service_healthy
+      schedule-alembic-migrate:
+        condition: service_completed_successfully
+
 volumes:
   mongodb:
   minio:
+  postgres:

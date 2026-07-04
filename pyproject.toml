@@ -43,12 +43,13 @@ dev = [
     "types-pyyaml>=6.0.12.20260518", # ~65 KiB
 ]
 # events = [
-#    "alembic>=1.18.4", # ~258 KiB
-#    "asyncpg>=0.31.0", # ~3.4 MiB
-#    "icalendar>=7.1.0", # ~460 KiB
-#    "prometheus-fastapi-instrumentator>=7.1.0", # ~19 KiB
-#    "sqlalchemy[postgresql-asyncpg]>=2.0.49", # ~3.4 MiB
-#]
+schedule = [
+    "alembic>=1.18.4", # ~258 KiB
+    "asyncpg>=0.31.0", # ~3.4 MiB
+    "icalendar>=7.1.0", # ~460 KiB
+    "prometheus-fastapi-instrumentator>=7.1.0", # ~19 KiB
+    "sqlalchemy[postgresql-asyncpg]>=2.0.49", # ~3.4 MiB
+]
 room-booking = [
     "exchangelib>=5.6.0", # ~871 KiB
     "email-validator>=2.3.0", # ~99 KiB
@@ -102,7 +103,7 @@ constraint-dependencies = ["urllib3>=2.7.0", "idna>=3.15"] # for security relate
 requests-curl = { git = "https://github.com/paivett/requests-curl.git", rev = "82a7fc1" }
 
 [tool.ruff]
-extend-exclude = [".agents/skills"]
+extend-exclude = [".agents/skills", "src/schedule/alembic"]
 line-length = 120
 lint.preview = true
 lint.extend-select = [
@@ -128,6 +129,16 @@ lint.unfixable = ["F401"] # unused-import — report only, do not remove on fix
 target-version = "py314"
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"] # assert is standard in pytest
+"src/schedule/dependencies.py" = ["B008"]
+"src/schedule/exceptions.py" = ["RUF012"]
+"src/schedule/modules/**" = [
+    "A003", "B008", "C401", "C408", "DTZ001", "DTZ005", "DTZ007",
+    "ICN001", "LOG015", "N802", "N803", "N804", "N805", "N806", "N815",
+    "PLC1901", "PLC2801", "PYI033", "RUF013", "S101", "S311",
+]
+"src/schedule/storages/**" = [
+    "A003", "C408", "ICN001", "N802", "N803", "N805", "RUF012",
+]
 [tool.ruff.lint.flake8-builtins]
 ignorelist = ["id"]
 [tool.ruff.lint.flake8-import-conventions]
@@ -139,7 +150,7 @@ time = "tm"
 "__future__.annotations".msg = "Python 3.14+ uses deferred annotations by default; do not use this future import."
 
 [tool.ty.src]
-exclude = [".agents/skills"]
+exclude = [".agents/skills", "src/schedule"]
 
 [tool.pytest.ini_options]
 addopts = "--cov=src --cov-report=term-missing --disable-socket --allow-hosts=127.0.0.1,localhost"

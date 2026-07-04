@@ -72,6 +72,15 @@
       "args": ["--reload"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "schedule",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src.schedule",
+      "args": ["--reload"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
     }
   ]
 }

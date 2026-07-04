@@ -3,8 +3,8 @@
 # Run all services:
 # docker compose -f docker-compose.test.yaml up --build --wait
 #
-# Ports are offset from docker-compose.yaml (27017 / 9000 / 9001) so stacks can run together:
-# Mongo 37017, MinIO API 19000, MinIO console 19001 — same numbers on host and in the lazytainer netns.
+# Ports are offset from docker-compose.yaml (27017 / 9000 / 9001 / 5432) so stacks can run together:
+# Mongo 37017, MinIO API 19000, MinIO console 19001, Postgres 35432 — same numbers on host and in the lazytainer netns.
 
 services:
   lazytainer:
@@ -14,6 +14,7 @@ services:
       - "37017:37017"
       - "19000:19000"
       - "19001:19001"
+      - "35432:35432"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
@@ -21,7 +22,7 @@ services:
       IPV4_DISABLED: "false"
       IPV6_DISABLED: "true"
     labels:
-      - "lazytainer.group.test-infra.ports=37017,19000,19001"
+      - "lazytainer.group.test-infra.ports=37017,19000,19001,35432"
       - "lazytainer.group.test-infra.inactiveTimeout=3600"
       - "lazytainer.group.test-infra.pollRate=60"
       - "lazytainer.group.test-infra.sleepMethod=stop"
@@ -57,6 +58,21 @@ services:
       MINIO_ROOT_USER: test
       MINIO_ROOT_PASSWORD: testsecret
 
+  test-postgres:
+    image: "postgres:17.1"
+    restart: no
+    network_mode: service:lazytainer
+    depends_on:
+      - lazytainer
+    labels:
+      - "lazytainer.group=test-infra"
+    command: ["postgres", "-p", "35432"]
+    volumes:
+      - postgres_test:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: test
+
 volumes:
   mongodb_test:
   minio_test:
+  postgres_test:
