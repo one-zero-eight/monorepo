@@ -189,18 +189,11 @@ def pytest_configure(config: pytest.Config) -> None:
         timings["infra.mongo_wait_ready_s"] = tm.perf_counter() - t0
 
         t0 = tm.perf_counter()
+        from sqlalchemy.exc import SQLAlchemyError
+
         try:
             _wait_postgres_ready(f"postgresql+asyncpg://postgres:test@{SUITE_POSTGRES_NETLOC}/postgres")
-        except OSError as exc:
-            pytest.exit(
-                f"PostgreSQL not ready, run it with `docker compose -f docker-compose.test.yaml up --wait` and try again:\n{exc}",
-                returncode=1,
-            )
-        except Exception as exc:
-            from sqlalchemy.exc import SQLAlchemyError
-
-            if not isinstance(exc, SQLAlchemyError):
-                raise
+        except (OSError, SQLAlchemyError) as exc:
             pytest.exit(
                 f"PostgreSQL not ready, run it with `docker compose -f docker-compose.test.yaml up --wait` and try again:\n{exc}",
                 returncode=1,
