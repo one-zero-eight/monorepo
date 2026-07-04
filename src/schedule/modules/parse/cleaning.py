@@ -1,4 +1,4 @@
-import datetime
+import datetime as dtm
 from zlib import crc32
 
 import icalendar
@@ -10,7 +10,7 @@ from src.schedule.modules.parse.utils import get_color
 class CleaningEntry(BaseModel):
     name: str = "Cleaning"
     location: str
-    dates: list[datetime.date]
+    dates: list[dtm.date]
 
 
 class LinenChangeEntry(BaseModel):
@@ -20,7 +20,7 @@ class LinenChangeEntry(BaseModel):
 
 
 class CleaningParserConfig(BaseModel):
-    start_date: datetime.date
+    start_date: dtm.date
     cleaning_entries: list[CleaningEntry]
     linen_change_entries: list[LinenChangeEntry]
 
@@ -78,10 +78,11 @@ class CleaningParser:
 class CleaningEvent(BaseModel):
     summary: str
     location: str
-    date: datetime.date
-    rdate: list[datetime.date]
+    date: dtm.date
+    rdate: list[dtm.date]
 
     @field_validator("rdate", mode="before")
+    @classmethod
     def remove_repeat_dates(cls, v):
         return list(set(v))
 
@@ -115,7 +116,7 @@ class CleaningEvent(BaseModel):
 
 class LinenChangeEvent(BaseModel):
     summary: str
-    date: datetime.date
+    date: dtm.date
     description: str = "Working hours:\n13:00-17:00"
     location: str
     rrule: dict

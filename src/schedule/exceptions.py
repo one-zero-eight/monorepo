@@ -26,7 +26,7 @@ class IncorrectCredentialsException(CustomHTTPException):
                 detail=self.responses[401]["description"],
             )
 
-    responses = {401: {"description": "Unable to verify credentials OR Credentials not provided"}}
+    responses: ClassVar = {401: {"description": "Unable to verify credentials OR Credentials not provided"}}
 
 
 class ForbiddenException(CustomHTTPException):
@@ -40,7 +40,7 @@ class ForbiddenException(CustomHTTPException):
             detail=self.responses[403]["description"],
         )
 
-    responses = {403: {"description": "Access denied, not enough permissions"}}
+    responses: ClassVar = {403: {"description": "Access denied, not enough permissions"}}
 
 
 class InvalidReturnToURL(CustomHTTPException):
@@ -54,7 +54,7 @@ class InvalidReturnToURL(CustomHTTPException):
             detail=self.responses[400]["description"],
         )
 
-    responses = {400: {"description": "Invalid return_to URL"}}
+    responses: ClassVar = {400: {"description": "Invalid return_to URL"}}
 
 
 class ObjectNotFound(CustomHTTPException):
@@ -68,11 +68,11 @@ class ObjectNotFound(CustomHTTPException):
             detail=detail or self.responses[404]["description"],
         )
 
-    responses = {404: {"description": "Object not found"}}
+    responses: ClassVar = {404: {"description": "Object not found"}}
 
 
 class EventGroupNotFoundException(ObjectNotFound):
-    responses = {404: {"description": "Event group not found"}}
+    responses: ClassVar = {404: {"description": "Event group not found"}}
 
 
 class EventGroupWithMissingPath(CustomHTTPException):
@@ -86,4 +86,4 @@ class EventGroupWithMissingPath(CustomHTTPException):
             detail=self.responses[400]["description"],
         )
 
-    responses = {400: {"description": "Path is not defined for this event group"}}
+    responses: ClassVar = {400: {"description": "Path is not defined for this event group"}}

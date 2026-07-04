@@ -1,6 +1,6 @@
 __all__ = ["SqlUserRepository", "user_repository"]
 
-import random
+import secrets
 import string
 
 from sqlalchemy import delete, select, update
@@ -11,7 +11,7 @@ from sqlalchemy.sql.expression import exists
 
 from src.inh_accounts_sdk import inh_accounts
 from src.schedule.exceptions import EventGroupNotFoundException
-from src.schedule.modules.crud import AbstractCRUDRepository, CRUDFactory
+from src.schedule.modules.crud import AbstractCRUDRepository, crud_factory
 from src.schedule.modules.users.linked import LinkedCalendarCreate, LinkedCalendarUpdate, LinkedCalendarView
 from src.schedule.modules.users.schemas import CreateUser, TargetForExport, UpdateUser, ViewUser, ViewUserScheduleKey
 from src.schedule.storages.sql.models import EventGroup, LinkedCalendar, User, UserScheduleKeys, UserXFavoriteEventGroup
@@ -25,7 +25,7 @@ _get_options = (
 )
 
 
-def SELECT_USER_BY_ID(id_: int):
+def select_user_by_id(id_: int):
     return select(User).where(User.id == id_).options(*_get_options)
 
 
@@ -33,7 +33,7 @@ CRUD: AbstractCRUDRepository[
     CreateUser,
     ViewUser,
     UpdateUser,
-] = CRUDFactory(User, CreateUser, ViewUser, UpdateUser, get_options=_get_options)
+] = crud_factory(User, CreateUser, ViewUser, UpdateUser, get_options=_get_options)
 
 MIN_USER_ID = 100_000
 MAX_USER_ID = 999_999
@@ -45,14 +45,14 @@ async def _get_available_user_ids(session: AsyncSession, count: int = 1) -> list
     excluded_ids: set[int]
     available_ids = set()
     while len(available_ids) < count:
-        chosen_id = random.randint(MIN_USER_ID, MAX_USER_ID)
+        chosen_id = secrets.randbelow(MAX_USER_ID - MIN_USER_ID + 1) + MIN_USER_ID
         if chosen_id not in excluded_ids:
             available_ids.add(chosen_id)
     return list(available_ids) if count > 1 else available_ids.pop()
 
 
 def _generate_random_user_schedule_key() -> str:
-    return "".join(random.choices(string.ascii_letters, k=6))
+    return "".join(secrets.choice(string.ascii_letters) for _ in range(6))
 
 
 class SqlUserRepository:
@@ -66,11 +66,12 @@ class SqlUserRepository:
 
     async def create(self, user: CreateUser) -> ViewUser:
         async with self._create_session() as session:
-            user.id = await _get_available_user_ids(session)
+            available_id = await _get_available_user_ids(session)
+            user.id = available_id if isinstance(available_id, int) else available_id[0]
             created = await CRUD.create(session, user)
             return created
 
-    async def read(self, user_id: int) -> ViewUser:
+    async def read(self, user_id: int) -> ViewUser | None:
         async with self._create_session() as session:
             return await CRUD.read(session, id=user_id)
 
@@ -90,7 +91,9 @@ class SqlUserRepository:
     async def read_id_by_email(self, email: str) -> int:
         async with self._create_session() as session:
             user_id = await session.scalar(select(User.id).where(User.email == email))
-            return user_id
+        if user_id is None:
+            raise ValueError(f"User not found: {email}")
+        return user_id
 
     async def read_id_by_innohassle_id(self, innohassle_id: str) -> int | None:
         async with self._create_session() as session:
@@ -143,7 +146,7 @@ class SqlUserRepository:
                 )
             )
             await session.execute(q)
-            user = await session.scalar(SELECT_USER_BY_ID(user_id))
+            user = await session.scalar(select_user_by_id(user_id))
             await session.commit()
             return ViewUser.model_validate(user)
 
@@ -159,7 +162,7 @@ class SqlUserRepository:
                 )
             )
             await session.execute(q)
-            user = await session.scalar(SELECT_USER_BY_ID(user_id))
+            user = await session.scalar(select_user_by_id(user_id))
             await session.commit()
             return ViewUser.model_validate(user)
 
@@ -239,7 +242,7 @@ class SqlUserRepository:
             await session.execute(q)
             await session.commit()
 
-            user = await session.scalar(SELECT_USER_BY_ID(user_id))
+            user = await session.scalar(select_user_by_id(user_id))
             return ViewUser.model_validate(user)
 
     async def delete_linked_calendar(self, user_id: int, alias: str) -> ViewUser:
@@ -251,7 +254,7 @@ class SqlUserRepository:
             await session.execute(q)
             await session.commit()
 
-            user = await session.scalar(SELECT_USER_BY_ID(user_id))
+            user = await session.scalar(select_user_by_id(user_id))
             return ViewUser.model_validate(user)
 
     async def update_linked_calendar(

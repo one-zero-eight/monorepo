@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Annotated
+from typing import Annotated, cast
 from urllib.parse import unquote
 
 import icalendar
@@ -47,6 +47,8 @@ async def get_current_user_schedule(user_id: CURRENT_USER_ID_DEPENDENCY) -> Stre
     """
 
     user = await user_repository.read(user_id)
+    if user is None:
+        raise ObjectNotFound()
 
     ical_generator = await get_personal_event_groups_ics(user)
 
@@ -445,7 +447,8 @@ async def get_event_group_ics_by_alias(
             events = []
             with_rrule: dict[str, icalendar.Event] = {}
             with_recurrence_id: dict[str, list[icalendar.Event]] = defaultdict(list)
-            for event in calendar.walk("VEVENT"):  # type: icalendar.Event
+            for event in calendar.walk("VEVENT"):
+                event = cast(icalendar.Event, event)
                 if event.get("RRULE"):
                     with_rrule[event.get("UID")] = event
                 if recurrence_id := event.get("RECURRENCE-ID"):

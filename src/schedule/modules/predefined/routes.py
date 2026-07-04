@@ -42,9 +42,8 @@ async def update_predefined_data(_: VERIFY_PARSER_DEPENDENCY, user_storage: Json
 
     non_existent_groups_from_user = user_groups - event_group_aliases
 
-    non_existent_groups_from_academic_groups = (
-        set(group.event_group_alias for group in user_storage.academic_groups if group.event_group_alias)
-        - event_group_aliases
-    )
+    non_existent_groups_from_academic_groups = {
+        group.event_group_alias for group in user_storage.academic_groups if group.event_group_alias
+    } - event_group_aliases
 
     return list(non_existent_groups_from_user) + list(non_existent_groups_from_academic_groups)

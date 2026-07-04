@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import insert as postgres_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from src.schedule.modules.crud import CRUDFactory
+from src.schedule.modules.crud import crud_factory
 from src.schedule.modules.events.schemas import (
     AddEventPatch,
     CreateEvent,
@@ -17,7 +17,7 @@ from src.schedule.modules.events.schemas import (
 from src.schedule.storages.sql import SQLAlchemyStorage
 from src.schedule.storages.sql.models import Event, EventPatch
 
-CRUD = CRUDFactory(
+CRUD = crud_factory(
     Event,
     CreateEvent,
     ViewEvent,
@@ -49,7 +49,7 @@ class SqlEventRepository:
             await session.refresh(db_event)
             return ViewEvent.model_validate(db_event)
 
-    async def read(self, event_id: int) -> ViewEvent:
+    async def read(self, event_id: int) -> ViewEvent | None:
         async with self._create_session() as session:
             return await CRUD.read(session, id=event_id)
 

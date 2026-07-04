@@ -12,7 +12,8 @@ class PredefinedRepository:
 
     async def get_user_predefined(self, user_id: int) -> list[int]:
         user = await user_repository.read(user_id)
-        assert user is not None
+        if user is None:
+            return []
         predefind_user = self.storage.get_user(user.email)
         group_aliases = []
 

@@ -10,9 +10,9 @@ from src.schedule.storages.sql.models.__mixin__ import (
     DescriptionMixin,
     IdMixin,
     NameMixin,
-    OwnershipsMixinFactory,
-    TagsMixinFactory,
     UpdateCreateDateTimeMixin,
+    ownerships_mixin_factory,
+    tags_mixin_factory,
 )
 
 if TYPE_CHECKING:
@@ -25,8 +25,8 @@ class EventGroup(
     NameMixin,
     DescriptionMixin,
     UpdateCreateDateTimeMixin,
-    TagsMixinFactory("event_groups", Base),
-    OwnershipsMixinFactory("event_groups", Base),
+    tags_mixin_factory("event_groups", Base),
+    ownerships_mixin_factory("event_groups", Base),
 ):
     __tablename__ = "event_groups"
     alias: Mapped[str] = mapped_column(String(255), unique=True)

@@ -6,11 +6,9 @@ Create Date: 2024-03-10 21:21:31.768371
 
 """
 
-# ruff: noqa: E501
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -31,7 +29,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("user_id", "group_id"),
     )
     op.add_column("users", sa.Column("innohassle_id", sa.String(), nullable=True))
-    op.create_unique_constraint(None, "users", ["innohassle_id"])
+    op.create_unique_constraint("users_innohassle_id_key", "users", ["innohassle_id"])
     op.drop_column("users", "status")
     op.drop_column("users_x_favorite_groups", "predefined")
     op.drop_column("users_x_favorite_groups", "hidden")
@@ -43,7 +41,7 @@ def downgrade() -> None:
     op.add_column("users_x_favorite_groups", sa.Column("hidden", sa.BOOLEAN(), autoincrement=False, nullable=False))
     op.add_column("users_x_favorite_groups", sa.Column("predefined", sa.BOOLEAN(), autoincrement=False, nullable=False))
     op.add_column("users", sa.Column("status", sa.VARCHAR(), autoincrement=False, nullable=True))
-    op.drop_constraint(None, "users", type_="unique")
+    op.drop_constraint("users_innohassle_id_key", "users", type_="unique")
     op.drop_column("users", "innohassle_id")
     op.drop_table("users_x_hidden_groups")
     # ### end Alembic commands ###

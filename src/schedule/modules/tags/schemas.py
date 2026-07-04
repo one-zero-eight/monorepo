@@ -12,6 +12,7 @@ class CreateTag(BaseModel, frozen=True):
     satellite: Json | None = None
 
     @field_validator("satellite", mode="before")
+    @classmethod
     def _validate_satellite(cls, v):
         if isinstance(v, dict):
             v = json.dumps(v)
@@ -27,6 +28,7 @@ class ViewTag(BaseModel):
 
     # ownerships: list[Ownership] = Field(default_factory=list)
     @field_validator("satellite", mode="before")
+    @classmethod
     def _validate_satellite(cls, v):
         if isinstance(v, str):
             return json.loads(v)
@@ -42,6 +44,7 @@ class UpdateTag(BaseModel):
     satellite: Json | None = None
 
     @field_validator("satellite", mode="before")
+    @classmethod
     def _validate_satellite(cls, v):
         if isinstance(v, dict):
             v = json.dumps(v)

@@ -1,6 +1,6 @@
 __all__ = ["Event", "EventPatch"]
 
-import datetime
+import datetime as dtm
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, String, Text
@@ -11,8 +11,8 @@ from src.schedule.storages.sql.models.__mixin__ import (
     DescriptionMixin,
     IdMixin,
     NameMixin,
-    OwnershipsMixinFactory,
     UpdateCreateDateTimeMixin,
+    ownerships_mixin_factory,
 )
 
 if TYPE_CHECKING:
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 
 class Event(
-    Base, IdMixin, NameMixin, DescriptionMixin, UpdateCreateDateTimeMixin, OwnershipsMixinFactory("events", Base)
+    Base, IdMixin, NameMixin, DescriptionMixin, UpdateCreateDateTimeMixin, ownerships_mixin_factory("events", Base)
 ):
     """
     Create new .icalendar event
@@ -64,8 +64,8 @@ class EventPatch(Base, IdMixin):
     description: Mapped[str] = mapped_column(Text, nullable=True)
     location: Mapped[str] = mapped_column(String(255), nullable=True)
 
-    dtstart: Mapped[datetime.datetime] = mapped_column()
-    dtend: Mapped[datetime.datetime] = mapped_column()
+    dtstart: Mapped[dtm.datetime] = mapped_column()
+    dtend: Mapped[dtm.datetime] = mapped_column()
 
     rrule: Mapped[str] = mapped_column()
 

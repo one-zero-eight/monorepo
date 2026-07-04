@@ -7,7 +7,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.schedule.modules.crud import AbstractCRUDRepository, CRUDFactory
+from src.schedule.modules.crud import AbstractCRUDRepository, crud_factory
 from src.schedule.modules.event_groups.schemas import (
     CreateEventGroup,
     CreateEventGroupWithoutTags,
@@ -23,7 +23,7 @@ CRUD: AbstractCRUDRepository[
     CreateEventGroupWithoutTags,
     ViewEventGroup,
     UpdateEventGroup,
-] = CRUDFactory(
+] = crud_factory(
     EventGroup,
     CreateEventGroupWithoutTags,
     ViewEventGroup,
@@ -53,7 +53,9 @@ class SqlEventGroupRepository:
             # without CRUD
             q = insert(EventGroup).values(group.model_dump(exclude={"tags"})).returning(EventGroup)
             obj = await session.scalar(q)
-            if tags_ids:  # add tags
+            if obj is None:
+                raise RuntimeError("Failed to create event group")
+            if tags_ids:
                 association_table = EventGroup.TagAssociation
                 q = (
                     insert(association_table)
@@ -63,7 +65,10 @@ class SqlEventGroupRepository:
                 await session.execute(q)
             await session.commit()
 
-        return await self.read(obj.id)
+        created = await self.read(obj.id)
+        if created is None:
+            raise RuntimeError("Failed to read created event group")
+        return created
 
     async def batch_create(self, groups: list[CreateEventGroupWithoutTags]) -> list[ViewEventGroup]:
         if not groups:
@@ -101,10 +106,10 @@ class SqlEventGroupRepository:
             await session.commit()
 
         # set tags
-        _create_tags = list(set(tag for group in groups for tag in group.tags))
+        _create_tags = list({tag for group in groups for tag in group.tags})
         db_tags = await tag_repository.batch_create_or_read(_create_tags)
         alias_x_tag = {(tag.alias, tag.type): tag for tag in db_tags}
-        event_group_id_x_tags_ids = dict()
+        event_group_id_x_tags_ids = {}
         for group, group_id in zip(groups, obj_ids):
             tag_ids = [alias_x_tag[(tag.alias, tag.type)].id for tag in group.tags]
             event_group_id_x_tags_ids[group_id] = tag_ids
@@ -114,7 +119,7 @@ class SqlEventGroupRepository:
 
         return [ViewEventGroup.model_validate(obj) for obj in objs]
 
-    async def read(self, group_id: int) -> ViewEventGroup:
+    async def read(self, group_id: int) -> ViewEventGroup | None:
         async with self._create_session() as session:
             return await CRUD.read(session, id=group_id)
 
@@ -191,8 +196,8 @@ class SqlEventGroupRepository:
 
     async def setup_ownership(self, group_id: int, user_id: int, role_alias: OwnershipEnum) -> None:
         async with self._create_session() as session:
-            OwnershipClass = EventGroup.Ownership
-            return await setup_ownership_method(OwnershipClass, session, group_id, user_id, role_alias)
+            ownership_model = EventGroup.Ownership
+            return await setup_ownership_method(ownership_model, session, group_id, user_id, role_alias)
 
     async def update_timestamp(self, group_id: int):
         async with self._create_session() as session:

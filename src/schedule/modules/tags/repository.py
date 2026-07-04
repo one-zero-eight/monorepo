@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.schedule.modules.crud import AbstractCRUDRepository, CRUDFactory
+from src.schedule.modules.crud import AbstractCRUDRepository, crud_factory
 from src.schedule.modules.ownership import OwnershipEnum, setup_ownership_method
 from src.schedule.modules.tags.schemas import CreateTag, UpdateTag, ViewTag
 from src.schedule.storages.sql import SQLAlchemyStorage
@@ -15,7 +15,7 @@ CRUD: AbstractCRUDRepository[
     CreateTag,
     ViewTag,
     UpdateTag,
-] = CRUDFactory(Tag, CreateTag, ViewTag, UpdateTag)
+] = crud_factory(Tag, CreateTag, ViewTag, UpdateTag)
 
 
 class SqlTagRepository:
@@ -31,9 +31,12 @@ class SqlTagRepository:
     async def create_or_read(self, tag: CreateTag) -> ViewTag:
         async with self._create_session() as session:
             created = await CRUD.create_if_not_exists(session, tag)
-            if created is None:
-                created = await CRUD.read_by(session, only_first=True, alias=tag.alias, type=tag.type)
-            return created
+            if created is not None:
+                return created
+            found = await CRUD.read_by(session, only_first=True, alias=tag.alias, type=tag.type)
+            if found is None:
+                raise RuntimeError(f"Tag not found after conflict: {tag.alias}")
+            return found
 
     async def batch_create_or_read(self, tags: list[CreateTag]) -> list[ViewTag]:
         if not tags:
@@ -52,11 +55,11 @@ class SqlTagRepository:
                 .returning(Tag)
             )
 
-            tags = await session.scalars(q)
+            db_tags = await session.scalars(q)
             await session.commit()
-            return [ViewTag.model_validate(tag) for tag in tags]
+            return [ViewTag.model_validate(tag) for tag in db_tags]
 
-    async def read(self, id: int) -> ViewTag:
+    async def read(self, id: int) -> ViewTag | None:
         async with self._create_session() as session:
             return await CRUD.read(session, id=id)
 
@@ -68,7 +71,7 @@ class SqlTagRepository:
         async with self._create_session() as session:
             return await CRUD.batch_read(session, pkeys=[{"id": tag_id} for tag_id in tag_ids])
 
-    async def read_by_name(self, name: str) -> ViewTag:
+    async def read_by_name(self, name: str) -> ViewTag | None:
         async with self._create_session() as session:
             return await CRUD.read_by(session, only_first=True, name=name)
 
@@ -88,8 +91,8 @@ class SqlTagRepository:
 
     async def setup_ownership(self, tag_id: int, user_id: int, role_alias: OwnershipEnum) -> None:
         async with self._create_session() as session:
-            OwnershipClass = Tag.Ownership
-            return await setup_ownership_method(OwnershipClass, session, tag_id, user_id, role_alias)
+            ownership_model = Tag.Ownership
+            return await setup_ownership_method(ownership_model, session, tag_id, user_id, role_alias)
 
     async def set_tags_to_event_group(self, event_group_id: int, tag_ids: list[int]) -> None:
         async with self._create_session() as session:

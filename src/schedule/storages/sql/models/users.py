@@ -1,9 +1,9 @@
 __all__ = ["User", "UserScheduleKeys"]
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from sqlalchemy import ForeignKey, false
-from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.schedule.storages.sql.models.__mixin__ import IdMixin
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class User(Base, IdMixin):
-    __ownerships_tables__ = dict()
+    __ownerships_tables__: ClassVar[dict[str, object]] = {}
     __tablename__ = "users"
 
     name: Mapped[str] = mapped_column(nullable=True)
@@ -26,7 +26,7 @@ class User(Base, IdMixin):
         "UserXFavoriteEventGroup", cascade="all, delete-orphan", passive_deletes=True
     )
 
-    favorite_event_groups: Mapped[list[int]] = association_proxy(
+    favorite_event_groups: AssociationProxy[list[int]] = association_proxy(
         "favorites_association",
         "group_id",
     )
@@ -35,7 +35,7 @@ class User(Base, IdMixin):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    hidden_event_groups: Mapped[list[int]] = association_proxy("hidden_event_groups_association", "group_id")
+    hidden_event_groups: AssociationProxy[list[int]] = association_proxy("hidden_event_groups_association", "group_id")
 
     linked_calendars: Mapped[list[LinkedCalendar]] = relationship(
         "LinkedCalendar",

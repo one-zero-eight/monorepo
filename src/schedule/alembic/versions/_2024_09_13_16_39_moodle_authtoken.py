@@ -6,11 +6,9 @@ Create Date: 2024-09-13 16:39:20.527184
 
 """
 
-# ruff: noqa: E501
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-
 from alembic import op
 
 # revision identifiers, used by Alembic.

@@ -1,3 +1,4 @@
+from typing import Annotated
 from urllib.parse import unquote
 
 import aiofiles
@@ -60,7 +61,7 @@ async def create_event_group(
 async def batch_create_event_groups(
     # current_user_id: CURRENT_USER_ID_DEPENDENCY,
     _: VERIFY_PARSER_DEPENDENCY,
-    event_groups: list[CreateEventGroup] = Body(embed=True),
+    event_groups: Annotated[list[CreateEventGroup], Body(embed=True)],
 ) -> ListEventGroupsResponse:
     created_groups = await event_group_repository.batch_create_or_read(event_groups)
     return ListEventGroupsResponse.from_iterable(created_groups)

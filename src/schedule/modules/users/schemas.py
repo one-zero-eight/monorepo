@@ -48,6 +48,7 @@ class ViewUser(BaseModel):
     moodle_calendar_authtoken: str | None = None
 
     @field_validator("linked_calendars", mode="before")
+    @classmethod
     def calendars_to_dict(cls, v):
         if not isinstance(v, dict):
             keys = [calendar.alias for calendar in v]

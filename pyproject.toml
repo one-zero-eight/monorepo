@@ -103,7 +103,7 @@ constraint-dependencies = ["urllib3>=2.7.0", "idna>=3.15"] # for security relate
 requests-curl = { git = "https://github.com/paivett/requests-curl.git", rev = "82a7fc1" }
 
 [tool.ruff]
-extend-exclude = [".agents/skills", "src/schedule/alembic"]
+extend-exclude = [".agents/skills"]
 line-length = 120
 lint.preview = true
 lint.extend-select = [
@@ -129,16 +129,6 @@ lint.unfixable = ["F401"] # unused-import — report only, do not remove on fix
 target-version = "py314"
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"] # assert is standard in pytest
-"src/schedule/dependencies.py" = ["B008"]
-"src/schedule/exceptions.py" = ["RUF012"]
-"src/schedule/modules/**" = [
-    "A003", "B008", "C401", "C408", "DTZ001", "DTZ005", "DTZ007",
-    "ICN001", "LOG015", "N802", "N803", "N804", "N805", "N806", "N815",
-    "PLC1901", "PLC2801", "PYI033", "RUF013", "S101", "S311",
-]
-"src/schedule/storages/**" = [
-    "A003", "C408", "ICN001", "N802", "N803", "N805", "RUF012",
-]
 [tool.ruff.lint.flake8-builtins]
 ignorelist = ["id"]
 [tool.ruff.lint.flake8-import-conventions]
@@ -150,7 +140,7 @@ time = "tm"
 "__future__.annotations".msg = "Python 3.14+ uses deferred annotations by default; do not use this future import."
 
 [tool.ty.src]
-exclude = [".agents/skills", "src/schedule"]
+exclude = [".agents/skills"]
 
 [tool.pytest.ini_options]
 addopts = "--cov=src --cov-report=term-missing --disable-socket --allow-hosts=127.0.0.1,localhost"

@@ -1,11 +1,11 @@
 import asyncio
-import datetime
+import datetime as dtm
 import html
 import ipaddress
-import logging
 import socket
 from collections.abc import AsyncGenerator
 from pathlib import Path
+from typing import Any, cast
 from urllib.parse import quote, urlparse
 from zlib import crc32
 
@@ -13,7 +13,7 @@ import aiofiles
 import httpx
 import icalendar
 from fastapi import HTTPException
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from src.inh_accounts_sdk import inh_accounts
 from src.logging_ import logger
@@ -25,8 +25,25 @@ from src.schedule.modules.users.schemas import ViewUser
 
 TIMEOUT = 60
 MAX_SIZE = 10 * 1024 * 1024
-MOSCOW_TZ = datetime.timezone(datetime.timedelta(hours=3), name="Europe/Moscow")
+MOSCOW_TZ = dtm.timezone(dtm.timedelta(hours=3), name="Europe/Moscow")
 WORKSHOPS_ALL_LIMIT = 10_000
+
+
+def _as_event(component: object) -> icalendar.Event:
+    return cast(icalendar.Event, component)
+
+
+def _prop_dt(prop: object) -> dtm.datetime:
+    return cast(dtm.datetime, cast(Any, prop).dt)
+
+
+def _prop_str(prop: object) -> str:
+    return str(cast(Any, prop))
+
+
+def _to_ical_str(prop: object) -> str:
+    raw = cast(Any, prop).to_ical()
+    return raw.decode(encoding="utf-8") if isinstance(raw, bytes) else str(raw)
 
 
 def _validate_public_https_url(url: str) -> None:
@@ -57,7 +74,9 @@ def _validate_public_https_url(url: str) -> None:
             raise HTTPException(status_code=400, detail=f"URL resolves to non-public IP: {ip}")
 
 
-async def generate_ics_from_url(url: str, headers: dict = None, should_validate_url=True) -> AsyncGenerator[bytes]:
+async def generate_ics_from_url(
+    url: str, headers: dict | None = None, should_validate_url=True
+) -> AsyncGenerator[bytes]:
     if should_validate_url:
         _validate_public_https_url(url)
     async with httpx.AsyncClient() as client:
@@ -124,6 +143,8 @@ async def get_personal_event_groups_ics(user: ViewUser) -> AsyncGenerator[bytes]
     paths = set()
     for event_group_id in nonhidden:
         event_group = await event_group_repository.read(event_group_id)
+        if event_group is None:
+            continue
         if event_group.path is None:
             raise HTTPException(
                 status_code=501,
@@ -175,9 +196,9 @@ def _workshop_to_vevent(workshop: dict) -> icalendar.Event:
         vevent.add("location", workshop["place"])
     if workshop.get("english_description") is not None:
         vevent.add("description", workshop["english_description"])
-    _dtstart = datetime.datetime.fromisoformat(workshop["dtstart"])
+    _dtstart = dtm.datetime.fromisoformat(workshop["dtstart"])
     _dtstart = _dtstart.astimezone(MOSCOW_TZ)
-    _dtend = datetime.datetime.fromisoformat(workshop["dtend"])
+    _dtend = dtm.datetime.fromisoformat(workshop["dtend"])
     _dtend = _dtend.astimezone(MOSCOW_TZ)
     vevent.add("dtstart", icalendar.vDatetime(_dtstart))
     vevent.add("dtend", icalendar.vDatetime(_dtend))
@@ -245,6 +266,8 @@ async def get_personal_workshops_ics(user: ViewUser) -> bytes:
 
 
 class Training(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     class ExtendedProps(BaseModel):
         id: int
         group_id: int
@@ -255,10 +278,10 @@ class Training(BaseModel):
         checked_in: bool
 
     title: str
-    start: datetime.datetime
-    end: datetime.datetime
-    allDay: bool = False
-    extendedProps: ExtendedProps
+    start: dtm.datetime
+    end: dtm.datetime
+    all_day: bool = Field(default=False, alias="allDay")
+    extended_props: ExtendedProps = Field(alias="extendedProps")
 
 
 async def get_personal_sport_ics(user: ViewUser) -> bytes:
@@ -302,7 +325,7 @@ async def get_personal_sport_ics(user: ViewUser) -> bytes:
     """
 
     def _training_to_vevent(training: Training) -> icalendar.Event:
-        string_to_hash = str(training.extendedProps.id)
+        string_to_hash = str(training.extended_props.id)
         hash_ = crc32(string_to_hash.encode("utf-8"))
         uid = f"sport-{abs(hash_):x}@innohassle.ru"
 
@@ -310,26 +333,29 @@ async def get_personal_sport_ics(user: ViewUser) -> bytes:
         vevent.add("uid", uid)
 
         vevent.add("summary", training.title)
-        if training.allDay:
+        if training.all_day:
             vevent.add("dtstart", icalendar.vDate(training.start.date()))
             vevent.add("dtend", icalendar.vDate(training.end.date()))
         else:
             vevent.add("dtstart", icalendar.vDatetime(training.start))
             vevent.add("dtend", icalendar.vDatetime(training.end))
-        if training.extendedProps.training_class is not None:
-            vevent.add("location", training.extendedProps.training_class)
-        vevent.add("x-sport-training-id", training.extendedProps.id)
-        vevent.add("x-sport-checked-in", training.extendedProps.checked_in)
-        vevent.add("x-sport-can-checkin", training.extendedProps.can_check_in)
+        if training.extended_props.training_class is not None:
+            vevent.add("location", training.extended_props.training_class)
+        vevent.add("x-sport-training-id", training.extended_props.id)
+        vevent.add("x-sport-checked-in", training.extended_props.checked_in)
+        vevent.add("x-sport-can-checkin", training.extended_props.can_check_in)
         return vevent
+
+    if user.innohassle_id is None:
+        raise HTTPException(status_code=404, detail="User has no innohassle account linked")
 
     main_calendar = get_base_calendar()
     main_calendar["x-wr-calname"] = f"{user.email} Sport schedule from innohassle.ru"
 
     sport_token = await inh_accounts.get_sport_token(user.innohassle_id)
     _now = aware_utcnow()
-    _start = _now - datetime.timedelta(days=7)
-    _end = _now + datetime.timedelta(days=7)
+    _start = _now - dtm.timedelta(days=7)
+    _end = _now + dtm.timedelta(days=7)
 
     async with httpx.AsyncClient(headers={"Authorization": f"Bearer {sport_token}"}, timeout=TIMEOUT) as client:
         response = await client.get(
@@ -341,7 +367,7 @@ async def get_personal_sport_ics(user: ViewUser) -> bytes:
         trainings = type_adapter.validate_python(response.json())
 
     for training in trainings:
-        if not training.extendedProps.checked_in:
+        if not training.extended_props.checked_in:
             continue
         event = _training_to_vevent(training)
         main_calendar.add_component(event)
@@ -356,19 +382,19 @@ async def get_moodle_ics(user: ViewUser) -> bytes:
     """
 
     def get_course_name(event: icalendar.Event) -> str:
-        categories = (event["categories"]).to_ical().decode(encoding="utf-8")
+        categories = _to_ical_str(event["categories"])
         course_name = html.unescape(categories.split("]")[1].replace(r"\;", ";"))
         return course_name
 
     def make_deadline(event: icalendar.Event) -> icalendar.Event:
         new = icalendar.Event()
-        end: datetime.datetime = event["dtend"].dt
+        end = _prop_dt(event["dtend"])
         end = end.astimezone(MOSCOW_TZ)
         new["dtstart"] = icalendar.vDate(end.date())
         new["uid"] = event["uid"]
         new["dtstamp"] = event["dtstamp"]
         course_name = get_course_name(event)
-        new["summary"] = event["summary"] + f" - {course_name}"
+        new["summary"] = _prop_str(event["summary"]) + f" - {course_name}"
 
         new["description"] = f"Course: {course_name}\nDue to: {end.timetz().isoformat()}"
 
@@ -376,11 +402,11 @@ async def get_moodle_ics(user: ViewUser) -> bytes:
 
     def create_quiz(quiz_name: str, opens: icalendar.Event, closes: icalendar.Event | None = None) -> icalendar.Event:
         new = icalendar.Event()
-        start: datetime.datetime = opens["dtstart"].dt
+        start = _prop_dt(opens["dtstart"])
         start = start.astimezone(MOSCOW_TZ)
-        due: datetime.datetime | None = None
+        due: dtm.datetime | None = None
         if closes:
-            due = closes["dtend"].dt
+            due = _prop_dt(closes["dtend"])
             due = due.astimezone(MOSCOW_TZ)
         if due and start.date() != due.date():  # Display only on deadline day
             new["dtstart"] = icalendar.vDate(due.date())
@@ -395,15 +421,12 @@ async def get_moodle_ics(user: ViewUser) -> bytes:
         new["summary"] = quiz_name + f" - {course_name}"
 
         new["description"] = "\n".join(
-            filter(
-                bool,
-                [
-                    f"Course: {course_name}",
-                    opens["description"],
-                    f"Due to: {due.timetz().isoformat()}" if due else None,
-                ],
-            )
-        )
+            [
+                f"Course: {course_name}",
+                _prop_str(opens["description"]) if opens.get("description") else "",
+                f"Due to: {due.timetz().isoformat()}" if due else "",
+            ]
+        ).strip()
 
         new["color"] = "darkorange"
         return new
@@ -423,31 +446,31 @@ async def get_moodle_ics(user: ViewUser) -> bytes:
         quizes_halfs_opens = {}
         quizes_halfs_closes = {}
 
-        for event in vevents:
-            event: icalendar.Event
-            event_timedelta = event["dtend"].dt - event["dtstart"].dt
-            event_name: str = event["summary"].strip()
+        for raw_event in vevents:
+            event = _as_event(raw_event)
+            event_timedelta = _prop_dt(event["dtend"]) - _prop_dt(event["dtstart"])
+            event_name = _prop_str(event["summary"]).strip()
 
-            if event_timedelta == datetime.timedelta():
+            if event_timedelta == dtm.timedelta():
                 if event_name.endswith("opens"):
                     quiz_name = event_name.split("opens", maxsplit=1)[0].strip()
                     if quiz_name in quizes_halfs_opens:
-                        logging.warning(f"Quiz '{quiz_name}' appears twice")
+                        logger.warning(f"Quiz '{quiz_name}' appears twice")
                     quizes_halfs_opens[quiz_name] = event
                 elif event_name.endswith("открывается"):
                     quiz_name = event_name.split("открывается", maxsplit=1)[0].strip()
                     if quiz_name in quizes_halfs_opens:
-                        logging.warning(f"Quiz '{quiz_name}' appears twice")
+                        logger.warning(f"Quiz '{quiz_name}' appears twice")
                     quizes_halfs_opens[quiz_name] = event
                 elif event_name.endswith("closes"):
                     quiz_name = event_name.split("closes", maxsplit=1)[0].strip()
                     if quiz_name in quizes_halfs_closes:
-                        logging.warning(f"Quiz '{quiz_name}' appears twice")
+                        logger.warning(f"Quiz '{quiz_name}' appears twice")
                     quizes_halfs_closes[quiz_name] = event
                 elif event_name.endswith("закрывается"):
                     quiz_name = event_name.split("закрывается", maxsplit=1)[0].strip()
                     if quiz_name in quizes_halfs_closes:
-                        logging.warning(f"Quiz '{quiz_name}' appears twice")
+                        logger.warning(f"Quiz '{quiz_name}' appears twice")
                     quizes_halfs_closes[quiz_name] = event
                 else:
                     # DEADLINE TYPE
@@ -457,29 +480,30 @@ async def get_moodle_ics(user: ViewUser) -> bytes:
                 if "Attendance" in event_name:
                     continue
 
-                categories = (event["categories"]).to_ical().decode(encoding="utf-8")
+                categories = _to_ical_str(event["categories"])
                 if categories:
                     if "]" in categories:
                         course_name = categories.split("]")[1]
                     else:
                         course_name = categories
-                    event["summary"] = event["summary"] + f" - {course_name}"
+                    event["summary"] = _prop_str(event["summary"]) + f" - {course_name}"
+                    description = _prop_str(event["description"]) if event.get("description") else ""
                     event["description"] = "\n".join(
                         [
                             f"Course: {course_name}",
-                            event["description"],
+                            description,
                         ]
                     )
 
-                start = event["dtstart"]
-                if start:
-                    start = start.dt.astimezone(MOSCOW_TZ)
-                    event["dtstart"] = icalendar.vDatetime(start)
+                start_prop = event["dtstart"]
+                if start_prop:
+                    start_dt = _prop_dt(start_prop).astimezone(MOSCOW_TZ)
+                    event["dtstart"] = icalendar.vDatetime(start_dt)
 
-                end = event["dtend"]
-                if end:
-                    end = end.dt.astimezone(MOSCOW_TZ)
-                    event["dtend"] = icalendar.vDatetime(end)
+                end_prop = event["dtend"]
+                if end_prop:
+                    end_dt = _prop_dt(end_prop).astimezone(MOSCOW_TZ)
+                    event["dtend"] = icalendar.vDatetime(end_dt)
 
                 fixed_events.append(event)
 
@@ -500,7 +524,8 @@ async def get_moodle_ics(user: ViewUser) -> bytes:
         return fixed_calendar
 
     token = user.moodle_calendar_authtoken
-    assert token is not None
+    if token is None:
+        raise HTTPException(status_code=404, detail="Moodle calendar token is not configured")
     encoded_token = quote(token)
     user_moodle_calendar_url = (
         f"https://moodle.innopolis.university/calendar/export_execute.php?"
@@ -538,14 +563,14 @@ async def get_personal_room_bookings(user: ViewUser) -> bytes:
         if booking.get("room_id"):
             vevent.add("location", booking["room_id"])
 
-        _dtstart = datetime.datetime.fromisoformat(booking["start"])
+        _dtstart = dtm.datetime.fromisoformat(booking["start"])
         if _dtstart.tzinfo is None:
-            _dtstart = _dtstart.replace(tzinfo=datetime.UTC)
+            _dtstart = _dtstart.replace(tzinfo=dtm.UTC)
         _dtstart = _dtstart.astimezone(MOSCOW_TZ)
 
-        _dtend = datetime.datetime.fromisoformat(booking["end"])
+        _dtend = dtm.datetime.fromisoformat(booking["end"])
         if _dtend.tzinfo is None:
-            _dtend = _dtend.replace(tzinfo=datetime.UTC)
+            _dtend = _dtend.replace(tzinfo=dtm.UTC)
         _dtend = _dtend.astimezone(MOSCOW_TZ)
 
         vevent.add("dtstart", icalendar.vDatetime(_dtstart))
@@ -559,7 +584,7 @@ async def get_personal_room_bookings(user: ViewUser) -> bytes:
     main_calendar = get_base_calendar()
     main_calendar["x-wr-calname"] = f"{user.email} Room bookings from innohassle.ru"
 
-    now_utc = datetime.datetime.now(datetime.UTC)
+    now_utc = dtm.datetime.now(dtm.UTC)
     start_of_day = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
 
     async with httpx.AsyncClient(
@@ -571,7 +596,7 @@ async def get_personal_room_bookings(user: ViewUser) -> bytes:
             f"/user/{user.innohassle_id}/bookings",
             params={
                 "start": start_of_day.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "end": (now_utc + datetime.timedelta(days=14)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "end": (now_utc + dtm.timedelta(days=14)).strftime("%Y-%m-%dT%H:%M:%SZ"),
             },
         )
         response.raise_for_status()

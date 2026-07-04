@@ -11,9 +11,10 @@ __all__ = [
     "validate_vevent",
 ]
 
-import datetime
+import datetime as dtm
 import re
 from pathlib import Path, PurePath
+from typing import Any, cast
 from zlib import crc32
 
 import dateutil.rrule
@@ -24,7 +25,7 @@ from src.schedule.config import settings
 TIMEZONE = "Europe/Moscow"
 
 
-def nearest_weekday(date: datetime.date, day: int | str) -> datetime.date:
+def nearest_weekday(date: dtm.date, day: int | str) -> dtm.date:
     """
     Returns the date of the next given weekday after
     the given date. For example, the date of next Monday.
@@ -40,15 +41,15 @@ def nearest_weekday(date: datetime.date, day: int | str) -> datetime.date:
         day = ["mo", "tu", "we", "th", "fr", "sa", "su"].index(day[:2].lower())
 
     days = (day - date.weekday() + 7) % 7
-    return date + datetime.timedelta(days=days)
+    return date + dtm.timedelta(days=days)
 
 
 def get_current_year() -> int:
     """Returns current year."""
-    return datetime.datetime.now().year
+    return dtm.datetime.now(dtm.UTC).year
 
 
-def get_weekday_rrule(end_date: datetime.date) -> dict:
+def get_weekday_rrule(end_date: dtm.date) -> dict:
     """
     Get RRULE for recurrence with weekly interval and end date.
 
@@ -115,9 +116,8 @@ def sluggify(s: str) -> str:
 
 
 def validate_calendar(calendar: icalendar.Calendar):
-    for event in calendar.walk("VEVENT"):
-        event: icalendar.Event
-        validate_vevent(event)
+    for component in calendar.walk("VEVENT"):
+        validate_vevent(cast(icalendar.Event, component))
 
 
 def validate_vevent(event: icalendar.Event):
@@ -140,23 +140,25 @@ def validate_vevent(event: icalendar.Event):
     if vddd_dtend and vddd_duration:
         raise ValueError("Event has both DTEND and DURATION", event)
 
-    if vddd_dtend and vddd_dtstart.dt > vddd_dtend.dt:
-        raise ValueError("DTSTART is later than DTEND", event)
+    if vddd_dtend:
+        dtstart = cast(dtm.date | dtm.datetime, vddd_dtstart.dt)
+        dtend = cast(dtm.date | dtm.datetime, vddd_dtend.dt)
+        if dtstart > dtend:
+            raise ValueError("DTSTART is later than DTEND", event)
 
     if "RRULE" in event:
-        # should be compatible with dtstart
-        rrule: dateutil.rrule.rrule = dateutil.rrule.rrulestr(
-            event["RRULE"].to_ical().decode(), dtstart=vddd_dtstart.dt
-        )
-        rrule_dates = rrule.__iter__()
+        rrule_raw = cast(Any, event["RRULE"]).to_ical()
+        rrule_str = rrule_raw.decode() if isinstance(rrule_raw, bytes) else rrule_raw
+        rrule: dateutil.rrule.rrule = dateutil.rrule.rrulestr(rrule_str, dtstart=vddd_dtstart.dt)
+        rrule_dates = iter(rrule)
         rrule_first_dt = next(rrule_dates, None)
 
         if rrule_first_dt:
             rrule_first_date = rrule_first_dt.date()
 
-            if isinstance(vddd_dtstart.dt, datetime.datetime):
+            if isinstance(vddd_dtstart.dt, dtm.datetime):
                 vdd_date = vddd_dtstart.dt.date()
-            elif isinstance(vddd_dtstart.dt, datetime.date):
+            elif isinstance(vddd_dtstart.dt, dtm.date):
                 vdd_date = vddd_dtstart.dt
             else:
                 raise ValueError("DTSTART is not datetime or date", event)
@@ -167,15 +169,15 @@ def validate_vevent(event: icalendar.Event):
             raise ValueError("RRULE produces empty list", event)
 
 
-def aware_utcnow() -> datetime.datetime:
-    return datetime.datetime.now(datetime.UTC)
+def aware_utcnow() -> dtm.datetime:
+    return dtm.datetime.now(dtm.UTC)
 
 
 def locate_ics_by_path(path: str) -> Path:
     normalized_path = PurePath(path)
     if normalized_path.is_absolute() or ".." in normalized_path.parts:
         raise ValueError(f"Path escapes predefined ICS directory: {path!r}")
-    if normalized_path.name == "" or normalized_path.suffix != ".ics":
+    if not normalized_path.name or normalized_path.suffix != ".ics":
         raise ValueError(f"Path must point to an .ics file inside predefined/ics: {path!r}")
 
     base_dir = (settings.predefined_dir / "ics").resolve(strict=False)
@@ -210,10 +212,10 @@ def get_base_calendar() -> icalendar.Calendar:
     timezone["x-lic-location"] = TIMEZONE
     # add standard timezone
     standard = icalendar.TimezoneStandard()
-    standard.add("tzoffsetfrom", datetime.timedelta(hours=3))
-    standard.add("tzoffsetto", datetime.timedelta(hours=3))
+    standard.add("tzoffsetfrom", dtm.timedelta(hours=3))
+    standard.add("tzoffsetto", dtm.timedelta(hours=3))
     standard.add("tzname", "MSK")
-    standard.add("dtstart", datetime.datetime(1970, 1, 1))
+    standard.add("dtstart", dtm.datetime(1970, 1, 1, tzinfo=dtm.UTC))
     timezone.add_component(standard)
     calendar.add_component(timezone)
 

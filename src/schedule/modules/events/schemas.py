@@ -1,6 +1,6 @@
 __all__ = ["AddEventPatch", "CreateEvent", "UpdateEvent", "UpdateEventPatch", "ViewEvent", "ViewEventPatch"]
 
-import datetime
+import datetime as dtm
 
 from icalendar import vRecur
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -34,12 +34,13 @@ class AddEventPatch(BaseModel):
     description: str | None = None
     location: str | None = None
 
-    dtstart: datetime.datetime
-    dtend: datetime.datetime
+    dtstart: dtm.datetime
+    dtend: dtm.datetime
 
     rrule: str | dict | None = None
 
     @field_validator("rrule", mode="before")
+    @classmethod
     def _validate_rrule(cls, v) -> str:
         if isinstance(v, vRecur):
             v = v.to_ical().decode()
@@ -64,12 +65,13 @@ class ViewEventPatch(BaseModel):
     description: str | None = None
     location: str | None = None
 
-    dtstart: datetime.datetime
-    dtend: datetime.datetime
+    dtstart: dtm.datetime
+    dtend: dtm.datetime
 
     rrule: vRecur | None = None
 
     @field_validator("rrule", mode="before")
+    @classmethod
     def _validate_rrule(cls, v):
         if isinstance(v, str):
             return vRecur.from_ical(v)
@@ -84,12 +86,13 @@ class UpdateEventPatch(BaseModel):
     description: str | None = None
     location: str | None = None
 
-    dtstart: datetime.datetime | None = None
-    dtend: datetime.datetime | None = None
+    dtstart: dtm.datetime | None = None
+    dtend: dtm.datetime | None = None
 
     rrule: vRecur | None = None
 
     @field_validator("rrule", mode="before")
+    @classmethod
     def _validate_rrule(cls, v):
         if isinstance(v, str):
             return vRecur.from_ical(v)

@@ -17,6 +17,7 @@ class JsonPredefinedUsers(BaseModel):
     academic_groups: list[InJsonAcademicGroup] = Field(default_factory=list)
 
     @field_validator("users")
+    @classmethod
     def _should_be_unique(cls, v):
         emails = set()
         for user in v:

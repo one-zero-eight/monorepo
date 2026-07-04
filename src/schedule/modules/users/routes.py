@@ -28,6 +28,8 @@ async def get_me(user_id: CURRENT_USER_ID_DEPENDENCY) -> ViewUser:
     """
 
     user = await user_repository.read(user_id)
+    if user is None:
+        raise ObjectNotFound()
     return user
 
 

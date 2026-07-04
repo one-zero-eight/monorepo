@@ -1,4 +1,4 @@
-import datetime
+import datetime as dtm
 import re
 from collections.abc import Generator
 from zlib import crc32
@@ -19,6 +19,7 @@ class Entry(BaseModel):
     buddy: bool = False
 
     @field_validator("when", mode="before")
+    @classmethod
     def string_to_list(cls, v):
         if isinstance(v, str):
             return [v]
@@ -52,8 +53,8 @@ class BootcampParserConfig(BaseModel):
 class BootcampEvent(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     summary: str
-    dtstart: datetime.datetime
-    dtend: datetime.datetime
+    dtstart: dtm.datetime
+    dtend: dtm.datetime
     rrule: icalendar.vRecur | None
     description: str | None
     location: str | None
@@ -138,11 +139,11 @@ class BootcampEvent(BaseModel):
 
 class BootcampParser:
     config: BootcampParserConfig
-    bootcamp_date: datetime.datetime
+    bootcamp_date: dtm.datetime
 
     def __init__(self, config: BootcampParserConfig):
         self.config = config
-        self.bootcamp_date = datetime.datetime.strptime(self.config.when, "%Y.%m")
+        self.bootcamp_date = dtm.datetime.strptime(self.config.when, "%Y.%m").replace(tzinfo=dtm.UTC)
 
     def parse_general_events(self, ru: bool = False) -> list[BootcampEvent]:
         events = []
@@ -154,7 +155,7 @@ class BootcampParser:
             for when in entry.when:
                 dtstart, dtend, rrule = self.when_str_to_datetimes(when)
                 event = BootcampEvent(
-                    summary=(entry.subject_ru or entry.subject) if ru else entry.subject,
+                    summary=(entry.subject_ru or entry.subject or "") if ru else (entry.subject or ""),
                     dtstart=dtstart,
                     dtend=dtend,
                     rrule=rrule,
@@ -165,7 +166,7 @@ class BootcampParser:
                 events.append(event)
         return events
 
-    def when_str_to_datetimes(self, when: str) -> tuple[datetime.datetime, datetime.datetime, icalendar.vRecur | None]:
+    def when_str_to_datetimes(self, when: str) -> tuple[dtm.datetime, dtm.datetime, icalendar.vRecur | None]:
         day, period = when.split(" ")
         (start, end) = period.split("-")
         (start_hour, start_minute) = map(int, start.split(":"))

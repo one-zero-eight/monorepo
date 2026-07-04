@@ -1,6 +1,5 @@
 __all__ = ["router"]
 
-from collections.abc import Iterable
 from itertools import groupby
 
 import aiofiles
@@ -13,7 +12,7 @@ from src.schedule.exceptions import IncorrectCredentialsException
 from src.schedule.modules.event_groups.repository import event_group_repository
 from src.schedule.modules.event_groups.schemas import CreateEventGroup
 from src.schedule.modules.parse.bootcamp import AcademicGroup, BootcampParser, BootcampParserConfig, BuddyGroup
-from src.schedule.modules.parse.cleaning import CleaningEvent, CleaningParser, CleaningParserConfig, LinenChangeEvent
+from src.schedule.modules.parse.cleaning import CleaningParser, CleaningParserConfig
 from src.schedule.modules.parse.utils import get_base_calendar, locate_ics_by_path, sluggify
 from src.schedule.modules.tags.schemas import CreateTag
 
@@ -57,8 +56,8 @@ async def parse_cleaning_schedule(_: VERIFY_PARSER_DEPENDENCY, config: CleaningP
     cleaning_events = parser.get_cleaning_events()
     cleaning_events = sorted(cleaning_events, key=lambda x: x.location)
 
-    for location, events in groupby(cleaning_events, key=lambda x: x.location):
-        events: Iterable[CleaningEvent]
+    for location, events_iter in groupby(cleaning_events, key=lambda x: x.location):
+        events = list(events_iter)
         calendar = get_base_calendar()
         calendar["x-wr-calname"] = f"Cleaning: {location}"
 
@@ -83,8 +82,8 @@ async def parse_cleaning_schedule(_: VERIFY_PARSER_DEPENDENCY, config: CleaningP
     linen_change_events = parser.get_linen_change_schedule()
     linen_change_events = sorted(linen_change_events, key=lambda x: x.location)
 
-    for location, events in groupby(linen_change_events, key=lambda x: x.location):
-        events: Iterable[LinenChangeEvent]
+    for location, events_iter in groupby(linen_change_events, key=lambda x: x.location):
+        events = list(events_iter)
 
         calendar = get_base_calendar()
         calendar["x-wr-calname"] = f"Linen Change: {location}"

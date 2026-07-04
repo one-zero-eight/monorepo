@@ -6,7 +6,7 @@ __all__ = [
     "ViewEventGroup",
 ]
 
-import datetime
+import datetime as dtm
 from collections.abc import Iterable
 from pathlib import PurePath
 
@@ -22,7 +22,7 @@ def _validate_event_group_path(path: str | None) -> str | None:
     normalized_path = PurePath(path)
     if normalized_path.is_absolute() or ".." in normalized_path.parts:
         raise ValueError("Path must stay within predefined/ics")
-    if normalized_path.name == "" or normalized_path.suffix != ".ics":
+    if not normalized_path.name or normalized_path.suffix != ".ics":
         raise ValueError("Path must point to an .ics file inside predefined/ics")
 
     return path
@@ -39,6 +39,7 @@ class CreateEventGroupWithoutTags(BaseModel):
     description: str | None = None
 
     @field_validator("path")
+    @classmethod
     def _validate_path(cls, v: str | None):
         return _validate_event_group_path(v)
 
@@ -54,8 +55,8 @@ class ViewEventGroup(BaseModel):
 
     id: int
     alias: str
-    updated_at: datetime.datetime
-    created_at: datetime.datetime
+    updated_at: dtm.datetime
+    created_at: dtm.datetime
     path: str | None = None
     name: str | None = None
     description: str | None = None
@@ -63,6 +64,7 @@ class ViewEventGroup(BaseModel):
 
     # ownerships: list["Ownership"] = Field(default_factory=list)
     @field_validator("tags", mode="before")
+    @classmethod
     def _validate_tags(cls, v):
         v = list(v) if v else []
         return v
@@ -81,6 +83,7 @@ class UpdateEventGroup(BaseModel):
     path: str | None = None
 
     @field_validator("path")
+    @classmethod
     def _validate_path(cls, v: str | None):
         return _validate_event_group_path(v)
 
@@ -94,4 +97,4 @@ class ListEventGroupsResponse(BaseModel):
 
     @classmethod
     def from_iterable(cls, groups: Iterable[ViewEventGroup]) -> ListEventGroupsResponse:
-        return cls(event_groups=groups)
+        return cls(event_groups=list(groups))

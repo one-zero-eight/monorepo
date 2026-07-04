@@ -1,3 +1,4 @@
+from typing import Annotated
 from urllib.parse import unquote
 
 from fastapi import APIRouter, Body
@@ -37,7 +38,9 @@ async def list_tags() -> ListTagsResponse:
         **IncorrectCredentialsException.responses,
     },
 )
-async def batch_create_tags(_: VERIFY_PARSER_DEPENDENCY, tags: list[CreateTag] = Body(embed=True)) -> ListTagsResponse:
+async def batch_create_tags(
+    _: VERIFY_PARSER_DEPENDENCY, tags: Annotated[list[CreateTag], Body(embed=True)]
+) -> ListTagsResponse:
     """
     Create tags in batch
     """
