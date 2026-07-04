@@ -19,11 +19,18 @@ from .config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from src.common_beanie import setup_beanie
     from src.inh_accounts_sdk import inh_accounts
+    from src.tabletennis.mongo import document_models
 
     await inh_accounts.update_key_set()
+
+    beanie_store = await setup_beanie(settings.mongo.uri, "tabletennis", document_models)
+    app.state.beanie_store = beanie_store
+
     yield
     await inh_accounts.aclose()
+    await beanie_store.close()
 
 
 app = FastAPI(

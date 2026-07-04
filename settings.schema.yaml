@@ -559,6 +559,12 @@ $defs:
           Specify as a regex: `https://.*.innohassle.ru`'
         title: Cors Allow Origin Regex
         type: string
+      admin_emails:
+        description: List of coach emails who can manage games
+        items:
+          type: string
+        title: Admin Emails
+        type: array
     title: TabletennisSettings
     type: object
   When2MeetSettings:
