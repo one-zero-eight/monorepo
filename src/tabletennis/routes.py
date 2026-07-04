@@ -25,6 +25,43 @@ def isactive(last_game_date: dtm.datetime) -> bool:
     return dtm.datetime.now(dtm.UTC) - last_game_date < dtm.timedelta(days=30)
 
 
+async def format_player_data(player: Player) -> dict[str, Any]:
+    """Format player data with name and activity status."""
+    try:
+        acc = await inh_accounts.get_user(innohassle_id=player.innohassle_id)
+        if acc and acc.innopolis_info:
+            name = acc.innopolis_info.name
+        else:
+            name = player.nickname
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"Failed to fetch account for {player.innohassle_id}: {e}")
+        name = player.nickname
+
+    player_dict = player.model_dump(mode="json")
+
+    player_dict["name"] = name
+    player_dict["is_active"] = isactive(player.last_game)
+
+    if "_id" in player_dict:
+        player_dict["id"] = player_dict["_id"]
+        del player_dict["_id"]
+
+    return player_dict
+
+
+@router.get("/get_player")
+async def get_player(auth: INH_TOKEN_AUTH) -> dict[str, Any]:
+    """
+    Returns the current player's data with name from InNoHassle Accounts
+    and calculated activity status.
+    """
+    player = await Player.find_one(Player.innohassle_id == auth.innohassle_id)
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    return await format_player_data(player)
+
+
 @router.get("/players")
 async def list_players(auth: INH_TOKEN_AUTH) -> dict[str, Any]:
     """
@@ -33,30 +70,7 @@ async def list_players(auth: INH_TOKEN_AUTH) -> dict[str, Any]:
     """
     players = await Player.find().to_list()
 
-    async def get_player_name(p_id: str) -> str | None:
-        try:
-            acc = await inh_accounts.get_user(innohassle_id=p_id)
-            if acc and acc.innopolis_info:
-                return acc.innopolis_info.name
-        except Exception as e:  # noqa: BLE001
-            logger.error(f"Failed to fetch account for {p_id}: {e}")
-        return None
-
-    account_names = await asyncio.gather(*(get_player_name(p.innohassle_id) for p in players))
-
-    formatted_players = []
-    for p, name in zip(players, account_names):
-        player_dict = p.model_dump(mode="json")
-
-        player_dict["name"] = name if name else p.nickname
-
-        player_dict["is_active"] = isactive(p.last_game)
-
-        if "_id" in player_dict:
-            player_dict["id"] = player_dict["_id"]
-            del player_dict["_id"]
-
-        formatted_players.append(player_dict)
+    formatted_players = await asyncio.gather(*(format_player_data(p) for p in players))
 
     return {"total": len(formatted_players), "players": formatted_players}
 
