@@ -1,5 +1,18 @@
 # When2Meet Testing
 
+## Contents
+
+- [Scope](#scope)
+- [How to Run](#how-to-run)
+- [Critical Modules](#critical-modules)
+- [Unit Tests](#unit-tests)
+- [Integration Tests](#integration-tests)
+- [Additional QA Check](#additional-qa-check)
+- [Automated Quality Requirement Tests](#automated-quality-requirement-tests)
+- [Evidence Types](#evidence-types)
+- [Sprint 5 Extension](#sprint-5-extension)
+- [Maintenance](#maintenance)
+
 ## Scope
 
 This document covers automated testing and QA checks for the When2Meet product code under `src/when2meet`.
@@ -69,6 +82,7 @@ Integration tests are in:
 
 - `tests/when2meet/test_events.py`
 - `tests/when2meet/test_when2meet_startup.py`
+- `tests/when2meet/test_quality_requirements.py`
 
 They cover important interactions between product components:
 
@@ -80,6 +94,7 @@ They cover important interactions between product components:
 - participant availability updates and deletion;
 - owner-only access control;
 - not-found and invalid-request API contracts.
+- QA documentation, QRT, Definition of Done, and ADR traceability gates.
 
 ## Additional QA Check
 
@@ -114,9 +129,10 @@ Link checking remains useful repository QA, but it does not count as the Assignm
 
 | QRT | Linked QR | Command or test | Latest result | Evidence |
 |---|---|---|---|---|
-| [QRT-001](quality-requirement-tests.md#qrt-001-critical-module-line-coverage) | QR-001 Testability | `pytest tests/when2meet/test_quality_requirements.py::test_qrt_critical_modules_line_coverage_meets_threshold` | Passing in CI when `coverage.xml` is produced | [test_quality_requirements.py](../../../tests/when2meet/test_quality_requirements.py) |
+| [QRT-001](quality-requirement-tests.md#qrt-001-critical-module-line-coverage) | QR-001 Testability | `pytest tests/when2meet --cov=src/when2meet --cov-report=xml:coverage.xml` | Passing with active coverage collection | [test_quality_requirements.py](../../../tests/when2meet/test_quality_requirements.py) |
 | [QRT-002](quality-requirement-tests.md#qrt-002-owner-only-event-mutation) | QR-002 Confidentiality | `pytest tests/when2meet/test_quality_requirements.py::test_qrt_non_owner_cannot_patch_or_delete_event` | Passing | [test_quality_requirements.py](../../../tests/when2meet/test_quality_requirements.py) |
 | [QRT-003](quality-requirement-tests.md#qrt-003-event-read-response-time) | QR-003 Time behaviour | `pytest tests/when2meet/test_quality_requirements.py::test_qrt_get_event_completes_within_time_budget` | Passing | [test_quality_requirements.py](../../../tests/when2meet/test_quality_requirements.py) |
+| [QRT-004](quality-requirement-tests.md#qrt-004-qa-documentation-and-architecture-traceability) | QR-004 Maintainability | `pytest tests/when2meet/test_quality_requirements.py::test_qrt_qa_documentation_keeps_gates_and_architecture_traceability` | Passing | [test_quality_requirements.py](../../../tests/when2meet/test_quality_requirements.py) |
 
 Quality requirement definitions: [quality-requirements.md](quality-requirements.md).
 
@@ -129,6 +145,17 @@ Coverage reports are coverage evidence for critical modules.
 The When2Meet secret scan workflow is additional QA check evidence.
 
 QRT evidence is documented in [quality-requirement-tests.md](quality-requirement-tests.md) and implemented in `tests/when2meet/test_quality_requirements.py`. QRT evidence is kept separate from generic unit tests, coverage, lint, type, build, link-checking, and secret-scanning evidence unless process requirements explicitly allow a specific overlap.
+
+## Sprint 5 Extension
+
+Sprint 5 keeps the Assignment 4 testing, CI, coverage, quality-requirement-test, secret scan, and Definition of Done gates active.
+
+The automated test suite now also checks maintained QA documentation itself. `QRT-004` verifies that:
+
+- the required long-lived testing, quality-requirement, architecture traceability, QRT, and Definition of Done pages remain navigable with a table of contents;
+- pytest, coverage, QRT, CI, and secret scan gates remain documented in both testing guidance and the Definition of Done;
+- QR and QRT IDs stay linked both ways;
+- accepted architecture decisions for repository boundaries, slug references, and InNoHassle Accounts integration remain referenced from QR/QRT evidence.
 
 ## Maintenance
 
