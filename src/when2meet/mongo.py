@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 from pymongo import IndexModel
 
 from src.common_pydantic import BaseSchema
+from src.when2meet.modules.events.schemas import TimeRange
 
 
 class Participant(BaseSchema):
@@ -14,11 +15,6 @@ class Participant(BaseSchema):
     "InNoHassle Accounts user ID"
     availability: list[dtm.datetime]
     "List of slots the participant is available for"
-
-
-class TimeRange(BaseSchema):
-    start: str
-    end: str
 
 
 class Event(Document):

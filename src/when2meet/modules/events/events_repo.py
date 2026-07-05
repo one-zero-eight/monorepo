@@ -1,3 +1,4 @@
+import datetime as dtm
 import re
 import secrets
 
@@ -8,12 +9,13 @@ from src.when2meet.mongo import Event, Participant
 from .schemas import EventCreate, EventUpdate, ParticipantUpdate
 
 OBJECT_ID_RE = re.compile(r"^[0-9a-f]{24}$")
+SLUG_BYTES = 6
 
 
 async def generate_unique_slug() -> str:
     """Generate a short unique event slug."""
     while True:
-        slug = secrets.token_urlsafe(6)
+        slug = secrets.token_urlsafe(SLUG_BYTES)
         if await Event.find_one(Event.slug == slug) is None:
             return slug
 
@@ -36,14 +38,29 @@ async def read_by_ref(event_ref: str) -> Event | None:
     return await Event.find_one(Event.slug == event_ref)
 
 
+def _find_participant(event: Event, user_id: str) -> Participant | None:
+    return next((participant for participant in event.participants if participant.user_id == user_id), None)
+
+
+def _merge_availability_with_hidden_slots(
+    existing_availability: list[dtm.datetime],
+    new_availability: list[dtm.datetime],
+    visible_slots: list[dtm.datetime],
+) -> list[dtm.datetime]:
+    visible_slots_set = set(visible_slots)
+    hidden_availability = [slot for slot in existing_availability if slot not in visible_slots_set]
+    return list(dict.fromkeys(hidden_availability + new_availability))
+
+
 async def update_participant(event: Event, data: ParticipantUpdate, user_id: str) -> Event:
     """Update or add participant availability."""
-    event_slots_set = set(event.slots)
-    for p in event.participants:
-        if p.user_id == user_id:
-            hidden_availability = [slot for slot in p.availability if slot not in event_slots_set]
-            p.availability = list(dict.fromkeys(hidden_availability + data.availability))
-            break
+    participant = _find_participant(event, user_id)
+    if participant:
+        participant.availability = _merge_availability_with_hidden_slots(
+            existing_availability=participant.availability,
+            new_availability=data.availability,
+            visible_slots=event.slots,
+        )
     else:
         event.participants.append(Participant(user_id=user_id, availability=data.availability))
 
@@ -69,12 +86,12 @@ async def get_participating_events(user_id: str) -> list[Event]:
 async def update_event(event: Event, data: EventUpdate) -> Event:
     """Update event details."""
     update_data = data.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(event, key, value)
+    for field_name, value in update_data.items():
+        setattr(event, field_name, value)
     return await event.save()
 
 
-async def delete_event(event: Event):
+async def delete_event(event: Event) -> None:
     """Delete an event."""
     await event.delete()
 
