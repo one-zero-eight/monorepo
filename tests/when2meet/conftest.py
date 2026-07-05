@@ -3,7 +3,7 @@ from typing import Any, cast
 
 import pytest
 from fastapi import FastAPI
-from starlette.testclient import TestClient
+from fastapi.testclient import TestClient
 
 from src.common_beanie import BeanieStore
 
