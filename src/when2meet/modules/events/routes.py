@@ -38,7 +38,11 @@ async def _event_view(event: Event) -> EventView:
     if user_ids:
         try:
             users = await inh_accounts.get_users(user_ids)
-        except httpx.HTTPError, ValidationError, ValueError:
+        except (
+            httpx.HTTPError,
+            ValidationError,
+            ValueError,
+        ):
             logger.warning("Failed to enrich When2Meet participants from Accounts", exc_info=True)
 
     return EventView(
