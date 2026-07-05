@@ -86,7 +86,10 @@ def ping(auth: INH_TOKEN_AUTH):
 @router.post("/reg")
 async def register_player(auth: INH_TOKEN_AUTH, nick: str | None = None) -> Player:
     """To register/rename player."""
-    player: Player = await Player.find_one(Player.innohassle_id == auth.innohassle_id)
+    if nick and (len(nick) < 2 or len(nick) > 20):
+        raise HTTPException(status_code=400, detail="Nickname must be between 2 and 20 characters long!")
+
+    player = await Player.find_one(Player.innohassle_id == auth.innohassle_id)
     if player:
         if nick:
             player.nickname = nick
@@ -181,8 +184,14 @@ async def register_game(
     if not p1 or not p2:
         raise HTTPException(status_code=404, detail="One or both players are not registered in the system (/reg)")
 
+    game_id = str(uuid.uuid4())[:8]
     new_game = Game(
-        tour_id=tour_id, player1_id=p1.innohassle_id, player2_id=p2.innohassle_id, player1_score=0, player2_score=0
+        tour_id=tour_id,
+        game_id=game_id,
+        player1_id=p1.innohassle_id,
+        player2_id=p2.innohassle_id,
+        player1_score=0,
+        player2_score=0,
     )
     await new_game.insert()
 
@@ -202,30 +211,50 @@ async def register_game(
 
 
 @router.post("/game")
-async def finish_game(
-    auth: TABLETENNIS_ADMIN_AUTH, email1: str, email2: str, s1: int, s2: int, tour_id: str | None = None
-) -> dict[str, Any]:
+async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: int, tour_id: str) -> dict[str, Any]:
     """
-    Admin endpoint to record a single match result.
-    Calculates chess Elo (MMR), updates player statistics, statuses, and apply custom league protections.
+    Admin endpoint to record a match result using game_id and tour_id.
+    Calculates Elo, updates player stats, and synchronizes scores inside the tournament.
     """
-    if email1 == email2:
-        raise HTTPException(status_code=400, detail="A player cannot play a match against themselves!")
-
-    acc1 = await inh_accounts.get_user(email=email1)
-    acc2 = await inh_accounts.get_user(email=email2)
-
-    if not acc1 or not acc2:
-        raise HTTPException(status_code=404, detail="One or both users not found in InNoHassle Accounts")
-
-    p1 = await Player.find_one(Player.innohassle_id == acc1.id)
-    p2 = await Player.find_one(Player.innohassle_id == acc2.id)
-
-    if not p1 or not p2:
-        raise HTTPException(status_code=404, detail="One or both players are not registered in the system (/reg)")
-
     if s1 == s2:
         raise HTTPException(status_code=400, detail="Draws are not allowed in table tennis!")
+
+    tournament = await Tournament.find_one(Tournament.id == tour_id)
+    if not tournament:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+
+    target_game: Game | None = None
+
+    for list_name in ["val_games", "cval_games"]:
+        games_list = getattr(tournament, list_name)
+        if games_list:
+            for game in games_list:
+                if game.game_id == game_id:
+                    target_game = game
+                    break
+        if target_game:
+            break
+
+    if not target_game:
+        raise HTTPException(status_code=404, detail="Game not found in this tournament")
+
+    p1_id = target_game.player1_id
+    p2_id = target_game.player2_id
+
+    p1 = await Player.find_one(Player.innohassle_id == p1_id)
+    p2 = await Player.find_one(Player.innohassle_id == p2_id)
+
+    if not p1 or not p2:
+        raise HTTPException(status_code=404, detail="One or both players from this game are not registered (/reg)")
+
+    target_game.player1_score = s1
+    target_game.player2_score = s2
+
+    db_game = await Game.find_one(Game.game_id == game_id)
+    if db_game:
+        db_game.player1_score = s1
+        db_game.player2_score = s2
+        await db_game.save()
 
     r1 = p1.rating
     r2 = p2.rating
@@ -245,19 +274,15 @@ async def finish_game(
         delta_2 = 1 if actual_2 == 1.0 else -1
 
     if p1.rating > 1500 and p2.status == "Beginner" and s1 > s2:
-        delta_1 = 0
-        delta_2 = 0
-
+        delta_1, delta_2 = 0, 0
     if p2.rating > 1500 and p1.status == "Beginner" and s2 > s1:
-        delta_2 = 0
-        delta_1 = 0
+        delta_1, delta_2 = 0, 0
 
     new_r1 = p1.rating + delta_1
     new_r2 = p2.rating + delta_2
 
     if p1.status == "Advanced" and new_r1 < 1500:
         delta_1 = 1500 - p1.rating
-
     if p2.status == "Advanced" and new_r2 < 1500:
         delta_2 = 1500 - p2.rating
 
@@ -280,43 +305,18 @@ async def finish_game(
     if p2.rating > 1500 and p2.status != "Admin":
         p2.status = "Advanced"
 
-    if tour_id:
-        tournament = await Tournament.find_one(Tournament.id == tour_id)
-        if tournament:
-            updated_in_tournament = False
-            for games_list in [tournament.valGames, tournament.cvalGames]:
-                if games_list:
-                    for game in games_list:
-                        if (game.player1_id == p1.innohassle_id and game.player2_id == p2.innohassle_id) or (
-                            game.player1_id == p2.innohassle_id and game.player2_id == p1.innohassle_id
-                        ):
-                            if game.player1_id == p1.innohassle_id:
-                                game.player1_score = s1
-                                game.player2_score = s2
-                            else:
-                                game.player1_score = s2
-                                game.player2_score = s1
-
-                            updated_in_tournament = True
-                            break
-                if updated_in_tournament:
-                    break
-
-            if updated_in_tournament:
-                await tournament.save()
-                logger.info(f"Match scores updated inside tournament {tour_id}")
-
+    await tournament.save()
     await p1.save()
     await p2.save()
 
     logger.info(
-        f"Match saved by admin {auth.email}: {p1.nickname} ({s1}) vs {p2.nickname} ({s2}). "
-        f"Elo changes: {p1.nickname} ({'+' if delta_1 >= 0 else ''}{delta_1}), "
-        f"{p2.nickname} ({'+' if delta_2 >= 0 else ''}{delta_2})"
+        f"Match {game_id} in tour {tour_id} saved: {p1.nickname} ({s1}) vs {p2.nickname} ({s2}). "
+        f"Elo: {p1.nickname} ({'+' if delta_1 >= 0 else ''}{delta_1}), {p2.nickname} ({'+' if delta_2 >= 0 else ''}{delta_2})"
     )
 
     return {
         "status": "success",
+        "game_id": game_id,
         "player1": {"nickname": p1.nickname, "new_rating": p1.rating, "delta": delta_1, "league": p1.status},
         "player2": {"nickname": p2.nickname, "new_rating": p2.rating, "delta": delta_2, "league": p2.status},
     }

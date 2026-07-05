@@ -11,7 +11,7 @@ from src.common_beanie import BeanieDocument
 
 class Player(BeanieDocument):
     innohassle_id: str
-    nickname: str = "nouname"
+    nickname: str = Field(default="nouname", min_length=2, max_length=20)
 
     rating: int = 1000
     wins: int = 0
@@ -26,6 +26,7 @@ class Player(BeanieDocument):
 
 class Game(BeanieDocument):
     tour_id: str
+    game_id: str
 
     player1_id: str
     player2_id: str
