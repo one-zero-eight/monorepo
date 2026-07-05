@@ -30,8 +30,8 @@
 - [US-013](https://github.com/one-zero-eight/monorepo/issues?q=is%3Aissue%20US-013) — Find a participant and view their availability
 
 ## Sprint 3 — Customer feedback, accessibility, and reply editing
-**Milestone:** [Sprint 3](https://github.com/one-zero-eight/monorepo/milestone/3)  
-**Dates:** Week 5 — 29 June 2026 to 5 July 2026  
+**Milestone:** [Sprint 3](https://github.com/one-zero-eight/monorepo/milestone/3)
+**Dates:** Week 5 — 29 June 2026 to 5 July 2026
 
 **Sprint Goal:** Address Sprint Review and UAT feedback by improving the availability-selection experience, making availability intersections easier to understand, and completing participant reply editing behavior.
 
