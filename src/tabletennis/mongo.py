@@ -35,6 +35,8 @@ class Game(BeanieDocument):
     player1_score: int = Field(ge=0)
     player2_score: int = Field(ge=0)
 
+    finished: bool = False
+
     class Settings(BeanieDocument.Settings):
         indexes: ClassVar[list[IndexModel]] = [IndexModel("tour_id")]
 

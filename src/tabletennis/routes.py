@@ -49,6 +49,27 @@ async def format_player_data(player: Player) -> dict[str, Any]:
     return player_dict
 
 
+@router.get("/get-email")
+async def get_email(auth: TABLETENNIS_ADMIN_AUTH, innohassle_id: str) -> dict[str, str]:
+    """
+    Admin endpoint to fetch a user's email from InNoHassle Accounts using their innohassle_id.
+    """
+    try:
+        acc = await inh_accounts.get_user(innohassle_id=innohassle_id)
+        if not acc or not acc.innopolis_info.email:
+            raise HTTPException(
+                status_code=404, detail=f"User with innohassle_id '{innohassle_id}' not found in InNoHassle Accounts"
+            )
+
+        return {"innohassle_id": innohassle_id, "email": acc.innopolis_info.email}
+
+    except HTTPException:
+        raise
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"Failed to fetch email for ID {innohassle_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal integration error while fetching user data")
+
+
 @router.get("/get-player")
 async def get_player(auth: INH_TOKEN_AUTH) -> dict[str, Any]:
     """
@@ -101,6 +122,58 @@ async def get_active_tours(auth: INH_TOKEN_AUTH) -> list[dict[str, Any]]:
                 },
             }
         )
+
+    return result
+
+
+@router.get("/get-tours")
+async def get_tours(auth: INH_TOKEN_AUTH) -> list[dict[str, Any]]:
+    """
+    Returns a list of all tournaments (both active and archived)
+    with metadata, participants (emails), and game IDs separated by type.
+    """
+    tournaments = await Tournament.find_all().to_list()
+
+    result = []
+    for tour in tournaments:
+        val_game_ids = [g.game_id for g in tour.val_games] if tour.val_games else []
+        cval_game_ids = [g.game_id for g in tour.cval_games] if tour.cval_games else []
+
+        result.append(
+            {
+                "id": tour.tour_id,
+                "name": tour.name,
+                "date": tour.date.isoformat() if tour.date else None,
+                "players": tour.players or [],
+                "active": tour.active,
+                "games": {
+                    "val_game_ids": val_game_ids,
+                    "cval_game_ids": cval_game_ids,
+                    "total_count": len(val_game_ids) + len(cval_game_ids),
+                },
+            }
+        )
+
+    result.sort(key=lambda x: x["date"] or "", reverse=True)
+    return result
+
+
+@router.get("/get-games")
+async def get_games(auth: INH_TOKEN_AUTH) -> list[dict[str, Any]]:
+    """
+    Returns a list of all played/registered games from the standalone Game collection.
+    """
+    games = await Game.find_all().to_list()
+
+    result = []
+    for game in games:
+        game_dict = game.model_dump(mode="json")
+
+        if "_id" in game_dict:
+            game_dict["id"] = game_dict["_id"]
+            del game_dict["_id"]
+
+        result.append(game_dict)
 
     return result
 
@@ -391,6 +464,7 @@ async def register_game(
         player2_id=p2.innohassle_id,
         player1_score=0,
         player2_score=0,
+        finished=False,
     )
     await new_game.insert()
 
@@ -418,6 +492,7 @@ async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: i
     """
     Admin endpoint to record a match result using game_id and tour_id.
     Calculates Elo, updates player stats, and synchronizes scores inside the tournament.
+    Refuses to recalculate rating for a game that was already finished.
     """
     if s1 == s2:
         raise HTTPException(status_code=400, detail="Draws are not allowed in table tennis!")
@@ -441,6 +516,12 @@ async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: i
     if not target_game:
         raise HTTPException(status_code=404, detail="Game not found in this tournament")
 
+    if target_game.finished:
+        raise HTTPException(
+            status_code=400,
+            detail="This game has already been finished. Recalculating rating is not allowed.",
+        )
+
     p1_id = target_game.player1_id
     p2_id = target_game.player2_id
 
@@ -452,11 +533,13 @@ async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: i
 
     target_game.player1_score = s1
     target_game.player2_score = s2
+    target_game.finished = True
 
     db_game = await Game.find_one(Game.game_id == game_id)
     if db_game:
         db_game.player1_score = s1
         db_game.player2_score = s2
+        db_game.finished = True
         await db_game.save()
 
     r1 = p1.rating
@@ -545,6 +628,7 @@ async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: i
 # from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 
 # from src.dependencies import INH_TOKEN_AUTH
+# from src.inh_accounts_sdk import inh_accounts
 # from src.logging_ import logger
 
 # from .admin_config import TABLETENNIS_ADMIN_AUTH
@@ -573,6 +657,31 @@ async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: i
 #         del player_dict["_id"]
 
 #     return player_dict
+
+
+# @router.get("/get-email")
+# async def get_email(auth: TABLETENNIS_ADMIN_AUTH, innohassle_id: str) -> dict[str, str]:
+#     """
+#     Admin endpoint to fetch a user's email from InNoHassle Accounts using their innohassle_id.
+#     """
+#     try:
+#         acc = await inh_accounts.get_user(innohassle_id=innohassle_id)
+#         if not acc or not acc.innopolis_info.email:
+#             raise HTTPException(
+#                 status_code=404,
+#                 detail=f"User with innohassle_id '{innohassle_id}' not found in InNoHassle Accounts"
+#             )
+
+#         return {"innohassle_id": innohassle_id, "email": acc.innopolis_info.email}
+
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         logger.error(f"Failed to fetch email for ID {innohassle_id}: {e}")
+#         raise HTTPException(
+#             status_code=500,
+#             detail="Internal integration error while fetching user data"
+#         )
 
 
 # @router.get("/get_player")
@@ -625,6 +734,56 @@ async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: i
 #                 "total_count": len(val_game_ids) + len(cval_game_ids)
 #             }
 #         })
+
+#     return result
+
+
+# @router.get("/get-tours")
+# async def get_tours(auth: INH_TOKEN_AUTH) -> list[dict[str, Any]]:
+#     """
+#     Returns a list of all tournaments (both active and archived)
+#     with metadata, participants, and game IDs separated by type.
+#     """
+#     tournaments = await Tournament.find_all().to_list()
+
+#     result = []
+#     for tour in tournaments:
+#         val_game_ids = [g.game_id for g in tour.val_games] if tour.val_games else []
+#         cval_game_ids = [g.game_id for g in tour.cval_games] if tour.cval_games else []
+
+#         result.append({
+#             "id": tour.tour_id,
+#             "name": tour.name,
+#             "date": tour.date.isoformat() if tour.date else None,
+#             "players": tour.players or [],
+#             "active": tour.active,
+#             "games": {
+#                 "val_game_ids": val_game_ids,
+#                 "cval_game_ids": cval_game_ids,
+#                 "total_count": len(val_game_ids) + len(cval_game_ids)
+#             }
+#         })
+
+#     result.sort(key=lambda x: x["date"] or "", reverse=True)
+#     return result
+
+
+# @router.get("/get-games")
+# async def get_games(auth: INH_TOKEN_AUTH) -> list[dict[str, Any]]:
+#     """
+#     Returns a list of all played/registered games from the standalone Game collection.
+#     """
+#     games = await Game.find_all().to_list()
+
+#     result = []
+#     for game in games:
+#         game_dict = game.model_dump(mode="json")
+
+#         if "_id" in game_dict:
+#             game_dict["id"] = game_dict["_id"]
+#             del game_dict["_id"]
+
+#         result.append(game_dict)
 
 #     return result
 
@@ -916,6 +1075,7 @@ async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: i
 #         player2_id=p2.innohassle_id,
 #         player1_score=0,
 #         player2_score=0,
+#         finished=False,
 #     )
 #     await new_game.insert()
 
@@ -962,6 +1122,12 @@ async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: i
 #     if not target_game:
 #         raise HTTPException(status_code=404, detail="Game not found in this tournament")
 
+#     if target_game.finished:
+#         raise HTTPException(
+#             status_code=400,
+#             detail="This game has already been finished. Recalculating rating is not allowed.",
+#         )
+
 #     p1_id = target_game.player1_id
 #     p2_id = target_game.player2_id
 
@@ -973,11 +1139,13 @@ async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: i
 
 #     target_game.player1_score = s1
 #     target_game.player2_score = s2
+#     target_game.finished = True
 
 #     db_game = await Game.find_one(Game.game_id == game_id)
 #     if db_game:
 #         db_game.player1_score = s1
 #         db_game.player2_score = s2
+#         db_game.finished = True
 #         await db_game.save()
 
 #     r1 = p1.rating
