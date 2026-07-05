@@ -81,7 +81,7 @@ They cover:
 Integration tests are in:
 
 - `tests/when2meet/test_events.py`
-- `tests/when2meet/test_when2meet_startup.py`
+- `tests/when2meet/test_startup.py`
 - `tests/when2meet/test_quality_requirements.py`
 
 They cover important interactions between product components:

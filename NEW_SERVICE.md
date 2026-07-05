@@ -197,7 +197,7 @@ def my_service_client() -> Iterator[TestClient]:
         yield client
 ```
 
-### `tests/my_service/test_my_service_startup.py`
+### `tests/my_service/test_startup.py`
 
 ```python
 from fastapi.testclient import TestClient

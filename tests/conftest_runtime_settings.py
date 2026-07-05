@@ -1,7 +1,9 @@
 """Wait on suite Mongo/MinIO; point ``load_root_settings`` at suite-sized ``Settings``."""
 
 import os
+import tempfile
 import time as tm
+from pathlib import Path
 
 import pytest
 import urllib3
@@ -40,6 +42,14 @@ def is_xdist_worker() -> bool:
 
 def get_worker_id() -> str:
     return os.environ.get("PYTEST_XDIST_WORKER", "master")
+
+
+def schedule_test_database_name() -> str:
+    return f"worker-{get_worker_id()}-schedule"
+
+
+def schedule_test_predefined_dir() -> Path:
+    return Path(tempfile.gettempdir()) / f"worker-{get_worker_id()}-schedule-predefined"
 
 
 def load_root_settings() -> Settings:
@@ -109,7 +119,10 @@ def load_root_settings() -> Settings:
         schedule_service=ScheduleSettings(
             environment=Environment.TESTING,
             app_root_path="/schedule/v0",
-            db_url=SecretStr(f"postgresql+asyncpg://postgres:test@{SUITE_POSTGRES_NETLOC}/postgres"),
+            db_url=SecretStr(
+                f"postgresql+asyncpg://postgres:test@{SUITE_POSTGRES_NETLOC}/{schedule_test_database_name()}"
+            ),
+            predefined_dir=schedule_test_predefined_dir(),
         ),
     )
 

@@ -19,5 +19,6 @@ class Tag(Base, IdMixin, NameMixin, DescriptionMixin, ownerships_mixin_factory("
 
     alias: Mapped[str] = mapped_column(nullable=False)
     type: Mapped[str] = mapped_column(nullable=True)
-    comb_alias_type_cnst = UniqueConstraint("alias", "type")
     satellite: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=True)
+
+    __table_args__ = (UniqueConstraint("alias", "type"),)

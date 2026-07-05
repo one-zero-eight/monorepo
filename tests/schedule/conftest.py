@@ -1,8 +1,6 @@
 import asyncio
 import datetime as dtm
-import fcntl
 from collections.abc import Iterator
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -10,12 +8,24 @@ from fastapi.testclient import TestClient
 from joserfc import jwt
 from joserfc.jwk import RSAKey
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
+from tests.conftest_runtime_settings import SUITE_POSTGRES_NETLOC, schedule_test_database_name
 from tests.schedule.constants import SAMPLE_EVENT_GROUP, SAMPLE_TAG
 
-pytestmark = pytest.mark.xdist_group(name="schedule")
 
-_SCHEDULE_DB_LOCK_PATH = Path(__file__).resolve().parent / ".schedule_test_db.lock"
+async def _ensure_postgres_database(admin_dsn: str, database_name: str) -> None:
+    engine = create_async_engine(admin_dsn, isolation_level="AUTOCOMMIT")
+    try:
+        async with engine.connect() as conn:
+            exists = await conn.scalar(
+                text("SELECT 1 FROM pg_database WHERE datname = :name"),
+                {"name": database_name},
+            )
+            if not exists:
+                await conn.execute(text(f'CREATE DATABASE "{database_name}"'))
+    finally:
+        await engine.dispose()
 
 
 @pytest.fixture(scope="session")
@@ -26,8 +36,15 @@ def schedule_client(request: pytest.FixtureRequest) -> Iterator[TestClient]:
     from src.schedule.storages.sql import SQLAlchemyStorage
 
     async def prepare_schema() -> None:
+        admin_dsn = f"postgresql+asyncpg://postgres:test@{SUITE_POSTGRES_NETLOC}/postgres"
+        await _ensure_postgres_database(admin_dsn, schedule_test_database_name())
+        settings.predefined_dir.mkdir(parents=True, exist_ok=True)
         storage = SQLAlchemyStorage.from_url(settings.db_url.get_secret_value())
-        await storage.create_all()
+        from src.schedule.storages.sql.models import Base
+
+        async with storage.engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
         await storage.close_connection()
 
     asyncio.run(prepare_schema())
@@ -80,18 +97,12 @@ def clean_schedule_db(request: pytest.FixtureRequest):
         yield
         return
 
-    lock_file = _SCHEDULE_DB_LOCK_PATH.open("w")
-    fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
-    try:
-        client: TestClient = request.getfixturevalue("schedule_client")
-        client.get("/openapi.json")
-        assert client.portal is not None
-        client.portal.call(_truncate_schedule_tables, client.app.state.sql_storage)
-        _reset_predefined_storage()
-        yield
-    finally:
-        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
-        lock_file.close()
+    client: TestClient = request.getfixturevalue("schedule_client")
+    client.get("/openapi.json")
+    assert client.portal is not None
+    client.portal.call(_truncate_schedule_tables, client.app.state.sql_storage)
+    _reset_predefined_storage()
+    yield
 
 
 def create_tag(

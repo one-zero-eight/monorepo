@@ -143,7 +143,7 @@ time = "tm"
 exclude = [".agents/skills"]
 
 [tool.pytest.ini_options]
-addopts = "--cov=src --cov-report=term-missing --disable-socket --allow-hosts=127.0.0.1,localhost"
+addopts = "--import-mode=importlib --cov=src --cov-report=term-missing --disable-socket --allow-hosts=127.0.0.1,localhost"
 
 [tool.coverage.run]
 relative_files = true
