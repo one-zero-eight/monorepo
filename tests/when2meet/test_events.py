@@ -1,4 +1,4 @@
-from starlette.testclient import TestClient
+from fastapi.testclient import TestClient
 
 
 def test_create_event_with_auth(when2meet_client: TestClient, user_headers):

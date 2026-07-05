@@ -14,6 +14,14 @@ def normalize_datetime(v: dtm.datetime) -> dtm.datetime:
     return v.replace(microsecond=0)
 
 
+def _normalize_datetimes(values: list[dtm.datetime]) -> list[dtm.datetime]:
+    return [normalize_datetime(value) for value in values]
+
+
+def _normalize_sorted_datetimes(values: list[dtm.datetime]) -> list[dtm.datetime]:
+    return sorted(_normalize_datetimes(values))
+
+
 class TimeRange(BaseSchema):
     start: str
     end: str
@@ -36,7 +44,7 @@ class EventCreate(BaseSchema):
     @field_validator("slots", mode="after")
     @classmethod
     def validate_slots(cls, v: list[dtm.datetime]) -> list[dtm.datetime]:
-        return sorted([normalize_datetime(x) for x in v])
+        return _normalize_sorted_datetimes(v)
 
 
 class EventUpdate(BaseSchema):
@@ -58,7 +66,7 @@ class EventUpdate(BaseSchema):
     def validate_slots(cls, v: list[dtm.datetime] | None) -> list[dtm.datetime] | None:
         if v is None:
             return None
-        return sorted([normalize_datetime(x) for x in v])
+        return _normalize_sorted_datetimes(v)
 
 
 class ParticipantUpdate(BaseSchema):
@@ -68,7 +76,7 @@ class ParticipantUpdate(BaseSchema):
     @field_validator("availability", mode="after")
     @classmethod
     def validate_slots(cls, v: list[dtm.datetime]) -> list[dtm.datetime]:
-        return [normalize_datetime(x) for x in v]
+        return _normalize_datetimes(v)
 
 
 class ParticipantView(BaseSchema):
