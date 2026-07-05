@@ -53,3 +53,31 @@ async def update(id: PydanticObjectId, data: ClubSchema) -> Club | None:
 async def delete(id: PydanticObjectId) -> bool:
     result = await Club.find_one({"_id": id}).delete()
     return bool(result and (result.deleted_count > 0))
+
+
+async def get_pending_updates() -> list[Club]:
+    return await Club.find({"pending_update": {"$ne": None}}).to_list()
+
+
+async def approve_update(id: PydanticObjectId) -> Club | None:
+    club = await Club.get(id)
+    if not club or not club.pending_update:
+        return club
+    
+    update_data = club.pending_update.model_dump(exclude_unset=True)
+    for k, v in update_data.items():
+        setattr(club, k, v)
+    
+    club.pending_update = None
+    await club.save()
+    return club
+
+
+async def reject_update(id: PydanticObjectId) -> Club | None:
+    club = await Club.get(id)
+    if not club or not club.pending_update:
+        return club
+        
+    club.pending_update = None
+    await club.save()
+    return club
