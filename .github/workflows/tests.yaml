@@ -33,18 +33,16 @@ jobs:
     # Host ports match docker-compose.test.yaml (37017, 19000, 35432); service containers use default listen ports inside.
     services:
       postgres:
-        image: postgres:17
+        image: postgres:17.1
         ports:
           - 35432:5432
         env:
-          POSTGRES_USER: test
           POSTGRES_PASSWORD: test
-          POSTGRES_DB: test
         options: >-
-          --health-cmd "pg_isready -U test -d test"
-          --health-interval 5s
+          --health-cmd pg_isready
+          --health-interval 10s
           --health-timeout 5s
-          --health-retries 20
+          --health-retries 5
 
       mongodb:
         image: mongo:8.0
