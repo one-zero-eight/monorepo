@@ -10,38 +10,35 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: when2meet-docs
+  group: when2meet-docs-gh-pages
   cancel-in-progress: true
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.14"
-      - run: pip install mkdocs-material
-      - run: mkdocs build
-        working-directory: src/when2meet
-      - uses: actions/upload-pages-artifact@v4
-        with:
-          path: src/when2meet/site
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - run: pip install mkdocs-material
+
+      - name: Build MkDocs site
+        working-directory: src/when2meet
+        run: |
+          mkdocs build
+          touch site/.nojekyll
+
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: src/when2meet/site
+          publish_branch: gh-pages
+          force_orphan: true
+          commit_message: "docs(when2meet): publish MkDocs site"
