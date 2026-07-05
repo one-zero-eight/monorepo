@@ -18,7 +18,7 @@ This is the monorepo for some of the backend services of InNoHassle ecosystem, a
 - Schedule - aggregate university schedules, personalize favorites, and export ICS calendars at [innohassle.ru/schedule](https://innohassle.ru/schedule).
 - Student Affairs - omnidesk authentication via SSO for Student Affairs department to issue tickets.
 - Table Tennis - leaderboard and queue for the [Innopolis University table tennis club](https://innohassle.ru/clubs/inno-table-tennis).
-- When2Meet - service for meeting availability planning. SWP Week 2 report: [reports/week2/README.md](src/when2meet/reports/week2/README.md), MVP v0: [mvp-v0-report.md](src/when2meet/reports/week2/mvp-v0-report.md).
+- When2Meet - service for meeting availability planning. Hosted docs: [one-zero-eight.github.io/monorepo](https://one-zero-eight.github.io/monorepo/), development process: [docs/development-process.md](src/when2meet/docs/development-process.md), architecture: [docs/architecture/README.md](src/when2meet/docs/architecture/README.md), Week 5 report: [reports/week5](https://github.com/one-zero-eight/monorepo/tree/main/src/when2meet/reports/week5).
 
 ### Technologies
 

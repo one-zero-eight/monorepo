@@ -1,0 +1,44 @@
+name: When2Meet docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/when2meet/docs/**"
+      - "src/when2meet/mkdocs.yml"
+      - ".github/workflows/when2meet-docs.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: when2meet-docs
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: pip install mkdocs-material
+      - run: mkdocs build
+        working-directory: src/when2meet
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: src/when2meet/site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
