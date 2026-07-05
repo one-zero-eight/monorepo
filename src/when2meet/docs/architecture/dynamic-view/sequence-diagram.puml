@@ -15,7 +15,7 @@ skinparam sequence {
 title When2Meet — Sequence Diagram: Open Shared Event and Submit Availability
 
 actor "Participant\n(Browser)" as U
-participant "Frontend\n(Vue)" as FE
+participant "Frontend\n(React)" as FE
 participant "When2Meet API\n(FastAPI)" as API
 participant "Auth Dependency\n(INH_TOKEN_AUTH)" as Auth
 participant "Events Repository" as Repo

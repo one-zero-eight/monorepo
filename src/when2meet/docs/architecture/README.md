@@ -15,7 +15,7 @@ When2Meet is an InNoHassle service that helps organizers find a meeting time by
 collecting participant availability on a shared grid and showing the
 intersection as a heatmap. The product is delivered as:
 
-- a **Vue single-page application** hosted at
+- a **React single-page application** hosted at
   `https://pre.innohassle.ru/when2meet`, and
 - a **FastAPI service** hosted at
   `https://api.innohassle.ru/when2meet/v0` that persists events and
@@ -39,7 +39,7 @@ contains the editable PlantUML source plus the rendered SVG and PNG.
 
 **What the diagram shows.** The main internal components of the When2Meet API
 (`App & Lifespan`, `Events Routes`, `Events Repository`, `Schemas & Validators`,
-`Mongo Document Models`, `Auth Dependency`), the Vue frontend, the external
+`Mongo Document Models`, `Auth Dependency`), the React frontend, the external
 systems the product interacts with (InNoHassle Accounts API, Room Booking API,
 Calendar API, MongoDB), and the communication paths between them — REST/HTTPS
 at the edge, Beanie ODM reads/writes to MongoDB, and JWT/JWKS verification plus
@@ -130,7 +130,7 @@ image on merge to `main`.
 domain (events) and modest load. A single FastAPI container behind the existing
 InNoHassle edge proxy reuses platform TLS termination, routing, and the shared
 MongoDB instance, which keeps operational cost and configuration surface area
-low. The Vue SPA is served as static assets from the same edge, so there is no
+low. The React SPA is served as static assets from the same edge, so there is no
 separate frontend runtime to operate. This matches the InNoHassle platform
 convention used by sibling services in the monorepo.
 

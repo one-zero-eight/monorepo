@@ -20,7 +20,7 @@ title When2Meet — Component Diagram (Static View)
 actor "Organizer" as Organizer
 actor "Participant" as Participant
 
-package "When2Meet Frontend (Vue)" as Frontend {
+package "When2Meet Frontend (React)" as Frontend {
 }
 
 package "When2Meet API (FastAPI)" as API {

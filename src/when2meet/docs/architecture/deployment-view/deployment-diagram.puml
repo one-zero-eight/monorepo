@@ -16,7 +16,7 @@ skinparam database {
 title When2Meet — Deployment Diagram
 
 node "Customer browser" as Browser {
-  artifact "When2Meet Vue SPA" as SPA
+  artifact "When2Meet React SPA" as SPA
 }
 
 node "Public Internet" as Internet {
