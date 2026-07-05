@@ -360,6 +360,25 @@ $defs:
         writeOnly: true
     title: MongoDatabaseSettings
     type: object
+  MusicRoomSettings:
+    additionalProperties: false
+    description: InNoHassle Music Room integration settings.
+    properties:
+      api_url:
+        description: URL of the Music Room API
+        title: Api Url
+        type: string
+      api_key:
+        description: API key for the Music Room API
+        format: password
+        title: Api Key
+        type: string
+        writeOnly: true
+    required:
+    - api_url
+    - api_key
+    title: MusicRoomSettings
+    type: object
   OmnideskSettings:
     additionalProperties: false
     properties:
@@ -378,6 +397,25 @@ $defs:
     required:
     - jwt_marker
     title: OmnideskSettings
+    type: object
+  RoomBookingIntegrationSettings:
+    additionalProperties: false
+    description: InNoHassle Room Booking integration settings.
+    properties:
+      api_url:
+        default: https://api.innohassle.ru/room-booking/v0
+        description: URL of the Room Booking API
+        title: Api Url
+        type: string
+      api_key:
+        description: API key for the Room Booking API
+        format: password
+        title: Api Key
+        type: string
+        writeOnly: true
+    required:
+    - api_key
+    title: RoomBookingIntegrationSettings
     type: object
   RoomBookingSettings:
     additionalProperties: false
@@ -441,6 +479,77 @@ $defs:
     - api_key
     - exchange
     title: RoomBookingSettings
+    type: object
+  ScheduleSettings:
+    additionalProperties: false
+    description: Settings for the Schedule service.
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: /schedule/v0
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      db_url:
+        description: PostgreSQL database connection URL
+        examples:
+        - postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/postgres
+        - postgresql+asyncpg://postgres:postgres@postgres:5432/postgres
+        format: password
+        title: Db Url
+        type: string
+        writeOnly: true
+      predefined_dir:
+        default: src/schedule/predefined
+        description: Path to the directory with predefined ICS data
+        format: path
+        title: Predefined Dir
+        type: string
+      music_room:
+        anyOf:
+        - $ref: '#/$defs/MusicRoomSettings'
+        - type: 'null'
+        default: null
+        description: InNoHassle Music Room integration settings
+      sport:
+        $ref: '#/$defs/SportSettings'
+        description: Innopolis Sport integration settings
+      workshops:
+        anyOf:
+        - $ref: '#/$defs/WorkshopsSettings'
+        - type: 'null'
+        default: null
+        description: InNoHassle Workshops integration settings
+      room_booking:
+        anyOf:
+        - $ref: '#/$defs/RoomBookingIntegrationSettings'
+        - type: 'null'
+        default: null
+        description: InNoHassle Room Booking integration settings
+    required:
+    - db_url
+    title: ScheduleSettings
+    type: object
+  SportSettings:
+    additionalProperties: false
+    description: Innopolis Sport integration settings.
+    properties:
+      api_url:
+        default: https://sport.innopolis.university/api
+        description: URL of the Sport API
+        title: Api Url
+        type: string
+    title: SportSettings
     type: object
   StudentAffairsSettings:
     additionalProperties: false
@@ -521,6 +630,25 @@ $defs:
         description: Configuration for MongoDB
     title: When2MeetSettings
     type: object
+  WorkshopsSettings:
+    additionalProperties: false
+    description: InNoHassle Workshops integration settings.
+    properties:
+      api_url:
+        default: https://api.innohassle.ru/workshops/v0
+        description: URL of the Workshops API
+        title: Api Url
+        type: string
+      api_key:
+        description: API key for the Workshops API
+        format: password
+        title: Api Key
+        type: string
+        writeOnly: true
+    required:
+    - api_key
+    title: WorkshopsSettings
+    type: object
 additionalProperties: false
 properties:
   $schema:
@@ -573,6 +701,11 @@ properties:
   room_booking_service:
     anyOf:
     - $ref: '#/$defs/RoomBookingSettings'
+    - type: 'null'
+    default: null
+  schedule_service:
+    anyOf:
+    - $ref: '#/$defs/ScheduleSettings'
     - type: 'null'
     default: null
 required:

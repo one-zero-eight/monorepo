@@ -8,21 +8,23 @@ contents [by default](https://github.blog/changelog/2021-04-13-table-of-contents
 
 ## About
 
-This is the monorepo for backend services of InNoHassle ecosystem, all of them are FastAPI ASGI applications.
+This is the monorepo for some of the backend services of InNoHassle ecosystem, all of them are FastAPI ASGI applications.
 
 - Clubs service - Innopolis University student clubs management system to view clubs, add new clubs, and edit their descriptions and logos.
 - Forms - managing Yandex Forms links and generating signed prefilled URLs for authenticated users.
 - Guard - gating access to Google Spreadsheets by requiring InNoHassle Accounts authentication before adding users.
 - Maps - hosting Innopolis University maps to view them on innohassle.ru.
 - Room booking - view and manage room bookings at innohassle.ru via integration with Microsoft Outlook.
+- Schedule - aggregate university schedules, personalize favorites, and export ICS calendars at [innohassle.ru/schedule](https://innohassle.ru/schedule).
 - Student Affairs - omnidesk authentication via SSO for Student Affairs department to issue tickets.
+- Table Tennis - leaderboard and queue for the [Innopolis University table tennis club](https://innohassle.ru/clubs/inno-table-tennis).
 - When2Meet - service for meeting availability planning. SWP Week 2 report: [reports/week2/README.md](src/when2meet/reports/week2/README.md), MVP v0: [mvp-v0-report.md](src/when2meet/reports/week2/mvp-v0-report.md).
 
 ### Technologies
 
 - [Python 3.14](https://www.python.org/downloads/) & [uv](https://docs.astral.sh/uv/)
 - [FastAPI](https://fastapi.tiangolo.com/)
-- Database and ORM: [MongoDB](https://www.mongodb.com/) & [Beanie](https://beanie-odm.dev/)
+- Database and ORM: [MongoDB](https://www.mongodb.com/) & [Beanie](https://beanie-odm.dev/); [PostgreSQL](https://www.postgresql.org/) & [SQLAlchemy](https://www.sqlalchemy.org/) (Schedule service)
 - File storage: [MinIO](https://github.com/minio/minio)
 - Formatting and linting: [Ruff](https://docs.astral.sh/ruff/), [prek](https://prek.j178.dev/)
 - Type checking: [ty](https://docs.astral.sh/ty/)
@@ -112,11 +114,23 @@ our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CON
    <details>
    <summary>Using console</summary>
 
+   For room booking service:
+   ```bash
+   uv run -m src.room_booking --reload
+   ```
+   > It will be available at http://localhost:8008
+
    For maps service:
    ```bash
    uv run -m src.maps --reload
    ```
    > It will be available at http://localhost:8009
+
+   For guard service:
+   ```bash
+   uv run -m src.guard --reload
+   ```
+   > It will be available at http://localhost:8013
 
    For clubs service:
    ```bash
@@ -130,11 +144,29 @@ our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CON
    ```
    > It will be available at http://localhost:8015
 
+   For forms service:
+   ```bash
+   uv run -m src.forms --reload
+   ```
+   > It will be available at http://localhost:8017
+
    For when2meet service:
    ```bash
    uv run -m src.when2meet --reload
    ```
    > It will be available at http://localhost:8020
+
+   For table tennis service:
+   ```bash
+   uv run -m src.tabletennis --reload
+   ```
+   > It will be available at http://localhost:8023
+
+   For schedule service:
+   ```bash
+   uv run -m src.schedule --reload
+   ```
+   > It will be available at http://localhost:8024
    </details>
 
 

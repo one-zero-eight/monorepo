@@ -34,3 +34,5 @@ room_booking_service: # configure exchange credentials, api_key, and access_list
     "105": []
     "300": []
     "321": []
+schedule_service:
+  db_url: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/postgres

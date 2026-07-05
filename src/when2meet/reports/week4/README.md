@@ -123,7 +123,7 @@ Monorepo-wide coverage may be lower when only When2Meet tests run.
 | Type              | Location                                                                                                                                                   |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Unit tests        | [tests/when2meet/test_event_schemas.py](../../../../tests/when2meet/test_event_schemas.py)                                                                    |
-| Integration tests | [tests/when2meet/test_events.py](../../../../tests/when2meet/test_events.py), [test_when2meet_startup.py](../../../../tests/when2meet/test_when2meet_startup.py) |
+| Integration tests | [tests/when2meet/test_events.py](../../../../tests/when2meet/test_events.py), [test_startup.py](../../../../tests/when2meet/test_startup.py) |
 | Automated QRTs    | [tests/when2meet/test_quality_requirements.py](../../../../tests/when2meet/test_quality_requirements.py)                                                      |
 
 
