@@ -23,3 +23,4 @@ jobs:
                       . --verbose --exclude-all-private
                       --exclude 'https?://([^/]*\.)*innohassle\.ru'
                       --exclude 'https?://([^/]*\.)*iso\.org'
+                      --exclude 'https?://([^/]*\.)*postgresql\.org'
