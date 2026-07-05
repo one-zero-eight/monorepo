@@ -109,6 +109,8 @@
 
 - Deployed product: #link(links.at("public").at("deployed_product"))[#raw(links.at("public").at("deployed_product"))]
 - Public sanitized demo video: #link(links.at("public").at("demo_video"))[Yandex Disk]
+- Hosted documentation: #link(links.at("public").at("hosted_docs"))[#raw(links.at("public").at("hosted_docs"))]
+- Changelog: #link(links.at("public").at("changelog"))[CHANGELOG.md]
 - Sprint 3 milestone: #link(links.at("public").at("sprint_milestone"))[GitHub milestone]
 - Product backlog: #link(links.at("public").at("product_backlog"))[GitHub Project view 19]
 - Sprint backlog: #link(links.at("public").at("sprint_backlog"))[GitHub Project view 20]

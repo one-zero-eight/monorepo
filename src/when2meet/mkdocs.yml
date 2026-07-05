@@ -38,3 +38,5 @@ nav:
   - Architecture:
       - Overview: architecture/README.md
       - ADRs: architecture/adr/README.md
+  - Reports:
+      - Week 5 report: ../reports/week5/README.md

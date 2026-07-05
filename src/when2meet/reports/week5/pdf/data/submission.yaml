@@ -1,6 +1,6 @@
 submission:
   project_name: "When2Meet for InNoHassle"
   team_number: "21"
-  commit_hash: "e56ed6c98e1d059d6e5d0a5dedb97fca36a0ed75"
-  readme_permalink: "https://github.com/one-zero-eight/monorepo/blob/e56ed6c98e1d059d6e5d0a5dedb97fca36a0ed75/src/when2meet/reports/week5/README.md"
-  tree_permalink: "https://github.com/one-zero-eight/monorepo/tree/e56ed6c98e1d059d6e5d0a5dedb97fca36a0ed75/src/when2meet"
+  commit_hash: "SUBMISSION_COMMIT"
+  readme_permalink: "https://github.com/one-zero-eight/monorepo/blob/SUBMISSION_COMMIT/src/when2meet/reports/week5/README.md"
+  tree_permalink: "https://github.com/one-zero-eight/monorepo/tree/SUBMISSION_COMMIT/src/when2meet"

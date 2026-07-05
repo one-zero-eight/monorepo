@@ -7,10 +7,11 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 **Traceability:** US-004
 **Role:** Meeting participant
 **Status:** Active
-**Result (Week 4):** Not executed — reverse calendar overlay not implemented in this increment
-**Executed by:** —
-**Execution date:** 2026-06-27 (Sprint Review session; scenario deferred)
-**Evidence:** Customer UAT recording (Moodle submission only)
+**Result (Week 4):** Not executed — reverse calendar overlay not implemented in this increment  
+**Result (Week 5):** Passed with change request — overlay works on desktop and mobile; customer requested hide-calendar toggle  
+**Executed by:** Vladislav Konovalov (demo); customer observed UAT segment  
+**Execution date:** 2026-07-05  
+**Evidence:** [Sprint Review transcript](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week5/sprint-review-transcript.md); private recording (Moodle only)
 
 ### Preconditions
 
@@ -41,6 +42,7 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 
 | Date | Version | Result | Notes |
 |---|---|---|---|
+| 2026-07-05 | 2.0 | Passed (change request) | Hide-calendar toggle requested |
 | 2026-06-27 | 1.0 | Not executed | Reverse calendar integration deferred to backlog |
 | — | 1.0 | Not executed | Initial scenario |
 
@@ -51,10 +53,11 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 **Traceability:** US-012; US-013
 **Role:** Meeting organizer
 **Status:** Active
-**Result (Week 4):** Passed (participant search); removal flow not exercised in recorded session
-**Executed by:** Customer (observer: team tester)
-**Execution date:** 2026-06-27
-**Evidence:** Customer UAT recording (Moodle submission only)
+**Result (Week 4):** Passed (participant search); removal flow not exercised in recorded session  
+**Result (Week 5):** Passed with change request — search and filtering work; email-only participant rows and missing deletion confirmation flagged  
+**Executed by:** Vladislav Konovalov (demo); customer observed UAT segment  
+**Execution date:** 2026-07-05  
+**Evidence:** [Sprint Review transcript](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week5/sprint-review-transcript.md); private recording (Moodle only)
 
 ### Preconditions
 
@@ -82,6 +85,7 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 
 | Date | Version | Result | Notes |
 |---|---|---|---|
+| 2026-07-05 | 2.0 | Passed (change request) | Deletion confirmation and richer identity display requested |
 | 2026-06-27 | 1.0 | Passed (search) | Removal steps not run in recorded UAT |
 | — | 1.0 | Not executed | Initial scenario |
 
@@ -92,10 +96,11 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 **Traceability:** US-007
 **Role:** Meeting organizer
 **Status:** Active
-**Result (Week 4):** Partial — modal and room list work; explicit booking time not confirmed
-**Executed by:** Customer
-**Execution date:** 2026-06-27
-**Evidence:** Customer UAT recording (Moodle submission only)
+**Result (Week 4):** Partial — modal and room list work; explicit booking time not confirmed  
+**Result (Week 5):** Partial — free-room selection works; booking state, optional flow, calendar link, and participant calendar push incomplete  
+**Executed by:** Vladislav Konovalov (demo); customer observed UAT segment  
+**Execution date:** 2026-07-05  
+**Evidence:** [Sprint Review transcript](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week5/sprint-review-transcript.md); private recording (Moodle only)
 
 ### Preconditions
 
@@ -123,5 +128,86 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 
 | Date | Version | Result | Notes |
 |---|---|---|---|
+| 2026-07-05 | 2.0 | Partial | Room reservation works; lifecycle and calendar push incomplete |
 | 2026-06-27 | 1.0 | Partial | Room modal works; time-selection logic incomplete |
 | — | 1.0 | Not executed | Initial scenario |
+
+---
+
+## UAT-004 — Distinguish my selected slots on the availability grid
+
+**Traceability:** [#99](https://github.com/one-zero-eight/monorepo/issues/99); [#94](https://github.com/one-zero-eight/monorepo/issues/94)  
+**Role:** Meeting participant / organizer  
+**Status:** Active  
+**Result (Week 5):** Passed with change request — border visible; customer requested a legend  
+**Executed by:** Vladislav Konovalov (demo); customer observed UAT segment  
+**Execution date:** 2026-07-05  
+**Evidence:** [Sprint Review summary](../../reports/week5/sprint-review-summary.md); private recording (Moodle only)
+
+### Preconditions
+
+- A meeting has multiple participants with submitted availability.
+- The user opens the hosted MVP v2 grid.
+
+### Steps
+
+1. Open the meeting availability view.
+2. Select personal availability on one or more slots.
+3. Verify selected slots are visually distinct from aggregate heatmap fill.
+4. Review whether the distinction is understandable without relying on color alone.
+
+### Expected result
+
+- The current user's selected slots are clearly distinguishable.
+- The distinction remains understandable for organizers and participants reviewing the grid.
+
+### Feedback
+
+- Customer approved the border approach only with an added legend explaining “my time” vs aggregate availability.
+
+### History
+
+| Date | Version | Result | Notes |
+|---|---|---|---|
+| 2026-07-05 | 2.0 | Passed (change request) | Legend requested |
+| — | 2.0 | Not executed | Initial scenario for MVP v2 |
+
+---
+
+## UAT-005 — Filter visible slots by minimum participant count
+
+**Traceability:** [#100](https://github.com/one-zero-eight/monorepo/issues/100)  
+**Role:** Meeting organizer  
+**Status:** Active  
+**Result (Week 5):** Passed — minimum-participant filter narrows visible slots as demonstrated in Sprint Review  
+**Executed by:** Vladislav Konovalov (demo); customer observed UAT segment  
+**Execution date:** 2026-07-05  
+**Evidence:** [Sprint Review summary](../../reports/week5/sprint-review-summary.md); private recording (Moodle only)
+
+### Preconditions
+
+- A meeting has at least three participants with overlapping availability.
+- The organizer opens the meeting heatmap on MVP v2.
+
+### Steps
+
+1. Open the meeting availability view.
+2. Apply the minimum-participant filter.
+3. Verify only slots meeting the threshold remain emphasized or visible according to the product design.
+4. Change participant availability and verify the filtered view updates.
+
+### Expected result
+
+- The organizer can narrow the grid to slots with enough participant overlap.
+- The filter helps scheduling decisions without requiring manual slot-by-slot inspection.
+
+### Feedback
+
+- Customer accepted the filter as useful but still requested clearer booking-state messaging elsewhere on the page.
+
+### History
+
+| Date | Version | Result | Notes |
+|---|---|---|---|
+| 2026-07-05 | 2.0 | Passed | Demonstrated during Sprint Review |
+| — | 2.0 | Not executed | Initial scenario for MVP v2 |

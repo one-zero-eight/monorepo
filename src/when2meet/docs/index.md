@@ -9,7 +9,7 @@ InNoHassle service for planning meeting availability: organizers create a shared
 | Hosted product | [pre.innohassle.ru/when2meet](https://pre.innohassle.ru/when2meet) |
 | API / Swagger | [api.innohassle.ru/when2meet/v0/docs](https://api.innohassle.ru/when2meet/v0/docs) |
 | Current increment | **MVP v2** (Sprint 3) — see [roadmap](roadmap.md) |
-| Week 5 report | [GitHub — reports/week5](https://github.com/one-zero-eight/monorepo/tree/main/src/when2meet/reports/week5) |
+| Week 5 report | [reports/week5/README.md](../reports/week5/README.md) |
 | Repository | [src/when2meet](https://github.com/one-zero-eight/monorepo/tree/main/src/when2meet) |
 
 ## Maintained documentation

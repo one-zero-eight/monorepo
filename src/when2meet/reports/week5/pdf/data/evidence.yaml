@@ -10,7 +10,7 @@ images:
   - file: ../images/secret-scan-result.png
     caption: "When2Meet QA — secret scan job"
   - file: ../images/reviewed-pr.png
-    caption: "Example reviewed issue-linked PR"
+    caption: "Example reviewed issue-linked PR (#119)"
   - file: ../images/deployed-product.png
     caption: "Deployed product at pre.innohassle.ru/when2meet"
   - file: ../images/branch-protection.png
