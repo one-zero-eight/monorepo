@@ -62,7 +62,7 @@ async def get_player(auth: INH_TOKEN_AUTH) -> dict[str, Any]:
     return await format_player_data(player)
 
 
-@router.get("/players")
+@router.get("/list-players")
 async def list_players(auth: INH_TOKEN_AUTH) -> dict[str, Any]:
     """
     Returns a list of all registered players with their names from InNoHassle Accounts
@@ -81,7 +81,6 @@ async def get_active_tours(auth: INH_TOKEN_AUTH) -> list[dict[str, Any]]:
     Returns a list of all currently active tournaments with details for the frontend:
     metadata, participants, and separated game IDs.
     """
-    # Исправленный синтаксис Beanie запроса
     active_tournaments = await Tournament.find(Tournament.active).to_list()
 
     result = []
@@ -414,7 +413,7 @@ async def register_game(
     }
 
 
-@router.post("/game")
+@router.post("/finish-game")
 async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: int, tour_id: str) -> dict[str, Any]:
     """
     Admin endpoint to record a match result using game_id and tour_id.
@@ -608,7 +607,7 @@ async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: i
 #     Returns a list of all currently active tournaments with full details:
 #     metadata, participants, and game IDs separated by type.
 #     """
-#     active_tournaments = await Tournament.find(Tournament.active == True).to_list()
+#     active_tournaments = await Tournament.find(Tournament.active).to_list()
 
 #     result = []
 #     for tour in active_tournaments:
