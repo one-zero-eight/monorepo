@@ -4,7 +4,7 @@ InNoHassle service for planning meeting availability (SWP Assignment 5 / Sprint 
 
 - **License:** [MIT License](https://github.com/one-zero-eight/monorepo/blob/main/LICENSE)
 - **Repository:** [one-zero-eight/monorepo](https://github.com/one-zero-eight/monorepo) — `src/when2meet/`
-- **Submission commit:** [`SUBMISSION_COMMIT`](https://github.com/one-zero-eight/monorepo/commit/SUBMISSION_COMMIT) on `main`
+- **Submission commit:** [`f6488ea2a53aedca971b270863f5eb7f34056f1e`](https://github.com/one-zero-eight/monorepo/commit/f6488ea2a53aedca971b270863f5eb7f34056f1e) on `main`
 
 ## Sprint 3 summary
 
