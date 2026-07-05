@@ -1,0 +1,19 @@
+links:
+  public:
+    week5_readme: "https://github.com/one-zero-eight/monorepo/blob/e56ed6c98e1d059d6e5d0a5dedb97fca36a0ed75/src/when2meet/reports/week5/README.md"
+    product_tree: "https://github.com/one-zero-eight/monorepo/tree/e56ed6c98e1d059d6e5d0a5dedb97fca36a0ed75/src/when2meet"
+    sprint_review_transcript: "https://github.com/one-zero-eight/monorepo/blob/e56ed6c98e1d059d6e5d0a5dedb97fca36a0ed75/src/when2meet/reports/week5/sprint-review-transcript.md"
+    sprint_review_summary: "https://github.com/one-zero-eight/monorepo/blob/e56ed6c98e1d059d6e5d0a5dedb97fca36a0ed75/src/when2meet/reports/week5/sprint-review-summary.md"
+    deployed_product: "https://pre.innohassle.ru/when2meet"
+    demo_video: "https://disk.yandex.ru/i/QcdKlW0IIW_yDg"
+    sprint_milestone: "https://github.com/one-zero-eight/monorepo/milestone/3"
+    product_backlog: "https://github.com/orgs/one-zero-eight/projects/4/views/19"
+    sprint_backlog: "https://github.com/orgs/one-zero-eight/projects/4/views/20"
+    ci_tests: "https://github.com/one-zero-eight/monorepo/actions/runs/28743291281/job/85229755499"
+    ci_secret_scan: "https://github.com/one-zero-eight/monorepo/actions/runs/28743291262/job/85229755404"
+    ci_lychee: "https://github.com/one-zero-eight/monorepo/actions/runs/28743291248/job/85229755269"
+  private:
+    sprint_review_uat_recording: "https://disk.yandex.ru/d/257aAbFwyBF3dQ"
+    uat_timecode_review: "00:00:01 – 00:06:41"
+    uat_timecode_uat: "00:07:13 – 00:09:59"
+    private_access_instructions: "Skipped — product uses InnoHassle SSO on the public pre-production URL https://pre.innohassle.ru/when2meet . API docs: https://api.innohassle.ru/when2meet/v0/docs ."
