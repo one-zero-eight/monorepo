@@ -3,7 +3,7 @@ __all__ = ["Player", "document_models"]
 import datetime as dtm
 from typing import ClassVar
 
-from pydantic import EmailStr, Field
+from pydantic import Field
 from pymongo import IndexModel
 
 from src.common_beanie import BeanieDocument
@@ -40,17 +40,19 @@ class Game(BeanieDocument):
 
 
 class Tournament(BeanieDocument):
-    id: str
+    tour_id: str
     name: str
 
-    players: list[EmailStr]
+    players: list[str]
     val_games: list[Game] | None = None
     cval_games: list[Game] | None = None
 
+    active: bool = Field(default=False)
     date: dtm.datetime
 
     class Settings(BeanieDocument.Settings):
-        indexes: ClassVar[list[IndexModel]] = [IndexModel("id", unique=True)]
+        name = "Tournament_v2"
+        indexes: ClassVar[list[IndexModel]] = [IndexModel("tour_id", unique=True)]
 
 
 document_models = [Player, Game, Tournament]
