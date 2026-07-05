@@ -16,20 +16,23 @@ permissions:
 
 concurrency:
   group: when2meet-docs
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/setup-python@v5
         with:
           python-version: "3.14"
       - run: pip install mkdocs-material
       - run: mkdocs build
         working-directory: src/when2meet
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: src/when2meet/site
 
