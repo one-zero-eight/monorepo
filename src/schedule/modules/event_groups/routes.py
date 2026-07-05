@@ -44,7 +44,7 @@ async def create_event_group(
     try:
         event_group_view = await event_group_repository.create(event_group)
         # await event_group_repository.setup_ownership(event_group_view.id, current_user_id, OwnershipEnum.owner)
-        return JSONResponse(status_code=201, content=event_group_view.model_dump())
+        return JSONResponse(status_code=201, content=event_group_view.model_dump(mode="json"))
     except IntegrityError as integrity_error:
         detail = integrity_error.args[0]
         raise HTTPException(status_code=409, detail=detail)

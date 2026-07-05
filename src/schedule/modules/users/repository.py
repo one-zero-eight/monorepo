@@ -88,12 +88,9 @@ class SqlUserRepository:
                 result[email] = user_id
             return result
 
-    async def read_id_by_email(self, email: str) -> int:
+    async def read_id_by_email(self, email: str) -> int | None:
         async with self._create_session() as session:
-            user_id = await session.scalar(select(User.id).where(User.email == email))
-        if user_id is None:
-            raise ValueError(f"User not found: {email}")
-        return user_id
+            return await session.scalar(select(User.id).where(User.email == email))
 
     async def read_id_by_innohassle_id(self, innohassle_id: str) -> int | None:
         async with self._create_session() as session:

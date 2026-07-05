@@ -115,9 +115,9 @@ class SqlEventGroupRepository:
             event_group_id_x_tags_ids[group_id] = tag_ids
         await tag_repository.batch_set_tags_to_event_group(event_group_id_x_tags_ids)
 
-        objs = await session.scalars(select(EventGroup).where(EventGroup.id.in_(obj_ids)))
-
-        return [ViewEventGroup.model_validate(obj) for obj in objs]
+        async with self._create_session() as session:
+            objs = await session.scalars(select(EventGroup).where(EventGroup.id.in_(obj_ids)))
+            return [ViewEventGroup.model_validate(obj) for obj in objs]
 
     async def read(self, group_id: int) -> ViewEventGroup | None:
         async with self._create_session() as session:
