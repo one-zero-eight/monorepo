@@ -106,13 +106,6 @@ The product is delivered as a **React** SPA at `pre.innohassle.ru/when2meet` and
 | Latest passing link check job | [Lychee #28745297047](https://github.com/one-zero-eight/monorepo/actions/runs/28745297047/job/85235060357) |
 | Example reviewed PR | [#119](https://github.com/one-zero-eight/monorepo/pull/119) |
 
-## Release
-
-| Item | Link |
-|---|---|
-| SemVer release **MVP v2** | Create [`v0.2.0`](https://github.com/one-zero-eight/monorepo/releases/new) on submission commit before grading |
-| Changelog | [CHANGELOG.md](../../CHANGELOG.md) |
-
 ## UAT summary (public, sanitized)
 
 Full scenarios: [docs/user-acceptance-tests.md](../../docs/user-acceptance-tests.md).
@@ -140,14 +133,13 @@ Private customer UAT + Sprint Review recording: Moodle submission only ([Yandex 
 ## Deviations from default expectations
 
 - **GitHub Pages deploy:** `actions/deploy-pages` failed with `Deployment failed, try again later` even after enabling Pages; docs publish through the `gh-pages` branch workflow instead.
-- **SemVer release `v0.2.0`:** not yet published at report submission time — create from protected `main` before grading and refresh the release screenshot.
 - **Private Sprint Review recording:** Moodle PDF only; public transcript is [sprint-review-transcript.md](sprint-review-transcript.md).
 
 ## Product status and next steps
 
 **Current status:** MVP v2 is deployed, documented, and customer-reviewed. Calendar overlay, participant management, and filter UX landed; room-booking lifecycle, calendar push, participant identity polish, and [#97](https://github.com/one-zero-eight/monorepo/issues/97) remain open.
 
-**Next steps:** Publish `v0.2.0`, close room-booking/calendar-push follow-ups, add hide-calendar toggle and selected-slot legend, improve participant deletion confirmation.
+**Next steps:** Close room-booking/calendar-push follow-ups, add hide-calendar toggle and selected-slot legend, improve participant deletion confirmation.
 
 ## Contribution traceability (Sprint 3)
 

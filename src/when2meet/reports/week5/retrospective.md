@@ -11,7 +11,6 @@
 - Room booking and calendar synchronization remain partial at UAT time despite milestone closure pressure.
 - Participant UX still shows email-only rows and lacks deletion confirmation.
 - `actions/deploy-pages` failed repeatedly even with Pages enabled; time was lost before adopting the branch deploy workaround.
-- SemVer release `v0.2.0` was not created before report finalization, leaving release screenshot evidence incomplete.
 - Not all team members attended the live customer session.
 
 ## What we changed compared to the previous Sprint retrospective
@@ -21,6 +20,5 @@
 
 ## Process improvements for the next Sprint
 
-1. **Create the SemVer release and update report screenshots on the same day as Sprint Review.**
-2. **Treat “approved with changes” UAT outcomes as open PBIs immediately**, not as implicit Done states.
-3. **Keep a single team availability poll** for customer Review/UAT so developers, QA, and PO attend together.
+1. **Treat “approved with changes” UAT outcomes as open PBIs immediately**, not as implicit Done states.
+2. **Keep a single team availability poll** for customer Review/UAT so developers, QA, and PO attend together.

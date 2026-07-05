@@ -23,4 +23,3 @@
 - **Product:** Close follow-ups on hide-calendar toggle, booking lifecycle clarity, calendar push, participant names, and deletion confirmation.
 - **Architecture:** Keep [docs/architecture/README.md](../../docs/architecture/README.md) and ADRs current when Calendar or Room Booking contracts change.
 - **Quality:** Keep QRT-001–004, secret scan, and coverage gates active for every Sprint PBI.
-- **Process:** Publish SemVer release `v0.2.0` from protected `main` and refresh Week 5 evidence screenshots after release creation.
