@@ -14,6 +14,7 @@ class Player(BeanieDocument):
     nickname: str = Field(default="nouname", min_length=2, max_length=20)
 
     rating: int = 1000
+    ratings: dict[dtm.datetime, int] = Field(default_factory=dict)
     wins: int = 0
     losses: int = 0
 

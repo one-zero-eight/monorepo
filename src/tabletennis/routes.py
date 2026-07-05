@@ -112,6 +112,7 @@ async def register_player(auth: INH_TOKEN_AUTH, nick: str | None = None) -> Play
         innohassle_id=auth.innohassle_id,
         nickname=name_to_display,
         rating=1000,
+        ratings={dtm.datetime.now(tz=dtm.UTC): 1000},
         wins=0,
         losses=0,
         last_game=ancient_date,
@@ -292,6 +293,14 @@ async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: i
     current_time = dtm.datetime.now(tz=dtm.UTC)
     p1.last_game = current_time
     p2.last_game = current_time
+
+    if p1.ratings is None:  # На случай непредвиденных обстоятельств
+        p1.ratings = {}
+    if p2.ratings is None:
+        p2.ratings = {}
+
+    p1.ratings[current_time] = p1.rating
+    p2.ratings[current_time] = p2.rating
 
     if s1 > s2:
         p1.wins += 1
