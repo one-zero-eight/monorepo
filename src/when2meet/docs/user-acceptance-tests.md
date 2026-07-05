@@ -4,12 +4,12 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 
 ## UAT-001 — Choose a meeting time with calendar-event awareness
 
-**Traceability:** US-004  
-**Role:** Meeting participant  
-**Status:** Active  
-**Result (Week 4):** Not executed — reverse calendar overlay not implemented in this increment  
-**Executed by:** —  
-**Execution date:** 2026-06-27 (Sprint Review session; scenario deferred)  
+**Traceability:** US-004
+**Role:** Meeting participant
+**Status:** Active
+**Result (Week 4):** Not executed — reverse calendar overlay not implemented in this increment
+**Executed by:** —
+**Execution date:** 2026-06-27 (Sprint Review session; scenario deferred)
 **Evidence:** Customer UAT recording (Moodle submission only)
 
 ### Preconditions
@@ -48,12 +48,12 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 
 ## UAT-002 — Find a participant, review availability, and remove them from a meeting
 
-**Traceability:** US-012; US-013  
-**Role:** Meeting organizer  
-**Status:** Active  
-**Result (Week 4):** Passed (participant search); removal flow not exercised in recorded session  
-**Executed by:** Customer (observer: team tester)  
-**Execution date:** 2026-06-27  
+**Traceability:** US-012; US-013
+**Role:** Meeting organizer
+**Status:** Active
+**Result (Week 4):** Passed (participant search); removal flow not exercised in recorded session
+**Executed by:** Customer (observer: team tester)
+**Execution date:** 2026-06-27
 **Evidence:** Customer UAT recording (Moodle submission only)
 
 ### Preconditions
@@ -89,12 +89,12 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 
 ## UAT-003 — Book an available room for a selected meeting time
 
-**Traceability:** US-007  
-**Role:** Meeting organizer  
-**Status:** Active  
-**Result (Week 4):** Partial — modal and room list work; explicit booking time not confirmed  
-**Executed by:** Customer  
-**Execution date:** 2026-06-27  
+**Traceability:** US-007
+**Role:** Meeting organizer
+**Status:** Active
+**Result (Week 4):** Partial — modal and room list work; explicit booking time not confirmed
+**Executed by:** Customer
+**Execution date:** 2026-06-27
 **Evidence:** Customer UAT recording (Moodle submission only)
 
 ### Preconditions
