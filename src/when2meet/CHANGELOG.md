@@ -5,7 +5,7 @@ Releases follow [SemVer](https://semver.org/) and map to MVP increments.
 
 ## [0.2.0] — MVP v2 (Sprint 3 / Assignment 5)
 
-**Release date:** 2026-07-05  
+**Release date:** 2026-07-05
 **Sprint milestone:** [Sprint 3](https://github.com/one-zero-eight/monorepo/milestone/3)
 
 ### Added
@@ -35,7 +35,7 @@ Releases follow [SemVer](https://semver.org/) and map to MVP increments.
 
 ## [0.1.0] — MVP v1 (Sprint 1 / Assignment 3)
 
-**Release date:** 2026-06-21  
+**Release date:** 2026-06-21
 **Sprint milestone:** [Sprint 1](https://github.com/one-zero-eight/monorepo/milestone/1)
 
 ### Added

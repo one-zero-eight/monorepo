@@ -7,10 +7,10 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 **Traceability:** US-004
 **Role:** Meeting participant
 **Status:** Active
-**Result (Week 4):** Not executed — reverse calendar overlay not implemented in this increment  
-**Result (Week 5):** Passed with change request — overlay works on desktop and mobile; customer requested hide-calendar toggle  
-**Executed by:** Vladislav Konovalov (demo); customer observed UAT segment  
-**Execution date:** 2026-07-05  
+**Result (Week 4):** Not executed — reverse calendar overlay not implemented in this increment
+**Result (Week 5):** Passed with change request — overlay works on desktop and mobile; customer requested hide-calendar toggle
+**Executed by:** Vladislav Konovalov (demo); customer observed UAT segment
+**Execution date:** 2026-07-05
 **Evidence:** [Sprint Review transcript](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week5/sprint-review-transcript.md); private recording (Moodle only)
 
 ### Preconditions
@@ -53,10 +53,10 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 **Traceability:** US-012; US-013
 **Role:** Meeting organizer
 **Status:** Active
-**Result (Week 4):** Passed (participant search); removal flow not exercised in recorded session  
-**Result (Week 5):** Passed with change request — search and filtering work; email-only participant rows and missing deletion confirmation flagged  
-**Executed by:** Vladislav Konovalov (demo); customer observed UAT segment  
-**Execution date:** 2026-07-05  
+**Result (Week 4):** Passed (participant search); removal flow not exercised in recorded session
+**Result (Week 5):** Passed with change request — search and filtering work; email-only participant rows and missing deletion confirmation flagged
+**Executed by:** Vladislav Konovalov (demo); customer observed UAT segment
+**Execution date:** 2026-07-05
 **Evidence:** [Sprint Review transcript](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week5/sprint-review-transcript.md); private recording (Moodle only)
 
 ### Preconditions
@@ -96,10 +96,10 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 **Traceability:** US-007
 **Role:** Meeting organizer
 **Status:** Active
-**Result (Week 4):** Partial — modal and room list work; explicit booking time not confirmed  
-**Result (Week 5):** Partial — free-room selection works; booking state, optional flow, calendar link, and participant calendar push incomplete  
-**Executed by:** Vladislav Konovalov (demo); customer observed UAT segment  
-**Execution date:** 2026-07-05  
+**Result (Week 4):** Partial — modal and room list work; explicit booking time not confirmed
+**Result (Week 5):** Partial — free-room selection works; booking state, optional flow, calendar link, and participant calendar push incomplete
+**Executed by:** Vladislav Konovalov (demo); customer observed UAT segment
+**Execution date:** 2026-07-05
 **Evidence:** [Sprint Review transcript](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week5/sprint-review-transcript.md); private recording (Moodle only)
 
 ### Preconditions
@@ -136,12 +136,12 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 
 ## UAT-004 — Distinguish my selected slots on the availability grid
 
-**Traceability:** [#99](https://github.com/one-zero-eight/monorepo/issues/99); [#94](https://github.com/one-zero-eight/monorepo/issues/94)  
-**Role:** Meeting participant / organizer  
-**Status:** Active  
-**Result (Week 5):** Passed with change request — border visible; customer requested a legend  
-**Executed by:** Vladislav Konovalov (demo); customer observed UAT segment  
-**Execution date:** 2026-07-05  
+**Traceability:** [#99](https://github.com/one-zero-eight/monorepo/issues/99); [#94](https://github.com/one-zero-eight/monorepo/issues/94)
+**Role:** Meeting participant / organizer
+**Status:** Active
+**Result (Week 5):** Passed with change request — border visible; customer requested a legend
+**Executed by:** Vladislav Konovalov (demo); customer observed UAT segment
+**Execution date:** 2026-07-05
 **Evidence:** [Sprint Review summary](../../reports/week5/sprint-review-summary.md); private recording (Moodle only)
 
 ### Preconditions
@@ -176,12 +176,12 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 
 ## UAT-005 — Filter visible slots by minimum participant count
 
-**Traceability:** [#100](https://github.com/one-zero-eight/monorepo/issues/100)  
-**Role:** Meeting organizer  
-**Status:** Active  
-**Result (Week 5):** Passed — minimum-participant filter narrows visible slots as demonstrated in Sprint Review  
-**Executed by:** Vladislav Konovalov (demo); customer observed UAT segment  
-**Execution date:** 2026-07-05  
+**Traceability:** [#100](https://github.com/one-zero-eight/monorepo/issues/100)
+**Role:** Meeting organizer
+**Status:** Active
+**Result (Week 5):** Passed — minimum-participant filter narrows visible slots as demonstrated in Sprint Review
+**Executed by:** Vladislav Konovalov (demo); customer observed UAT segment
+**Execution date:** 2026-07-05
 **Evidence:** [Sprint Review summary](../../reports/week5/sprint-review-summary.md); private recording (Moodle only)
 
 ### Preconditions
