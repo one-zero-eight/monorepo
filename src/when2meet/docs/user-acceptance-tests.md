@@ -142,7 +142,7 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 **Result (Week 5):** Passed with change request — border visible; customer requested a legend
 **Executed by:** Vladislav Konovalov (demo); customer observed UAT segment
 **Execution date:** 2026-07-05
-**Evidence:** [Sprint Review summary](../../reports/week5/sprint-review-summary.md); private recording (Moodle only)
+**Evidence:** [Sprint Review summary](../reports/week5/sprint-review-summary.md); private recording (Moodle only)
 
 ### Preconditions
 
@@ -182,7 +182,7 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 **Result (Week 5):** Passed — minimum-participant filter narrows visible slots as demonstrated in Sprint Review
 **Executed by:** Vladislav Konovalov (demo); customer observed UAT segment
 **Execution date:** 2026-07-05
-**Evidence:** [Sprint Review summary](../../reports/week5/sprint-review-summary.md); private recording (Moodle only)
+**Evidence:** [Sprint Review summary](../reports/week5/sprint-review-summary.md); private recording (Moodle only)
 
 ### Preconditions
 
