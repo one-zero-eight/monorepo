@@ -146,8 +146,8 @@ jobs:
             -d @- |
           tee "$deploy_log"
 
-          if grep -q 'Deployment failed with exit code' "$deploy_log"; then
-            echo "Deployment failed" >&2
+          if ! grep -q 'Deployment completed successfully' "$deploy_log"; then
+            echo "Deployment did not complete successfully" >&2
             exit 1
           fi
 
