@@ -63,11 +63,11 @@ async def approve_update(id: PydanticObjectId) -> Club | None:
     club = await Club.get(id)
     if not club or not club.pending_update:
         return club
-    
+
     update_data = club.pending_update.model_dump(exclude_unset=True)
     for k, v in update_data.items():
         setattr(club, k, v)
-    
+
     club.pending_update = None
     await club.save()
     return club
@@ -77,7 +77,7 @@ async def reject_update(id: PydanticObjectId) -> Club | None:
     club = await Club.get(id)
     if not club or not club.pending_update:
         return club
-        
+
     club.pending_update = None
     await club.save()
     return club

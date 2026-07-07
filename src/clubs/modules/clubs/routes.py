@@ -36,7 +36,7 @@ router = APIRouter(
 async def get_clubs_list(auth: OPTIONAL_INH_TOKEN_AUTH) -> list[Club]:
     """Get list of clubs."""
     clubs = await clubs_repo.read_all()
-    
+
     is_admin = False
     if auth:
         clubs_user = await users_repo.read_by_innohassle_id(auth.innohassle_id)
@@ -45,7 +45,7 @@ async def get_clubs_list(auth: OPTIONAL_INH_TOKEN_AUTH) -> list[Club]:
     for club in clubs:
         if not is_admin and (not auth or club.leader_innohassle_id != auth.innohassle_id):
             club.pending_update = None
-            
+
     return clubs
 
 
@@ -73,15 +73,15 @@ async def get_club_info(id: PydanticObjectId, auth: OPTIONAL_INH_TOKEN_AUTH) -> 
     club = await clubs_repo.read(id)
     if not club:
         raise HTTPException(status_code=404, detail="Club not found")
-        
+
     is_admin = False
     if auth:
         clubs_user = await users_repo.read_by_innohassle_id(auth.innohassle_id)
         is_admin = clubs_user and clubs_user.role == UserRole.ADMIN
-        
+
     if not is_admin and (not auth or club.leader_innohassle_id != auth.innohassle_id):
         club.pending_update = None
-        
+
     return club
 
 
@@ -97,15 +97,15 @@ async def get_club_info_by_slug(slug: str, auth: OPTIONAL_INH_TOKEN_AUTH) -> Clu
     club = await clubs_repo.read_by_slug(slug)
     if not club:
         raise HTTPException(status_code=404, detail="Club not found")
-        
+
     is_admin = False
     if auth:
         clubs_user = await users_repo.read_by_innohassle_id(auth.innohassle_id)
         is_admin = clubs_user and clubs_user.role == UserRole.ADMIN
-        
+
     if not is_admin and (not auth or club.leader_innohassle_id != auth.innohassle_id):
         club.pending_update = None
-        
+
     return club
 
 
@@ -122,11 +122,11 @@ async def edit_club_info(id: PydanticObjectId, club_info: clubs_repo.UpdateClub,
     club = await clubs_repo.read(id)
     if not club:
         raise HTTPException(status_code=404, detail="Club not found")
-        
+
     clubs_user = await users_repo.read_by_innohassle_id(auth.innohassle_id)
     is_admin = clubs_user and clubs_user.role == UserRole.ADMIN
     is_leader = club.leader_innohassle_id == auth.innohassle_id
-    
+
     if not is_admin and not is_leader:
         raise HTTPException(status_code=403, detail="Only admin or leader can change club info")
 
@@ -143,7 +143,7 @@ async def edit_club_info(id: PydanticObjectId, club_info: clubs_repo.UpdateClub,
             raise HTTPException(status_code=404, detail="Club not found")
         return updated_club
     else:
-        club.pending_update = PendingClubUpdate(**club_info.model_dump(exclude={'new_leader_email', 'pending_update'}))
+        club.pending_update = PendingClubUpdate(**club_info.model_dump(exclude={"new_leader_email", "pending_update"}))
         await club.save()
         return club
 
@@ -162,11 +162,11 @@ async def edit_club_info_by_slug(slug: str, update_club: clubs_repo.UpdateClub, 
     club = await clubs_repo.read_by_slug(slug)
     if not club:
         raise HTTPException(status_code=404, detail="Club not found")
-        
+
     clubs_user = await users_repo.read_by_innohassle_id(auth.innohassle_id)
     is_admin = clubs_user and clubs_user.role == UserRole.ADMIN
     is_leader = club.leader_innohassle_id == auth.innohassle_id
-    
+
     if not is_admin and not is_leader:
         raise HTTPException(status_code=403, detail="Only admin or leader can change club info")
 
@@ -188,7 +188,9 @@ async def edit_club_info_by_slug(slug: str, update_club: clubs_repo.UpdateClub, 
         except DuplicateKeyError:
             raise HTTPException(status_code=400, detail="Slug already exists")
     else:
-        club.pending_update = PendingClubUpdate(**update_club.model_dump(exclude={'new_leader_email', 'pending_update'}))
+        club.pending_update = PendingClubUpdate(
+            **update_club.model_dump(exclude={"new_leader_email", "pending_update"})
+        )
         await club.save()
         return club
 
@@ -246,7 +248,7 @@ async def set_club_logo(id: PydanticObjectId, logo_file: UploadFile, auth: INH_T
     clubs_user = await users_repo.read_by_innohassle_id(auth.innohassle_id)
     is_admin = clubs_user and clubs_user.role == UserRole.ADMIN
     is_leader = club.leader_innohassle_id == auth.innohassle_id
-    
+
     if not is_admin and not is_leader:
         raise HTTPException(status_code=403, detail="Only admin or leader can change club logo")
 
@@ -281,7 +283,7 @@ async def set_club_logo(id: PydanticObjectId, logo_file: UploadFile, auth: INH_T
         club.logo_file_id = logo_file_id
     else:
         if not club.pending_update:
-            club.pending_update = PendingClubUpdate(**club.model_dump(exclude={'pending_update'}))
+            club.pending_update = PendingClubUpdate(**club.model_dump(exclude={"pending_update"}))
         club.pending_update.logo_file_id = logo_file_id
 
     await club.save()
