@@ -120,8 +120,24 @@ jobs:
         run: |
           set -euo pipefail
 
+          filter_deploy_output() {
+            while IFS= read -r line || [[ -n "${line}" ]]; do
+              line="${line//$'\r'/}"
+              [[ -z "${line//[[:space:]]/}" ]] && continue
+
+              if [[ "${line}" =~ ^Got\ imageid: ]] || \
+                 [[ "${line}" =~ [Ee]rror|FAILED|fatal ]]; then
+                printf '\n%s\n' "${line}"
+              else
+                printf '\r%s' "${line}"
+              fi
+            done
+            printf '\n'
+          }
+
           curl_args=(
-            -fNS
+            -fNSs
+            --no-progress-meter
             --connect-timeout 10
             -H "Authorization: Bearer ${WEBHOOK_SECRET}"
             -H "Content-Type: application/json"
@@ -139,7 +155,8 @@ jobs:
             '{image_id: $image_id, ref: $ref, services: (if $service == "" or $service == "all" then [] else [$service] end)}' |
           curl "${curl_args[@]}" \
             "${DEPLOYER_URL}/deploy?repository=${REPOSITORY}" \
-            -d @-
+            -d @- |
+          filter_deploy_output
 
   update-staging-infra:
     needs: build-and-push-image
