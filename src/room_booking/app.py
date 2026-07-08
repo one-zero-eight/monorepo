@@ -9,6 +9,7 @@ import exchangelib.errors
 from fastapi import FastAPI
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse, Response
+from pydantic import BaseModel
 from starlette.middleware.cors import CORSMiddleware
 
 from src.common_config import Environment
@@ -222,9 +223,6 @@ async def ews_callback(request: Request):
 
 
 # FIXME: came up with internal mechanism for checking status instead of uptime.dofi4ka.ru
-from pydantic import BaseModel
-
-
 class UptimeSchema(BaseModel):
     class Status(BaseModel):
         status: int
