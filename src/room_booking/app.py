@@ -219,3 +219,29 @@ async def ews_callback(request: Request):
                         break
 
     return Response(content=data, status_code=201, media_type="text/xml; charset=utf-8")
+
+
+# FIXME: came up with internal mechanism for checking status instead of uptime.dofi4ka.ru
+from pydantic import BaseModel
+
+
+class UptimeSchema(BaseModel):
+    class Status(BaseModel):
+        status: int
+        time: str
+        ping: int | None
+
+    uptime: list[Status]
+
+
+@app.get("/status")
+async def get_status() -> UptimeSchema:
+    import httpx
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get("https://uptime.dofi4ka.ru/api/status-page/heartbeat/innopolis")
+
+    payload = response.json()
+    uptime = payload["heartbeatList"]["20"]
+
+    return UptimeSchema.model_validate({"uptime": uptime})
