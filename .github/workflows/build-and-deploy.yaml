@@ -150,34 +150,3 @@ jobs:
             echo "Deployment did not complete successfully" >&2
             exit 1
           fi
-
-  update-staging-infra:
-    needs: build-and-push-image
-    if: github.repository_owner == 'one-zero-eight' && (github.event.inputs.environment || 'staging') == 'staging'
-    name: Update staging infra image tag
-    runs-on: ubuntu-latest
-    concurrency:
-      group: update-staging-infra
-      cancel-in-progress: false
-
-    steps:
-      - name: Checkout infra repo
-        uses: actions/checkout@v4
-        with:
-          repository: one-zero-eight/infra
-          token: ${{ secrets.INFRA_REPO_TOKEN }}
-          path: infra
-
-      - name: Update staging image tag
-        run: |
-          sed -i 's|image: ghcr.io/one-zero-eight/monorepo:.*|image: ghcr.io/one-zero-eight/monorepo:sha-${{ github.sha }}|' \
-            infra/stacks/staging/when2meet/docker-compose.yaml
-
-      - name: Commit staging change
-        working-directory: infra
-        run: |
-          git config user.name "ci-bot"
-          git config user.email "ci-bot@users.noreply.github.com"
-          git add stacks/staging/when2meet/docker-compose.yaml
-          git commit -m "staging: promote monorepo to sha-${{ github.sha }}" || exit 0
-          git push
