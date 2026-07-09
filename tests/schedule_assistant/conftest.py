@@ -18,10 +18,6 @@ from tests.conftest_runtime_settings import (
     schedule_assistant_test_database_name,
 )
 
-pytest_plugins = ["tests.conftest_auth"]
-
-_suite_monkeypatch_stash_key = pytest.StashKey[pytest.MonkeyPatch]()
-
 
 async def _ensure_postgres_database(admin_dsn: str, database_name: str) -> None:
     engine = create_async_engine(admin_dsn, isolation_level="AUTOCOMMIT")
@@ -118,27 +114,6 @@ def issues_repo(schedule_assistant_repo, monkeypatch: pytest.MonkeyPatch):
         schedule_assistant_repo,
     )
     return schedule_assistant_repo
-
-
-@pytest.hookimpl(tryfirst=True)
-def pytest_configure(config: pytest.Config) -> None:
-    if getattr(config.option, "collectonly", False):
-        return
-
-    mp = pytest.MonkeyPatch()
-    import src.config_root_schema
-    from tests.conftest_runtime_settings import load_root_settings
-
-    mp.setattr(src.config_root_schema, "load_root_settings", load_root_settings)
-    config.stash[_suite_monkeypatch_stash_key] = mp
-
-
-@pytest.hookimpl(trylast=True)
-def pytest_unconfigure(config: pytest.Config) -> None:
-    mp = config.stash.get(_suite_monkeypatch_stash_key, None)
-    if mp is not None:
-        mp.undo()
-        del config.stash[_suite_monkeypatch_stash_key]
 
 
 @pytest.fixture(scope="session")
