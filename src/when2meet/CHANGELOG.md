@@ -3,6 +3,12 @@
 All notable user-visible changes to the When2Meet service are documented here.
 Releases follow [SemVer](https://semver.org/) and map to MVP increments.
 
+## [Unreleased]
+
+### Added
+
+- Customer handover documentation covering current access, deployment, configuration, recovery, verification, limitations, and handover status.
+
 ## [0.2.0] — MVP v2 (Sprint 3 / Assignment 5)
 
 **Release date:** 2026-07-05
