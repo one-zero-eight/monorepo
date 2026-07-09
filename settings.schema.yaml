@@ -456,8 +456,8 @@ $defs:
         $ref: '#/$defs/src__schedule_assistant__config_schema__RoomBookingSettings'
         description: Room Booking API integration settings
     required:
-    - booking
     - db_url
+    - booking
     title: ScheduleAssistantSettings
     type: object
   ScheduleSettings:
