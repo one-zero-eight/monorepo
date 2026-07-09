@@ -2,222 +2,311 @@
 # Available fields: id, title, short_name, resource_email, capacity, access_level, restrict_daytime
 
 rooms:
-- id: '3.1'
-  title: Meeting Room 3.1
-  short_name: '3.1'
-  resource_email: iu.resource.meetingroom.3.1@innopolis.ru
-  access_level: yellow
-- id: '3.2'
-  title: Meeting Room 3.2
-  short_name: '3.2'
-  resource_email: iu.resource.meetingroom.3.2@innopolis.ru
-  access_level: yellow
-- id: '3.3'
-  title: Meeting Room 3.3
-  short_name: '3.3'
-  resource_email: iu.resource.meetingroom.3.3@innopolis.ru
-  access_level: yellow
-- id: '3.4'
-  title: Meeting Room 3.4
-  short_name: '3.4'
-  resource_email: iu.resource.meetingroom.3.4@innopolis.ru
-  access_level: yellow
-- id: '3.5'
-  title: Meeting Room 3.5
-  short_name: '3.5'
-  resource_email: iu.resource.meetingroom3.5@innopolis.ru
-  access_level: yellow
-- id: '301'
-  title: Lecture Room 301
-  short_name: '301'
-  resource_email: iu.resource.lectureroom301@innopolis.ru
-  access_level: yellow
-  capacity: 24
-  restrict_daytime: true
-- id: '303'
-  title: Lecture Room 303
-  short_name: '303'
-  resource_email: iu.resource.lectureroom303@innopolis.ru
-  access_level: yellow
-  capacity: 30
-  restrict_daytime: true
-- id: '304'
-  title: Lecture Room 304
-  short_name: '304'
-  resource_email: iu.resource.lectureroom304@innopolis.ru
-  access_level: yellow
-  capacity: 25
-  restrict_daytime: true
-- id: '305'
-  title: Lecture Room 305
-  short_name: '305'
-  resource_email: iu.resource.lectureroom305@innopolis.ru
-  access_level: yellow
-  capacity: 25
-  restrict_daytime: true
-- id: '312'
-  title: Lecture Room 312
-  short_name: '312'
-  resource_email: iu.resource.lectureroom312@innopolis.ru
-  access_level: yellow
-  capacity: 30
-  restrict_daytime: true
-- id: '313'
-  title: Lecture Room 313
-  short_name: '313'
-  resource_email: iu.resource.lectureroom313@innopolis.ru
-  access_level: yellow
-  capacity: 60
-  restrict_daytime: true
-- id: '314'
-  title: Lecture Room 314
-  short_name: '314'
-  resource_email: iu.resource.lectureroom314@innopolis.ru
-  access_level: yellow
-  capacity: 34
-  restrict_daytime: true
-- id: '318'
-  title: Lecture Room 318
-  short_name: '318'
-  resource_email: iu.resource.lectureroom318@innopolis.ru
-  access_level: yellow
-  capacity: 30
-  restrict_daytime: true
-- id: '320'
-  title: Lecture Room 320
-  short_name: '320'
-  resource_email: iu.resource.lectureroom320@innopolis.ru
-  access_level: yellow
-  capacity: 28
-  restrict_daytime: true
-- id: 309A
-  title: Clubs Room 309A
-  short_name: 309A
-  resource_email: iu.resource.lectureroom309a@innopolis.ru
-  access_level: special
-- id: '101'
-  short_name: '101'
-  title: Lecture Room 101
-  resource_email: iu.resource.lectureroom101@innopolis.ru
-  access_level: red
-  capacity: 32
-- id: '102'
-  short_name: '102'
-  title: Lecture Room 102
-  resource_email: iu.resource.lectureroom102@innopolis.ru
-  access_level: red
-  capacity: 18
-- id: '103'
-  short_name: '103'
-  title: Lecture Room 103
-  resource_email: iu.resource.lectureroom103@innopolis.ru
-  access_level: red
-  capacity: 21
-- id: '104'
-  short_name: '104'
-  title: Lecture Room 104
-  resource_email: iu.resource.lectureroom104@innopolis.ru
-  access_level: red
-  capacity: 20
-- id: '105'
-  short_name: 105 (West)
-  title: Lecture Room 105 (West)
-  resource_email: iu.resource.lectureroom105@innopolis.ru
-  access_level: red
-  capacity: 240
-- id: '106'
-  short_name: 106 (South)
-  title: Lecture Room 106 (South)
-  resource_email: iu.resource.lectureroom106@innopolis.ru
-  access_level: red
-  capacity: 140
-- id: '107'
-  short_name: 107 (North)
-  title: Lecture Room 107 (North)
-  resource_email: iu.resource.lectureroom107@innopolis.ru
-  access_level: red
-  capacity: 150
-- id: '108'
-  short_name: 108 (East)
-  title: Lecture Room 108 (East)
-  resource_email: iu.resource.lectureroom108@innopolis.ru
-  access_level: red
-  capacity: 288
-- id: '209'
-  short_name: '209'
-  title: Lecture Room 209
-  resource_email: iu.resource.lectureroom209@innopolis.ru
-  access_level: red
-  capacity: 36
-- id: '300'
-  short_name: '300'
-  title: Lecture Room 300
-  resource_email: iu.resource.lectureroom300@innopolis.ru
-  access_level: red
-  capacity: 48
-- id: '306'
-  short_name: '306'
-  title: Lecture Room 306
-  resource_email: iu.resource.lectureroom306@innopolis.ru
-  access_level: red
-  capacity: 18
-- id: '307'
-  short_name: '307'
-  title: Lecture Room 307
-  resource_email: iu.resource.lectureroom307@innopolis.ru
-  access_level: red
-  capacity: 60
-- id: '308'
-  short_name: '308'
-  title: Lecture Room 308
-  resource_email: iu.resource.lectureroom308@innopolis.ru
-  access_level: red
-  capacity: 35
-- id: '316'
-  short_name: '316'
-  title: Lecture Room 316
-  resource_email: iu.resource.lectureroom316@innopolis.ru
-  access_level: red
-  capacity: 26
-- id: '317'
-  short_name: '317'
-  title: Lecture Room 317
-  resource_email: iu.resource.lectureroom317@innopolis.ru
-  access_level: red
-  capacity: 26
-- id: '321'
-  short_name: '321'
-  title: Lecture Room 321
-  resource_email: iu.resource.lectureroom321@innopolis.ru
-  access_level: red
-  capacity: 48
-- id: '421'
-  short_name: '421'
-  title: Lecture Room 421
-  resource_email: iu.resource.lectureroom421@innopolis.ru
-  access_level: red
-  capacity: 30
-- id: '425'
-  short_name: '425'
-  title: Big Meeting Room 425
-  resource_email: iu.resource.room425@innopolis.ru
-  access_level: red
-  capacity: 30
-- id: '452'
-  short_name: '452'
-  title: Lecture Room 452
-  resource_email: iu.resource.lectureroom452@innopolis.ru
-  access_level: red
-  capacity: 16
-- id: '460'
-  short_name: '460'
-  title: Lecture Room 460
-  resource_email: iu.resource.lectureroom460@innopolis.ru
-  access_level: red
-  capacity: 30
-- id: '461'
-  short_name: '461'
-  title: Lecture Room 461
-  resource_email: iu.resource.lectureroom461@innopolis.ru
-  access_level: red
-  capacity: 30
+  # Yellow Access Rooms (for students) >
+  - id: "1.1"
+    short_name: "1.1"
+    title: "Meeting Room 1.1"
+    resource_email: "iu.resource.meetingroom1.1@innopolis.ru"
+    access_level: "yellow"
+    capacity: 12
+
+  - id: "1.3"
+    short_name: "1.3"
+    title: "Meeting Room 1.3"
+    resource_email: "iu.resource.meetingroom1.3@innopolis.ru"
+    access_level: "yellow"
+    capacity: 12
+
+  - id: "3.1"
+    short_name: "3.1"
+    title: "Meeting Room 3.1"
+    resource_email: "iu.resource.meetingroom.3.1@innopolis.ru"
+    access_level: "yellow"
+    capacity: 12
+
+  - id: "3.2"
+    short_name: "3.2"
+    title: "Meeting Room 3.2"
+    resource_email: "iu.resource.meetingroom.3.2@innopolis.ru"
+    access_level: "yellow"
+    capacity: 12
+
+  - id: "3.3"
+    short_name: "3.3"
+    title: "Meeting Room 3.3"
+    resource_email: "iu.resource.meetingroom.3.3@innopolis.ru"
+    access_level: "yellow"
+    capacity: 12
+
+  - id: "3.4"
+    short_name: "3.4"
+    title: "Meeting Room 3.4"
+    resource_email: "iu.resource.meetingroom.3.4@innopolis.ru"
+    access_level: "yellow"
+    capacity: 12
+
+  - id: "3.5"
+    short_name: "3.5"
+    title: "Meeting Room 3.5"
+    resource_email: "iu.resource.meetingroom3.5@innopolis.ru"
+    access_level: "yellow"
+    capacity: 12
+
+  - id: "101"
+    short_name: "101"
+    title: "Lecture Room 101"
+    resource_email: "iu.resource.lectureroom101@innopolis.ru"
+    access_level: "yellow"
+    capacity: 32
+    restrict_daytime: true
+
+  - id: "102"
+    short_name: "102"
+    title: "Lecture Room 102"
+    resource_email: "iu.resource.lectureroom102@innopolis.ru"
+    access_level: "yellow"
+    capacity: 18
+    restrict_daytime: true
+
+  - id: "103"
+    short_name: "103"
+    title: "Lecture Room 103"
+    resource_email: "iu.resource.lectureroom103@innopolis.ru"
+    access_level: "yellow"
+    capacity: 21
+    restrict_daytime: true
+
+  - id: "104"
+    short_name: "104"
+    title: "Lecture Room 104"
+    resource_email: "iu.resource.lectureroom104@innopolis.ru"
+    access_level: "yellow"
+    capacity: 20
+    restrict_daytime: true
+
+  - id: "209"
+    short_name: "209"
+    title: "Lecture Room 209"
+    resource_email: "iu.resource.lectureroom209@innopolis.ru"
+    access_level: "yellow"
+    capacity: 36
+    restrict_daytime: true
+
+  - id: "301"
+    short_name: "301"
+    title: "Lecture Room 301"
+    resource_email: "iu.resource.lectureroom301@innopolis.ru"
+    access_level: "yellow"
+    capacity: 24
+    restrict_daytime: true
+
+  - id: "303"
+    short_name: "303"
+    title: "Lecture Room 303"
+    resource_email: "iu.resource.lectureroom303@innopolis.ru"
+    access_level: "yellow"
+    capacity: 30
+    restrict_daytime: true
+
+  - id: "304"
+    short_name: "304"
+    title: "Lecture Room 304"
+    resource_email: "iu.resource.lectureroom304@innopolis.ru"
+    access_level: "yellow"
+    capacity: 25
+    restrict_daytime: true
+
+  - id: "305"
+    short_name: "305"
+    title: "Lecture Room 305"
+    resource_email: "iu.resource.lectureroom305@innopolis.ru"
+    access_level: "yellow"
+    capacity: 25
+    restrict_daytime: true
+
+  - id: "312"
+    short_name: "312"
+    title: "Lecture Room 312"
+    resource_email: "iu.resource.lectureroom312@innopolis.ru"
+    access_level: "yellow"
+    capacity: 30
+    restrict_daytime: true
+
+  - id: "313"
+    short_name: "313"
+    title: "Lecture Room 313"
+    resource_email: "iu.resource.lectureroom313@innopolis.ru"
+    access_level: "yellow"
+    capacity: 60
+    restrict_daytime: true
+
+  - id: "314"
+    short_name: "314"
+    title: "Lecture Room 314"
+    resource_email: "iu.resource.lectureroom314@innopolis.ru"
+    access_level: "yellow"
+    capacity: 34
+    restrict_daytime: true
+
+  - id: "318"
+    short_name: "318"
+    title: "Lecture Room 318"
+    resource_email: "iu.resource.lectureroom318@innopolis.ru"
+    access_level: "yellow"
+    capacity: 30
+    restrict_daytime: true
+
+  - id: "320"
+    short_name: "320"
+    title: "Lecture Room 320"
+    resource_email: "iu.resource.lectureroom320@innopolis.ru"
+    access_level: "yellow"
+    capacity: 28
+    restrict_daytime: true
+
+  - id: "460"
+    short_name: "460"
+    title: "Lecture Room 460"
+    resource_email: "iu.resource.lectureroom460@innopolis.ru"
+    access_level: "yellow"
+    capacity: 30
+    restrict_daytime: true
+
+  - id: "461"
+    short_name: "461"
+    title: "Lecture Room 461"
+    resource_email: "iu.resource.lectureroom461@innopolis.ru"
+    access_level: "yellow"
+    capacity: 30
+    restrict_daytime: true
+  # Yellow Access Rooms (for students) ^
+
+  - id: "309A"
+    title: "Clubs Room 309A"
+    short_name: "309A"
+    resource_email: "iu.resource.lectureroom309a@innopolis.ru"
+    access_level: "special"
+    capacity: 10
+
+  # Red Access Rooms (lecture rooms) >
+  - id: "105"
+    short_name: "105"
+    title: "Lecture Room 105"
+    resource_email: "iu.resource.lectureroom105@innopolis.ru"
+    access_level: "red"
+    capacity: 240
+
+  - id: "106"
+    short_name: "106"
+    title: "Lecture Room 106"
+    resource_email: "iu.resource.lectureroom106@innopolis.ru"
+    access_level: "red"
+    capacity: 140
+
+  - id: "107"
+    short_name: "107"
+    title: "Lecture Room 107"
+    resource_email: "iu.resource.lectureroom107@innopolis.ru"
+    access_level: "red"
+    capacity: 150
+
+  - id: "108"
+    short_name: "108"
+    title: "Lecture Room 108"
+    resource_email: "iu.resource.lectureroom108@innopolis.ru"
+    access_level: "red"
+    capacity: 312
+
+  - id: "111"
+    short_name: "111"
+    title: "Lecture Room 111"
+    resource_email: "iu.resource.lectureroom111@innopolis.ru"
+    access_level: "red"
+    capacity: 24
+
+  - id: "300"
+    short_name: "300"
+    title: "Lecture Room 300"
+    resource_email: "iu.resource.lectureroom300@innopolis.ru"
+    access_level: "red"
+    capacity: 48
+
+  - id: "306"
+    short_name: "306"
+    title: "Lecture Room 306"
+    resource_email: "iu.resource.lectureroom306@innopolis.ru"
+    access_level: "red"
+    capacity: 18
+
+  - id: "307"
+    short_name: "307"
+    title: "Lecture Room 307"
+    resource_email: "iu.resource.lectureroom307@innopolis.ru"
+    access_level: "red"
+    capacity: 60
+
+  - id: "308"
+    short_name: "308"
+    title: "Lecture Room 308"
+    resource_email: "iu.resource.lectureroom308@innopolis.ru"
+    access_level: "red"
+    capacity: 35
+
+  - id: "316"
+    short_name: "316"
+    title: "Lecture Room 316"
+    resource_email: "iu.resource.lectureroom316@innopolis.ru"
+    access_level: "red"
+    capacity: 26
+
+  - id: "317"
+    short_name: "317"
+    title: "Lecture Room 317"
+    resource_email: "iu.resource.lectureroom317@innopolis.ru"
+    access_level: "red"
+    capacity: 26
+
+  - id: "321"
+    short_name: "321"
+    title: "Lecture Room 321"
+    resource_email: "iu.resource.lectureroom321@innopolis.ru"
+    access_level: "red"
+    capacity: 48
+  # Red Access Rooms (lecture rooms) ^
+
+  # Red Access Rooms (meeting rooms) >
+  - id: "4.2"
+    short_name: "4.2"
+    title: "Meeting Room 4.2"
+    resource_email: "iu.resource.meetingroom4.2@innopolis.ru"
+    access_level: "red"
+    capacity: 12
+
+  - id: "4.3"
+    short_name: "4.3"
+    title: "Meeting Room 4.3"
+    resource_email: "iu.resource.meetingroom4.3@innopolis.ru"
+    access_level: "red"
+    capacity: 12
+
+  - id: "4.4"
+    short_name: "4.4"
+    title: "Meeting Room 4.4"
+    resource_email: "iu.resource.meetingroom4.4@innopolis.ru"
+    access_level: "red"
+    capacity: 12
+
+  - id: "4.5"
+    short_name: "4.5"
+    title: "Meeting Room 4.5"
+    resource_email: "iu.resource.meetingroom4.5@innopolis.ru"
+    access_level: "special"
+    capacity: 12
+  # Red Access Rooms (meeting rooms) ^
+
+  - id: "425"
+    short_name: "425"
+    title: "Meeting Room 425"
+    resource_email: "iu.resource.room425@innopolis.ru"
+    access_level: "special"
+    capacity: 30
