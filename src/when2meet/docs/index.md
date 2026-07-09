@@ -17,6 +17,7 @@ InNoHassle service for planning meeting availability: organizers create a shared
 This site publishes the Assignment 5 maintained artifacts:
 
 - [Development process and configuration management](development-process.md)
+- [Customer handover](customer-handover.md)
 - [Architecture views and ADRs](architecture/README.md)
 - [Testing strategy](testing.md)
 - [Quality requirements and QRTs](quality-requirements.md)

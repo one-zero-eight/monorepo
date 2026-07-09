@@ -28,6 +28,7 @@ nav:
   - Product:
       - Roadmap: roadmap.md
       - Interface: interface.md
+      - Customer handover: customer-handover.md
       - User acceptance tests: user-acceptance-tests.md
   - Engineering:
       - Development process: development-process.md
