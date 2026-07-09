@@ -23,14 +23,14 @@ def test_rooms_list_excludes_red_by_default(room_booking_client: TestClient, use
     assert response.status_code == 200
     room_ids = {room["id"] for room in response.json()}
     assert "3.1" in room_ids
-    assert "101" not in room_ids
+    assert "107" not in room_ids
 
 
 def test_rooms_list_include_red(room_booking_client: TestClient, user_headers: dict[str, str]):
     response = room_booking_client.get("/rooms/", params={"include_red": "true"}, headers=user_headers)
     assert response.status_code == 200
     room_ids = {room["id"] for room in response.json()}
-    assert "101" in room_ids
+    assert "107" in room_ids
 
 
 def test_room_can_book_allowed(room_booking_client: TestClient, user_headers: dict[str, str]):

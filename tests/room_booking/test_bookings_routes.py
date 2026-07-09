@@ -102,7 +102,7 @@ def test_bookings_all_rooms_when_no_filter(
     assert response.status_code == 200
     room_ids = _awaited_room_ids(mock_get_bookings)
     assert "3.1" in room_ids
-    assert "101" not in room_ids
+    assert "107" not in room_ids
 
 
 def test_bookings_service_auth_skips_related_to_me(

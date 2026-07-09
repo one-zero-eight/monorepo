@@ -30,7 +30,7 @@ def test_rooms_with_jwt(room_booking_client: TestClient, user_headers: dict[str,
     assert response.status_code == 200
     room_ids = {room["id"] for room in response.json()}
     assert "3.1" in room_ids
-    assert "101" not in room_ids
+    assert "107" not in room_ids
 
 
 def test_rooms_with_api_key(room_booking_client: TestClient, api_key_headers: dict[str, str]):
