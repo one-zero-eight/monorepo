@@ -36,3 +36,8 @@ room_booking_service: # configure exchange credentials, api_key, and access_list
     "321": []
 schedule_service:
   db_url: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/postgres
+schedule_assistant_service:
+  booking:
+    api_key: change-me
+  moderator_emails: []
+  database_url: sqlite:///data/schedule-assistant.db

@@ -81,6 +81,15 @@
       "args": ["--reload"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "schedule assistant",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src.schedule_assistant",
+      "args": ["--reload"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
     }
   ]
 }

@@ -417,16 +417,16 @@ $defs:
     - api_key
     title: RoomBookingIntegrationSettings
     type: object
-  RoomBookingSettings:
+  ScheduleAssistantSettings:
     additionalProperties: false
+    description: Settings for the Schedule Assistant service.
     properties:
       environment:
         $ref: '#/$defs/Environment'
         default: development
         description: App environment flag
       app_root_path:
-        default: ''
-        description: Prefix for the API path (e.g. "/api/v0")
+        default: /schedule-assistant/v0
         title: App Root Path
         type: string
       cors_allow_origin_regex:
@@ -437,48 +437,23 @@ $defs:
           Specify as a regex: `https://.*.innohassle.ru`'
         title: Cors Allow Origin Regex
         type: string
-      api_key:
-        description: Secret key for accessing API by external services
-        format: password
-        title: Api Key
+      moderator_emails:
+        description: Innopolis emails allowed to access moderator-only endpoints
+        items:
+          type: string
+        title: Moderator Emails
+        type: array
+      database_url:
+        default: sqlite:///data/schedule-assistant.db
+        description: SQLAlchemy database URL for persisted schedule configuration
+        title: Database Url
         type: string
-        writeOnly: true
-      access_lists:
-        additionalProperties:
-          items:
-            $ref: '#/$defs/AccessToRoom'
-          type: array
-        description: Dictionary of access lists (room id -> access list)
-        title: Access Lists
-        type: object
-      ttl_bookings_from_account_calendar:
-        default: 60
-        description: TTL for the bookings from account calendar cache in seconds
-        title: Ttl Bookings From Account Calendar
-        type: integer
-      ttl_bookings_from_busy_info:
-        default: 60
-        description: TTL for the bookings from busy info cache in seconds
-        title: Ttl Bookings From Busy Info
-        type: integer
-      recently_canceled_booking_ttl_sec:
-        default: 300
-        description: TTL for the recently-canceled booking IDs cache in seconds (skip
-          cancel if already canceled within this window)
-        title: Recently Canceled Booking Ttl Sec
-        type: integer
-      exchange:
-        $ref: '#/$defs/Exchange'
-      bmp_batch_confirm_timeout_s:
-        default: 180
-        description: Seconds to wait for each room meeting response during BMP batch
-          booking confirm
-        title: Bmp Batch Confirm Timeout S
-        type: integer
+      booking:
+        $ref: '#/$defs/src__schedule_assistant__config_schema__RoomBookingSettings'
+        description: Room Booking API integration settings
     required:
-    - api_key
-    - exchange
-    title: RoomBookingSettings
+    - booking
+    title: ScheduleAssistantSettings
     type: object
   ScheduleSettings:
     additionalProperties: false
@@ -649,6 +624,88 @@ $defs:
     - api_key
     title: WorkshopsSettings
     type: object
+  src__room_booking__config_schema__RoomBookingSettings:
+    additionalProperties: false
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: ''
+        description: Prefix for the API path (e.g. "/api/v0")
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      api_key:
+        description: Secret key for accessing API by external services
+        format: password
+        title: Api Key
+        type: string
+        writeOnly: true
+      access_lists:
+        additionalProperties:
+          items:
+            $ref: '#/$defs/AccessToRoom'
+          type: array
+        description: Dictionary of access lists (room id -> access list)
+        title: Access Lists
+        type: object
+      ttl_bookings_from_account_calendar:
+        default: 60
+        description: TTL for the bookings from account calendar cache in seconds
+        title: Ttl Bookings From Account Calendar
+        type: integer
+      ttl_bookings_from_busy_info:
+        default: 60
+        description: TTL for the bookings from busy info cache in seconds
+        title: Ttl Bookings From Busy Info
+        type: integer
+      recently_canceled_booking_ttl_sec:
+        default: 300
+        description: TTL for the recently-canceled booking IDs cache in seconds (skip
+          cancel if already canceled within this window)
+        title: Recently Canceled Booking Ttl Sec
+        type: integer
+      exchange:
+        $ref: '#/$defs/Exchange'
+      bmp_batch_confirm_timeout_s:
+        default: 180
+        description: Seconds to wait for each room meeting response during BMP batch
+          booking confirm
+        title: Bmp Batch Confirm Timeout S
+        type: integer
+    required:
+    - api_key
+    - exchange
+    title: RoomBookingSettings
+    type: object
+  src__schedule_assistant__config_schema__RoomBookingSettings:
+    additionalProperties: false
+    description: Room Booking API integration settings.
+    properties:
+      api_url:
+        default: https://api.innohassle.ru/room-booking/v0
+        description: URL of the Room Booking API
+        title: Api Url
+        type: string
+      api_key:
+        description: Shared secret for accessing the room-booking API as a service
+        format: password
+        title: Api Key
+        type: string
+        writeOnly: true
+    required:
+    - api_key
+    title: RoomBookingSettings
+    type: object
 additionalProperties: false
 properties:
   $schema:
@@ -700,12 +757,17 @@ properties:
     default: null
   room_booking_service:
     anyOf:
-    - $ref: '#/$defs/RoomBookingSettings'
+    - $ref: '#/$defs/src__room_booking__config_schema__RoomBookingSettings'
     - type: 'null'
     default: null
   schedule_service:
     anyOf:
     - $ref: '#/$defs/ScheduleSettings'
+    - type: 'null'
+    default: null
+  schedule_assistant_service:
+    anyOf:
+    - $ref: '#/$defs/ScheduleAssistantSettings'
     - type: 'null'
     default: null
 required:

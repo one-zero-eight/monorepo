@@ -22,6 +22,12 @@ from src.guard.config_schema import GuardSettings
 from src.maps.config_schema import MapsSettings
 from src.room_booking.config_schema import BmpExchange, Exchange, RoomBookingSettings
 from src.schedule.config_schema import ScheduleSettings
+from src.schedule_assistant.config_schema import (
+    RoomBookingSettings as ScheduleAssistantRoomBookingSettings,
+)
+from src.schedule_assistant.config_schema import (
+    ScheduleAssistantSettings,
+)
 from src.student_affairs.config_schema import OmnideskSettings, StudentAffairsSettings
 from src.tabletennis.config_schema import TabletennisSettings
 from src.when2meet.config_schema import When2MeetSettings
@@ -50,6 +56,10 @@ def schedule_test_database_name() -> str:
 
 def schedule_test_predefined_dir() -> Path:
     return Path(tempfile.gettempdir()) / f"worker-{get_worker_id()}-schedule-predefined"
+
+
+def schedule_assistant_test_database_path() -> Path:
+    return Path(tempfile.gettempdir()) / f"worker-{get_worker_id()}-schedule-assistant.db"
 
 
 def load_root_settings() -> Settings:
@@ -123,6 +133,12 @@ def load_root_settings() -> Settings:
                 f"postgresql+asyncpg://postgres:test@{SUITE_POSTGRES_NETLOC}/{schedule_test_database_name()}"
             ),
             predefined_dir=schedule_test_predefined_dir(),
+        ),
+        schedule_assistant_service=ScheduleAssistantSettings(
+            environment=Environment.TESTING,
+            app_root_path="/schedule-assistant/v0",
+            database_url=f"sqlite:///{schedule_assistant_test_database_path()}",
+            booking=ScheduleAssistantRoomBookingSettings(api_key=SecretStr("test-room-booking-api-key")),
         ),
     )
 

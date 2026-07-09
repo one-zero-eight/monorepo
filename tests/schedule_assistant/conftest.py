@@ -1,0 +1,130 @@
+"""Schedule Assistant tests: patched settings without full suite infra."""
+
+from collections.abc import AsyncGenerator, Iterator
+from unittest.mock import AsyncMock, patch
+
+import pytest
+import pytest_asyncio
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
+
+from src.inh_accounts_sdk import UserTokenData
+
+pytest_plugins = ["tests.conftest_auth"]
+
+_suite_monkeypatch_stash_key = pytest.StashKey[pytest.MonkeyPatch]()
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_configure(config: pytest.Config) -> None:
+    if getattr(config.option, "collectonly", False):
+        return
+
+    mp = pytest.MonkeyPatch()
+    import src.config_root_schema
+    from tests.conftest_runtime_settings import load_root_settings
+
+    mp.setattr(src.config_root_schema, "load_root_settings", load_root_settings)
+    config.stash[_suite_monkeypatch_stash_key] = mp
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_unconfigure(config: pytest.Config) -> None:
+    mp = config.stash.get(_suite_monkeypatch_stash_key, None)
+    if mp is not None:
+        mp.undo()
+        del config.stash[_suite_monkeypatch_stash_key]
+
+
+@pytest.fixture(scope="session")
+def schedule_assistant_client(request: pytest.FixtureRequest) -> Iterator[TestClient]:
+    request.getfixturevalue("mock_inh_accounts_http")
+    from src.schedule_assistant.app import app
+
+    with TestClient(app) as client:
+        yield client
+
+
+@pytest.fixture(scope="function")
+def fastapi_app() -> FastAPI:
+    from src.schedule_assistant.app import app
+
+    return app
+
+
+@pytest_asyncio.fixture(scope="function")
+async def fastapi_test_client(
+    fastapi_app: FastAPI,
+) -> AsyncGenerator[AsyncClient]:
+    async with AsyncClient(transport=ASGITransport(app=fastapi_app), base_url="http://test") as client:
+        yield client
+
+
+@pytest_asyncio.fixture(scope="function")
+async def authenticated_client(fastapi_app: FastAPI) -> AsyncGenerator[AsyncClient]:
+    from src.schedule_assistant.dependencies import verify_token_dep
+
+    async def fake_verify_token_dep() -> tuple[UserTokenData, str]:
+        return UserTokenData(innohassle_id="123", email="test@test.com"), "test_token"
+
+    fastapi_app.dependency_overrides[verify_token_dep] = fake_verify_token_dep
+
+    async with AsyncClient(transport=ASGITransport(app=fastapi_app), base_url="http://test") as client:
+        yield client
+
+    fastapi_app.dependency_overrides.pop(verify_token_dep)
+
+
+@pytest.fixture(scope="function")
+def mock_booking_client():
+    from src.schedule_assistant.modules.bookings.client import BookingDTO, RoomDTO
+
+    mock_client = AsyncMock()
+
+    bookings = [
+        {
+            "room_id": "test_room_1",
+            "event_id": "event_1",
+            "title": "Test Booking 1",
+            "start": "2025-01-01T09:00:00Z",
+            "end": "2025-01-01T10:00:00Z",
+        },
+        {
+            "room_id": "test_room_2",
+            "event_id": "event_2",
+            "title": "Test Booking 2",
+            "start": "2025-01-01T11:00:00Z",
+            "end": "2025-01-01T12:00:00Z",
+        },
+    ]
+
+    mock_client.get_all_bookings.return_value = [BookingDTO.model_validate(booking) for booking in bookings]
+    mock_client.get_room_bookings.return_value = [BookingDTO.model_validate(booking) for booking in bookings[:1]]
+
+    mock_client.get_rooms.return_value = [
+        RoomDTO(
+            id="test_room_1",
+            title="Test Room 1",
+            short_name="TR1",
+            my_uni_id=101,
+            capacity=25,
+            access_level="yellow",
+            restrict_daytime=False,
+        ),
+        RoomDTO(
+            id="test_room_2",
+            title="Test Room 2",
+            short_name="TR2",
+            my_uni_id=102,
+            capacity=50,
+            access_level="red",
+            restrict_daytime=True,
+        ),
+    ]
+
+    with (
+        patch("src.schedule_assistant.modules.bookings.client.booking_client", mock_client),
+        patch("src.schedule_assistant.modules.bookings.routes.booking_client", mock_client),
+    ):
+        yield mock_client

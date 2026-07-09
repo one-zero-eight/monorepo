@@ -42,13 +42,19 @@ dev = [
     "ty>=0.0.51", # ~25.0 MiB
     "types-pyyaml>=6.0.12.20260518", # ~65 KiB
 ]
-# events = [
 schedule = [
     "alembic>=1.18.4", # ~258 KiB
     "asyncpg>=0.31.0", # ~3.4 MiB
     "icalendar>=7.1.0", # ~460 KiB
     "prometheus-fastapi-instrumentator>=7.1.0", # ~19 KiB
     "sqlalchemy[postgresql-asyncpg]>=2.0.49", # ~3.4 MiB
+]
+schedule-assistant = [
+    "numpy>=2.4.4", # ~17.8 MiB
+    "openpyxl>=3.1.5", # ~245 KiB
+    "pandas>=3.0.2", # ~11.8 MiB
+    "sqlalchemy>=2.0.49", # ~3.4 MiB
+    "jsonpatch>=1.33", # ~13 KiB
 ]
 room-booking = [
     "exchangelib>=5.6.0", # ~871 KiB
@@ -77,11 +83,6 @@ guard = [
     "google-auth>=2.55.0", # ~871 KiB
     "google-auth-oauthlib>=1.4.0", # ~52 KiB
 ]
-#schedule-builder-backend = [
-#    "numpy>=2.4.4", # ~17.8 MiB
-#    "openpyxl>=3.1.5", # ~245 KiB
-#    "pandas>=3.0.2", # ~11.8 MiB
-#]
 #search = [
 #    "apscheduler>=3.11.2", # ~63 KiB
 #    "beautifulsoup4>=4.14.3", # ~105 KiB
@@ -129,6 +130,11 @@ lint.unfixable = ["F401"] # unused-import — report only, do not remove on fix
 target-version = "py314"
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"] # assert is standard in pytest
+"tests/schedule_assistant/**" = ["PLC2701", "SIM117"]
+"src/schedule_assistant/core_courses/**" = ["S101", "DTZ", "ICN003"]
+"src/schedule_assistant/electives/**" = ["S101", "DTZ"]
+"src/schedule_assistant/modules/**" = ["S101", "DTZ"]
+"scripts/schedule_assistant/**" = ["E402", "DTZ", "N806", "SIM115"]
 [tool.ruff.lint.flake8-builtins]
 ignorelist = ["id"]
 [tool.ruff.lint.flake8-import-conventions]
@@ -140,7 +146,12 @@ time = "tm"
 "__future__.annotations".msg = "Python 3.14+ uses deferred annotations by default; do not use this future import."
 
 [tool.ty.src]
-exclude = [".agents/skills"]
+exclude = [
+    ".agents/skills",
+    "src/schedule_assistant/core_courses",
+    "src/schedule_assistant/electives",
+    "scripts/schedule_assistant",
+]
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib --cov=src --cov-report=term-missing --disable-socket --allow-hosts=127.0.0.1,localhost"

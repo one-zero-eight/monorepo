@@ -249,6 +249,27 @@ services:
       schedule-alembic-migrate:
         condition: service_completed_successfully
 
+  schedule-assistant:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.schedule_assistant.app:app
+    restart: no
+    ports:
+      - "8012:8000"
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+      - "./data:/app/data:rw"
+    environment:
+      TZ: Europe/Moscow
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 500m
+
 volumes:
   mongodb:
   minio:

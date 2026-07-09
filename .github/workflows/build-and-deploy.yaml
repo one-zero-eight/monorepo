@@ -39,6 +39,7 @@ on:
           - forms
           - room-booking
           - schedule
+          - schedule-assistant
   push:
     branches:
       - main
