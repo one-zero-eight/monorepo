@@ -249,6 +249,20 @@ services:
       schedule-alembic-migrate:
         condition: service_completed_successfully
 
+  schedule-assistant-alembic-migrate:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.schedule_assistant.app:app
+    restart: no
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+    command: alembic -c src/schedule_assistant/alembic.ini upgrade head
+
   schedule-assistant:
     build:
       context: .
@@ -260,7 +274,6 @@ services:
       - "8012:8000"
     volumes:
       - "./settings.yaml:/app/settings.yaml:ro"
-      - "./data:/app/data:rw"
     environment:
       TZ: Europe/Moscow
     deploy:
@@ -269,6 +282,11 @@ services:
           memory: 1g
         reservations:
           memory: 500m
+    depends_on:
+      postgres:
+        condition: service_healthy
+      schedule-assistant-alembic-migrate:
+        condition: service_completed_successfully
 
 volumes:
   mongodb:

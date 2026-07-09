@@ -17,7 +17,7 @@ from src.schedule_assistant.db.models import (
     StudentGroupRow,
     TermRow,
 )
-from src.schedule_assistant.db.session import get_engine, init_db
+from src.schedule_assistant.db.session import get_engine
 from src.schedule_assistant.modules.schedule_config.event_log import (
     ConfigChangeEvent,
     ConfigChangeEventSummary,
@@ -119,11 +119,10 @@ def _new_instructor_row(instructor: InstructorConfig.Instructor) -> InstructorRo
 
 
 class ScheduleConfigRepository:
-    def __init__(self, database_url: str | None = None) -> None:
-        self.database_url = database_url or settings.database_url
-        self._engine = get_engine(self.database_url)
+    def __init__(self, db_url: str | None = None) -> None:
+        self.db_url = db_url or settings.db_url.get_secret_value()
+        self._engine = get_engine(self.db_url)
         self._session_factory = sessionmaker(bind=self._engine, autoflush=False, autocommit=False)
-        init_db(self.database_url)
 
     def _session(self) -> Session:
         return self._session_factory()

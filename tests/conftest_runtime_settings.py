@@ -58,8 +58,8 @@ def schedule_test_predefined_dir() -> Path:
     return Path(tempfile.gettempdir()) / f"worker-{get_worker_id()}-schedule-predefined"
 
 
-def schedule_assistant_test_database_path() -> Path:
-    return Path(tempfile.gettempdir()) / f"worker-{get_worker_id()}-schedule-assistant.db"
+def schedule_assistant_test_database_name() -> str:
+    return f"worker-{get_worker_id()}-schedule-assistant"
 
 
 def load_root_settings() -> Settings:
@@ -137,7 +137,9 @@ def load_root_settings() -> Settings:
         schedule_assistant_service=ScheduleAssistantSettings(
             environment=Environment.TESTING,
             app_root_path="/schedule-assistant/v0",
-            database_url=f"sqlite:///{schedule_assistant_test_database_path()}",
+            db_url=SecretStr(
+                f"postgresql+psycopg://postgres:test@{SUITE_POSTGRES_NETLOC}/{schedule_assistant_test_database_name()}"
+            ),
             booking=ScheduleAssistantRoomBookingSettings(api_key=SecretStr("test-room-booking-api-key")),
         ),
     )

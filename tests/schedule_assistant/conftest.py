@@ -1,5 +1,6 @@
 """Schedule Assistant tests: patched settings without full suite infra."""
 
+import asyncio
 from collections.abc import AsyncGenerator, Iterator
 from unittest.mock import AsyncMock, patch
 
@@ -8,12 +9,115 @@ import pytest_asyncio
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from src.inh_accounts_sdk import UserTokenData
+from tests.conftest_runtime_settings import (
+    SUITE_POSTGRES_NETLOC,
+    schedule_assistant_test_database_name,
+)
 
 pytest_plugins = ["tests.conftest_auth"]
 
 _suite_monkeypatch_stash_key = pytest.StashKey[pytest.MonkeyPatch]()
+
+
+async def _ensure_postgres_database(admin_dsn: str, database_name: str) -> None:
+    engine = create_async_engine(admin_dsn, isolation_level="AUTOCOMMIT")
+    try:
+        async with engine.connect() as conn:
+            exists = await conn.scalar(
+                text("SELECT 1 FROM pg_database WHERE datname = :name"),
+                {"name": database_name},
+            )
+            if not exists:
+                await conn.execute(text(f'CREATE DATABASE "{database_name}"'))
+    finally:
+        await engine.dispose()
+
+
+def _schedule_assistant_admin_dsn() -> str:
+    return f"postgresql+asyncpg://postgres:test@{SUITE_POSTGRES_NETLOC}/postgres"
+
+
+def schedule_assistant_db_url() -> str:
+    return f"postgresql+psycopg://postgres:test@{SUITE_POSTGRES_NETLOC}/{schedule_assistant_test_database_name()}"
+
+
+def _prepare_schedule_assistant_schema() -> None:
+    from src.schedule_assistant.config import settings
+    from src.schedule_assistant.db.base import Base
+    from src.schedule_assistant.db.session import get_engine
+
+    engine = get_engine(settings.db_url.get_secret_value())
+    Base.metadata.drop_all(engine)
+    Base.metadata.create_all(engine)
+    engine.dispose()
+
+
+async def _truncate_schedule_assistant_tables() -> None:
+    from src.schedule_assistant.config import settings
+    from src.schedule_assistant.db.base import Base
+    from src.schedule_assistant.db.session import get_engine
+
+    table_names = ", ".join(f'"{table.name}"' for table in Base.metadata.sorted_tables)
+    if not table_names:
+        return
+    engine = get_engine(settings.db_url.get_secret_value())
+    with engine.begin() as conn:
+        conn.execute(text(f"TRUNCATE {table_names} RESTART IDENTITY CASCADE"))
+    engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def schedule_assistant_postgres(request: pytest.FixtureRequest) -> Iterator[None]:
+    asyncio.run(_ensure_postgres_database(_schedule_assistant_admin_dsn(), schedule_assistant_test_database_name()))
+    _prepare_schedule_assistant_schema()
+    yield
+
+
+@pytest.fixture
+def schedule_assistant_repo(
+    schedule_assistant_postgres: None,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
+
+    asyncio.run(_truncate_schedule_assistant_tables())
+    repo = ScheduleConfigRepository(schedule_assistant_db_url())
+    monkeypatch.setattr(
+        "src.schedule_assistant.modules.schedule_config.repository.schedule_config_repository",
+        repo,
+    )
+    return repo
+
+
+@pytest.fixture
+def schedule_config_repo(schedule_assistant_repo, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "src.schedule_assistant.modules.schedule_config.routes.schedule_config_repository",
+        schedule_assistant_repo,
+    )
+    return schedule_assistant_repo
+
+
+@pytest.fixture
+def schedule_data_repo(schedule_assistant_repo, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "src.schedule_assistant.modules.schedule.service.schedule_config_repository",
+        schedule_assistant_repo,
+    )
+    return schedule_assistant_repo
+
+
+@pytest.fixture
+def issues_repo(schedule_assistant_repo, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "src.schedule_assistant.modules.issues.service.schedule_config_repository",
+        schedule_assistant_repo,
+    )
+    return schedule_assistant_repo
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -40,6 +144,7 @@ def pytest_unconfigure(config: pytest.Config) -> None:
 @pytest.fixture(scope="session")
 def schedule_assistant_client(request: pytest.FixtureRequest) -> Iterator[TestClient]:
     request.getfixturevalue("mock_inh_accounts_http")
+    request.getfixturevalue("schedule_assistant_postgres")
     from src.schedule_assistant.app import app
 
     with TestClient(app) as client:

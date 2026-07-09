@@ -16,6 +16,7 @@ This is the monorepo for some of the backend services of InNoHassle ecosystem, a
 - Maps - hosting Innopolis University maps to view them on innohassle.ru.
 - Room booking - view and manage room bookings at innohassle.ru via integration with Microsoft Outlook.
 - Schedule - aggregate university schedules, personalize favorites, and export ICS calendars at [innohassle.ru/schedule](https://innohassle.ru/schedule).
+- Schedule Assistant - build and manage academic schedules, validate placement issues.
 - Student Affairs - omnidesk authentication via SSO for Student Affairs department to issue tickets.
 - Table Tennis - leaderboard and queue for the [Innopolis University table tennis club](https://innohassle.ru/clubs/inno-table-tennis).
 - When2Meet - service for meeting availability planning. Hosted docs: [one-zero-eight.github.io/monorepo](https://one-zero-eight.github.io/monorepo/), development process: [docs/development-process.md](src/when2meet/docs/development-process.md), architecture: [docs/architecture/README.md](src/when2meet/docs/architecture/README.md), Week 5 report: [reports/week5](https://github.com/one-zero-eight/monorepo/tree/main/src/when2meet/reports/week5).
@@ -24,7 +25,7 @@ This is the monorepo for some of the backend services of InNoHassle ecosystem, a
 
 - [Python 3.14](https://www.python.org/downloads/) & [uv](https://docs.astral.sh/uv/)
 - [FastAPI](https://fastapi.tiangolo.com/)
-- Database and ORM: [MongoDB](https://www.mongodb.com/) & [Beanie](https://beanie-odm.dev/); [PostgreSQL](https://www.postgresql.org/) & [SQLAlchemy](https://www.sqlalchemy.org/) (Schedule service)
+- Database and ORM: [MongoDB](https://www.mongodb.com/) & [Beanie](https://beanie-odm.dev/); [PostgreSQL](https://www.postgresql.org/) & [SQLAlchemy](https://www.sqlalchemy.org/)
 - File storage: [MinIO](https://github.com/minio/minio)
 - Formatting and linting: [Ruff](https://docs.astral.sh/ruff/), [prek](https://prek.j178.dev/)
 - Type checking: [ty](https://docs.astral.sh/ty/)

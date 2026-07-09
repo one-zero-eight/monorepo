@@ -19,7 +19,12 @@ class ScheduleAssistantSettings(ServiceSettingsBase):
     app_root_path: str = "/schedule-assistant/v0"
     moderator_emails: list[str] = Field(default_factory=list)
     "Innopolis emails allowed to access moderator-only endpoints"
-    database_url: str = "sqlite:///data/schedule-assistant.db"
-    "SQLAlchemy database URL for persisted schedule configuration"
+    db_url: SecretStr = Field(
+        examples=[
+            "postgresql+psycopg://postgres:postgres@127.0.0.1:5432/schedule_assistant",
+            "postgresql+psycopg://postgres:postgres@postgres:5432/schedule_assistant",
+        ],
+    )
+    "PostgreSQL database connection URL"
     booking: RoomBookingSettings
     "Room Booking API integration settings"

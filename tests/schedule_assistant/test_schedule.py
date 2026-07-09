@@ -18,14 +18,6 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
 from src.schedule_assistant.weekday import Weekday
 
 
-@pytest.fixture
-def schedule_data_repo(tmp_path, monkeypatch: pytest.MonkeyPatch) -> ScheduleConfigRepository:
-    repo = ScheduleConfigRepository(f"sqlite:///{tmp_path / 'schedule-config.db'}")
-    monkeypatch.setattr("src.schedule_assistant.modules.schedule_config.repository.schedule_config_repository", repo)
-    monkeypatch.setattr("src.schedule_assistant.modules.schedule.service.schedule_config_repository", repo)
-    return repo
-
-
 def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@test.com") -> None:
     repo.set_term(
         TermConfig(

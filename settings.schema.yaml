@@ -443,16 +443,21 @@ $defs:
           type: string
         title: Moderator Emails
         type: array
-      database_url:
-        default: sqlite:///data/schedule-assistant.db
-        description: SQLAlchemy database URL for persisted schedule configuration
-        title: Database Url
+      db_url:
+        description: PostgreSQL database connection URL
+        examples:
+        - postgresql+psycopg://postgres:postgres@127.0.0.1:5432/schedule_assistant
+        - postgresql+psycopg://postgres:postgres@postgres:5432/schedule_assistant
+        format: password
+        title: Db Url
         type: string
+        writeOnly: true
       booking:
         $ref: '#/$defs/src__schedule_assistant__config_schema__RoomBookingSettings'
         description: Room Booking API integration settings
     required:
     - booking
+    - db_url
     title: ScheduleAssistantSettings
     type: object
   ScheduleSettings:

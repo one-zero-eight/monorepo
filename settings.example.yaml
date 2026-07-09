@@ -40,4 +40,4 @@ schedule_assistant_service:
   booking:
     api_key: change-me
   moderator_emails: []
-  database_url: sqlite:///data/schedule-assistant.db
+  db_url: postgresql+psycopg://postgres:postgres@127.0.0.1:5432/schedule_assistant

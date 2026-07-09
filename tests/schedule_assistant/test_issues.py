@@ -345,14 +345,6 @@ def test_unplaced_issues_from_schedule_config() -> None:
     assert issues[0].component_tag == "lab"
 
 
-@pytest.fixture
-def issues_repo(tmp_path, monkeypatch: pytest.MonkeyPatch) -> ScheduleConfigRepository:
-    repo = ScheduleConfigRepository(f"sqlite:///{tmp_path / 'schedule-config.db'}")
-    monkeypatch.setattr("src.schedule_assistant.modules.schedule_config.repository.schedule_config_repository", repo)
-    monkeypatch.setattr("src.schedule_assistant.modules.issues.service.schedule_config_repository", repo)
-    return repo
-
-
 @pytest.mark.asyncio
 async def test_issues_check_endpoint(
     authenticated_client: AsyncClient,

@@ -17,12 +17,10 @@ from src.inh_accounts_sdk import inh_accounts
 from src.logging_ import logger
 from src.schedule_assistant import docs
 from src.schedule_assistant.config import settings
-from src.schedule_assistant.db.session import init_db
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
     await inh_accounts.update_key_set()
     yield
     await inh_accounts.aclose()

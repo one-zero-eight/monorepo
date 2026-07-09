@@ -35,21 +35,6 @@ def _revision(etag_header: str) -> int:
     return int(etag_header.strip('"'))
 
 
-@pytest.fixture
-def schedule_config_repo(tmp_path, monkeypatch: pytest.MonkeyPatch) -> ScheduleConfigRepository:
-    db_url = f"sqlite:///{tmp_path / 'schedule-config.db'}"
-    repo = ScheduleConfigRepository(db_url)
-    monkeypatch.setattr(
-        "src.schedule_assistant.modules.schedule_config.repository.schedule_config_repository",
-        repo,
-    )
-    monkeypatch.setattr(
-        "src.schedule_assistant.modules.schedule_config.routes.schedule_config_repository",
-        repo,
-    )
-    return repo
-
-
 @pytest.mark.asyncio
 async def test_get_assembled_schedule_config_requires_term(
     authenticated_client: AsyncClient,

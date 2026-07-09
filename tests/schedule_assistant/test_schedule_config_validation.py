@@ -37,20 +37,6 @@ def _minimal_term() -> TermConfig:
     )
 
 
-@pytest.fixture
-def schedule_config_repo(tmp_path, monkeypatch: pytest.MonkeyPatch) -> ScheduleConfigRepository:
-    repo = ScheduleConfigRepository(f"sqlite:///{tmp_path / 'schedule-config.db'}")
-    monkeypatch.setattr(
-        "src.schedule_assistant.modules.schedule_config.repository.schedule_config_repository",
-        repo,
-    )
-    monkeypatch.setattr(
-        "src.schedule_assistant.modules.schedule_config.routes.schedule_config_repository",
-        repo,
-    )
-    return repo
-
-
 def test_validate_sections_rejects_duplicate_group_codes() -> None:
     config = SectionsConfig(
         students_groups=[
