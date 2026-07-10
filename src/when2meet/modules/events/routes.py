@@ -1,7 +1,9 @@
+import asyncio
 import datetime as dtm
 from typing import cast
 
 import httpx
+from beanie.odm.queries.update import UpdateResponse
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 from pydantic import ValidationError
@@ -15,6 +17,8 @@ from src.when2meet.mongo import Event, Participant
 from . import events_repo
 from .schemas import (
     AvailableRoom,
+    BookedRoom,
+    BookRoomRequest,
     EventCreate,
     EventSummary,
     EventUpdate,
@@ -23,6 +27,7 @@ from .schemas import (
     ParticipantView,
     RoomBookingBooking,
     RoomBookingCanBook,
+    RoomBookingCreatedBooking,
     RoomBookingRoom,
 )
 
@@ -33,6 +38,7 @@ router = APIRouter(
 )
 
 type RoomBookingQueryParams = dict[str, str] | list[tuple[str, str | int | float | None]]
+type RoomBookingJsonBody = dict[str, str | list[str] | None]
 
 
 def _build_participant_view(participant: Participant, user: UserSchema | None) -> ParticipantView:
@@ -63,7 +69,7 @@ async def _event_view(event: Event) -> EventView:
             logger.warning("Failed to enrich When2Meet participants from Accounts", exc_info=True)
 
     return EventView(
-        **event.model_dump(exclude={"participants"}),
+        **event.model_dump(exclude={"participants", "room_booking_in_progress"}),
         participants=[_build_participant_view(p, users.get(p.user_id)) for p in event.participants],
     )
 
@@ -88,7 +94,7 @@ def _room_view(room: RoomBookingRoom) -> AvailableRoom:
     )
 
 
-async def _room_booking_get(path: str, params: RoomBookingQueryParams, user_auth_header: str) -> object:
+def _room_booking_url(path: str) -> str:
     room_booking_settings = settings.room_booking
     if room_booking_settings is None:
         raise HTTPException(
@@ -96,7 +102,32 @@ async def _room_booking_get(path: str, params: RoomBookingQueryParams, user_auth
             detail="Room Booking integration is not configured",
         )
 
-    url = f"{room_booking_settings.api_url.rstrip('/')}/{path.lstrip('/')}"
+    return f"{room_booking_settings.api_url.rstrip('/')}/{path.lstrip('/')}"
+
+
+def _room_booking_json(response: httpx.Response) -> object:
+    try:
+        return response.json()
+    except ValueError as exc:
+        logger.warning("Room Booking API returned invalid JSON", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Room Booking API returned an invalid response",
+        ) from exc
+
+
+def _room_booking_error_detail(response: httpx.Response) -> object:
+    try:
+        data = response.json()
+    except ValueError:
+        return "Room Booking API returned an error"
+    if isinstance(data, dict) and "detail" in data:
+        return data["detail"]
+    return data
+
+
+async def _room_booking_get(path: str, params: RoomBookingQueryParams, user_auth_header: str) -> object:
+    url = _room_booking_url(path)
     try:
         async with httpx.AsyncClient(headers={"Authorization": user_auth_header}, timeout=30) as client:
             response = await client.get(url, params=params)
@@ -114,14 +145,39 @@ async def _room_booking_get(path: str, params: RoomBookingQueryParams, user_auth
             detail="Failed to call Room Booking API",
         ) from exc
 
+    return _room_booking_json(response)
+
+
+async def _room_booking_post(path: str, json_body: RoomBookingJsonBody, user_auth_header: str) -> object:
+    url = _room_booking_url(path)
     try:
-        return response.json()
-    except ValueError as exc:
-        logger.warning("Room Booking API returned invalid JSON", exc_info=True)
+        async with httpx.AsyncClient(headers={"Authorization": user_auth_header}, timeout=30) as client:
+            response = await client.post(url, json=json_body)
+            response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code in {
+            status.HTTP_400_BAD_REQUEST,
+            status.HTTP_403_FORBIDDEN,
+            status.HTTP_404_NOT_FOUND,
+        }:
+            raise HTTPException(
+                status_code=exc.response.status_code,
+                detail=_room_booking_error_detail(exc.response),
+            ) from exc
+
+        logger.warning("Room Booking API returned an error", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Room Booking API returned an invalid response",
+            detail="Room Booking API returned an error",
         ) from exc
+    except httpx.HTTPError as exc:
+        logger.warning("Failed to call Room Booking API", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to call Room Booking API",
+        ) from exc
+
+    return _room_booking_json(response)
 
 
 async def _get_rooms(user_auth_header: str) -> list[RoomBookingRoom]:
@@ -146,13 +202,91 @@ async def _get_room_bookings(
     return [RoomBookingBooking.model_validate(booking) for booking in bookings]
 
 
-async def _can_book_room(room_id: str, start: dtm.datetime, end: dtm.datetime, user_auth_header: str) -> bool:
+async def _get_room_can_book(
+    room_id: str, start: dtm.datetime, end: dtm.datetime, user_auth_header: str
+) -> RoomBookingCanBook:
     params = {
         "start": start.isoformat(),
         "end": end.isoformat(),
     }
     can_book = await _room_booking_get(f"/room/{room_id}/can-book", params=params, user_auth_header=user_auth_header)
-    return RoomBookingCanBook.model_validate(can_book).can_book
+    return RoomBookingCanBook.model_validate(can_book)
+
+
+async def _can_book_room(room_id: str, start: dtm.datetime, end: dtm.datetime, user_auth_header: str) -> bool:
+    return (await _get_room_can_book(room_id, start, end, user_auth_header)).can_book
+
+
+async def _book_room(event: Event, room_id: str, user_auth_header: str) -> BookedRoom:
+    if event.selected_time is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selected meeting time is not set")
+
+    can_book = await _get_room_can_book(room_id, event.selected_time.start, event.selected_time.end, user_auth_header)
+    if not can_book.can_book:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=can_book.reason_why_cannot or "Room is unavailable for the selected meeting time",
+        )
+
+    booking = RoomBookingCreatedBooking.model_validate(
+        await _room_booking_post(
+            "/bookings/",
+            json_body={
+                "room_id": room_id,
+                "title": event.name,
+                "start": event.selected_time.start.isoformat(),
+                "end": event.selected_time.end.isoformat(),
+                "participant_emails": None,
+                "recurrence": None,
+                "categories": ["When2Meet"],
+                "description": "Booked for When2Meet meeting",
+            },
+            user_auth_header=user_auth_header,
+        )
+    )
+    return BookedRoom(
+        room_id=booking.room_id,
+        outlook_booking_id=booking.outlook_booking_id,
+        outlook_entry_id=booking.outlook_entry_id,
+    )
+
+
+async def _acquire_room_booking_lock(event: Event) -> bool:
+    result = await Event.find_one(
+        Event.id == event.id,
+        {"booked_room": None},
+        {"$or": [{"room_booking_in_progress": False}, {"room_booking_in_progress": {"$exists": False}}]},
+    ).update(
+        {"$set": {"room_booking_in_progress": True}},
+        response_type=UpdateResponse.UPDATE_RESULT,
+    )
+    return result is not None and result.modified_count == 1
+
+
+async def _release_room_booking_lock(event: Event) -> None:
+    await Event.find_one(Event.id == event.id).update({"$set": {"room_booking_in_progress": False}})
+
+
+async def _save_booked_room(event: Event, booked_room: BookedRoom) -> Event:
+    updated_event = await Event.find_one(
+        Event.id == event.id,
+        {"booked_room": None},
+        {"room_booking_in_progress": True},
+    ).update(
+        {
+            "$set": {
+                "booked_room": booked_room.model_dump(),
+                "room_booking_in_progress": False,
+            }
+        },
+        response_type=UpdateResponse.NEW_DOCUMENT,
+    )
+    if updated_event is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Room is already booked for this meeting",
+        )
+    return updated_event
 
 
 async def _get_meeting_or_404(meeting_ref: str) -> Event:
@@ -316,8 +450,50 @@ async def delete_participant(
     return await _event_view(event)
 
 
+@router.post(
+    "/{meeting_ref}/book-room",
+    responses={
+        status.HTTP_200_OK: {"description": "Room booked for the meeting"},
+        status.HTTP_400_BAD_REQUEST: {"description": "Selected meeting time is not set or room is unavailable"},
+        status.HTTP_403_FORBIDDEN: {"description": "Not an owner or room booking is forbidden"},
+        status.HTTP_404_NOT_FOUND: {"description": "Meeting or room not found"},
+        status.HTTP_409_CONFLICT: {"description": "Room is already booked for this meeting"},
+    },
+)
+async def book_room_for_meeting(
+    meeting_ref: str,
+    request_body: BookRoomRequest,
+    auth: INH_TOKEN_AUTH,
+    request: Request,
+) -> EventView:
+    """Book a room for the meeting's selected time window (owner only)."""
+    event = await _get_meeting_or_404(meeting_ref)
+    _ensure_owner(event, auth.innohassle_id, "book a room for")
+    if event.selected_time is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selected meeting time is not set")
+    if event.booked_room is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Room is already booked for this meeting",
+        )
+    if not await _acquire_room_booking_lock(event):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Room booking is already in progress for this meeting",
+        )
+
+    try:
+        booked_room = await _book_room(event, request_body.room_id, request.headers["authorization"])
+    except Exception:
+        await _release_room_booking_lock(event)
+        raise
+
+    event = await _save_booked_room(event, booked_room)
+    return await _event_view(event)
+
+
 @router.get(
-    "/{meeting_id}/available-rooms",
+    "/{meeting_ref}/available-rooms",
     responses={
         status.HTTP_200_OK: {"description": "Rooms available for the selected meeting time"},
         status.HTTP_400_BAD_REQUEST: {"description": "Selected meeting time is not set"},
@@ -325,12 +501,12 @@ async def delete_participant(
     },
 )
 async def get_available_rooms(
-    meeting_id: str,
+    meeting_ref: str,
     auth: INH_TOKEN_AUTH,
     request: Request,
 ) -> list[AvailableRoom]:
     """Get rooms free for the meeting's selected time window."""
-    event = await _get_meeting_or_404(meeting_id)
+    event = await _get_meeting_or_404(meeting_ref)
     if event.selected_time is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selected meeting time is not set")
 
@@ -349,9 +525,6 @@ async def get_available_rooms(
     }
 
     free_rooms = [room for room in rooms if room.id not in busy_room_ids]
-
-    import asyncio
-
     can_book_flags = await asyncio.gather(
         *[
             _can_book_room(room.id, event.selected_time.start, event.selected_time.end, user_auth_header)

@@ -42,6 +42,15 @@ class MeetingTime(BaseSchema):
         return self
 
 
+class BookedRoom(BaseSchema):
+    room_id: str
+    "Booked room ID"
+    outlook_booking_id: str | None = None
+    "Room Booking service booking ID"
+    outlook_entry_id: str | None = None
+    "Outlook entry ID"
+
+
 class EventCreate(BaseSchema):
     name: str
     "Name of the event"
@@ -134,6 +143,8 @@ class EventView(BaseSchema):
     "Optional metadata for display/edit"
     selected_time: MeetingTime | None = None
     "Final selected meeting time"
+    booked_room: BookedRoom | None = None
+    "Booked room reference"
 
 
 class EventSummary(BaseSchema):
@@ -166,6 +177,11 @@ class AvailableRoom(BaseSchema):
     "Room location label"
 
 
+class BookRoomRequest(BaseSchema):
+    room_id: str
+    "Room ID to book"
+
+
 class RoomBookingRoom(BaseModel):
     id: str
     title: str
@@ -181,3 +197,10 @@ class RoomBookingBooking(BaseModel):
 
 class RoomBookingCanBook(BaseModel):
     can_book: bool
+    reason_why_cannot: str = ""
+
+
+class RoomBookingCreatedBooking(BaseModel):
+    room_id: str
+    outlook_booking_id: str | None
+    outlook_entry_id: str | None

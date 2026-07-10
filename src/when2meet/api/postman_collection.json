@@ -214,23 +214,57 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/meetings/:meeting_id/available-rooms",
+              "raw": "{{baseUrl}}/meetings/:meeting_ref/available-rooms",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "meetings",
-                ":meeting_id",
+                ":meeting_ref",
                 "available-rooms"
               ],
               "variable": [
                 {
-                  "key": "meeting_id",
-                  "value": "example_meeting_id"
+                  "key": "meeting_ref",
+                  "value": "example_meeting_slug_or_id"
                 }
               ]
             },
             "description": "Get rooms available for the full selected meeting time window and bookable by the authenticated user."
+          }
+        },
+        {
+          "name": "Book Room",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"room_id\": \"3.2\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/meetings/:meeting_ref/book-room",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "meetings",
+                ":meeting_ref",
+                "book-room"
+              ],
+              "variable": [
+                {
+                  "key": "meeting_ref",
+                  "value": "example_meeting_slug_or_id"
+                }
+              ]
+            },
+            "description": "Book a room for the meeting's selected time window (owner only)."
           }
         },
         {

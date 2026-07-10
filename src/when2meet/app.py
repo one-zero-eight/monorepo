@@ -10,7 +10,6 @@ from src.common_fastapi import (
     MIT_LICENSE_INFO,
     ONE_ZERO_EIGHT_CONTACT_INFO,
     generate_unique_operation_id,
-    popule_openapi_tags,
     tune_fastapi,
 )
 from src.logging_ import logger
@@ -69,4 +68,3 @@ app.add_middleware(
 import src.when2meet.modules.events.routes  # noqa: E402
 
 app.include_router(src.when2meet.modules.events.routes.router)
-popule_openapi_tags(app, src.when2meet.modules.events.routes)

@@ -271,7 +271,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-  /meetings/{meeting_id}/available-rooms:
+  /meetings/{meeting_ref}/book-room:
+    post:
+      tags:
+      - Meetings
+      summary: Book Room For Meeting
+      description: Book a room for the meeting's selected time window (owner only).
+      operationId: meetings_book_room_for_meeting
+      security:
+      - Bearer: []
+      parameters:
+      - name: meeting_ref
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Meeting Ref
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookRoomRequest'
+      responses:
+        '200':
+          description: Room booked for the meeting
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventView'
+        '400':
+          description: Selected meeting time is not set or room is unavailable
+        '403':
+          description: Not an owner or room booking is forbidden
+        '404':
+          description: Meeting or room not found
+        '409':
+          description: Room is already booked for this meeting
+        '401':
+          description: Unable to verify credentials OR Credentials not provided
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /meetings/{meeting_ref}/available-rooms:
     get:
       tags:
       - Meetings
@@ -281,12 +326,12 @@ paths:
       security:
       - Bearer: []
       parameters:
-      - name: meeting_id
+      - name: meeting_ref
         in: path
         required: true
         schema:
           type: string
-          title: Meeting Id
+          title: Meeting Ref
       responses:
         '200':
           description: Rooms available for the selected meeting time
@@ -338,6 +383,40 @@ components:
       - name
       - location
       title: AvailableRoom
+    BookRoomRequest:
+      properties:
+        room_id:
+          type: string
+          title: Room Id
+          description: Room ID to book
+      additionalProperties: false
+      type: object
+      required:
+      - room_id
+      title: BookRoomRequest
+    BookedRoom:
+      properties:
+        room_id:
+          type: string
+          title: Room Id
+          description: Booked room ID
+        outlook_booking_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Outlook Booking Id
+          description: Room Booking service booking ID
+        outlook_entry_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Outlook Entry Id
+          description: Outlook entry ID
+      additionalProperties: false
+      type: object
+      required:
+      - room_id
+      title: BookedRoom
     EventCreate:
       properties:
         name:
@@ -537,6 +616,11 @@ components:
           - $ref: '#/components/schemas/MeetingTime'
           - type: 'null'
           description: Final selected meeting time
+        booked_room:
+          anyOf:
+          - $ref: '#/components/schemas/BookedRoom'
+          - type: 'null'
+          description: Booked room reference
       additionalProperties: false
       type: object
       required:
@@ -686,4 +770,5 @@ components:
       bearerFormat: JWT
 tags:
 - name: Meetings
-  description: Operations for creating and managing meetings, including tracking participant availability and scheduling time slots.
+  description: Operations for creating and managing meetings, including tracking participant
+    availability and scheduling time slots.

@@ -121,7 +121,7 @@ Availability can include slots outside the current meeting grid; existing hidden
 
 ### Get Available Rooms
 
-- **URL:** `/meetings/{meeting_id}/available-rooms`
+- **URL:** `/meetings/{meeting_ref}/available-rooms`
 - **Method:** `GET`
 - **Response:**
   - `200 OK` — `AvailableRoom[]`
@@ -129,6 +129,26 @@ Availability can include slots outside the current meeting grid; existing hidden
   - `404 Not Found` — meeting does not exist.
 
 Returns rooms that are free for the full selected meeting time window and bookable by the authenticated user according to Room Booking rules. Room metadata includes `id`, `name`, `capacity`, and `location`.
+
+### Book Room
+
+- **URL:** `/meetings/{meeting_ref}/book-room`
+- **Method:** `POST`
+- **Access:** owner only
+- **Request Body:**
+  ```json
+  {
+    "room_id": "3.2"
+  }
+  ```
+- **Response:**
+  - `200 OK` — `EventView`
+  - `400 Bad Request` — selected meeting time is not set or the room is unavailable.
+  - `403 Forbidden` — authenticated user is not the meeting owner or Room Booking rejects the booking.
+  - `404 Not Found` — meeting or room does not exist.
+  - `409 Conflict` — the meeting already has a booked room.
+
+Books the requested room through the Room Booking service for the meeting's selected time window, then stores the booking reference on the meeting.
 
 ## Data Models
 
@@ -160,6 +180,7 @@ Returns rooms that are free for the full selected meeting time window and bookab
 | `specific_time` | `boolean` | Whether meeting has specific time slots |
 | `time_range` | `TimeRange \| null` | Optional display/edit metadata |
 | `selected_time` | `MeetingTime \| null` | Final time selected by the meeting owner |
+| `booked_room` | `BookedRoom \| null` | Room booking reference stored after `POST /book-room` |
 
 ### ParticipantView
 
@@ -173,3 +194,11 @@ Returns rooms that are free for the full selected meeting time window and bookab
 | `availability` | `list[datetime]` | Selected slots |
 
 If Accounts lookup fails or a profile is missing, `user_id` and `availability` are still returned and profile fields are `null`.
+
+### BookedRoom
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `room_id` | `string` | Booked room ID |
+| `outlook_booking_id` | `string \| null` | Room Booking service booking ID |
+| `outlook_entry_id` | `string \| null` | Outlook entry ID |
