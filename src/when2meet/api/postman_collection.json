@@ -28,28 +28,28 @@
   },
   "item": [
     {
-      "name": "Events",
+      "name": "Meetings",
       "item": [
         {
-          "name": "Get My Events",
+          "name": "Get My Meetings",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/events/",
+              "raw": "{{baseUrl}}/meetings/",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "events",
+                "meetings",
                 ""
               ]
             },
-            "description": "Get events owned by the authenticated user."
+            "description": "Get meetings owned by the authenticated user."
           }
         },
         {
-          "name": "Create Event",
+          "name": "Create Meeting",
           "request": {
             "method": "POST",
             "header": [
@@ -60,65 +60,65 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"New Event Name\",\n  \"description\": \"Event description goes here\",\n  \"slots\": [\n    \"2026-06-26T17:36:00Z\"\n  ],\n  \"timezone\": \"UTC\",\n  \"specific_time\": false,\n  \"time_range\": {\n    \"start\": \"09:00\",\n    \"end\": \"18:00\"\n  }\n}"
+              "raw": "{\n  \"name\": \"New Meeting Name\",\n  \"description\": \"Meeting description goes here\",\n  \"slots\": [\n    \"2026-06-26T17:36:00Z\"\n  ],\n  \"timezone\": \"UTC\",\n  \"specific_time\": false,\n  \"time_range\": {\n    \"start\": \"09:00\",\n    \"end\": \"18:00\"\n  }\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/events/",
+              "raw": "{{baseUrl}}/meetings/",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "events",
+                "meetings",
                 ""
               ]
             },
-            "description": "Create a new event with time slots."
+            "description": "Create a new meeting with time slots."
           }
         },
         {
-          "name": "Get Participating Events",
+          "name": "Get Participating Meetings",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/events/participating",
+              "raw": "{{baseUrl}}/meetings/participating",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "events",
+                "meetings",
                 "participating"
               ]
             },
-            "description": "Get events where the authenticated user is a participant."
+            "description": "Get meetings where the authenticated user is a participant."
           }
         },
         {
-          "name": "Get Event",
+          "name": "Get Meeting",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/events/:event_ref",
+              "raw": "{{baseUrl}}/meetings/:meeting_ref",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "events",
-                ":event_ref"
+                "meetings",
+                ":meeting_ref"
               ],
               "variable": [
                 {
-                  "key": "event_ref",
-                  "value": "example_event_slug_or_id"
+                  "key": "meeting_ref",
+                  "value": "example_meeting_slug_or_id"
                 }
               ]
             },
-            "description": "Get event details and participants' availability."
+            "description": "Get meeting details and participants' availability."
           }
         },
         {
-          "name": "Update Event",
+          "name": "Update Meeting",
           "request": {
             "method": "PATCH",
             "header": [
@@ -129,49 +129,49 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Updated Event Name\",\n  \"description\": \"Updated description\",\n  \"slots\": [\n    \"2026-06-26T17:36:00Z\",\n    \"2026-06-27T10:00:00Z\"\n  ],\n  \"timezone\": \"UTC\",\n  \"specific_time\": true\n}"
+              "raw": "{\n  \"name\": \"Updated Meeting Name\",\n  \"description\": \"Updated description\",\n  \"slots\": [\n    \"2026-06-26T17:36:00Z\",\n    \"2026-06-27T10:00:00Z\"\n  ],\n  \"timezone\": \"UTC\",\n  \"specific_time\": true\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/events/:event_ref",
+              "raw": "{{baseUrl}}/meetings/:meeting_ref",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "events",
-                ":event_ref"
+                "meetings",
+                ":meeting_ref"
               ],
               "variable": [
                 {
-                  "key": "event_ref",
-                  "value": "example_event_slug_or_id"
+                  "key": "meeting_ref",
+                  "value": "example_meeting_slug_or_id"
                 }
               ]
             },
-            "description": "Update event details (owner only)."
+            "description": "Update meeting details (owner only)."
           }
         },
         {
-          "name": "Delete Event",
+          "name": "Delete Meeting",
           "request": {
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/events/:event_ref",
+              "raw": "{{baseUrl}}/meetings/:meeting_ref",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "events",
-                ":event_ref"
+                "meetings",
+                ":meeting_ref"
               ],
               "variable": [
                 {
-                  "key": "event_ref",
-                  "value": "example_event_slug_or_id"
+                  "key": "meeting_ref",
+                  "value": "example_meeting_slug_or_id"
                 }
               ]
             },
-            "description": "Delete an event (owner only)."
+            "description": "Delete a meeting (owner only)."
           }
         },
         {
@@ -189,23 +189,48 @@
               "raw": "{\n  \"availability\": [\n    \"2026-06-26T17:36:00Z\"\n  ]\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/events/:event_ref/participants",
+              "raw": "{{baseUrl}}/meetings/:meeting_ref/participants",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "events",
-                ":event_ref",
+                "meetings",
+                ":meeting_ref",
                 "participants"
               ],
               "variable": [
                 {
-                  "key": "event_ref",
-                  "value": "example_event_slug_or_id"
+                  "key": "meeting_ref",
+                  "value": "example_meeting_slug_or_id"
                 }
               ]
             },
-            "description": "Add or update a participant's availability for an event."
+            "description": "Add or update a participant's availability for a meeting."
+          }
+        },
+        {
+          "name": "Get Available Rooms",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/meetings/:meeting_id/available-rooms",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "meetings",
+                ":meeting_id",
+                "available-rooms"
+              ],
+              "variable": [
+                {
+                  "key": "meeting_id",
+                  "value": "example_meeting_id"
+                }
+              ]
+            },
+            "description": "Get rooms available for the full selected meeting time window and bookable by the authenticated user."
           }
         },
         {
@@ -214,20 +239,20 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/events/:event_ref/participants/:user_id",
+              "raw": "{{baseUrl}}/meetings/:meeting_ref/participants/:user_id",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "events",
-                ":event_ref",
+                "meetings",
+                ":meeting_ref",
                 "participants",
                 ":user_id"
               ],
               "variable": [
                 {
-                  "key": "event_ref",
-                  "value": "example_event_slug_or_id"
+                  "key": "meeting_ref",
+                  "value": "example_meeting_slug_or_id"
                 },
                 {
                   "key": "user_id",
@@ -235,7 +260,7 @@
                 }
               ]
             },
-            "description": "Remove a participant from an event (owner or the participant themselves)."
+            "description": "Remove a participant from a meeting (owner or the participant themselves)."
           }
         }
       ]

@@ -398,25 +398,6 @@ $defs:
     - jwt_marker
     title: OmnideskSettings
     type: object
-  RoomBookingIntegrationSettings:
-    additionalProperties: false
-    description: InNoHassle Room Booking integration settings.
-    properties:
-      api_url:
-        default: https://api.innohassle.ru/room-booking/v0
-        description: URL of the Room Booking API
-        title: Api Url
-        type: string
-      api_key:
-        description: API key for the Room Booking API
-        format: password
-        title: Api Key
-        type: string
-        writeOnly: true
-    required:
-    - api_key
-    title: RoomBookingIntegrationSettings
-    type: object
   ScheduleAssistantSettings:
     additionalProperties: false
     description: Settings for the Schedule Assistant service.
@@ -512,7 +493,7 @@ $defs:
         description: InNoHassle Workshops integration settings
       room_booking:
         anyOf:
-        - $ref: '#/$defs/RoomBookingIntegrationSettings'
+        - $ref: '#/$defs/src__schedule__config_schema__RoomBookingIntegrationSettings'
         - type: 'null'
         default: null
         description: InNoHassle Room Booking integration settings
@@ -608,6 +589,12 @@ $defs:
       mongo:
         $ref: '#/$defs/MongoDatabaseSettings'
         description: Configuration for MongoDB
+      room_booking:
+        anyOf:
+        - $ref: '#/$defs/src__when2meet__config_schema__RoomBookingIntegrationSettings'
+        - type: 'null'
+        default: null
+        description: Room Booking API integration settings
     title: When2MeetSettings
     type: object
   WorkshopsSettings:
@@ -692,6 +679,25 @@ $defs:
     - exchange
     title: RoomBookingSettings
     type: object
+  src__schedule__config_schema__RoomBookingIntegrationSettings:
+    additionalProperties: false
+    description: InNoHassle Room Booking integration settings.
+    properties:
+      api_url:
+        default: https://api.innohassle.ru/room-booking/v0
+        description: URL of the Room Booking API
+        title: Api Url
+        type: string
+      api_key:
+        description: API key for the Room Booking API
+        format: password
+        title: Api Key
+        type: string
+        writeOnly: true
+    required:
+    - api_key
+    title: RoomBookingIntegrationSettings
+    type: object
   src__schedule_assistant__config_schema__RoomBookingSettings:
     additionalProperties: false
     description: Room Booking API integration settings.
@@ -710,6 +716,17 @@ $defs:
     required:
     - api_key
     title: RoomBookingSettings
+    type: object
+  src__when2meet__config_schema__RoomBookingIntegrationSettings:
+    additionalProperties: false
+    description: InNoHassle Room Booking integration settings.
+    properties:
+      api_url:
+        default: https://api.innohassle.ru/room-booking/v0
+        description: URL of the Room Booking API
+        title: Api Url
+        type: string
+    title: RoomBookingIntegrationSettings
     type: object
 additionalProperties: false
 properties:

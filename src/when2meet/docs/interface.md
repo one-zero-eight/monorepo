@@ -1,6 +1,6 @@
 # When2Meet API Interface
 
-The When2Meet service provides authenticated APIs for creating events, sharing short event links, and managing participant availability.
+The When2Meet service provides authenticated APIs for creating meetings, sharing short meeting links, and managing participant availability.
 
 ## Base URL
 
@@ -17,17 +17,17 @@ Authorization: Bearer <JWT>
 
 ## Endpoints
 
-### List My Events
+### List My Meetings
 
-- **URL:** `/events/`
+- **URL:** `/meetings/`
 - **Method:** `GET`
 - **Response:** `200 OK` — `EventSummary[]`
 
-Returns events owned by the authenticated user. Backend search is not supported; filter by name on the client.
+Returns meetings owned by the authenticated user. Backend search is not supported; filter by name on the client.
 
-### Create Event
+### Create Meeting
 
-- **URL:** `/events/`
+- **URL:** `/meetings/`
 - **Method:** `POST`
 - **Request Body:**
   ```json
@@ -50,49 +50,49 @@ Returns events owned by the authenticated user. Backend search is not supported;
 
 The backend sets `owner_id` from the token and generates a unique `slug`.
 
-### List Participating Events
+### List Participating Meetings
 
-- **URL:** `/events/participating`
+- **URL:** `/meetings/participating`
 - **Method:** `GET`
 - **Response:** `200 OK` — `EventSummary[]`
 
-Returns events where the authenticated user is a participant but not the owner.
+Returns meetings where the authenticated user is a participant but not the owner.
 
-### Get Event
+### Get Meeting
 
-- **URL:** `/events/{event_ref}`
+- **URL:** `/meetings/{meeting_ref}`
 - **Method:** `GET`
-- **Path Parameter:** `event_ref` is either an event ObjectId or a short slug.
+- **Path Parameter:** `meeting_ref` is either a meeting ObjectId or a short slug.
 - **Response:**
   - `200 OK` — `EventView`
-  - `404 Not Found` — event does not exist.
+  - `404 Not Found` — meeting does not exist.
 
-### Update Event
+### Update Meeting
 
-- **URL:** `/events/{event_ref}`
+- **URL:** `/meetings/{meeting_ref}`
 - **Method:** `PATCH`
 - **Access:** owner only
 - **Request Body:** partial `EventUpdate`
 - **Response:**
   - `200 OK` — `EventView`
   - `403 Forbidden` — authenticated user is not the owner.
-  - `404 Not Found` — event does not exist.
+  - `404 Not Found` — meeting does not exist.
 
-Participant availability is preserved when slots are removed from the event.
+Participant availability is preserved when slots are removed from the meeting.
 
-### Delete Event
+### Delete Meeting
 
-- **URL:** `/events/{event_ref}`
+- **URL:** `/meetings/{meeting_ref}`
 - **Method:** `DELETE`
 - **Access:** owner only
 - **Response:**
   - `204 No Content`
   - `403 Forbidden` — authenticated user is not the owner.
-  - `404 Not Found` — event does not exist.
+  - `404 Not Found` — meeting does not exist.
 
 ### Update My Availability
 
-- **URL:** `/events/{event_ref}/participants`
+- **URL:** `/meetings/{meeting_ref}/participants`
 - **Method:** `PUT`
 - **Request Body:**
   ```json
@@ -104,20 +104,31 @@ Participant availability is preserved when slots are removed from the event.
   ```
 - **Response:**
   - `200 OK` — `EventView`
-  - `404 Not Found` — event does not exist.
+  - `404 Not Found` — meeting does not exist.
 
 The backend takes participant `user_id` from the Bearer token. Request fields such as `user_id`, `name`, and `if_needed` are rejected.
-Availability can include slots outside the current event grid; existing hidden slots are preserved on updates.
+Availability can include slots outside the current meeting grid; existing hidden slots are preserved on updates.
 
 ### Delete Participant
 
-- **URL:** `/events/{event_ref}/participants/{user_id}`
+- **URL:** `/meetings/{meeting_ref}/participants/{user_id}`
 - **Method:** `DELETE`
-- **Access:** event owner or the participant themselves
+- **Access:** meeting owner or the participant themselves
 - **Response:**
   - `200 OK` — `EventView`
   - `403 Forbidden` — authenticated user is neither owner nor participant.
-  - `404 Not Found` — event or participant does not exist.
+  - `404 Not Found` — meeting or participant does not exist.
+
+### Get Available Rooms
+
+- **URL:** `/meetings/{meeting_id}/available-rooms`
+- **Method:** `GET`
+- **Response:**
+  - `200 OK` — `AvailableRoom[]`
+  - `400 Bad Request` — selected meeting time is not set.
+  - `404 Not Found` — meeting does not exist.
+
+Returns rooms that are free for the full selected meeting time window and bookable by the authenticated user according to Room Booking rules. Room metadata includes `id`, `name`, `capacity`, and `location`.
 
 ## Data Models
 
@@ -126,9 +137,9 @@ Availability can include slots outside the current event grid; existing hidden s
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `id` | `string` | MongoDB ObjectId |
-| `slug` | `string` | Short URL-safe event reference |
-| `name` | `string` | Event name |
-| `description` | `string \| null` | Event description |
+| `slug` | `string` | Short URL-safe meeting reference |
+| `name` | `string` | Meeting name |
+| `description` | `string \| null` | Meeting description |
 | `created_at` | `datetime` | Creation time |
 | `participants_count` | `integer` | Number of participants |
 | `date_range_label` | `string \| null` | Optional display label |
@@ -138,16 +149,17 @@ Availability can include slots outside the current event grid; existing hidden s
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `id` | `string` | MongoDB ObjectId |
-| `slug` | `string` | Short URL-safe event reference |
-| `name` | `string` | Event name |
-| `description` | `string \| null` | Event description |
+| `slug` | `string` | Short URL-safe meeting reference |
+| `name` | `string` | Meeting name |
+| `description` | `string \| null` | Meeting description |
 | `slots` | `list[datetime]` | All possible slots |
 | `participants` | `list[ParticipantView]` | Participants with profile data |
 | `created_at` | `datetime` | Creation time |
 | `timezone` | `string` | IANA timezone name |
-| `owner_id` | `string \| null` | InNoHassle Accounts ID of event owner |
-| `specific_time` | `boolean` | Whether event has specific time slots |
+| `owner_id` | `string \| null` | InNoHassle Accounts ID of meeting owner |
+| `specific_time` | `boolean` | Whether meeting has specific time slots |
 | `time_range` | `TimeRange \| null` | Optional display/edit metadata |
+| `selected_time` | `MeetingTime \| null` | Final time selected by the meeting owner |
 
 ### ParticipantView
 
