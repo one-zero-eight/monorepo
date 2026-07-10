@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 from pymongo import IndexModel
 
 from src.common_pydantic import BaseSchema
-from src.when2meet.modules.events.schemas import MeetingTime, TimeRange
+from src.when2meet.modules.events.schemas import BookedRoom, MeetingTime, TimeRange
 
 
 class Participant(BaseSchema):
@@ -46,6 +46,8 @@ class Event(Document):
     "Optional metadata for display/edit"
     selected_time: MeetingTime | None = None
     "Final selected meeting time"
+    booked_room: BookedRoom | None = None
+    "Booked room reference"
 
     # Define id field locally to avoid issues with shared BeanieDocument
     id: PydanticObjectId | None = Field(

@@ -1,3 +1,5 @@
+import json
+
 import httpx
 import pytest
 import respx
@@ -18,6 +20,18 @@ def _booking(room_id: str, start: str, end: str) -> dict:
         "end": end,
         "outlook_booking_id": None,
         "outlook_entry_id": "busy-1",
+        "attendees": None,
+    }
+
+
+def _created_booking(room_id: str) -> dict:
+    return {
+        "room_id": room_id,
+        "title": "Room Search",
+        "start": "2026-06-15T10:00:00Z",
+        "end": "2026-06-15T11:00:00Z",
+        "outlook_booking_id": "booking-1",
+        "outlook_entry_id": "entry-1",
         "attendees": None,
     }
 
@@ -45,6 +59,102 @@ def test_room_booking_get_network_failure_returns_bad_gateway(when2meet_client: 
 
         with pytest.raises(HTTPException) as exc_info:
             portal.call(routes._room_booking_get, "/rooms/", {}, "Bearer user-token")
+
+    assert exc_info.value.status_code == 502
+    assert exc_info.value.detail == "Failed to call Room Booking API"
+
+
+def test_room_booking_get_invalid_json_returns_bad_gateway(when2meet_client: TestClient):
+    """Verify invalid room-booking JSON responses are treated as upstream failures."""
+    portal = when2meet_client.portal
+    assert portal is not None
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.get(f"{ROOM_BOOKING_API_URL}/rooms/").mock(
+            return_value=httpx.Response(200, content=b"<html>not json</html>")
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            portal.call(routes._room_booking_get, "/rooms/", {}, "Bearer user-token")
+
+    assert exc_info.value.status_code == 502
+    assert exc_info.value.detail == "Room Booking API returned an invalid response"
+
+
+def test_room_booking_post_forwards_client_errors(when2meet_client: TestClient):
+    """Verify book-room preserves room-booking client error details."""
+    portal = when2meet_client.portal
+    assert portal is not None
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.post(f"{ROOM_BOOKING_API_URL}/bookings/").mock(
+            return_value=httpx.Response(403, json={"detail": "No access"})
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            portal.call(routes._room_booking_post, "/bookings/", {"room_id": "3.2"}, "Bearer user-token")
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == "No access"
+
+
+def test_room_booking_post_forwards_json_client_error_without_detail(when2meet_client: TestClient):
+    """Verify JSON room-booking errors without detail are still forwarded."""
+    portal = when2meet_client.portal
+    assert portal is not None
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.post(f"{ROOM_BOOKING_API_URL}/bookings/").mock(
+            return_value=httpx.Response(400, json=["bad request"])
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            portal.call(routes._room_booking_post, "/bookings/", {"room_id": "3.2"}, "Bearer user-token")
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == ["bad request"]
+
+
+def test_room_booking_post_forwards_non_json_client_error(when2meet_client: TestClient):
+    """Verify non-JSON room-booking client errors keep a stable detail."""
+    portal = when2meet_client.portal
+    assert portal is not None
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.post(f"{ROOM_BOOKING_API_URL}/bookings/").mock(return_value=httpx.Response(404, content=b"not json"))
+
+        with pytest.raises(HTTPException) as exc_info:
+            portal.call(routes._room_booking_post, "/bookings/", {"room_id": "missing"}, "Bearer user-token")
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Room Booking API returned an error"
+
+
+def test_room_booking_post_upstream_error_returns_bad_gateway(when2meet_client: TestClient):
+    """Verify unexpected room-booking POST errors are hidden behind 502."""
+    portal = when2meet_client.portal
+    assert portal is not None
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.post(f"{ROOM_BOOKING_API_URL}/bookings/").mock(return_value=httpx.Response(503))
+
+        with pytest.raises(HTTPException) as exc_info:
+            portal.call(routes._room_booking_post, "/bookings/", {"room_id": "3.2"}, "Bearer user-token")
+
+    assert exc_info.value.status_code == 502
+    assert exc_info.value.detail == "Room Booking API returned an error"
+
+
+def test_room_booking_post_network_failure_returns_bad_gateway(when2meet_client: TestClient):
+    """Verify room-booking POST network errors are hidden behind a stable API error."""
+    portal = when2meet_client.portal
+    assert portal is not None
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.post(f"{ROOM_BOOKING_API_URL}/bookings/").mock(side_effect=httpx.ConnectError("boom"))
+
+        with pytest.raises(HTTPException) as exc_info:
+            portal.call(routes._room_booking_post, "/bookings/", {"room_id": "3.2"}, "Bearer user-token")
 
     assert exc_info.value.status_code == 502
     assert exc_info.value.detail == "Failed to call Room Booking API"
@@ -373,6 +483,206 @@ def test_available_rooms_returns_bad_gateway_when_room_booking_fails(
 
     assert response.status_code == 502
     assert response.json()["detail"] == "Room Booking API returned an error"
+
+
+def test_owner_books_room_for_selected_meeting_time(
+    when2meet_client: TestClient,
+    user_headers,
+):
+    """Verify owner can book a room and the meeting stores the booking reference."""
+    create_resp = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Room Search", "slots": ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_resp.json()["id"]
+    selected_time = {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}
+    when2meet_client.patch(f"/api/v0/meetings/{event_id}", json={"selected_time": selected_time}, headers=user_headers)
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        can_book_route = respx_mock.get(f"{ROOM_BOOKING_API_URL}/room/3.2/can-book").mock(
+            return_value=httpx.Response(200, json={"can_book": True, "reason_why_cannot": ""})
+        )
+        booking_route = respx_mock.post(f"{ROOM_BOOKING_API_URL}/bookings/").mock(
+            return_value=httpx.Response(200, json=_created_booking("3.2"))
+        )
+
+        response = when2meet_client.post(
+            f"/api/v0/meetings/{event_id}/book-room",
+            json={"room_id": "3.2"},
+            headers=user_headers,
+        )
+
+    assert can_book_route.calls.last is not None
+    can_book_request = can_book_route.calls.last.request
+    assert can_book_request.headers["Authorization"] == user_headers["Authorization"]
+    assert can_book_request.url.params["start"] == "2026-06-15T10:00:00+00:00"
+    assert can_book_request.url.params["end"] == "2026-06-15T11:00:00+00:00"
+
+    assert booking_route.calls.last is not None
+    booking_request = booking_route.calls.last.request
+    assert booking_request.headers["Authorization"] == user_headers["Authorization"]
+    booking_payload = json.loads(booking_request.content)
+    assert booking_payload == {
+        "room_id": "3.2",
+        "title": "Room Search",
+        "start": "2026-06-15T10:00:00+00:00",
+        "end": "2026-06-15T11:00:00+00:00",
+        "participant_emails": None,
+        "recurrence": None,
+        "categories": ["When2Meet"],
+        "description": "Booked for When2Meet meeting",
+    }
+
+    assert response.status_code == 200
+    assert response.json()["booked_room"] == {
+        "room_id": "3.2",
+        "outlook_booking_id": "booking-1",
+        "outlook_entry_id": "entry-1",
+    }
+
+    get_response = when2meet_client.get(f"/api/v0/meetings/{event_id}", headers=user_headers)
+    assert get_response.status_code == 200
+    assert get_response.json()["booked_room"] == response.json()["booked_room"]
+
+
+def test_non_owner_cannot_book_room_for_meeting(
+    when2meet_client: TestClient,
+    user_headers,
+    auth_header_factory,
+):
+    """Verify room booking is restricted to the meeting owner."""
+    create_resp = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Owner Books", "slots": ["2026-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_resp.json()["id"]
+    when2meet_client.patch(
+        f"/api/v0/meetings/{event_id}",
+        json={"selected_time": {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}},
+        headers=user_headers,
+    )
+    other_headers = auth_header_factory("other-user", "other@example.com")
+
+    response = when2meet_client.post(
+        f"/api/v0/meetings/{event_id}/book-room",
+        json={"room_id": "3.2"},
+        headers=other_headers,
+    )
+
+    assert response.status_code == 403
+
+
+def test_book_room_requires_selected_meeting_time(when2meet_client: TestClient, user_headers):
+    """Verify room booking cannot happen before the meeting time is selected."""
+    create_resp = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "No Time Booking", "slots": ["2026-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_resp.json()["id"]
+
+    response = when2meet_client.post(
+        f"/api/v0/meetings/{event_id}/book-room",
+        json={"room_id": "3.2"},
+        headers=user_headers,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Selected meeting time is not set"
+
+
+def test_book_room_helper_requires_selected_meeting_time(when2meet_client: TestClient, user_headers):
+    """Verify direct room-booking helper rejects meetings without selected time."""
+    create_resp = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "No Time Helper", "slots": ["2026-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = PydanticObjectId(create_resp.json()["id"])
+    portal = when2meet_client.portal
+    assert portal is not None
+    event = portal.call(events_repo.read, event_id)
+    assert event is not None
+
+    with pytest.raises(HTTPException) as exc_info:
+        portal.call(routes._book_room, event, "3.2", "Bearer user-token")
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Selected meeting time is not set"
+
+
+def test_book_room_rejects_unavailable_room(when2meet_client: TestClient, user_headers):
+    """Verify room-booking can-book denial prevents booking persistence."""
+    create_resp = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Unavailable Room", "slots": ["2026-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_resp.json()["id"]
+    when2meet_client.patch(
+        f"/api/v0/meetings/{event_id}",
+        json={"selected_time": {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}},
+        headers=user_headers,
+    )
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.get(f"{ROOM_BOOKING_API_URL}/room/3.2/can-book").mock(
+            return_value=httpx.Response(200, json={"can_book": False, "reason_why_cannot": "No access"})
+        )
+
+        response = when2meet_client.post(
+            f"/api/v0/meetings/{event_id}/book-room",
+            json={"room_id": "3.2"},
+            headers=user_headers,
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "No access"
+
+    get_response = when2meet_client.get(f"/api/v0/meetings/{event_id}", headers=user_headers)
+    assert get_response.status_code == 200
+    assert get_response.json()["booked_room"] is None
+
+
+def test_book_room_rejects_duplicate_meeting_booking(when2meet_client: TestClient, user_headers):
+    """Verify a meeting cannot create multiple room bookings."""
+    create_resp = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Duplicate Room", "slots": ["2026-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_resp.json()["id"]
+    when2meet_client.patch(
+        f"/api/v0/meetings/{event_id}",
+        json={"selected_time": {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}},
+        headers=user_headers,
+    )
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.get(f"{ROOM_BOOKING_API_URL}/room/3.2/can-book").mock(
+            return_value=httpx.Response(200, json={"can_book": True, "reason_why_cannot": ""})
+        )
+        respx_mock.post(f"{ROOM_BOOKING_API_URL}/bookings/").mock(
+            return_value=httpx.Response(200, json=_created_booking("3.2"))
+        )
+
+        first_response = when2meet_client.post(
+            f"/api/v0/meetings/{event_id}/book-room",
+            json={"room_id": "3.2"},
+            headers=user_headers,
+        )
+
+    assert first_response.status_code == 200
+
+    second_response = when2meet_client.post(
+        f"/api/v0/meetings/{event_id}/book-room",
+        json={"room_id": "3.3"},
+        headers=user_headers,
+    )
+    assert second_response.status_code == 409
+    assert second_response.json()["detail"] == "Room is already booked for this meeting"
 
 
 def test_patch_event_not_found(when2meet_client: TestClient, user_headers):
