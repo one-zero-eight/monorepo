@@ -3,6 +3,7 @@ import datetime as dtm
 from typing import cast
 
 import httpx
+from beanie.odm.queries.update import UpdateResponse
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 from pydantic import ValidationError
@@ -68,7 +69,7 @@ async def _event_view(event: Event) -> EventView:
             logger.warning("Failed to enrich When2Meet participants from Accounts", exc_info=True)
 
     return EventView(
-        **event.model_dump(exclude={"participants"}),
+        **event.model_dump(exclude={"participants", "room_booking_in_progress"}),
         participants=[_build_participant_view(p, users.get(p.user_id)) for p in event.participants],
     )
 
@@ -248,6 +249,44 @@ async def _book_room(event: Event, room_id: str, user_auth_header: str) -> Booke
         outlook_booking_id=booking.outlook_booking_id,
         outlook_entry_id=booking.outlook_entry_id,
     )
+
+
+async def _acquire_room_booking_lock(event: Event) -> bool:
+    result = await Event.find_one(
+        Event.id == event.id,
+        {"booked_room": None},
+        {"$or": [{"room_booking_in_progress": False}, {"room_booking_in_progress": {"$exists": False}}]},
+    ).update(
+        {"$set": {"room_booking_in_progress": True}},
+        response_type=UpdateResponse.UPDATE_RESULT,
+    )
+    return result is not None and result.modified_count == 1
+
+
+async def _release_room_booking_lock(event: Event) -> None:
+    await Event.find_one(Event.id == event.id).update({"$set": {"room_booking_in_progress": False}})
+
+
+async def _save_booked_room(event: Event, booked_room: BookedRoom) -> Event:
+    updated_event = await Event.find_one(
+        Event.id == event.id,
+        {"booked_room": None},
+        {"room_booking_in_progress": True},
+    ).update(
+        {
+            "$set": {
+                "booked_room": booked_room.model_dump(),
+                "room_booking_in_progress": False,
+            }
+        },
+        response_type=UpdateResponse.NEW_DOCUMENT,
+    )
+    if updated_event is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Room is already booked for this meeting",
+        )
+    return updated_event
 
 
 async def _get_meeting_or_404(meeting_ref: str) -> Event:
@@ -437,9 +476,19 @@ async def book_room_for_meeting(
             status_code=status.HTTP_409_CONFLICT,
             detail="Room is already booked for this meeting",
         )
+    if not await _acquire_room_booking_lock(event):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Room booking is already in progress for this meeting",
+        )
 
-    event.booked_room = await _book_room(event, request_body.room_id, request.headers["authorization"])
-    event = await event.save()
+    try:
+        booked_room = await _book_room(event, request_body.room_id, request.headers["authorization"])
+    except Exception:
+        await _release_room_booking_lock(event)
+        raise
+
+    event = await _save_booked_room(event, booked_room)
     return await _event_view(event)
 
 

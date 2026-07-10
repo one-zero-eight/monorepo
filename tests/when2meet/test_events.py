@@ -613,6 +613,26 @@ def test_book_room_helper_requires_selected_meeting_time(when2meet_client: TestC
     assert exc_info.value.detail == "Selected meeting time is not set"
 
 
+def test_save_booked_room_requires_booking_lock(when2meet_client: TestClient, user_headers):
+    """Verify booked room persistence requires the booking lock."""
+    create_resp = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Lost Lock", "slots": ["2026-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = PydanticObjectId(create_resp.json()["id"])
+    portal = when2meet_client.portal
+    assert portal is not None
+    event = portal.call(events_repo.read, event_id)
+    assert event is not None
+
+    with pytest.raises(HTTPException) as exc_info:
+        portal.call(routes._save_booked_room, event, routes.BookedRoom(room_id="3.2"))
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.detail == "Room is already booked for this meeting"
+
+
 def test_book_room_rejects_unavailable_room(when2meet_client: TestClient, user_headers):
     """Verify room-booking can-book denial prevents booking persistence."""
     create_resp = when2meet_client.post(
@@ -644,6 +664,52 @@ def test_book_room_rejects_unavailable_room(when2meet_client: TestClient, user_h
     get_response = when2meet_client.get(f"/api/v0/meetings/{event_id}", headers=user_headers)
     assert get_response.status_code == 200
     assert get_response.json()["booked_room"] is None
+
+    portal = when2meet_client.portal
+    assert portal is not None
+    event = portal.call(events_repo.read, PydanticObjectId(event_id))
+    assert event is not None
+    assert event.room_booking_in_progress is False
+
+
+def test_book_room_rejects_concurrent_booking_attempt(when2meet_client: TestClient, user_headers):
+    """Verify an in-progress booking lock prevents a second upstream booking."""
+    create_resp = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Concurrent Room", "slots": ["2026-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_resp.json()["id"]
+    when2meet_client.patch(
+        f"/api/v0/meetings/{event_id}",
+        json={"selected_time": {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}},
+        headers=user_headers,
+    )
+    portal = when2meet_client.portal
+    assert portal is not None
+    event = portal.call(events_repo.read, PydanticObjectId(event_id))
+    assert event is not None
+    event.room_booking_in_progress = True
+    portal.call(event.save)
+
+    with respx.mock(assert_all_called=False) as respx_mock:
+        can_book_route = respx_mock.get(f"{ROOM_BOOKING_API_URL}/room/3.2/can-book").mock(
+            return_value=httpx.Response(200, json={"can_book": True, "reason_why_cannot": ""})
+        )
+        booking_route = respx_mock.post(f"{ROOM_BOOKING_API_URL}/bookings/").mock(
+            return_value=httpx.Response(200, json=_created_booking("3.2"))
+        )
+
+        response = when2meet_client.post(
+            f"/api/v0/meetings/{event_id}/book-room",
+            json={"room_id": "3.2"},
+            headers=user_headers,
+        )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Room booking is already in progress for this meeting"
+    assert can_book_route.called is False
+    assert booking_route.called is False
 
 
 def test_book_room_rejects_duplicate_meeting_booking(when2meet_client: TestClient, user_headers):

@@ -48,6 +48,8 @@ class Event(Document):
     "Final selected meeting time"
     booked_room: BookedRoom | None = None
     "Booked room reference"
+    room_booking_in_progress: bool = False
+    "Internal guard preventing concurrent room bookings for one meeting"
 
     # Define id field locally to avoid issues with shared BeanieDocument
     id: PydanticObjectId | None = Field(
