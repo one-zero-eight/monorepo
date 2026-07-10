@@ -342,9 +342,14 @@ async def get_available_rooms(
     }
 
     free_rooms = [room for room in rooms if room.id not in busy_room_ids]
-    available_rooms = [
-        room
-        for room in free_rooms
-        if await _can_book_room(room.id, event.selected_time.start, event.selected_time.end, user_auth_header)
-    ]
+
+    import asyncio
+
+    can_book_flags = await asyncio.gather(
+        *[
+            _can_book_room(room.id, event.selected_time.start, event.selected_time.end, user_auth_header)
+            for room in free_rooms
+        ]
+    )
+    available_rooms = [room for room, can_book in zip(free_rooms, can_book_flags) if can_book]
     return [_room_view(room) for room in available_rooms]
