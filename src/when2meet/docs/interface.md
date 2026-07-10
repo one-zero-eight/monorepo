@@ -113,7 +113,7 @@ Availability can include slots outside the current meeting grid; existing hidden
 
 - **URL:** `/meetings/{meeting_ref}/participants/{user_id}`
 - **Method:** `DELETE`
-- **Access:** event owner or the participant themselves
+- **Access:** meeting owner or the participant themselves
 - **Response:**
   - `200 OK` — `EventView`
   - `403 Forbidden` — authenticated user is neither owner nor participant.
