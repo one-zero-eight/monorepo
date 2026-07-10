@@ -114,7 +114,14 @@ async def _room_booking_get(path: str, params: RoomBookingQueryParams, user_auth
             detail="Failed to call Room Booking API",
         ) from exc
 
-    return response.json()
+    try:
+        return response.json()
+    except ValueError as exc:
+        logger.warning("Room Booking API returned invalid JSON", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Room Booking API returned an invalid response",
+        ) from exc
 
 
 async def _get_rooms(user_auth_header: str) -> list[RoomBookingRoom]:
