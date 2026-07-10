@@ -42,8 +42,8 @@ app = FastAPI(
     license_info=MIT_LICENSE_INFO,
     openapi_tags=[
         {
-            "name": "Events",
-            "description": "Operations for creating and managing events, including tracking participant availability and scheduling time slots.",
+            "name": "Meetings",
+            "description": "Operations for creating and managing meetings, including tracking participant availability and scheduling time slots.",
         }
     ],
     servers=[{"url": settings.app_root_path, "description": "MVP v0"}],

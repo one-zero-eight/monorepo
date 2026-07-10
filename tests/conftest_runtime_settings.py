@@ -30,7 +30,7 @@ from src.schedule_assistant.config_schema import (
 )
 from src.student_affairs.config_schema import OmnideskSettings, StudentAffairsSettings
 from src.tabletennis.config_schema import TabletennisSettings
-from src.when2meet.config_schema import When2MeetSettings
+from src.when2meet.config_schema import RoomBookingIntegrationSettings, When2MeetSettings
 
 # Host ports for docker-compose.test.yaml and CI service containers; override via SUITE_* env.
 SUITE_MONGO_NETLOC = os.environ.get("SUITE_MONGO_NETLOC", "127.0.0.1:37017")
@@ -96,6 +96,9 @@ def load_root_settings() -> Settings:
             app_root_path="/api/v0",
             mongo=MongoDatabaseSettings(
                 uri=SecretStr(mongo_uri.replace("<service_name>", "when2meet")),
+            ),
+            room_booking=RoomBookingIntegrationSettings(
+                api_url="https://room-booking.test/api/v0",
             ),
         ),
         tabletennis_service=TabletennisSettings(

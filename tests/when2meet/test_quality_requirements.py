@@ -65,7 +65,7 @@ def test_qrt_non_owner_cannot_patch_or_delete_event(
 ):
     """QRT-002 verifies QR-002 Confidentiality for owner-only mutations."""
     create_resp = when2meet_client.post(
-        "/api/v0/events",
+        "/api/v0/meetings",
         json={"name": "QRT Owner Event", "slots": ["2026-06-15T10:00:00Z"]},
         headers=user_headers,
     )
@@ -75,23 +75,23 @@ def test_qrt_non_owner_cannot_patch_or_delete_event(
     other_headers = auth_header_factory("qrt-other-user", "qrt-other@example.com")
 
     patch_resp = when2meet_client.patch(
-        f"/api/v0/events/{event_id}",
+        f"/api/v0/meetings/{event_id}",
         json={"name": "Unauthorized rename"},
         headers=other_headers,
     )
     assert patch_resp.status_code == 403
 
-    delete_resp = when2meet_client.delete(f"/api/v0/events/{event_id}", headers=other_headers)
+    delete_resp = when2meet_client.delete(f"/api/v0/meetings/{event_id}", headers=other_headers)
     assert delete_resp.status_code == 403
 
-    owner_delete_resp = when2meet_client.delete(f"/api/v0/events/{event_id}", headers=user_headers)
+    owner_delete_resp = when2meet_client.delete(f"/api/v0/meetings/{event_id}", headers=user_headers)
     assert owner_delete_resp.status_code == 204
 
 
 def test_qrt_get_event_completes_within_time_budget(when2meet_client: TestClient, user_headers):
     """QRT-003 verifies QR-003 Time behaviour for event detail reads."""
     create_resp = when2meet_client.post(
-        "/api/v0/events",
+        "/api/v0/meetings",
         json={
             "name": "QRT Timing Event",
             "slots": ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z"],
@@ -102,7 +102,7 @@ def test_qrt_get_event_completes_within_time_budget(when2meet_client: TestClient
     event_id = create_resp.json()["id"]
 
     started = tm.monotonic()
-    get_resp = when2meet_client.get(f"/api/v0/events/{event_id}", headers=user_headers)
+    get_resp = when2meet_client.get(f"/api/v0/meetings/{event_id}", headers=user_headers)
     elapsed = tm.monotonic() - started
 
     assert get_resp.status_code == 200

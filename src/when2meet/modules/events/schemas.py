@@ -1,7 +1,7 @@
 import datetime as dtm
 
 from beanie import PydanticObjectId
-from pydantic import field_validator, model_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 from src.common_pydantic import BaseSchema
 
@@ -153,3 +153,31 @@ class EventSummary(BaseSchema):
     "Optional; frontend can derive from slots"
     selected_time: MeetingTime | None = None
     "Final selected meeting time"
+
+
+class AvailableRoom(BaseSchema):
+    id: str
+    "Room ID"
+    name: str
+    "Room name"
+    capacity: int | None = None
+    "Room capacity"
+    location: str
+    "Room location label"
+
+
+class RoomBookingRoom(BaseModel):
+    id: str
+    title: str
+    short_name: str
+    capacity: int | None = None
+
+
+class RoomBookingBooking(BaseModel):
+    room_id: str
+    start: dtm.datetime
+    end: dtm.datetime
+
+
+class RoomBookingCanBook(BaseModel):
+    can_book: bool
