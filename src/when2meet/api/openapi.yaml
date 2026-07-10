@@ -686,7 +686,4 @@ components:
       bearerFormat: JWT
 tags:
 - name: Meetings
-  description: Operations for creating and managing meetings, including tracking participant
-    availability and scheduling time slots.
-- name: Meetings
-  description: ''
+  description: Operations for creating and managing meetings, including tracking participant availability and scheduling time slots.
