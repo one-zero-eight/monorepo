@@ -1,7 +1,7 @@
 import datetime as dtm
 
 from beanie import PydanticObjectId
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 
 from src.common_pydantic import BaseSchema
 
@@ -25,6 +25,21 @@ def _normalize_sorted_datetimes(values: list[dtm.datetime]) -> list[dtm.datetime
 class TimeRange(BaseSchema):
     start: str
     end: str
+
+
+class MeetingTime(BaseSchema):
+    start: dtm.datetime
+    "Selected meeting start time"
+    end: dtm.datetime
+    "Selected meeting end time"
+
+    @model_validator(mode="after")
+    def validate_time_order(self) -> MeetingTime:
+        self.start = normalize_datetime(self.start)
+        self.end = normalize_datetime(self.end)
+        if self.end <= self.start:
+            raise ValueError("Meeting end time must be after start time")
+        return self
 
 
 class EventCreate(BaseSchema):
@@ -60,6 +75,8 @@ class EventUpdate(BaseSchema):
     "Whether the event has specific time slots"
     time_range: TimeRange | None = None
     "Optional metadata for display/edit"
+    selected_time: MeetingTime | None = None
+    "Final selected meeting time"
 
     @field_validator("slots", mode="after")
     @classmethod
@@ -115,6 +132,8 @@ class EventView(BaseSchema):
     "Whether the event has specific time slots"
     time_range: TimeRange | None = None
     "Optional metadata for display/edit"
+    selected_time: MeetingTime | None = None
+    "Final selected meeting time"
 
 
 class EventSummary(BaseSchema):
@@ -132,3 +151,5 @@ class EventSummary(BaseSchema):
     "Number of participants in the event"
     date_range_label: str | None = None
     "Optional; frontend can derive from slots"
+    selected_time: MeetingTime | None = None
+    "Final selected meeting time"

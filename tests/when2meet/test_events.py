@@ -1,4 +1,7 @@
+from beanie import PydanticObjectId
 from fastapi.testclient import TestClient
+
+from src.when2meet.modules.events import events_repo
 
 
 def test_create_event_with_auth(when2meet_client: TestClient, user_headers):
@@ -34,6 +37,21 @@ def test_get_event_by_slug(when2meet_client: TestClient, user_headers):
     assert response.status_code == 200
     assert response.json()["name"] == "Slug Load Test"
     assert response.json()["slug"] == slug
+
+
+def test_events_repo_read_returns_event_by_id(when2meet_client: TestClient, user_headers):
+    """Verify repository read returns an existing event."""
+    event_data = {"name": "Repo Read Test", "slots": ["2026-06-15T10:00:00Z"]}
+    create_response = when2meet_client.post("/api/v0/events", json=event_data, headers=user_headers)
+    event_id = PydanticObjectId(create_response.json()["id"])
+
+    portal = when2meet_client.portal
+    assert portal is not None
+
+    event = portal.call(events_repo.read, event_id)
+
+    assert event is not None
+    assert event.name == "Repo Read Test"
 
 
 def test_get_event_not_found(when2meet_client: TestClient, user_headers):
@@ -110,6 +128,84 @@ def test_patch_event_owner(when2meet_client: TestClient, user_headers, auth_head
         f"/api/v0/events/{event_id}", json={"name": "Hacker Name"}, headers=other_headers
     )
     assert patch_resp.status_code == 403
+
+
+def test_owner_selects_meeting_time_visible_to_participants(
+    when2meet_client: TestClient,
+    user_headers,
+    auth_header_factory,
+):
+    """Verify owner can store final meeting time and participants can read it."""
+    create_resp = when2meet_client.post(
+        "/api/v0/events",
+        json={"name": "Decision Time", "slots": ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_resp.json()["id"]
+    selected_time = {"start": "2026-06-15T10:00:00.123Z", "end": "2026-06-15T11:00:00Z"}
+
+    patch_resp = when2meet_client.patch(
+        f"/api/v0/events/{event_id}",
+        json={"selected_time": selected_time},
+        headers=user_headers,
+    )
+    assert patch_resp.status_code == 200
+    assert patch_resp.json()["selected_time"] == {
+        "start": "2026-06-15T10:00:00Z",
+        "end": "2026-06-15T11:00:00Z",
+    }
+
+    other_headers = auth_header_factory("participant-user", "participant@example.com")
+    get_resp = when2meet_client.get(f"/api/v0/events/{event_id}", headers=other_headers)
+    assert get_resp.status_code == 200
+    assert get_resp.json()["selected_time"] == {
+        "start": "2026-06-15T10:00:00Z",
+        "end": "2026-06-15T11:00:00Z",
+    }
+
+    summary_resp = when2meet_client.get("/api/v0/events/", headers=user_headers)
+    assert summary_resp.status_code == 200
+    assert summary_resp.json()[0]["selected_time"] == {
+        "start": "2026-06-15T10:00:00Z",
+        "end": "2026-06-15T11:00:00Z",
+    }
+
+
+def test_non_owner_cannot_select_meeting_time(when2meet_client: TestClient, user_headers, auth_header_factory):
+    """Verify selected meeting time is owner-controlled metadata."""
+    create_resp = when2meet_client.post(
+        "/api/v0/events",
+        json={"name": "Owner Time", "slots": ["2026-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_resp.json()["id"]
+    other_headers = auth_header_factory("other-user", "other@example.com")
+
+    patch_resp = when2meet_client.patch(
+        f"/api/v0/events/{event_id}",
+        json={"selected_time": {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}},
+        headers=other_headers,
+    )
+
+    assert patch_resp.status_code == 403
+
+
+def test_selected_meeting_time_requires_end_after_start(when2meet_client: TestClient, user_headers):
+    """Verify invalid selected meeting intervals are rejected."""
+    create_resp = when2meet_client.post(
+        "/api/v0/events",
+        json={"name": "Invalid Time", "slots": ["2026-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_resp.json()["id"]
+
+    patch_resp = when2meet_client.patch(
+        f"/api/v0/events/{event_id}",
+        json={"selected_time": {"start": "2026-06-15T11:00:00Z", "end": "2026-06-15T10:00:00Z"}},
+        headers=user_headers,
+    )
+
+    assert patch_resp.status_code == 422
 
 
 def test_patch_event_not_found(when2meet_client: TestClient, user_headers):
@@ -316,6 +412,43 @@ def test_participant_profile_fallback_when_accounts_user_missing(
     assert response.status_code == 200
     participant = response.json()["participants"][0]
     assert participant["user_id"] == "other-user"
+    assert participant["email"] is None
+    assert participant["name"] is None
+    assert participant["telegram"] is None
+    assert participant["availability"] == ["2026-06-15T10:00:00Z"]
+
+
+def test_participant_profile_fallback_when_accounts_enrichment_fails(
+    when2meet_client: TestClient,
+    user_headers,
+    monkeypatch,
+):
+    """Verify Accounts failures do not hide participant availability."""
+    from src.when2meet.modules.events import routes
+
+    create_resp = when2meet_client.post(
+        "/api/v0/events",
+        json={"name": "Accounts Failure", "slots": ["2026-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_resp.json()["id"]
+
+    when2meet_client.put(
+        f"/api/v0/events/{event_id}/participants",
+        json={"availability": ["2026-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+
+    async def fail_get_users(user_ids: list[str]):
+        raise ValueError("Accounts unavailable")
+
+    monkeypatch.setattr(routes.inh_accounts, "get_users", fail_get_users)
+
+    response = when2meet_client.get(f"/api/v0/events/{event_id}", headers=user_headers)
+
+    assert response.status_code == 200
+    participant = response.json()["participants"][0]
+    assert participant["user_id"] == "test-user-1"
     assert participant["email"] is None
     assert participant["name"] is None
     assert participant["telegram"] is None

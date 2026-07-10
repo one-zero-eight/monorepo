@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 from pymongo import IndexModel
 
 from src.common_pydantic import BaseSchema
-from src.when2meet.modules.events.schemas import TimeRange
+from src.when2meet.modules.events.schemas import MeetingTime, TimeRange
 
 
 class Participant(BaseSchema):
@@ -44,6 +44,8 @@ class Event(Document):
     "Whether the event has specific time slots"
     time_range: TimeRange | None = None
     "Optional metadata for display/edit"
+    selected_time: MeetingTime | None = None
+    "Final selected meeting time"
 
     # Define id field locally to avoid issues with shared BeanieDocument
     id: PydanticObjectId | None = Field(

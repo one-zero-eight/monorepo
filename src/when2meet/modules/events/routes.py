@@ -53,7 +53,7 @@ async def _event_view(event: Event) -> EventView:
 
 def _event_summary(event: Event) -> EventSummary:
     return EventSummary(
-        **event.model_dump(include={"id", "slug", "name", "description", "created_at"}),
+        **event.model_dump(include={"id", "slug", "name", "description", "created_at", "selected_time"}),
         participants_count=len(event.participants),
     )
 
