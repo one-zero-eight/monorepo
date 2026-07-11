@@ -469,16 +469,17 @@ async def _update_meeting_room_booking(
     )
 
     try:
+        locked_event = await _locked_event_with_booked_room(event)
         for field_name in event_update.model_fields_set:
-            setattr(event, field_name, getattr(event_update, field_name))
-        event.booked_room = await _update_room_booking(
-            event,
+            setattr(locked_event, field_name, getattr(event_update, field_name))
+        locked_event.booked_room = await _update_room_booking(
+            locked_event,
             selected_time=updates_booking_time,
             title=updates_booking_title,
             user_auth_header=user_auth_header,
         )
-        event.room_booking_in_progress = False
-        return await event.save()
+        locked_event.room_booking_in_progress = False
+        return await locked_event.save()
     except Exception:
         await _release_room_booking_lock(event)
         raise
@@ -555,6 +556,10 @@ async def _cancel_room_before_delete(event: Event, user_auth_header: str) -> Non
         locked_event = await Event.get(event.id)
         if locked_event is not None and locked_event.booked_room is not None:
             await _cancel_room_booking(locked_event.booked_room, user_auth_header)
+            await Event.find_one(
+                Event.id == event.id,
+                {"room_booking_in_progress": True},
+            ).update({"$set": {"booked_room": None}})
     except Exception:
         await _release_room_booking_lock(event)
         raise
@@ -646,8 +651,10 @@ async def get_meeting(meeting_ref: str, auth: INH_TOKEN_AUTH) -> EventView:
     "/{meeting_ref}",
     responses={
         status.HTTP_200_OK: {"description": "Meeting updated"},
+        status.HTTP_400_BAD_REQUEST: {"description": "Cannot clear selected meeting time while a room is booked"},
         status.HTTP_403_FORBIDDEN: {"description": "Not an owner"},
         status.HTTP_404_NOT_FOUND: {"description": "Meeting not found"},
+        status.HTTP_409_CONFLICT: {"description": "Room booking is already being changed for this meeting"},
     },
 )
 async def update_meeting(
@@ -688,6 +695,7 @@ async def update_meeting(
         status.HTTP_204_NO_CONTENT: {"description": "Meeting deleted"},
         status.HTTP_403_FORBIDDEN: {"description": "Not an owner"},
         status.HTTP_404_NOT_FOUND: {"description": "Meeting not found"},
+        status.HTTP_409_CONFLICT: {"description": "Room booking is already being changed for this meeting"},
     },
     status_code=status.HTTP_204_NO_CONTENT,
 )
@@ -696,8 +704,11 @@ async def delete_meeting(meeting_ref: str, auth: INH_TOKEN_AUTH, request: Reques
     event = await _get_meeting_or_404(meeting_ref)
     _ensure_owner(event, auth.innohassle_id, "delete")
 
-    await _cancel_room_before_delete(event, request.headers["authorization"])
-    await events_repo.delete_event(event)
+    try:
+        await _cancel_room_before_delete(event, request.headers["authorization"])
+        await events_repo.delete_event(event)
+    finally:
+        await _release_room_booking_lock(event)
 
 
 @router.put(

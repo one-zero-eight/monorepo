@@ -1104,6 +1104,29 @@ def test_update_booked_room_releases_lock_when_upstream_update_fails(
     assert event.room_booking_in_progress is False
 
 
+def test_update_booked_room_returns_bad_request_if_locked_booking_disappears(
+    when2meet_client: TestClient,
+    user_headers,
+    monkeypatch,
+):
+    """Verify meeting update reloads room booking state after acquiring the lock."""
+    event_id = _book_meeting_room(when2meet_client, user_headers, name="Lost Room Update")
+    portal = when2meet_client.portal
+    assert portal is not None
+    event = portal.call(events_repo.read, PydanticObjectId(event_id))
+    assert event is not None
+    _patch_second_event_get(monkeypatch, event, _event_without_booked_room(event.model_copy(deep=True)))
+
+    response = when2meet_client.patch(
+        f"/api/v0/meetings/{event_id}",
+        json={"name": "Updated After Lost Room"},
+        headers=user_headers,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Room is not booked for this meeting"
+
+
 def test_owner_changes_booked_room(when2meet_client: TestClient, user_headers):
     """Verify owner can replace the room booking tied to a meeting."""
     create_resp = when2meet_client.post(
@@ -1547,6 +1570,32 @@ def test_delete_meeting_releases_lock_when_room_cancel_fails(when2meet_client: T
     assert portal is not None
     event = portal.call(events_repo.read, PydanticObjectId(event_id))
     assert event is not None
+    assert event.room_booking_in_progress is False
+
+
+def test_delete_meeting_clears_booked_room_when_db_delete_fails(
+    when2meet_client: TestClient,
+    user_headers,
+    monkeypatch,
+):
+    """Verify local booking reference is cleared if DB delete fails after upstream cancellation."""
+    event_id = _book_meeting_room(when2meet_client, user_headers, name="Fail DB Delete")
+
+    async def fail_delete_event(_event):
+        raise RuntimeError("db delete failed")
+
+    monkeypatch.setattr(events_repo, "delete_event", fail_delete_event)
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.delete(_booking_url("booking/1")).mock(return_value=httpx.Response(200))
+        with pytest.raises(RuntimeError, match="db delete failed"):
+            when2meet_client.delete(f"/api/v0/meetings/{event_id}", headers=user_headers)
+
+    portal = when2meet_client.portal
+    assert portal is not None
+    event = portal.call(events_repo.read, PydanticObjectId(event_id))
+    assert event is not None
+    assert event.booked_room is None
     assert event.room_booking_in_progress is False
 
 

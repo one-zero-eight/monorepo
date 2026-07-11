@@ -75,8 +75,10 @@ Returns meetings where the authenticated user is a participant but not the owner
 - **Request Body:** partial `EventUpdate`
 - **Response:**
   - `200 OK` — `EventView`
+  - `400 Bad Request` — selected meeting time cannot be cleared while a room is booked.
   - `403 Forbidden` — authenticated user is not the owner.
   - `404 Not Found` — meeting does not exist.
+  - `409 Conflict` — room booking is already being changed for this meeting.
 
 Participant availability is preserved when slots are removed from the meeting.
 
@@ -89,6 +91,7 @@ Participant availability is preserved when slots are removed from the meeting.
   - `204 No Content`
   - `403 Forbidden` — authenticated user is not the owner.
   - `404 Not Found` — meeting does not exist.
+  - `409 Conflict` — room booking is already being changed for this meeting.
 
 ### Update My Availability
 
