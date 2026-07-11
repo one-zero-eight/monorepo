@@ -153,6 +153,10 @@ paths:
           description: Not an owner
         '404':
           description: Meeting not found
+        '400':
+          description: Cannot clear selected meeting time while a room is booked
+        '409':
+          description: Room booking is already being changed for this meeting
         '401':
           description: Unable to verify credentials OR Credentials not provided
         '422':
@@ -183,6 +187,8 @@ paths:
           description: Not an owner
         '404':
           description: Meeting not found
+        '409':
+          description: Room booking is already being changed for this meeting
         '401':
           description: Unable to verify credentials OR Credentials not provided
         '422':
@@ -308,6 +314,88 @@ paths:
           description: Meeting or room not found
         '409':
           description: Room is already booked for this meeting
+        '401':
+          description: Unable to verify credentials OR Credentials not provided
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+      - Meetings
+      summary: Change Room For Meeting
+      description: Change the booked room for a meeting (owner only).
+      operationId: meetings_change_room_for_meeting
+      security:
+      - Bearer: []
+      parameters:
+      - name: meeting_ref
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Meeting Ref
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookRoomRequest'
+      responses:
+        '200':
+          description: Booked room changed for the meeting
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventView'
+        '400':
+          description: Room is not booked, selected time is not set, or room is unavailable
+        '403':
+          description: Not an owner or room booking is forbidden
+        '404':
+          description: Meeting, booking, or room not found
+        '409':
+          description: Room booking is already being changed for this meeting
+        '401':
+          description: Unable to verify credentials OR Credentials not provided
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Meetings
+      summary: Cancel Room For Meeting
+      description: Cancel the booked room for a meeting (owner only).
+      operationId: meetings_cancel_room_for_meeting
+      security:
+      - Bearer: []
+      parameters:
+      - name: meeting_ref
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Meeting Ref
+      responses:
+        '200':
+          description: Booked room canceled for the meeting
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventView'
+        '400':
+          description: Room is not booked for this meeting
+        '403':
+          description: Not an owner or room booking is forbidden
+        '404':
+          description: Meeting or booking not found
+        '409':
+          description: Room booking is already being changed for this meeting
         '401':
           description: Unable to verify credentials OR Credentials not provided
         '422':
