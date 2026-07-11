@@ -75,8 +75,10 @@ Returns meetings where the authenticated user is a participant but not the owner
 - **Request Body:** partial `EventUpdate`
 - **Response:**
   - `200 OK` — `EventView`
+  - `400 Bad Request` — selected meeting time cannot be cleared while a room is booked.
   - `403 Forbidden` — authenticated user is not the owner.
   - `404 Not Found` — meeting does not exist.
+  - `409 Conflict` — room booking is already being changed for this meeting.
 
 Participant availability is preserved when slots are removed from the meeting.
 
@@ -89,6 +91,7 @@ Participant availability is preserved when slots are removed from the meeting.
   - `204 No Content`
   - `403 Forbidden` — authenticated user is not the owner.
   - `404 Not Found` — meeting does not exist.
+  - `409 Conflict` — room booking is already being changed for this meeting.
 
 ### Update My Availability
 
@@ -149,6 +152,42 @@ Returns rooms that are free for the full selected meeting time window and bookab
   - `409 Conflict` — the meeting already has a booked room.
 
 Books the requested room through the Room Booking service for the meeting's selected time window, then stores the booking reference on the meeting.
+
+### Change Booked Room
+
+- **URL:** `/meetings/{meeting_ref}/book-room`
+- **Method:** `PATCH`
+- **Access:** owner only
+- **Request Body:**
+  ```json
+  {
+    "room_id": "3.3"
+  }
+  ```
+- **Response:**
+  - `200 OK` — `EventView`
+  - `400 Bad Request` — no room is booked, selected meeting time is not set, or the new room is unavailable.
+  - `403 Forbidden` — authenticated user is not the meeting owner or Room Booking rejects the change.
+  - `404 Not Found` — meeting, booking, or room does not exist.
+  - `409 Conflict` — room booking is already being changed.
+
+Creates a booking for the new room, cancels the old Room Booking reservation, and stores the new room reference on the meeting.
+
+### Cancel Booked Room
+
+- **URL:** `/meetings/{meeting_ref}/book-room`
+- **Method:** `DELETE`
+- **Access:** owner only
+- **Response:**
+  - `200 OK` — `EventView`
+  - `400 Bad Request` — no room is booked for the meeting.
+  - `403 Forbidden` — authenticated user is not the meeting owner or Room Booking rejects the cancellation.
+  - `404 Not Found` — meeting or booking does not exist.
+  - `409 Conflict` — room booking is already being changed.
+
+Cancels the Room Booking reservation and clears `booked_room` on the meeting. If a meeting with a booked room is deleted, the backend cancels the room booking before deleting the meeting.
+
+When the meeting owner changes `selected_time` on a meeting with `booked_room`, the backend updates the existing Room Booking reservation before persisting the new selected time.
 
 ## Data Models
 
