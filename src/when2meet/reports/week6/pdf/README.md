@@ -14,4 +14,4 @@ typst compile src/when2meet/reports/week6/pdf/week6-report.typ \
   --root src/when2meet/reports/week6
 ```
 
-Public report links use the `main` branch (no commit-hash permalinks in this pack).
+Public report and product-tree permalinks use commit `8e8263d7017afe3c89d6d1fa9f042e1a949b9678`.

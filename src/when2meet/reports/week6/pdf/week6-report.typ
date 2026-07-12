@@ -84,10 +84,10 @@ All listed team members participated in Sprint 4 product, documentation, reporti
 
 = Repository submission
 
-Public report links use the protected default branch (`main`). Commit-hash permalinks are intentionally omitted from this submission pack.
+*Commit hash (protected default branch):* `#submission.at("commit_hash")`
 
-- Week 6 report index: #link(submission.at("readme_link"))[README.md]
-- Product tree: #link(submission.at("tree_link"))[monorepo/src/when2meet]
+- Week 6 report index: #link(submission.at("readme_link"))[README.md permalink]
+- Product tree at submission commit: #link(submission.at("tree_link"))[monorepo/src/when2meet permalink]
 
 = Private recordings, presentation, and access
 
