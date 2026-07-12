@@ -1,0 +1,53 @@
+team:
+  - name: "Nikita Lisitskiy"
+    email: "n.lisitckii@innopolis.university"
+    github: "keamka"
+    scrum_role: "Product Owner"
+    tech_responsibility: "Backend, product coordination"
+    contributions:
+      - "Sprint 4 Planning and backlog refinement"
+      - "Sprint Review facilitation; customer documentation review and UAT confirmation"
+
+  - name: "Vladislav Konovalov"
+    email: "vl.konovalov@innopolis.university"
+    github: "dofi4ka"
+    scrum_role: "Scrum Master"
+    tech_responsibility: "DevOps, frontend, reporting"
+    contributions:
+      - "Week 6 report assets and Moodle PDF"
+      - "Feedback/transition traceability (#149)"
+      - "Presentation deck (3 SP, 2 days) and rehearsal coordination"
+
+  - name: "Mikhail Istomin"
+    email: "m.istomin@innopolis.university"
+    github: "PoweredDeveloper"
+    scrum_role: "Developer"
+    tech_responsibility: "Frontend, prototype design"
+    contributions:
+      - "Frontend trial-release UX: legend, selected time, room booking UI, participant names"
+
+  - name: "Dmitrii Chudin"
+    email: "d.chudin@innopolis.university"
+    github: "GrigsyChudin"
+    scrum_role: "Developer"
+    tech_responsibility: "Backend"
+    contributions:
+      - "Selected-time and room-booking backend (#136–#139)"
+      - "README / CHANGELOG / roadmap updates (#147, #148)"
+
+  - name: "Timur Khasanov"
+    email: "t.khasanov@innopolis.university"
+    github: "l1berty-dev"
+    scrum_role: "Developer"
+    tech_responsibility: "Backend, QA, documentation"
+    contributions:
+      - "Customer handover documentation (#132 / #133)"
+      - "Sprint Review demo and transcript/summary (#150 / #151)"
+
+non_participants:
+  - name: "Mikhail Istomin"
+    note: "Did not attend the 2026-07-12 Sprint Review/UAT recording; participated in frontend Sprint 4 work."
+  - name: "Dmitrii Chudin"
+    note: "Did not attend the 2026-07-12 Sprint Review/UAT recording; participated via backend PRs and docs PRs."
+  - name: "Vladislav Konovalov"
+    note: "Attended as observer; did not speak on the recording. Participated via report, presentation deck, and feedback traceability."

@@ -1,0 +1,6 @@
+submission:
+  project_name: "When2Meet for InNoHassle"
+  team_number: "21"
+  # Commit-hash permalinks intentionally omitted for this submission pack.
+  readme_link: "https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week6/README.md"
+  tree_link: "https://github.com/one-zero-eight/monorepo/tree/main/src/when2meet"

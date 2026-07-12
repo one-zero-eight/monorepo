@@ -1,6 +1,6 @@
 ## **Sprint 4 Discussion**
 
-**00:00:01 Nikita Lisitckii:** Hi\! Another sprint is coming to an end, and we've got some new changes. Timur will now demonstrate the improvements.
+**00:00:01 Nikita Lisitckii:** Hi! Another sprint is coming to an end, and we've got some new changes. Timur will now demonstrate the improvements.
 
 **00:00:14 Timur Khasanov:** We've taken into account previous feedback and separated the final meeting time selection and room booking into two separate actions. Now, the organizer can select a suitable time slot, save it, and the selected time will be visible to all participants. During the demo, we discovered a bug: currently, the selected time can't be deleted. We'll fix this.
 
@@ -34,7 +34,7 @@
 
 **00:03:02 Customer:** The project looks ready. It would be great if the team would stay in touch to fix bugs and make any further improvements that users might need.
 
-**00:03:19 Nikita Lisitckii: It is also necessary to evaluate** `the README.md` and `Customer Handover.md` files : how complete and understandable they are from the point of view of the customer and the developer who will work on the project.
+**00:03:19 Nikita Lisitckii:** It is also necessary to evaluate the `README.md` and `Customer Handover.md` files: how complete and understandable they are from the point of view of the customer and the developer who will work on the project.
 
 **00:03:46 Customer:** Okay.
 
