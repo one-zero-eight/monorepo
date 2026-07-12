@@ -97,7 +97,7 @@ Public report links use the protected default branch (`main`). Commit-hash perma
   inset: 6pt,
   [*Item*], [*Link / note*],
   [Sprint Review + transition + UAT recording],
-    [#raw(links.at("private").at("sprint_review_uat_recording"))],
+    [#link(links.at("private").at("sprint_review_uat_recording"))[Yandex Disk]],
   [Sprint 4 demonstration timecode], [#raw(links.at("private").at("uat_timecode_review"))],
   [Transition / docs / UAT confirmation timecode], [#raw(links.at("private").at("uat_timecode_transition"))],
   [Rehearsed presentation video (standing)],

@@ -16,8 +16,7 @@ links:
     ci_secret_scan: "https://github.com/one-zero-eight/monorepo/actions/runs/29205022963/job/86682849487"
     ci_lychee: "https://github.com/one-zero-eight/monorepo/actions/runs/29205023037/job/86682849682"
   private:
-    # Replace with the private customer Sprint Review / UAT / transition recording before Moodle upload if different.
-    sprint_review_uat_recording: "REPLACE_WITH_PRIVATE_SPRINT_REVIEW_RECORDING"
+    sprint_review_uat_recording: "https://disk.yandex.ru/d/h6or2Bo33uI4EA"
     uat_timecode_review: "00:00:01 – 00:01:37"
     uat_timecode_transition: "00:01:39 – 00:03:48"
     uat_timecode_docs_uat: "00:01:39 – 00:03:48"

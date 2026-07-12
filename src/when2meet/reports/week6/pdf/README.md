@@ -15,4 +15,3 @@ typst compile src/when2meet/reports/week6/pdf/week6-report.typ \
 ```
 
 Public report links use the `main` branch (no commit-hash permalinks in this pack).
-Before Moodle upload, replace `REPLACE_WITH_PRIVATE_SPRINT_REVIEW_RECORDING` in `data/links.yaml` with the private Sprint Review / UAT / transition recording URL.
