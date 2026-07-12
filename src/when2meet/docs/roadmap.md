@@ -48,12 +48,35 @@
 - [#99](https://github.com/one-zero-eight/monorepo/issues/99) — Redesign availability grid interaction and visual design
 - [#100](https://github.com/one-zero-eight/monorepo/issues/100) — Simplify intersection filter UX
 
-## Continuing Work After Sprint 3
+## Week 6 — Trial Release And Transition Preparation
+**Dates:** Week 6 — 6 July 2026 to 12 July 2026
 
-**Architecture:** Keep stabilizing the When2Meet service boundaries, especially event persistence, participant reply updates, calendar integration, and room-booking integration. Backend contracts should stay documented and aligned with the frontend flow.
+**Course outcome focus:** Move the Sprint 3 customer-reviewed MVP v2 from feature delivery into a trial-release state that can be used by the customer on the hosted pre-production environment.
 
-**Quality:** Continue fixing bugs found during Sprint 3 review, regression testing, and customer usage. Add tests for reply editing, slot-grid changes, intersection calculation, calendar overlays, and room-booking edge cases.
+**Expected outcome:** The product remains usable at `pre.innohassle.ru/when2meet`, known Sprint Review gaps are visible, and the repository contains enough maintained evidence to support final review and handover.
 
-**UI and UX:** Continue editing the calendar view UI so busy slots, selected availability, conflicts, and heatmap/intersection states are visually clear on desktop and mobile.
+**Planned work:**
+- Trial-release verification for the deployed frontend, API, Swagger UI, and core meeting flow.
+- Maintenance fixes for Sprint Review feedback: hide-calendar-events toggle, clearer selected-slot legend, room-booking lifecycle clarity, participant deletion confirmation, and richer participant identity display where feasible.
+- Quality work: keep pytest, coverage, QRTs, CI, and secret scan green; preserve the Assignment 4 and 5 quality gates.
+- Documentation work: keep interface, testing, architecture, quality, UAT, and development-process docs aligned with the actual implementation.
+- Transition work: prepare customer handover boundaries, current access notes, deployment ownership notes, configuration expectations, limitations, and recovery guidance.
 
-**Process:** Keep linking implementation work to GitHub issues, update acceptance criteria when customer feedback changes scope, and verify completed work against the Definition of Done before closing issues.
+## Week 7 — Final MVP v3 Delivery
+**Dates:** Week 7 — 13 July 2026 to 19 July 2026
+
+**Planned release:** MVP v3, the final course delivery.
+
+**Course outcome focus:** Deliver a final, customer-reviewable course increment without extending the roadmap into speculative post-course releases.
+
+**Expected outcome by the end of the course:** When2Meet is ready for independent customer use on the InNoHassle pre-production deployment. The customer can create meetings, share links, collect participant availability, inspect the heatmap, use participant filters and room-booking support, and rely on maintained public documentation for current behavior, API contracts, testing, quality requirements, deployment model, limitations, and recovery expectations.
+
+**Remaining work before final delivery:**
+- Complete the final trial-release smoke check on the hosted product and API.
+- Close or explicitly document remaining Sprint Review follow-ups that are not part of MVP v3.
+- Confirm transition scope: repository/docs are available; runtime secrets, deployment host access, GitHub administration, and production-like operations remain with the team or InNoHassle maintainers unless explicitly transferred.
+- Finalize customer handover documentation without exposing private credentials, recordings, timecodes, consent evidence, or customer-identifying data.
+- Verify quality gates: relevant pytest checks, coverage gates for critical modules, QRTs, CI, secret scan, and documentation traceability.
+- Update release evidence and changelog for the final MVP v3 delivery.
+
+**End-of-course state:** The course ends with a maintained, deployed MVP v3 and documented handover status. Further customer-side operation, production ownership transfer, monitoring, rollback authority, and secret-rotation responsibility are outside the course roadmap unless separately agreed.
