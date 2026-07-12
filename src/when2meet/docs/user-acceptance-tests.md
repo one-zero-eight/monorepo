@@ -1,6 +1,6 @@
 # User Acceptance Tests
 
-Maintained end-user-facing acceptance scenarios for When2Meet. Execution results for Assignment 4 (Sprint 2) are recorded below without private customer-identifying details.
+Maintained end-user-facing acceptance scenarios for When2Meet. Customer execution results and scenarios awaiting execution are recorded below without private customer-identifying details.
 
 ## UAT-001 — Choose a meeting time with calendar-event awareness
 
@@ -9,8 +9,9 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 **Status:** Active
 **Result (Week 4):** Not executed — reverse calendar overlay not implemented in this increment
 **Result (Week 5):** Passed with change request — overlay works on desktop and mobile; customer requested hide-calendar toggle
-**Executed by:** Vladislav Konovalov (demo); customer observed UAT segment
-**Execution date:** 2026-07-05
+**Result (Week 6):** Passed — InNoHassle Calendar events appear in the corresponding availability-grid time slots
+**Executed by:** Lisitskii Nikita (demo)
+**Execution date:** 2026-07-12
 **Evidence:** [Sprint Review transcript](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week5/sprint-review-transcript.md); private recording (Moodle only)
 
 ### Preconditions
@@ -23,25 +24,24 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 1. Open the meeting invitation.
 2. View the availability grid.
 3. Verify that the existing calendar event is marked at Tuesday 10:00–11:00.
-4. Select **Hide calendar events**.
-5. Verify that calendar-event markings are hidden.
-6. Select availability for a time slot that overlaps the calendar event.
-7. View the meeting heatmap or availability summary.
+4. Select availability for a time slot that overlaps the calendar event.
+5. View the meeting heatmap or availability summary.
 
 ### Expected result
 
-- Calendar events are visible on their relevant time slots when the grid opens.
-- The participant can hide calendar events using the provided control.
+- InNoHassle Calendar events are visible on their relevant time slots when the grid opens.
 - Selecting a conflicting time remains possible, but the system clearly indicates that it conflicts with the participant's calendar event.
 
 ### Feedback
 
-- Customer requested reverse calendar integration during Sprint Review; export to external calendar works, import overlay does not → [#92](https://github.com/one-zero-eight/monorepo/issues/92).
+- The requested reverse calendar integration now displays InNoHassle Calendar events on the time grid → [#92](https://github.com/one-zero-eight/monorepo/issues/92).
+- The hide-calendar-events toggle remains a separate follow-up from the Week 5 change request.
 
 ### History
 
 | Date | Version | Result | Notes |
 |---|---|---|---|
+| 2026-07-12 | Trial release | Passed | InNoHassle Calendar events displayed in the availability grid |
 | 2026-07-05 | 2.0 | Passed (change request) | Hide-calendar toggle requested |
 | 2026-06-27 | 1.0 | Not executed | Reverse calendar integration deferred to backlog |
 | — | 1.0 | Not executed | Initial scenario |
@@ -93,41 +93,49 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 
 ## UAT-003 — Book an available room for a selected meeting time
 
-**Traceability:** US-007
+**Traceability:** US-007; [#126](https://github.com/one-zero-eight/monorepo/issues/126); [#128](https://github.com/one-zero-eight/monorepo/issues/128); [#129](https://github.com/one-zero-eight/monorepo/issues/129)
 **Role:** Meeting organizer
 **Status:** Active
 **Result (Week 4):** Partial — modal and room list work; explicit booking time not confirmed
 **Result (Week 5):** Partial — free-room selection works; booking state, optional flow, calendar link, and participant calendar push incomplete
-**Executed by:** Vladislav Konovalov (demo); customer observed UAT segment
-**Execution date:** 2026-07-05
-**Evidence:** [Sprint Review transcript](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week5/sprint-review-transcript.md); private recording (Moodle only)
+**Result (Week 6):** Passed — exact meeting-time selection, eligible-room lookup, booking, and persisted booking state work as expected
+**Executed by:** Lisitskii Nikita (demo)
+**Execution date:** 2026-07-12
+**Evidence:** [Sprint Review transcript](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week5/sprint-review-transcript.md); [API contract](interface.md#book-room); [automated contract tests](../../../tests/when2meet/test_events.py); private recording (Moodle only)
 
 ### Preconditions
 
 - A meeting has participant availability on the grid.
+- The organizer has selected an exact start and end time for the meeting.
 - At least one room is available in the test environment.
 
 ### Steps
 
-1. Open the meeting details.
-2. Select **Book a room**.
-3. Review the list of available rooms.
-4. Select one available room and confirm.
+1. Open the meeting details and review participant availability.
+2. Select an exact meeting start and end time.
+3. Select **Book a room**.
+4. Review the rooms that are free and bookable for the complete selected time window.
+5. Select one available room and confirm.
+6. Reload the meeting details.
 
 ### Expected result
 
 - The organizer sees rooms available for the selected meeting time.
-- The system asks which specific time to book when multiple or zero intersections exist.
-- The meeting details show the booked room with the correct date and time.
+- Rooms that are busy, unavailable for part of the selected window, or not bookable by the organizer are excluded.
+- The confirmed reservation uses the selected meeting start and end time.
+- The meeting details retain the booked room and booking reference after reload.
+- A second booking attempt is rejected while the meeting already has a booked room.
 
 ### Feedback
 
 - Customer asked which reservation time is used; team acknowledged the flow must ask explicitly and handle multiple/zero intersection edge cases → [#93](https://github.com/one-zero-eight/monorepo/issues/93).
+- Week 6 work added explicit selected meeting time, availability checks through Room Booking, persistent booking state, and concurrent-booking protection.
 
 ### History
 
 | Date | Version | Result | Notes |
 |---|---|---|---|
+| 2026-07-12 | Trial release | Passed | Exact-time room booking lifecycle verified during demo |
 | 2026-07-05 | 2.0 | Partial | Room reservation works; lifecycle and calendar push incomplete |
 | 2026-06-27 | 1.0 | Partial | Room modal works; time-selection logic incomplete |
 | — | 1.0 | Not executed | Initial scenario |
@@ -211,3 +219,45 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Execution results
 |---|---|---|---|
 | 2026-07-05 | 2.0 | Passed | Demonstrated during Sprint Review |
 | — | 2.0 | Not executed | Initial scenario for MVP v2 |
+
+---
+
+## UAT-006 — Change or cancel a booked room
+
+**Traceability:** US-007; [#139](https://github.com/one-zero-eight/monorepo/pull/139)
+**Role:** Meeting organizer
+**Status:** Active
+**Result (Week 6):** Passed — changing, synchronizing, and canceling a booked room work as expected
+**Executed by:** Lisitskii Nikita (demo)
+**Execution date:** 2026-07-12
+**Evidence:** [API contract](interface.md#change-booked-room); [automated contract tests](../../../tests/when2meet/test_events.py)
+
+### Preconditions
+
+- The organizer has a meeting with an exact selected time and a booked room.
+- A second room is available for the complete selected meeting time.
+
+### Steps
+
+1. Open the meeting details and note the booked room.
+2. Change the reservation to the second available room.
+3. Reload the meeting and verify the new room remains selected.
+4. Change the meeting title and selected time.
+5. Verify the booked-room reservation reflects the new title and time.
+6. Cancel the room reservation.
+7. Reload the meeting details.
+
+### Expected result
+
+- Changing rooms creates the new reservation, cancels the previous reservation, and stores the new room on the meeting.
+- Changing the meeting title or selected time updates the existing room reservation.
+- The selected meeting time cannot be cleared while a room is booked.
+- Canceling removes the external reservation and clears the booked room from the meeting.
+- Deleting a meeting with a booked room also cancels its room reservation.
+- Only the meeting organizer can book, change, or cancel a room.
+
+### History
+
+| Date | Version | Result | Notes |
+|---|---|---|---|
+| 2026-07-12 | Trial release | Passed | Booking change, synchronization, cancellation, and cleanup verified during demo |
