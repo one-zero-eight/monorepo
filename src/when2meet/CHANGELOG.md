@@ -5,11 +5,38 @@ Releases follow [SemVer](https://semver.org/) and map to MVP increments.
 
 ## [Unreleased]
 
+### Planned for MVP v3 (Sprint 5 / Week 7)
+
+- Move heatmap legend to the top of the interface.
+- Allow clearing or replacing the selected final meeting time when no room is booked.
+- Mobile validation with the customer before final release.
+
+## [0.3.0] — Week 6 Trial Release (Sprint 4 / Assignment 6)
+
+**Release date:** 2026-07-12
+**Sprint milestone:** [Sprint 4](https://github.com/one-zero-eight/monorepo/milestone/4)
+**Week 6 report:** [reports/week6/README.md](reports/week6/README.md)
+**Customer handover:** [docs/customer-handover.md](docs/customer-handover.md)
+
+Week 6 trial / handover-candidate release for Assignment 6. Deployed at [pre.innohassle.ru/when2meet](https://pre.innohassle.ru/when2meet).
+
 ### Added
 
-- Customer handover documentation covering current access, deployment, configuration, recovery, verification, limitations, and handover status.
-- Root README summary for When2Meet with product status, current features, access links, setup/deployment guidance, and maintained documentation links.
-- Roadmap update for the Week 6 trial release, Week 7 transition work, and planned final MVP v3 course delivery.
+- Selected meeting time persistence and display for organizers and participants ([#126](https://github.com/one-zero-eight/monorepo/issues/126), [#127](https://github.com/one-zero-eight/monorepo/issues/127)).
+- Room booking lifecycle: list available rooms, book, show booked room, change, and cancel ([#128](https://github.com/one-zero-eight/monorepo/issues/128), [#129](https://github.com/one-zero-eight/monorepo/issues/129), [#130](https://github.com/one-zero-eight/monorepo/issues/130)).
+- Heatmap legend distinguishing personal selection from aggregate availability ([#124](https://github.com/one-zero-eight/monorepo/issues/124)).
+- Participant / event names on overlapping timeslots ([#131](https://github.com/one-zero-eight/monorepo/issues/131)).
+- Customer handover documentation covering access, deployment, configuration, recovery, verification, limitations, and handover status ([#132](https://github.com/one-zero-eight/monorepo/issues/132)).
+- Root README When2Meet entry point with product status, access links, and maintained documentation links.
+
+### Changed
+
+- Separated final meeting-time selection from optional room booking controls ([#125](https://github.com/one-zero-eight/monorepo/issues/125)).
+- Roadmap updated for Sprint 4 trial release and Sprint 5 / MVP v3 final delivery.
+
+### Known gaps after Sprint 4 Review
+
+- Move heatmap legend to the top; allow clearing selected final time; validate mobile before MVP v3 (see [sprint-review-summary.md](reports/week6/sprint-review-summary.md)).
 
 ## [0.2.0] — MVP v2 (Sprint 3 / Assignment 5)
 

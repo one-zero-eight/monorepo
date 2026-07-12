@@ -48,35 +48,39 @@
 - [#99](https://github.com/one-zero-eight/monorepo/issues/99) — Redesign availability grid interaction and visual design
 - [#100](https://github.com/one-zero-eight/monorepo/issues/100) — Simplify intersection filter UX
 
-## Week 6 — Trial Release And Transition Preparation
+## Sprint 4 — Week 6 Trial Release And Transition Preparation
+**Milestone:** [Sprint 4](https://github.com/one-zero-eight/monorepo/milestone/4)
 **Dates:** Week 6 — 6 July 2026 to 12 July 2026
 
-**Course outcome focus:** Move the Sprint 3 customer-reviewed MVP v2 from feature delivery into a trial-release state that can be used by the customer on the hosted pre-production environment.
+**Sprint Goal:** Deliver a stable Week 6 trial / handover-candidate release with clearer final-time and room-booking flows, heatmap readability improvements, maintained customer-handover documentation, and transition-readiness evidence for the customer trial.
 
-**Expected outcome:** The product remains usable at `pre.innohassle.ru/when2meet`, known Sprint Review gaps are visible, and the repository contains enough maintained evidence to support final review and handover.
+**Focus / expected outcome:** Customer can trial the hosted product at `pre.innohassle.ru/when2meet`, customer-facing docs are reviewed, and Week 7 follow-up is explicit.
 
-**Planned work:**
-- Trial-release verification for the deployed frontend, API, Swagger UI, and core meeting flow.
-- Maintenance fixes for Sprint Review feedback: hide-calendar-events toggle, clearer selected-slot legend, room-booking lifecycle clarity, participant deletion confirmation, and richer participant identity display where feasible.
-- Quality work: keep pytest, coverage, QRTs, CI, and secret scan green; preserve the Assignment 4 and 5 quality gates.
-- Documentation work: keep interface, testing, architecture, quality, UAT, and development-process docs aligned with the actual implementation.
-- Transition work: prepare customer handover boundaries, current access notes, deployment ownership notes, configuration expectations, limitations, and recovery guidance.
+**Selected Sprint PBIs (examples):**
+- [#124](https://github.com/one-zero-eight/monorepo/issues/124) — Heatmap legend
+- [#125](https://github.com/one-zero-eight/monorepo/issues/125) — Rename Book Room / timeslot UX
+- [#126](https://github.com/one-zero-eight/monorepo/issues/126) / [#127](https://github.com/one-zero-eight/monorepo/issues/127) — Selected meeting time
+- [#128](https://github.com/one-zero-eight/monorepo/issues/128)–[#130](https://github.com/one-zero-eight/monorepo/issues/130) — Room booking lifecycle
+- [#131](https://github.com/one-zero-eight/monorepo/issues/131) — Event / participant names on slots
+- [#132](https://github.com/one-zero-eight/monorepo/issues/132) — Customer handover documentation
+- [#150](https://github.com/one-zero-eight/monorepo/issues/150) — Sprint 4 Review and Week 6 outcomes
 
-## Week 7 — Final MVP v3 Delivery
+**Status after Week 6:** Trial release delivered and customer-reviewed. Documentation (`README.md`, `docs/customer-handover.md`) accepted. UAT critical flows accepted. Follow-ups: legend top placement, selected-time clear, mobile validation.
+
+## Sprint 5 — Final MVP v3 Delivery
+**Milestone:** [Sprint 5](https://github.com/one-zero-eight/monorepo/milestone/5)
 **Dates:** Week 7 — 13 July 2026 to 19 July 2026
+
+**Sprint Goal:** Use Week 6 trial feedback to complete follow-up maintenance, confirm final transition, and deliver the final course version `MVP v3`.
 
 **Planned release:** MVP v3, the final course delivery.
 
-**Course outcome focus:** Deliver a final, customer-reviewable course increment without extending the roadmap into speculative post-course releases.
+**Expected follow-up scope (depends on Week 6 feedback):**
+- [#146](https://github.com/one-zero-eight/monorepo/issues/146) — Convert Week 6 trial feedback and blockers into Sprint 5 PBIs
+- Move heatmap legend to the top; allow clearing selected final meeting time; mobile validation
+- Final transition confirmation and customer-confirmation status for `docs/customer-handover.md`
+- Final SemVer release mapped to MVP v3 and public sanitized demo video
 
-**Expected outcome by the end of the course:** When2Meet is ready for independent customer use on the InNoHassle pre-production deployment. The customer can create meetings, share links, collect participant availability, inspect the heatmap, use participant filters and room-booking support, and rely on maintained public documentation for current behavior, API contracts, testing, quality requirements, deployment model, limitations, and recovery expectations.
-
-**Remaining work before final delivery:**
-- Complete the final trial-release smoke check on the hosted product and API.
-- Close or explicitly document remaining Sprint Review follow-ups that are not part of MVP v3.
-- Confirm transition scope: repository/docs are available; runtime secrets, deployment host access, GitHub administration, and production-like operations remain with the team or InNoHassle maintainers unless explicitly transferred.
-- Finalize customer handover documentation without exposing private credentials, recordings, timecodes, consent evidence, or customer-identifying data.
-- Verify quality gates: relevant pytest checks, coverage gates for critical modules, QRTs, CI, secret scan, and documentation traceability.
-- Update release evidence and changelog for the final MVP v3 delivery.
+**Expected outcome by the end of the course:** When2Meet is ready for independent customer use on the InNoHassle pre-production deployment, with maintained documentation for behavior, API contracts, testing, quality requirements, deployment model, limitations, and recovery expectations.
 
 **End-of-course state:** The course ends with a maintained, deployed MVP v3 and documented handover status. Further customer-side operation, production ownership transfer, monitoring, rollback authority, and secret-rotation responsibility are outside the course roadmap unless separately agreed.

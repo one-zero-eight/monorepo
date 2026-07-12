@@ -23,15 +23,15 @@ This is the monorepo for some of the backend services of InNoHassle ecosystem, a
 
 **Project goal:** Help InNoHassle users choose a meeting time with less back-and-forth by combining shared availability, participant context, calendar awareness, and room-booking support.
 
-**Current status:** MVP v2 is deployed to the InNoHassle pre-production environment and customer-reviewed after Sprint 3. Week 6/7 work prepares the trial release, transition documentation, and final MVP v3 course delivery; see the [roadmap](src/when2meet/docs/roadmap.md).
+**Current status:** Week 6 trial release (0.3.0) is deployed to the InNoHassle pre-production environment, customer-reviewed after Sprint 4, and accepted for independent trial use. Week 7 delivers final MVP v3; see the [roadmap](src/when2meet/docs/roadmap.md).
 
 **Current features:**
 
 - Create a meeting with candidate time slots and share an invitation link.
 - Submit participant availability and edit stored replies through the supported flow.
-- View aggregated availability as a heatmap with participant search/filtering.
+- View aggregated availability as a heatmap with participant search/filtering and a legend for personal selection.
 - Use personal calendar context while choosing availability.
-- Select an available room from the meeting heatmap flow.
+- Select a final meeting time, then optionally book, change, or cancel a room for that window.
 
 **Access and guidance:**
 
@@ -57,6 +57,7 @@ This is the monorepo for some of the backend services of InNoHassle ecosystem, a
 - [User acceptance tests](src/when2meet/docs/user-acceptance-tests.md)
 - [Definition of Done](src/when2meet/docs/definition-of-done.md)
 - [Development process](src/when2meet/docs/development-process.md)
+- [Week 6 report](src/when2meet/reports/week6/README.md)
 - [Week 5 report](src/when2meet/reports/week5/README.md)
 
 ### Technologies

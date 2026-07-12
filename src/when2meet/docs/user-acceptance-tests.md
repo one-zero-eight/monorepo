@@ -12,7 +12,7 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Customer executio
 **Result (Week 6):** Passed — InNoHassle Calendar events appear in the corresponding availability-grid time slots
 **Executed by:** Lisitskii Nikita (demo)
 **Execution date:** 2026-07-12
-**Evidence:** [Sprint Review transcript](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week5/sprint-review-transcript.md); private recording (Moodle only)
+**Evidence:** [Sprint Review transcript](../reports/week6/sprint-review-transcript.md); private recording (Moodle only)
 
 ### Preconditions
 
@@ -101,7 +101,7 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Customer executio
 **Result (Week 6):** Passed — exact meeting-time selection, eligible-room lookup, booking, and persisted booking state work as expected
 **Executed by:** Lisitskii Nikita (demo)
 **Execution date:** 2026-07-12
-**Evidence:** [Sprint Review transcript](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week5/sprint-review-transcript.md); [API contract](interface.md#book-room); [automated contract tests](../../../tests/when2meet/test_events.py); private recording (Moodle only)
+**Evidence:** [Sprint Review transcript](../reports/week6/sprint-review-transcript.md); [API contract](interface.md#book-room); [automated contract tests](../../../tests/when2meet/test_events.py); private recording (Moodle only)
 
 ### Preconditions
 
@@ -144,13 +144,14 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Customer executio
 
 ## UAT-004 — Distinguish my selected slots on the availability grid
 
-**Traceability:** [#99](https://github.com/one-zero-eight/monorepo/issues/99); [#94](https://github.com/one-zero-eight/monorepo/issues/94)
+**Traceability:** [#99](https://github.com/one-zero-eight/monorepo/issues/99); [#94](https://github.com/one-zero-eight/monorepo/issues/94); [#124](https://github.com/one-zero-eight/monorepo/issues/124)
 **Role:** Meeting participant / organizer
 **Status:** Active
 **Result (Week 5):** Passed with change request — border visible; customer requested a legend
-**Executed by:** Vladislav Konovalov (demo); customer observed UAT segment
-**Execution date:** 2026-07-05
-**Evidence:** [Sprint Review summary](../reports/week5/sprint-review-summary.md); private recording (Moodle only)
+**Result (Week 6):** Passed with change request — legend delivered; customer asked to move it from bottom to top
+**Executed by:** Timur Khasanov (demo); customer observed UAT segment
+**Execution date:** 2026-07-12
+**Evidence:** [Sprint Review summary](../reports/week6/sprint-review-summary.md); [Sprint Review transcript](../reports/week6/sprint-review-transcript.md); private recording (Moodle only)
 
 ### Preconditions
 
@@ -172,11 +173,13 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Customer executio
 ### Feedback
 
 - Customer approved the border approach only with an added legend explaining “my time” vs aggregate availability.
+- Week 6: legend is present; customer asked to place it at the top of the interface rather than the bottom.
 
 ### History
 
 | Date | Version | Result | Notes |
 |---|---|---|---|
+| 2026-07-12 | Trial release | Passed (change request) | Legend delivered; move to top requested |
 | 2026-07-05 | 2.0 | Passed (change request) | Legend requested |
 | — | 2.0 | Not executed | Initial scenario for MVP v2 |
 
