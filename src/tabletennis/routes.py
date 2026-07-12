@@ -5,7 +5,7 @@ import datetime as dtm
 import uuid
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 from pydantic import EmailStr
 
@@ -57,21 +57,9 @@ async def resolve_player(player_id: str | None = None, email: str | None = None)
 
 async def format_player_data(player: Player) -> dict[str, Any]:
     """Format player data with name from InNoHassle Accounts (fallback to local nickname) and activity status."""
-    try:
-        acc = await inh_accounts.get_user(innohassle_id=player.innohassle_id)
-        if acc and acc.innopolis_info:
-            name = acc.innopolis_info.name
-        else:
-            name = player.nickname
-    except Exception as e:  # noqa: BLE001
-        # Ожидаемо для тестовых innohassle_id, которых нет в реальной InNoHassle Accounts
-        # (например при локальном тестировании без email-системы) - не шумим на ERROR.
-        logger.warning(f"Could not enrich name for {player.innohassle_id} from InNoHassle Accounts: {e}")
-        name = player.nickname
 
     player_dict = player.model_dump(mode="json")
 
-    player_dict["name"] = name
     player_dict["is_active"] = isactive(player.last_game)
 
     if "_id" in player_dict:
@@ -208,6 +196,52 @@ async def get_games(auth: INH_TOKEN_AUTH) -> list[dict[str, Any]]:
         result.append(game_dict)
 
     return result
+
+
+@router.get("/get-games-by-id")
+async def get_games_by_id(auth: INH_TOKEN_AUTH, ids: list[str] = Query(...)) -> dict[str, Any]:  # noqa: B008
+    """
+    Returns detailed info for a list of games by their game_id: scores, finished status,
+    both players' current nicknames and ratings, and the tournament they belong to.
+    Unknown/not-found ids are reported separately instead of silently dropped.
+    """
+    games = await Game.find({"game_id": {"$in": ids}}).to_list()
+
+    tour_ids = {g.tour_id for g in games}
+    tournaments = await Tournament.find({"tour_id": {"$in": list(tour_ids)}}).to_list()
+    tournaments_by_id = {t.tour_id: t for t in tournaments}
+
+    player_ids = {g.player1_id for g in games} | {g.player2_id for g in games}
+    players = await Player.find({"innohassle_id": {"$in": list(player_ids)}}).to_list()
+    players_by_id = {p.innohassle_id: p for p in players}
+
+    def player_summary(p_id: str) -> dict[str, Any]:
+        player = players_by_id.get(p_id)
+        return {
+            "innohassle_id": p_id,
+            "nickname": player.nickname if player else None,
+            "rating": player.rating if player else None,
+            "registered": player is not None,
+        }
+
+    result = []
+    for game in games:
+        tournament = tournaments_by_id.get(game.tour_id)
+        result.append(
+            {
+                "game_id": game.game_id,
+                "tour_id": game.tour_id,
+                "tournament_name": tournament.name if tournament else None,
+                "finished": game.finished,
+                "player1": {**player_summary(game.player1_id), "score": game.player1_score},
+                "player2": {**player_summary(game.player2_id), "score": game.player2_score},
+            }
+        )
+
+    found_ids = {g["game_id"] for g in result}
+    missing_ids = [i for i in ids if i not in found_ids]
+
+    return {"total_found": len(result), "games": result, "missing_ids": missing_ids}
 
 
 @router.get("/ping")
