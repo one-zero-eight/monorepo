@@ -12,9 +12,9 @@ links:
     hosted_docs: "https://one-zero-eight.github.io/monorepo/"
     changelog: "https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/CHANGELOG.md"
     customer_handover: "https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/docs/customer-handover.md"
-    ci_tests: "https://github.com/one-zero-eight/monorepo/actions/runs/29205022989/job/86682849726"
-    ci_secret_scan: "https://github.com/one-zero-eight/monorepo/actions/runs/29205022963/job/86682849487"
-    ci_lychee: "https://github.com/one-zero-eight/monorepo/actions/runs/29205023037/job/86682849682"
+    ci_tests: "https://github.com/one-zero-eight/monorepo/actions/runs/29208245829/job/86691354958"
+    ci_secret_scan: "https://github.com/one-zero-eight/monorepo/actions/runs/29208245785/job/86691354705"
+    ci_lychee: "https://github.com/one-zero-eight/monorepo/actions/runs/29208245814/job/86691354815"
   private:
     sprint_review_uat_recording: "https://disk.yandex.ru/d/h6or2Bo33uI4EA"
     uat_timecode_review: "00:00:01 – 00:01:37"
