@@ -8,6 +8,7 @@ Releases follow [SemVer](https://semver.org/) and map to MVP increments.
 ### Added
 
 - Customer handover documentation covering current access, deployment, configuration, recovery, verification, limitations, and handover status.
+- Root README summary for When2Meet with product status, current features, access links, setup/deployment guidance, and maintained documentation links.
 - Roadmap update for the Week 6 trial release, Week 7 transition work, and planned final MVP v3 course delivery.
 
 ## [0.2.0] — MVP v2 (Sprint 3 / Assignment 5)

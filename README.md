@@ -1,10 +1,4 @@
-# InNoHassle monorepo
-
-## Table of contents
-
-Did you know that GitHub supports table of
-contents [by default](https://github.blog/changelog/2021-04-13-table-of-contents-support-in-markdown-files/) 🤔
-
+# InNoHassle Monorepo
 
 ## About
 
@@ -19,7 +13,51 @@ This is the monorepo for some of the backend services of InNoHassle ecosystem, a
 - Schedule Assistant - build and manage academic schedules, validate placement issues.
 - Student Affairs - omnidesk authentication via SSO for Student Affairs department to issue tickets.
 - Table Tennis - leaderboard and queue for the [Innopolis University table tennis club](https://innohassle.ru/clubs/inno-table-tennis).
-- When2Meet - service for meeting availability planning. Hosted docs: [one-zero-eight.github.io/monorepo](https://one-zero-eight.github.io/monorepo/), development process: [docs/development-process.md](src/when2meet/docs/development-process.md), architecture: [docs/architecture/README.md](src/when2meet/docs/architecture/README.md), Week 5 report: [reports/week5](https://github.com/one-zero-eight/monorepo/tree/main/src/when2meet/reports/week5).
+- When2Meet - meeting availability planner for the InNoHassle ecosystem.
+
+## When2Meet
+
+**Project name:** When2Meet
+
+**One-line description:** InNoHassle meeting availability planner where organizers create a shared time grid, participants mark free slots, and the product shows the best intersections as a heatmap.
+
+**Project goal:** Help InNoHassle users choose a meeting time with less back-and-forth by combining shared availability, participant context, calendar awareness, and room-booking support.
+
+**Current status:** MVP v2 is deployed to the InNoHassle pre-production environment and customer-reviewed after Sprint 3. Week 6/7 work prepares the trial release, transition documentation, and final MVP v3 course delivery; see the [roadmap](src/when2meet/docs/roadmap.md).
+
+**Current features:**
+
+- Create a meeting with candidate time slots and share an invitation link.
+- Submit participant availability and edit stored replies through the supported flow.
+- View aggregated availability as a heatmap with participant search/filtering.
+- Use personal calendar context while choosing availability.
+- Select an available room from the meeting heatmap flow.
+
+**Access and guidance:**
+
+| Resource | Link |
+|---|---|
+| Product access | [pre.innohassle.ru/when2meet](https://pre.innohassle.ru/when2meet) |
+| Hosted documentation | [one-zero-eight.github.io/monorepo](https://one-zero-eight.github.io/monorepo/) |
+| API / Swagger | [api.innohassle.ru/when2meet/v0/docs](https://api.innohassle.ru/when2meet/v0/docs) |
+| Usage guidance | [Customer access and use](src/when2meet/docs/customer-handover.md#customer-access-and-use) |
+| Local setup and run | [Customer handover: local setup](src/when2meet/docs/customer-handover.md#local-setup) and [Development: console run commands](#development) |
+| Deployment instructions | [Customer handover: deployment](src/when2meet/docs/customer-handover.md#deployment) |
+| Contributing | [CONTRIBUTING.md](https://github.com/one-zero-eight/.github/blob/main/CONTRIBUTING.md) |
+| Agent instructions | [AGENTS.md](AGENTS.md) |
+| Customer handover | [docs/customer-handover.md](src/when2meet/docs/customer-handover.md) |
+
+**Maintained documentation for customers and TA reviewers:**
+
+- [Interface](src/when2meet/docs/interface.md)
+- [Architecture and diagrams](src/when2meet/docs/architecture/README.md)
+- [Testing strategy](src/when2meet/docs/testing.md)
+- [Quality requirements](src/when2meet/docs/quality-requirements.md)
+- [Quality requirement tests](src/when2meet/docs/quality-requirement-tests.md)
+- [User acceptance tests](src/when2meet/docs/user-acceptance-tests.md)
+- [Definition of Done](src/when2meet/docs/definition-of-done.md)
+- [Development process](src/when2meet/docs/development-process.md)
+- [Week 5 report](src/when2meet/reports/week5/README.md)
 
 ### Technologies
 
