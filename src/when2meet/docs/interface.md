@@ -131,7 +131,7 @@ Availability can include slots outside the current meeting grid; existing hidden
   - `400 Bad Request` — selected meeting time is not set.
   - `404 Not Found` — meeting does not exist.
 
-Returns rooms that are free for the full selected meeting time window and bookable by the authenticated user according to Room Booking rules. Room metadata includes `id`, `name`, `capacity`, and `location`.
+Returns rooms that are free for the full selected meeting time window and bookable by the authenticated user according to Room Booking rules. The selected time must include an explicit timezone offset, and that exact offset is forwarded to Room Booking. Room metadata includes `id`, `name`, `capacity`, and `location`.
 
 ### Book Room
 
@@ -151,7 +151,7 @@ Returns rooms that are free for the full selected meeting time window and bookab
   - `404 Not Found` — meeting or room does not exist.
   - `409 Conflict` — the meeting already has a booked room.
 
-Books the requested room through the Room Booking service for the meeting's selected time window, then stores the booking reference on the meeting.
+Books the requested room through the Room Booking service for the meeting's selected time window, using the timezone offset provided in `selected_time`, then stores the booking reference on the meeting.
 
 ### Change Booked Room
 

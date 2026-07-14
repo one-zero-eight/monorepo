@@ -614,6 +614,48 @@ def test_available_rooms_returns_only_rooms_free_for_full_selected_time(
     }
 
 
+def test_available_rooms_forwards_selected_time_timezone_to_room_booking(
+    when2meet_client: TestClient,
+    user_headers,
+):
+    """Verify room availability forwards the selected time offset without guessing from meeting timezone."""
+    create_resp = when2meet_client.post(
+        "/api/v0/meetings",
+        json={
+            "name": "Moscow Room Search",
+            "slots": ["2026-06-15T10:00:00Z"],
+            "timezone": "UTC",
+        },
+        headers=user_headers,
+    )
+    event_id = create_resp.json()["id"]
+    selected_time = {"start": "2026-06-15T10:00:00+03:00", "end": "2026-06-15T11:00:00+03:00"}
+    when2meet_client.patch(f"/api/v0/meetings/{event_id}", json={"selected_time": selected_time}, headers=user_headers)
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.get(f"{ROOM_BOOKING_API_URL}/rooms/").mock(
+            return_value=httpx.Response(
+                200,
+                json=[{"id": "3.2", "title": "Meeting Room 3.2", "short_name": "3.2", "capacity": 12}],
+            )
+        )
+        bookings_route = respx_mock.get(f"{ROOM_BOOKING_API_URL}/bookings/").mock(
+            return_value=httpx.Response(200, json=[])
+        )
+        can_book_route = respx_mock.get(f"{ROOM_BOOKING_API_URL}/room/3.2/can-book").mock(
+            return_value=httpx.Response(200, json={"can_book": True, "reason_why_cannot": ""})
+        )
+        response = when2meet_client.get(f"/api/v0/meetings/{event_id}/available-rooms", headers=user_headers)
+
+    assert response.status_code == 200
+    assert bookings_route.calls.last is not None
+    assert bookings_route.calls.last.request.url.params["start"] == "2026-06-15T10:00:00+03:00"
+    assert bookings_route.calls.last.request.url.params["end"] == "2026-06-15T11:00:00+03:00"
+    assert can_book_route.calls.last is not None
+    assert can_book_route.calls.last.request.url.params["start"] == "2026-06-15T10:00:00+03:00"
+    assert can_book_route.calls.last.request.url.params["end"] == "2026-06-15T11:00:00+03:00"
+
+
 def test_available_rooms_returns_bad_gateway_when_room_booking_fails(
     when2meet_client: TestClient,
     user_headers,
@@ -695,6 +737,48 @@ def test_owner_books_room_for_selected_meeting_time(
     get_response = when2meet_client.get(f"/api/v0/meetings/{event_id}", headers=user_headers)
     assert get_response.status_code == 200
     assert get_response.json()["booked_room"] == response.json()["booked_room"]
+
+
+def test_book_room_forwards_selected_time_timezone_to_room_booking(
+    when2meet_client: TestClient,
+    user_headers,
+):
+    """Verify room booking forwards the selected time offset without guessing from meeting timezone."""
+    create_resp = when2meet_client.post(
+        "/api/v0/meetings",
+        json={
+            "name": "Moscow Room Booking",
+            "slots": ["2026-06-15T10:00:00Z"],
+            "timezone": "UTC",
+        },
+        headers=user_headers,
+    )
+    event_id = create_resp.json()["id"]
+    selected_time = {"start": "2026-06-15T10:00:00+03:00", "end": "2026-06-15T11:00:00+03:00"}
+    when2meet_client.patch(f"/api/v0/meetings/{event_id}", json={"selected_time": selected_time}, headers=user_headers)
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        can_book_route = respx_mock.get(f"{ROOM_BOOKING_API_URL}/room/3.2/can-book").mock(
+            return_value=httpx.Response(200, json={"can_book": True, "reason_why_cannot": ""})
+        )
+        booking_route = respx_mock.post(f"{ROOM_BOOKING_API_URL}/bookings/").mock(
+            return_value=httpx.Response(200, json=_created_booking("3.2"))
+        )
+        response = when2meet_client.post(
+            f"/api/v0/meetings/{event_id}/book-room",
+            json={"room_id": "3.2"},
+            headers=user_headers,
+        )
+
+    assert response.status_code == 200
+    assert can_book_route.calls.last is not None
+    assert can_book_route.calls.last.request.url.params["start"] == "2026-06-15T10:00:00+03:00"
+    assert can_book_route.calls.last.request.url.params["end"] == "2026-06-15T11:00:00+03:00"
+
+    assert booking_route.calls.last is not None
+    booking_payload = json.loads(booking_route.calls.last.request.content)
+    assert booking_payload["start"] == "2026-06-15T10:00:00+03:00"
+    assert booking_payload["end"] == "2026-06-15T11:00:00+03:00"
 
 
 def test_non_owner_cannot_book_room_for_meeting(
@@ -976,7 +1060,11 @@ def test_owner_changes_selected_time_updates_room_booking(when2meet_client: Test
     """Verify changing selected time updates the persisted room booking."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Move Time", "slots": ["2026-06-15T10:00:00Z", "2026-06-15T12:00:00Z"]},
+        json={
+            "name": "Move Time",
+            "slots": ["2026-06-15T10:00:00Z", "2026-06-15T12:00:00Z"],
+            "timezone": "UTC",
+        },
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
@@ -1005,22 +1093,22 @@ def test_owner_changes_selected_time_updates_room_booking(when2meet_client: Test
         )
         response = when2meet_client.patch(
             f"/api/v0/meetings/{event_id}",
-            json={"selected_time": {"start": "2026-06-15T12:00:00Z", "end": "2026-06-15T13:00:00Z"}},
+            json={"selected_time": {"start": "2026-06-15T12:00:00+03:00", "end": "2026-06-15T13:00:00+03:00"}},
             headers=user_headers,
         )
 
     assert response.status_code == 200
     assert response.json()["selected_time"] == {
-        "start": "2026-06-15T12:00:00Z",
-        "end": "2026-06-15T13:00:00Z",
+        "start": "2026-06-15T12:00:00+03:00",
+        "end": "2026-06-15T13:00:00+03:00",
     }
     assert patch_route.calls.last is not None
     patch_request = patch_route.calls.last.request
     assert patch_request.headers["Authorization"] == user_headers["Authorization"]
     assert json.loads(patch_request.content) == {
         "title": "Move Time",
-        "start": "2026-06-15T12:00:00+00:00",
-        "end": "2026-06-15T13:00:00+00:00",
+        "start": "2026-06-15T12:00:00+03:00",
+        "end": "2026-06-15T13:00:00+03:00",
     }
 
 

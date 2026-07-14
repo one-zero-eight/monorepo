@@ -7,11 +7,23 @@ from src.common_pydantic import BaseSchema
 
 
 def normalize_datetime(v: dtm.datetime) -> dtm.datetime:
-    if v.tzinfo is None:
-        v = v.replace(tzinfo=dtm.UTC)
-    else:
-        v = v.astimezone(dtm.UTC)
+    if v.tzinfo is None or v.utcoffset() is None:
+        raise ValueError("Datetime must include timezone")
     return v.replace(microsecond=0)
+
+
+def parse_timezone_datetime(v: dtm.datetime | str) -> dtm.datetime:
+    if isinstance(v, str):
+        v = dtm.datetime.fromisoformat(v)
+    return normalize_datetime(v)
+
+
+def normalize_datetime_string(v: dtm.datetime | str) -> str:
+    normalized = parse_timezone_datetime(v)
+    value = normalized.isoformat()
+    if normalized.utcoffset() == dtm.timedelta(0):
+        return value.replace("+00:00", "Z")
+    return value
 
 
 def _normalize_datetimes(values: list[dtm.datetime]) -> list[dtm.datetime]:
@@ -28,18 +40,29 @@ class TimeRange(BaseSchema):
 
 
 class MeetingTime(BaseSchema):
-    start: dtm.datetime
+    start: str
     "Selected meeting start time"
-    end: dtm.datetime
+    end: str
     "Selected meeting end time"
+
+    @field_validator("start", "end", mode="before")
+    @classmethod
+    def normalize_time(cls, v: dtm.datetime | str) -> str:
+        return normalize_datetime_string(v)
 
     @model_validator(mode="after")
     def validate_time_order(self) -> MeetingTime:
-        self.start = normalize_datetime(self.start)
-        self.end = normalize_datetime(self.end)
-        if self.end <= self.start:
+        if self.end_datetime <= self.start_datetime:
             raise ValueError("Meeting end time must be after start time")
         return self
+
+    @property
+    def start_datetime(self) -> dtm.datetime:
+        return parse_timezone_datetime(self.start)
+
+    @property
+    def end_datetime(self) -> dtm.datetime:
+        return parse_timezone_datetime(self.end)
 
 
 class BookedRoom(BaseSchema):

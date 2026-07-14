@@ -96,6 +96,12 @@ def _room_view(room: RoomBookingRoom) -> AvailableRoom:
     )
 
 
+def _selected_time_for_room_booking(event: Event) -> tuple[dtm.datetime, dtm.datetime]:
+    if event.selected_time is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selected meeting time is not set")
+    return event.selected_time.start_datetime, event.selected_time.end_datetime
+
+
 def _room_booking_url(path: str) -> str:
     room_booking_settings = settings.room_booking
     if room_booking_settings is None:
@@ -303,10 +309,9 @@ async def _get_available_rooms_for_time(
 
 
 async def _book_room(event: Event, room_id: str, user_auth_header: str) -> BookedRoom:
-    if event.selected_time is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selected meeting time is not set")
+    start, end = _selected_time_for_room_booking(event)
 
-    can_book = await _get_room_can_book(room_id, event.selected_time.start, event.selected_time.end, user_auth_header)
+    can_book = await _get_room_can_book(room_id, start, end, user_auth_header)
     if not can_book.can_book:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -319,8 +324,8 @@ async def _book_room(event: Event, room_id: str, user_auth_header: str) -> Booke
             json_body={
                 "room_id": room_id,
                 "title": event.name,
-                "start": event.selected_time.start.isoformat(),
-                "end": event.selected_time.end.isoformat(),
+                "start": start.isoformat(),
+                "end": end.isoformat(),
                 "participant_emails": None,
                 "recurrence": None,
                 "categories": ["When2Meet"],
@@ -356,16 +361,15 @@ async def _cancel_room_booking(booked_room: BookedRoom, user_auth_header: str) -
 async def _update_room_booking(event: Event, selected_time: bool, title: bool, user_auth_header: str) -> BookedRoom:
     if event.booked_room is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room is not booked for this meeting")
-    if event.selected_time is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selected meeting time is not set")
+    start, end = _selected_time_for_room_booking(event)
 
     booking = RoomBookingCreatedBooking.model_validate(
         await _room_booking_patch(
             _manageable_booking_path(event.booked_room),
             json_body={
                 "title": event.name,
-                "start": event.selected_time.start.isoformat(),
-                "end": event.selected_time.end.isoformat(),
+                "start": start.isoformat(),
+                "end": end.isoformat(),
             },
             user_auth_header=user_auth_header,
         )
@@ -857,9 +861,10 @@ async def get_available_rooms(
     event = await _get_meeting_or_404(meeting_ref)
     if event.selected_time is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selected meeting time is not set")
+    start, end = _selected_time_for_room_booking(event)
 
     return await _get_available_rooms_for_time(
-        start=event.selected_time.start,
-        end=event.selected_time.end,
+        start=start,
+        end=end,
         user_auth_header=request.headers["authorization"],
     )
