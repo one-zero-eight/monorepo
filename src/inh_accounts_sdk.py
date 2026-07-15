@@ -164,8 +164,8 @@ class InNoHassleAccounts:
                     return None
         try:
             payload = self._get_jwt_claims(token)
-            if payload.get("sub") != "room-booking":
-                self.logger.warning("Provided Room TV token has incorrect 'sub'")
+            if payload.get("aud") != "room-booking":
+                self.logger.warning("Provided Room TV token has incorrect 'aud'")
                 return None
             room_id: str | None = payload.get("room_id")
             if room_id is None:
