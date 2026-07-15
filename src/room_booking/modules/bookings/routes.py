@@ -15,7 +15,7 @@ from pydantic import BaseModel, EmailStr
 
 from src.inh_accounts_sdk import inh_accounts
 from src.logging_ import logger
-from src.room_booking.dependencies import ApiKeyDep, VerifiedDep, VerifiedOrApiKeyDep
+from src.room_booking.dependencies import ApiKeyDep, VerifiedDep, VerifiedOrApiKeyDep, VerifiedOrRoomTvDep
 from src.room_booking.modules.bmp.repository import bmp_repository
 from src.room_booking.modules.bookings.exchange_repository import exchange_booking_repository
 from src.room_booking.modules.bookings.schemas import (
@@ -195,12 +195,13 @@ class AttendeeDetails(BaseModel):
 async def get_attendee_details(
     outlook_booking_id: str,
     user_email: EmailStr,
-    user: VerifiedDep,
+    auth: VerifiedOrRoomTvDep,
 ) -> AttendeeDetails:
-    logger.info(f"{user.email=} trying to get attendee details for {user_email} in booking {outlook_booking_id}")
+    identification = auth.user.email if auth.user is not None else auth.room.resource_email if auth.room else None
+    logger.info(f"{identification=} trying to get attendee details for {user_email} in booking {outlook_booking_id}")
     if not (user_email.endswith(("@innopolis.university", "@innopolis.ru"))):
         logger.warning(
-            f"{user.email=} trying to get attendee details for {user_email} in booking {outlook_booking_id} but email is not from Innopolis University"
+            f"{identification=} trying to get attendee details for {user_email} in booking {outlook_booking_id} but email is not from Innopolis University"
         )
         raise HTTPException(400, "Invalid email")
 
@@ -224,7 +225,7 @@ async def get_attendee_details(
     responses={404: {"description": "Booking not found OR Room attendee not found in booking attendees"}},
 )
 async def get_booking_by_entry_id(
-    user: VerifiedDep,
+    auth: VerifiedOrRoomTvDep,
     outlook_entry_id: str,
     room_id: str,
 ) -> Booking:
@@ -239,7 +240,9 @@ async def get_booking_by_entry_id(
     if booking is None:
         raise HTTPException(404, "Booking not found")
 
-    return set_related_to_me(booking, user.email)
+    if auth.user is not None:
+        return set_related_to_me(booking, auth.user.email)
+    return booking
 
 
 @router.delete(

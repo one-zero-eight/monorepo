@@ -148,7 +148,7 @@ def set_related_to_me(bookings: list[Booking] | Booking, user_email: str) -> lis
 
 
 def apply_related_to_me(bookings: list[Booking], auth: AuthContext) -> list[Booking]:
-    if auth.is_service:
+    if auth.is_service or auth.room is not None:
         return bookings
     if auth.user is None:
         raise RuntimeError("User is not authenticated")

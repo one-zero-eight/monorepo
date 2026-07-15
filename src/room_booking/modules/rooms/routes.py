@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from src.inh_accounts_sdk import inh_accounts
 from src.room_booking.config_schema import AccessToRoom, Room
-from src.room_booking.dependencies import VerifiedDep, VerifiedOrApiKeyDep
+from src.room_booking.dependencies import VerifiedDep, VerifiedOrApiKeyDep, VerifiedOrApiKeyOrRoomTvDep
 from src.room_booking.modules.bookings.exchange_repository import Booking, exchange_booking_repository
 from src.room_booking.modules.bookings.service import apply_related_to_me
 from src.room_booking.modules.rooms.repository import room_repository
@@ -106,7 +106,7 @@ async def room_can_book_route(
     },
 )
 async def room_bookings_route(
-    id: str, auth: VerifiedOrApiKeyDep, start: dtm.datetime, end: dtm.datetime
+    id: str, auth: VerifiedOrApiKeyOrRoomTvDep, start: dtm.datetime, end: dtm.datetime
 ) -> list[Booking]:
     if start >= end:
         raise HTTPException(400, "Start must be before end")

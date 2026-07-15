@@ -58,7 +58,7 @@ def test_set_related_to_me_list():
 
 def test_apply_related_to_me_service_passthrough():
     bookings = [_booking(attendees=[Attendee(email="me@innopolis.university", status=None, assosiated_room_id=None)])]
-    result = apply_related_to_me(bookings, AuthContext(user=None, is_service=True))
+    result = apply_related_to_me(bookings, AuthContext(user=None, room=None, is_service=True))
     assert result[0].related_to_me is None
 
 
@@ -66,6 +66,7 @@ def test_apply_related_to_me_user():
     bookings = [_booking(attendees=[Attendee(email="me@innopolis.university", status=None, assosiated_room_id=None)])]
     auth = AuthContext(
         user=UserTokenData(innohassle_id="u1", email="me@innopolis.university"),
+        room=None,
         is_service=False,
     )
     result = apply_related_to_me(bookings, auth)
