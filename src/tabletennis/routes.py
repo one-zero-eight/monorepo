@@ -202,6 +202,7 @@ async def get_active_tours(auth: INH_TOKEN_AUTH) -> list[dict[str, Any]]:
 
     result = []
     for tour in active_tournaments:
+        val_top, qual_top = await get_tour_top(tour.tour_id)
         val_game_ids = [g.game_id for g in tour.val_games] if tour.val_games else []
         cval_game_ids = [g.game_id for g in tour.cval_games] if tour.cval_games else []
 
@@ -216,6 +217,8 @@ async def get_active_tours(auth: INH_TOKEN_AUTH) -> list[dict[str, Any]]:
                     "cval_game_ids": cval_game_ids,
                     "total_count": len(val_game_ids) + len(cval_game_ids),
                 },
+                "val_top": val_top,
+                "qual_top": qual_top,
             }
         )
 
