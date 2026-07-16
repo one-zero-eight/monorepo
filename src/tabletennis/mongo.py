@@ -52,6 +52,9 @@ class Tournament(BeanieDocument):
     active: bool = Field(default=False)
     date: dtm.datetime
 
+    val_top: dict[int, str] = Field(default={})
+    qual_top: dict[int, str] = Field(default={})
+
     class Settings(BeanieDocument.Settings):
         name = "Tournament_v2"
         indexes: ClassVar[list[IndexModel]] = [IndexModel("tour_id", unique=True)]

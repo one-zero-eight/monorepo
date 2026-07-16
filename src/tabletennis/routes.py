@@ -5,7 +5,7 @@ import datetime as dtm
 import uuid
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 from pydantic import EmailStr
 
@@ -23,6 +23,18 @@ K_FACTOR = 32
 
 def isactive(last_game_date: dtm.datetime) -> bool:
     return dtm.datetime.now(dtm.UTC) - last_game_date < dtm.timedelta(days=30)
+
+
+async def get_tour_top(tour_id: str) -> tuple[dict[int, str], dict[int, str]]:
+    """
+    Returns the qualification-stage (qual_top) and final-stage (val_top) standings for
+    a tournament as raw dictionaries {place: innohassle_id}.
+    """
+    tournament = await Tournament.find_one(Tournament.tour_id == tour_id)
+    if not tournament:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+
+    return tournament.val_top or {}, tournament.qual_top or {}
 
 
 async def resolve_player(player_id: str | None = None, email: str | None = None) -> Player | None:
@@ -67,6 +79,70 @@ async def format_player_data(player: Player) -> dict[str, Any]:
         del player_dict["_id"]
 
     return player_dict
+
+
+async def format_top(top: dict[int, str] | None) -> list[dict[str, Any]]:
+    """
+    Resolves a {place: innohassle_id} mapping into a sorted list of place/player info,
+    similar in spirit to get_games_by_id's player_summary - unregistered/missing players
+    are reported instead of silently dropped.
+    """
+    if not top:
+        return []
+
+    player_ids = list(top.values())
+    players = await Player.find({"innohassle_id": {"$in": player_ids}}).to_list()
+    players_by_id = {p.innohassle_id: p for p in players}
+
+    result = []
+    for place in sorted(top.keys()):
+        p_id = top[place]
+        player = players_by_id.get(p_id)
+        result.append(
+            {
+                "place": place,
+                "innohassle_id": p_id,
+                "nickname": player.nickname if player else None,
+                "rating": player.rating if player else None,
+                "registered": player is not None,
+            }
+        )
+
+    return result
+
+
+def _validate_top(tournament: Tournament, top: dict[int, str]) -> None:
+    """
+    Shared validation for change_val_top / change_qual_top.
+    Raises HTTPException(400) on the first violated rule.
+    """
+    invalid_places = [place for place in top if place < 1]
+    if invalid_places:
+        raise HTTPException(
+            status_code=400, detail=f"Places must be positive integers (1 = first place), got: {invalid_places}"
+        )
+
+    tour_players = set(tournament.players or [])
+    unknown_players = [p_id for p_id in top.values() if p_id not in tour_players]
+    if unknown_players:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": f"These players are not participants of tournament {tournament.tour_id}",
+                "unknown": unknown_players,
+            },
+        )
+
+    seen: set[str] = set()
+    duplicates: set[str] = set()
+    for p_id in top.values():
+        if p_id in seen:
+            duplicates.add(p_id)
+        seen.add(p_id)
+    if duplicates:
+        raise HTTPException(
+            status_code=400, detail=f"A player cannot occupy more than one place at once: {sorted(duplicates)}"
+        )
 
 
 @router.get("/get-email")
@@ -156,6 +232,7 @@ async def get_tours(auth: INH_TOKEN_AUTH) -> list[dict[str, Any]]:
 
     result = []
     for tour in tournaments:
+        val_top, qual_top = await get_tour_top(tour.tour_id)
         val_game_ids = [g.game_id for g in tour.val_games] if tour.val_games else []
         cval_game_ids = [g.game_id for g in tour.cval_games] if tour.cval_games else []
 
@@ -171,6 +248,8 @@ async def get_tours(auth: INH_TOKEN_AUTH) -> list[dict[str, Any]]:
                     "cval_game_ids": cval_game_ids,
                     "total_count": len(val_game_ids) + len(cval_game_ids),
                 },
+                "val_top": val_top,
+                "qual_top": qual_top,
             }
         )
 
@@ -340,6 +419,8 @@ async def register_tour(
         cval_games=[],
         active=True,
         date=dtm.datetime.now(tz=dtm.UTC) if not date else date,
+        qual_top={},
+        val_top={},
     )
 
     await new_tournament.insert()
@@ -507,6 +588,62 @@ async def remove_players(
         "removed": removed_players,
         "failed": failed_players,
     }
+
+
+@router.post("/reg-tour/change-val-top")
+async def change_val_top(
+    auth: TABLETENNIS_ADMIN_AUTH,
+    tour_id: str,
+    top: dict[int, str] = Body(  # noqa: B008
+        ...,
+        description="Full place->innohassle_id mapping, e.g. {1: 'id_1st_place', 2: 'id_2nd_place'}. Overwrites completely.",
+    ),
+) -> dict[str, Any]:
+    """
+    Admin endpoint to fully overwrite a tournament's val_top (final-stage standings).
+    This is NOT a patch - the frontend sends the complete standings each time and it
+    replaces whatever was stored before. Every player in the mapping must already be
+    a participant of the tournament, and each player may occupy only one place.
+    """
+    tournament = await Tournament.find_one(Tournament.tour_id == tour_id)
+    if not tournament:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+
+    _validate_top(tournament, top)
+
+    tournament.val_top = top
+    await tournament.save()
+
+    logger.info(f"Admin {auth.email} set val_top for tournament {tour_id}: {top}")
+
+    return {"status": "success", "tour_id": tour_id, "val_top": await format_top(top)}
+
+
+@router.post("/reg-tour/change-qual-top")
+async def change_qual_top(
+    auth: TABLETENNIS_ADMIN_AUTH,
+    tour_id: str,
+    top: dict[int, str] = Body(  # noqa: B008
+        ...,
+        description="Full place->innohassle_id mapping, e.g. {1: 'id_1st_place', 2: 'id_2nd_place'}. Overwrites completely.",
+    ),
+) -> dict[str, Any]:
+    """
+    Admin endpoint to fully overwrite a tournament's qual_top (qualification-stage standings).
+    Same semantics as change-val-top: full overwrite, not a patch.
+    """
+    tournament = await Tournament.find_one(Tournament.tour_id == tour_id)
+    if not tournament:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+
+    _validate_top(tournament, top)
+
+    tournament.qual_top = top
+    await tournament.save()
+
+    logger.info(f"Admin {auth.email} set qual_top for tournament {tour_id}: {top}")
+
+    return {"status": "success", "tour_id": tour_id, "qual_top": await format_top(top)}
 
 
 @router.post("/finish-tour")
