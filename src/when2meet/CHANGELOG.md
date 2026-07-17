@@ -5,6 +5,11 @@ Releases follow [SemVer](https://semver.org/) and map to MVP increments.
 
 ## [Unreleased]
 
+### Documentation
+
+- Updated roadmap, customer handover, Week 7 UAT summary, and Week 7 final report for MVP v3 course delivery ([#156](https://github.com/one-zero-eight/monorepo/issues/156), [#160](https://github.com/one-zero-eight/monorepo/issues/160), [#166](https://github.com/one-zero-eight/monorepo/issues/166)).
+- Extended Sprint 5 quality and CI evidence links for When2Meet testing, QRTs, secret scan, and link-check gates ([#167](https://github.com/one-zero-eight/monorepo/issues/167)).
+
 ### Planned for MVP v3 (Sprint 5 / Week 7)
 
 - Move heatmap legend to the top of the interface.

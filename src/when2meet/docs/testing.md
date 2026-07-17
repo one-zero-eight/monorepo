@@ -50,9 +50,9 @@ docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest dir --no-banner
 
 | Module | Why it is critical | Coverage target | Current evidence |
 |---|---|---:|---:|
-| `src/when2meet/modules/events/routes.py` | Public event API, authorization checks, participant update rules, error contracts. | 30% line coverage | 95% |
-| `src/when2meet/modules/events/events_repo.py` | Event persistence, slug lookup, participant upsert/removal, owner/participant queries. | 30% line coverage | 98% |
-| `src/when2meet/modules/events/schemas.py` | Request/response contracts and datetime normalization for slots and availability. | 30% line coverage | 99% |
+| `src/when2meet/modules/events/routes.py` | Public meeting API, authorization checks, participant update rules, selected-time and room-booking contracts. | 30% line coverage | 100% |
+| `src/when2meet/modules/events/events_repo.py` | Event persistence, slug lookup, participant upsert/removal, owner/participant queries. | 30% line coverage | 100% |
+| `src/when2meet/modules/events/schemas.py` | Request/response contracts, timezone-aware datetime validation, and selected-time serialization. | 30% line coverage | 100% |
 
 The current evidence comes from:
 
@@ -70,9 +70,10 @@ Unit tests for critical product logic are in:
 
 They cover:
 
-- event slot normalization to UTC;
+- event slot normalization without accepting timezone-less datetimes;
 - deterministic sorting of event slots;
-- participant availability normalization;
+- participant availability validation;
+- selected meeting time offset preservation;
 - rejection of unknown request fields;
 - `EventUpdate` keeps missing fields unset for PATCH payloads.
 
@@ -94,6 +95,8 @@ They cover important interactions between product components:
 - participant availability updates and deletion;
 - owner-only access control;
 - not-found and invalid-request API contracts.
+- selected meeting time persistence and owner-only updates.
+- room availability, booking, change, cancellation, and cleanup through the Room Booking boundary.
 - QA documentation, QRT, Definition of Done, and ADR traceability gates.
 
 ## Additional QA Check
@@ -156,6 +159,15 @@ The automated test suite now also checks maintained QA documentation itself. `QR
 - pytest, coverage, QRT, CI, and secret scan gates remain documented in both testing guidance and the Definition of Done;
 - QR and QRT IDs stay linked both ways;
 - accepted architecture decisions for repository boundaries, slug references, and InNoHassle Accounts integration remain referenced from QR/QRT evidence.
+- the Week 7 final report exists, is linked from roadmap, handover, UAT, and root README, and preserves protected-default-branch CI evidence links.
+
+Latest protected `main` evidence referenced by the Week 7 report:
+
+| Check | Result | Link |
+|---|---|---|
+| Run tests | Success | [GitHub Actions run 29437789987](https://github.com/one-zero-eight/monorepo/actions/runs/29437789987) |
+| When2Meet QA secret scan | Success | [GitHub Actions run 29437795124](https://github.com/one-zero-eight/monorepo/actions/runs/29437795124) |
+| Links | Success | [GitHub Actions run 29437790384](https://github.com/one-zero-eight/monorepo/actions/runs/29437790384) |
 
 ## Maintenance
 

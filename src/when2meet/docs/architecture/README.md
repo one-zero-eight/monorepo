@@ -22,9 +22,10 @@ intersection as a heatmap. The product is delivered as:
   participant availability in MongoDB and verifies identity through the
   InNoHassle Accounts API.
 
-MVP v2 (Sprint 3) keeps the MVP v1 single-service shape and hardens it with
-owner-only mutation guards, slug-based sharing, calendar overlay, room-booking
-integration, and participant-reply editing.
+MVP v3 (Sprint 5 final delivery) keeps the single-service API shape and hardens
+it with owner-only mutation guards, slug-based sharing, calendar overlay,
+selected final meeting time, timezone-safe room-booking integration, and
+participant-reply editing.
 
 ## Views
 

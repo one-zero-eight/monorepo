@@ -106,9 +106,14 @@ gitGraph
   architecture documentation, ADRs, and quality artifacts are versioned in the
   same repository so that documentation, code, and configuration move together
   in every PR.
+- Sprint 5 final-delivery evidence is preserved in
+  [reports/week7/README.md](../reports/week7/README.md), including protected
+  `main` links for tests, When2Meet secret scan, and link-check CI runs.
 
 ## Where this document is linked from
 
 - Root `README.md`
 - Hosted documentation site
+- `reports/week7/README.md`
+- `reports/week6/README.md`
 - `reports/week5/README.md`

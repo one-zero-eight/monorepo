@@ -45,8 +45,8 @@ routes depend on the `events_repo` interface and never import Beanie or
 pymongo directly. This separation lets each layer be tested with a different
 double — routes with a mocked repository, the repository against the test
 Mongo from `docker-compose.test.yaml`, and schemas purely — which is exactly
-how the ≥30% coverage gate is met and exceeded (current coverage is 95% /
-98% / 99% for the three critical modules).
+how the ≥30% coverage gate is met and exceeded (current Week 7 evidence is
+100% / 100% / 100% for the three critical modules).
 
 **Supporting views:** [Static](README.md#static-view--component-diagram)
 (the repository boundary), [Dynamic](README.md#dynamic-view--sequence-diagram)
@@ -129,7 +129,9 @@ as a single-service FastAPI API with explicit static, dynamic, deployment, and
 ADR evidence. `QR-004` treats that documentation set as a maintained
 architecture asset: if repository boundaries, slug lookup, JWT verification,
 deployment, workflow, or CI gates change, the QR/QRT/ADR links must change in
-the same increment.
+the same increment. Sprint 5 also keeps the Week 7 final report linked from
+roadmap, handover, UAT, and root README so customer-facing evidence and
+protected-main CI evidence remain discoverable.
 
 **Supporting views:** [Static](README.md#static-view--component-diagram),
 [Dynamic](README.md#dynamic-view--sequence-diagram),

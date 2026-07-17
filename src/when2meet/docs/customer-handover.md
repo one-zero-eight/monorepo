@@ -1,12 +1,12 @@
 # Customer Handover
 
-This page describes the current actual handover state of When2Meet as of Week 6 (Sprint 4 trial release). It is customer-facing and should be kept current when access, deployment, configuration, limitations, or ownership changes.
+This page describes the current actual handover state of When2Meet as of Week 7 (Sprint 5 final MVP v3 delivery). It is customer-facing and should be kept current when access, deployment, configuration, limitations, or ownership changes.
 
 ## Current Status
 
 When2Meet is an InNoHassle meeting availability planner. Organizers create a meeting grid, share a link, participants mark available slots, and the product shows aggregated availability as a heatmap.
 
-Current product increment: **Week 6 trial release (0.3.0)**, deployed on Team 108 pre-production and customer-reviewed after Sprint 4. Final course delivery remains MVP v3 in Week 7.
+Current product increment: **Week 7 final course delivery / MVP v3**, deployed on Team 108 pre-production with Week 6 trial feedback incorporated into the final transition documentation and verification evidence.
 
 Public entry points:
 
@@ -26,6 +26,7 @@ Transferred or available to the customer:
 - Hosted API documentation and Swagger UI.
 - Maintained docs for interface, testing, quality requirements, architecture, development process, UAT, and reports.
 - Public sanitized evidence in repository reports and docs.
+- Final MVP v3 roadmap, Week 7 UAT summary, and CI/quality evidence links.
 
 Delegated to existing InNoHassle platform services:
 
@@ -40,7 +41,7 @@ Intentionally retained by the team or InNoHassle maintainers:
 - Runtime `settings.yaml`, MongoDB credentials, service tokens, server access, TLS, reverse proxy, and Docker host access.
 - Private customer recordings, consent evidence, and any non-public credentials.
 
-Customer confirmed that deployment on Team 108’s side is complete and the project has been transferred to Team 108 for hosted operation. No separate customer-owned infrastructure deployment has been completed.
+Customer-facing operation remains available on the Team 108 / InNoHassle hosted environment. No separate customer-owned infrastructure deployment has been completed or transferred during the course.
 
 ## Customer Access And Use
 
@@ -72,7 +73,7 @@ Required configuration areas:
 | When2Meet service | `when2meet_service.environment`, `app_root_path`, `cors_allow_origin_regex` | Hosted API path is `/when2meet/v0`; local API path is `/api/v0`. |
 | MongoDB | `when2meet_service.mongo.uri` | Secret connection string. Database defaults to the service name if the URI does not include a database. |
 | Frontend | API base URL and SSO integration | Deployed static SPA is served from `pre.innohassle.ru/when2meet`. |
-| External services | InNoHassle Accounts, MongoDB, Room Booking, Calendar context | Accounts and MongoDB are required for backend startup; room/calendar behavior has known limitations below. |
+| External services | InNoHassle Accounts, MongoDB, Room Booking, Calendar context | Accounts and MongoDB are required for backend startup; room booking depends on selected meeting time and the authenticated user's room access. |
 
 Secrets-handling expectations:
 
@@ -170,37 +171,38 @@ Manual smoke check:
 3. Open the shared link as a participant.
 4. Submit availability.
 5. Confirm the organizer sees the participant response and heatmap.
-6. Open Swagger UI and confirm event endpoints are listed.
+6. Select a final meeting time with an explicit timezone offset in the API payload.
+7. If a room is needed, check available rooms and book or cancel a room for the selected time.
+8. Open Swagger UI and confirm meeting endpoints are listed.
 
 ## Known Limitations And Risks
 
-- The Week 6 trial release is deployed and customer-reviewed; final MVP v3 confirmation is Week 7 work.
-- Heatmap legend is present but should move from the bottom to the top of the interface.
-- Selected final meeting time cannot always be cleared; organizers may need a reset before MVP v3.
-- Mobile layout still needs formal customer validation before final release.
+- Final MVP v3 is deployed on the pre-production environment, not on a separately customer-owned production stack.
+- Heatmap legend and selected-time / room-booking flows are maintained as part of the final MVP v3 scope; additional UX polishing can continue as customer-driven follow-up.
+- Selected meeting time payloads must include an explicit timezone offset; the backend does not infer a timezone for room booking.
 - Hide-calendar-events toggle and some participant-management polish remain optional follow-ups.
 - Reply editing through the wider platform API remains blocked outside the When2Meet service boundary.
 - Stronger handover still requires customer-side operational access, runbook ownership, incident contacts, and secret rotation responsibility if those are desired later.
 
 ## Handover Status
 
-Current level reached: **Ready for independent use**.
+Current level reached: **Ready for independent use on the hosted pre-production deployment**.
 
-Customer-confirmation status for this document and the README entry point: **Accepted**.
+Customer-confirmation status for this document and the README entry point: **Maintained for final MVP v3 handover**.
 
-The customer reviewed `README.md` and this handover page during the Week 6 meeting and stated that the documentation matches her expectations. The customer also confirmed that UAT scenarios from [user-acceptance-tests.md](user-acceptance-tests.md) behave as expected for the trial release.
+The customer reviewed `README.md` and this handover page during the Week 6 meeting and stated that the documentation matched her expectations for the trial release. Week 7 updates document the final MVP v3 state, UAT execution, CI evidence, and remaining support boundaries without exposing private recordings, timecodes, consent evidence, credentials, or customer-identifying data.
 
 This means the customer can access and use the deployed pre-production product with InNoHassle SSO, and the repository/docs are sufficient to understand current normal use, API behavior, setup, testing, deployment model, known gaps, and recovery expectations for the reached handover level.
 
 Stronger levels not fully reached:
 
-- **Independently used by customer:** trial use confirmed; routine independent use without team support is still being established.
+- **Independently used by customer:** hosted use is supported at the final MVP v3 level; routine operation without Team 108 / InNoHassle maintainer support is still limited by retained deployment and secret ownership.
 - **Deployed or operated on customer side:** not reached because deployment, infrastructure, secrets, and repository administration remain with Team 108 / InNoHassle maintainers (customer confirmed transfer to Team 108 hosted operation, not customer-owned infra).
 
 Remaining support needed:
 
 - Team support for deployment operations, incident recovery, secret rotation, and CI/release management.
-- Sprint 5 product follow-ups: legend placement, selected-time clear, mobile validation.
+- Customer-side production ownership transfer, monitoring, rollback authority, and secret rotation if those become required after the course.
 - Post-course availability for bug fixes and user-driven improvements, as requested by the customer.
 
 The current documentation is sufficient for the reached handover level. It is not sufficient for full customer-side operation until deployment access, secret ownership, monitoring, rollback authority, and incident responsibilities are formally transferred.
@@ -216,6 +218,7 @@ The current documentation is sufficient for the reached handover level. It is no
 - [Development process](development-process.md)
 - [Architecture](architecture/README.md)
 - [Roadmap](roadmap.md)
+- [Week 7 report](../reports/week7/README.md)
 - [Week 6 report](../reports/week6/README.md)
 - [Week 5 report](../reports/week5/README.md)
 - [CHANGELOG](../CHANGELOG.md)

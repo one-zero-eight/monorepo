@@ -55,5 +55,6 @@ A condition may be marked **N/A** only with a clear justification in the pull re
 
 - [ ] Assignment 4 gates remain active: pytest, CI, coverage, QRTs, secret scan, maintained testing docs, and this Definition of Done.
 - [ ] If Sprint 5 changes architecture, critical modules, deployment model, workflow, or CI configuration, update `docs/architecture`, `docs/testing.md`, `docs/quality-requirements.md`, `docs/quality-requirement-tests.md`, and this file as applicable.
+- [ ] If Sprint 5 changes customer-facing documentation, UAT evidence, or handover status, update `reports/week7/README.md` and keep it linked from roadmap, customer handover, UAT, and the root README.
 - [ ] Long maintained docs touched by the change remain directly readable and navigable, including tables of contents where appropriate.
 - [ ] `QRT-004` passes when QA evidence, architecture traceability, or Definition of Done content changes.

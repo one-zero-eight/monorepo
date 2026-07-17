@@ -18,6 +18,8 @@ CRITICAL_MODULES = {
 GET_EVENT_TIME_BUDGET_SECONDS = 2.0
 
 DOCS_ROOT = REPO_ROOT / "src" / "when2meet" / "docs"
+WEEK7_REPORT = REPO_ROOT / "src" / "when2meet" / "reports" / "week7" / "README.md"
+WEEK7_REPORT_DOCS_LINK = "../reports/week7/README.md"
 REQUIRED_MAINTAINED_DOCS = [
     DOCS_ROOT / "testing.md",
     DOCS_ROOT / "quality-requirements.md",
@@ -120,6 +122,11 @@ def test_qrt_qa_documentation_keeps_gates_and_architecture_traceability():
     quality_requirements = (DOCS_ROOT / "quality-requirements.md").read_text()
     quality_requirement_tests = (DOCS_ROOT / "quality-requirement-tests.md").read_text()
     architecture_quality_requirements = (DOCS_ROOT / "architecture" / "quality-requirements.md").read_text()
+    roadmap = (DOCS_ROOT / "roadmap.md").read_text()
+    customer_handover = (DOCS_ROOT / "customer-handover.md").read_text()
+    user_acceptance_tests = (DOCS_ROOT / "user-acceptance-tests.md").read_text()
+    root_readme = (REPO_ROOT / "README.md").read_text()
+    week7_report = WEEK7_REPORT.read_text()
 
     for gate in ["pytest", "coverage", "QRT", "secret scan", "CI"]:
         assert gate in testing_doc
@@ -139,3 +146,11 @@ def test_qrt_qa_documentation_keeps_gates_and_architecture_traceability():
         assert adr in quality_requirements
         assert adr in quality_requirement_tests
         assert adr.replace("architecture/", "") in architecture_quality_requirements
+
+    assert WEEK7_REPORT_DOCS_LINK in roadmap
+    assert WEEK7_REPORT_DOCS_LINK in customer_handover
+    assert WEEK7_REPORT_DOCS_LINK in user_acceptance_tests
+    assert "src/when2meet/reports/week7/README.md" in root_readme
+
+    for evidence in ["Run tests", "When2Meet QA secret scan", "Links", "actions/runs/"]:
+        assert evidence in week7_report
