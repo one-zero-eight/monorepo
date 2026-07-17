@@ -13,7 +13,7 @@ from src.dependencies import INH_TOKEN_AUTH
 from src.inh_accounts_sdk import inh_accounts
 from src.logging_ import logger
 
-from .admin_config import TABLETENNIS_ADMIN_AUTH
+from .admin_config import TABLETENNIS_ADMIN_AUTH, is_tabletennis_admin
 from .mongo import Game, Player, Tournament
 
 router = APIRouter(tags=["Table Tennis"], route_class=AutoDeriveResponsesAPIRoute)
@@ -143,6 +143,12 @@ def _validate_top(tournament: Tournament, top: dict[int, str]) -> None:
         raise HTTPException(
             status_code=400, detail=f"A player cannot occupy more than one place at once: {sorted(duplicates)}"
         )
+
+
+@router.get("/isadmin")
+async def is_admin(auth: INH_TOKEN_AUTH) -> dict[str, bool]:
+    admin = await is_tabletennis_admin(auth)
+    return {"is_admin": admin}
 
 
 @router.get("/get-email")

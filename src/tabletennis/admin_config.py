@@ -24,5 +24,8 @@ async def ensure_tabletennis_admin(auth: INH_TOKEN_AUTH) -> UserTokenData:
     return auth
 
 
-# Твой чистый элиас для routes.py
+async def is_tabletennis_admin(auth: INH_TOKEN_AUTH) -> bool:
+    return auth.email in settings.admin_emails
+
+
 TABLETENNIS_ADMIN_AUTH = Annotated[UserTokenData, Depends(ensure_tabletennis_admin)]
