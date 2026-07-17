@@ -107,7 +107,7 @@ gitGraph
   same repository so that documentation, code, and configuration move together
   in every PR.
 - Sprint 5 final-delivery evidence is preserved in
-  [reports/week7/README.md](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week7/README.md), including protected
+  [reports/week7/README.md](../reports/week7/README.md), including protected
   `main` links for tests, When2Meet secret scan, and link-check CI runs.
 
 ## Where this document is linked from

@@ -67,4 +67,4 @@ Automated quality requirement tests (QRTs) verify the measurable scenarios in [q
 
 **Expected measurable result:** Required maintained docs include tables of contents; pytest, coverage, QRT, CI, and secret scan gates remain documented; QR/QRT IDs stay linked through the public and architecture quality-requirement evidence; accepted ADRs remain linked from quality requirement evidence; the Week 7 final report is linked from roadmap, handover, UAT, and the root README and preserves protected-default-branch CI evidence links.
 
-**Evidence location:** [tests/when2meet/test_quality_requirements.py](../../../tests/when2meet/test_quality_requirements.py); [Week 7 final report](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week7/README.md); latest tests CI run after merge.
+**Evidence location:** [tests/when2meet/test_quality_requirements.py](../../../tests/when2meet/test_quality_requirements.py); [Week 7 final report](../reports/week7/README.md); latest tests CI run after merge.

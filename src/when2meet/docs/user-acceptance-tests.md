@@ -26,7 +26,7 @@ No failed Week 7 UAT scenario is recorded in the public repository. Private cust
 **Result (Week 7):** Passed by regression — no Sprint 5 change regressed the calendar-overlay acceptance path
 **Executed by:** Lisitskii Nikita (demo)
 **Execution date:** 2026-07-12; regression evidence reviewed 2026-07-17
-**Evidence:** [Sprint Review transcript](../reports/week6/sprint-review-transcript.md); [Week 7 report](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week7/README.md); private recording (Moodle only)
+**Evidence:** [Sprint Review transcript](../reports/week6/sprint-review-transcript.md); [Week 7 report](../reports/week7/README.md); private recording (Moodle only)
 
 ### Preconditions
 
@@ -117,7 +117,7 @@ No failed Week 7 UAT scenario is recorded in the public repository. Private cust
 **Result (Week 7):** Passed — selected-time timezone offset is preserved for available-room lookup and room booking
 **Executed by:** Lisitskii Nikita (demo)
 **Execution date:** 2026-07-12; final regression evidence reviewed 2026-07-17
-**Evidence:** [Sprint Review transcript](../reports/week6/sprint-review-transcript.md); [Week 7 report](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week7/README.md); [API contract](interface.md#book-room); [automated contract tests](../../../tests/when2meet/test_events.py); private recording (Moodle only)
+**Evidence:** [Sprint Review transcript](../reports/week6/sprint-review-transcript.md); [Week 7 report](../reports/week7/README.md); [API contract](interface.md#book-room); [automated contract tests](../../../tests/when2meet/test_events.py); private recording (Moodle only)
 
 ### Preconditions
 
@@ -171,7 +171,7 @@ No failed Week 7 UAT scenario is recorded in the public repository. Private cust
 **Result (Week 7):** Passed with optional polish — final MVP keeps understandable legend and selected-slot distinction
 **Executed by:** Timur Khasanov (demo); customer observed UAT segment
 **Execution date:** 2026-07-12; final review 2026-07-17
-**Evidence:** [Sprint Review summary](../reports/week6/sprint-review-summary.md); [Sprint Review transcript](../reports/week6/sprint-review-transcript.md); [Week 7 report](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week7/README.md); private recording (Moodle only)
+**Evidence:** [Sprint Review summary](../reports/week6/sprint-review-summary.md); [Sprint Review transcript](../reports/week6/sprint-review-transcript.md); [Week 7 report](../reports/week7/README.md); private recording (Moodle only)
 
 ### Preconditions
 
@@ -255,7 +255,7 @@ No failed Week 7 UAT scenario is recorded in the public repository. Private cust
 **Result (Week 7):** Passed — lifecycle remains active for final MVP v3 and selected-time synchronization preserves explicit timezone offset
 **Executed by:** Lisitskii Nikita (demo)
 **Execution date:** 2026-07-12; final regression evidence reviewed 2026-07-17
-**Evidence:** [Week 7 report](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week7/README.md); [API contract](interface.md#change-booked-room); [automated contract tests](../../../tests/when2meet/test_events.py)
+**Evidence:** [Week 7 report](../reports/week7/README.md); [API contract](interface.md#change-booked-room); [automated contract tests](../../../tests/when2meet/test_events.py)
 
 ### Preconditions
 

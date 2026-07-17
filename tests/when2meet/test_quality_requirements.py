@@ -19,7 +19,7 @@ GET_EVENT_TIME_BUDGET_SECONDS = 2.0
 
 DOCS_ROOT = REPO_ROOT / "src" / "when2meet" / "docs"
 WEEK7_REPORT = REPO_ROOT / "src" / "when2meet" / "reports" / "week7" / "README.md"
-WEEK7_REPORT_URL = "https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week7/README.md"
+WEEK7_REPORT_DOCS_LINK = "../reports/week7/README.md"
 REQUIRED_MAINTAINED_DOCS = [
     DOCS_ROOT / "testing.md",
     DOCS_ROOT / "quality-requirements.md",
@@ -147,9 +147,9 @@ def test_qrt_qa_documentation_keeps_gates_and_architecture_traceability():
         assert adr in quality_requirement_tests
         assert adr.replace("architecture/", "") in architecture_quality_requirements
 
-    assert WEEK7_REPORT_URL in roadmap
-    assert WEEK7_REPORT_URL in customer_handover
-    assert WEEK7_REPORT_URL in user_acceptance_tests
+    assert WEEK7_REPORT_DOCS_LINK in roadmap
+    assert WEEK7_REPORT_DOCS_LINK in customer_handover
+    assert WEEK7_REPORT_DOCS_LINK in user_acceptance_tests
     assert "src/when2meet/reports/week7/README.md" in root_readme
 
     for evidence in ["Run tests", "When2Meet QA secret scan", "Links", "actions/runs/"]:

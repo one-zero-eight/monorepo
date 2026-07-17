@@ -218,7 +218,7 @@ The current documentation is sufficient for the reached handover level. It is no
 - [Development process](development-process.md)
 - [Architecture](architecture/README.md)
 - [Roadmap](roadmap.md)
-- [Week 7 report](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week7/README.md)
+- [Week 7 report](../reports/week7/README.md)
 - [Week 6 report](../reports/week6/README.md)
 - [Week 5 report](../reports/week5/README.md)
 - [CHANGELOG](../CHANGELOG.md)

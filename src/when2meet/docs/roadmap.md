@@ -87,4 +87,4 @@
 
 **Final handover and transition state:** The customer-facing product and documentation are available for independent use at the reached handover level. Source code, hosted documentation, API documentation, UAT evidence, and release-quality evidence remain in the repository. Runtime infrastructure, deployment credentials, secret rotation, monitoring, rollback authority, and production ownership remain with Team 108 / InNoHassle maintainers unless they are separately transferred outside this course roadmap.
 
-**Final report:** The Week 7 report summarizes the MVP v3 delivery, UAT execution, handover status, and CI/quality evidence: [reports/week7/README.md](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week7/README.md).
+**Final report:** The Week 7 report summarizes the MVP v3 delivery, UAT execution, handover status, and CI/quality evidence: [reports/week7/README.md](../reports/week7/README.md).
