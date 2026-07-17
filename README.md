@@ -23,7 +23,7 @@ This is the monorepo for some of the backend services of InNoHassle ecosystem, a
 
 **Project goal:** Help InNoHassle users choose a meeting time with less back-and-forth by combining shared availability, participant context, calendar awareness, and room-booking support.
 
-**Current status:** Week 6 trial release (0.3.0) is deployed to the InNoHassle pre-production environment, customer-reviewed after Sprint 4, and accepted for independent trial use. Week 7 delivers final MVP v3; see the [roadmap](src/when2meet/docs/roadmap.md).
+**Current status:** Week 7 final course delivery / MVP v3 is available on the InNoHassle pre-production environment with maintained handover, UAT, and quality evidence; see the [roadmap](src/when2meet/docs/roadmap.md) and [Week 7 report](src/when2meet/reports/week7/README.md).
 
 **Current features:**
 
@@ -46,6 +46,7 @@ This is the monorepo for some of the backend services of InNoHassle ecosystem, a
 | Contributing | [CONTRIBUTING.md](https://github.com/one-zero-eight/.github/blob/main/CONTRIBUTING.md) |
 | Agent instructions | [AGENTS.md](AGENTS.md) |
 | Customer handover | [docs/customer-handover.md](src/when2meet/docs/customer-handover.md) |
+| Week 7 final report | [reports/week7/README.md](src/when2meet/reports/week7/README.md) |
 
 **Maintained documentation for customers and TA reviewers:**
 
@@ -57,6 +58,7 @@ This is the monorepo for some of the backend services of InNoHassle ecosystem, a
 - [User acceptance tests](src/when2meet/docs/user-acceptance-tests.md)
 - [Definition of Done](src/when2meet/docs/definition-of-done.md)
 - [Development process](src/when2meet/docs/development-process.md)
+- [Week 7 report](src/when2meet/reports/week7/README.md)
 - [Week 6 report](src/when2meet/reports/week6/README.md)
 - [Week 5 report](src/when2meet/reports/week5/README.md)
 

@@ -67,20 +67,24 @@
 
 **Status after Week 6:** Trial release delivered and customer-reviewed. Documentation (`README.md`, `docs/customer-handover.md`) accepted. UAT critical flows accepted. Follow-ups: legend top placement, selected-time clear, mobile validation.
 
-## Sprint 5 — Final MVP v3 Delivery
+## Sprint 5 — Final MVP v3 Delivery And Course Transition
 **Milestone:** [Sprint 5](https://github.com/one-zero-eight/monorepo/milestone/5)
 **Dates:** Week 7 — 13 July 2026 to 19 July 2026
 
-**Sprint Goal:** Use Week 6 trial feedback to complete follow-up maintenance, confirm final transition, and deliver the final course version `MVP v3`.
+**Sprint Goal:** Use Week 6 trial feedback to complete final maintenance, confirm transition status, and deliver the final course version `MVP v3`.
 
-**Planned release:** MVP v3, the final course delivery.
+**Release outcome:** MVP v3, the final course delivery.
 
-**Expected follow-up scope (depends on Week 6 feedback):**
+**Final Sprint PBIs and transition work:**
 - [#146](https://github.com/one-zero-eight/monorepo/issues/146) — Convert Week 6 trial feedback and blockers into Sprint 5 PBIs
-- Move heatmap legend to the top; allow clearing selected final meeting time; mobile validation
-- Final transition confirmation and customer-confirmation status for `docs/customer-handover.md`
-- Final SemVer release mapped to MVP v3 and public sanitized demo video
+- [#156](https://github.com/one-zero-eight/monorepo/issues/156) — Update roadmap for final course outcome
+- [#160](https://github.com/one-zero-eight/monorepo/issues/160) — Finalize customer handover documentation
+- [#166](https://github.com/one-zero-eight/monorepo/issues/166) — Update and execute Week 7 UAT scenarios
+- [#167](https://github.com/one-zero-eight/monorepo/issues/167) — Extend tests, quality gates, and CI evidence for Sprint 5 changes
+- Complete Week 6 follow-ups that affect final customer-critical use: selected-time and room-booking lifecycle, timezone-safe selected time, mobile validation, and maintained transition documentation.
 
-**Expected outcome by the end of the course:** When2Meet is ready for independent customer use on the InNoHassle pre-production deployment, with maintained documentation for behavior, API contracts, testing, quality requirements, deployment model, limitations, and recovery expectations.
+**Outcome reached by the end of the course:** When2Meet reached a maintained final MVP v3 state on the InNoHassle pre-production deployment. The course outcome includes documented product behavior, API contracts, UAT scenarios, testing and quality gates, architecture, deployment model, known operational boundaries, recovery expectations, and customer handover status.
 
-**End-of-course state:** The course ends with a maintained, deployed MVP v3 and documented handover status. Further customer-side operation, production ownership transfer, monitoring, rollback authority, and secret-rotation responsibility are outside the course roadmap unless separately agreed.
+**Final handover and transition state:** The customer-facing product and documentation are available for independent use at the reached handover level. Source code, hosted documentation, API documentation, UAT evidence, and release-quality evidence remain in the repository. Runtime infrastructure, deployment credentials, secret rotation, monitoring, rollback authority, and production ownership remain with Team 108 / InNoHassle maintainers unless they are separately transferred outside this course roadmap.
+
+**Final report:** The Week 7 report summarizes the MVP v3 delivery, UAT execution, handover status, and CI/quality evidence: [reports/week7/README.md](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week7/README.md).

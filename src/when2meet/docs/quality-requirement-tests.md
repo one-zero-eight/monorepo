@@ -21,7 +21,7 @@ Automated quality requirement tests (QRTs) verify the measurable scenarios in [q
 
 **Expected measurable result:** Line coverage for each critical module is at least 30%.
 
-**Evidence location:** [tests/when2meet/test_quality_requirements.py](../../../tests/when2meet/test_quality_requirements.py); [latest tests CI run](https://github.com/one-zero-eight/monorepo/actions/runs/28267305034/job/83756940196).
+**Evidence location:** [tests/when2meet/test_quality_requirements.py](../../../tests/when2meet/test_quality_requirements.py); [latest protected-main tests CI run](https://github.com/one-zero-eight/monorepo/actions/runs/29437789987).
 
 ## QRT-002: Owner-only event mutation
 
@@ -35,7 +35,7 @@ Automated quality requirement tests (QRTs) verify the measurable scenarios in [q
 
 **Expected measurable result:** Non-owner `PATCH` and `DELETE` requests return HTTP 403; owner deletion succeeds with HTTP 204.
 
-**Evidence location:** [tests/when2meet/test_quality_requirements.py](../../../tests/when2meet/test_quality_requirements.py); [latest tests CI run](https://github.com/one-zero-eight/monorepo/actions/runs/28267305034/job/83756940196).
+**Evidence location:** [tests/when2meet/test_quality_requirements.py](../../../tests/when2meet/test_quality_requirements.py); [latest protected-main tests CI run](https://github.com/one-zero-eight/monorepo/actions/runs/29437789987).
 
 ## QRT-003: Event read response time
 
@@ -49,7 +49,7 @@ Automated quality requirement tests (QRTs) verify the measurable scenarios in [q
 
 **Expected measurable result:** `GET /api/v0/events/{id}` completes in 2 seconds or less and returns HTTP 200.
 
-**Evidence location:** [tests/when2meet/test_quality_requirements.py](../../../tests/when2meet/test_quality_requirements.py); [latest tests CI run](https://github.com/one-zero-eight/monorepo/actions/runs/28267305034/job/83756940196).
+**Evidence location:** [tests/when2meet/test_quality_requirements.py](../../../tests/when2meet/test_quality_requirements.py); [latest protected-main tests CI run](https://github.com/one-zero-eight/monorepo/actions/runs/29437789987).
 
 ## QRT-004: QA documentation and architecture traceability
 
@@ -65,6 +65,6 @@ Automated quality requirement tests (QRTs) verify the measurable scenarios in [q
 
 **Automated command or CI check:** `uv run -m pytest tests/when2meet/test_quality_requirements.py::test_qrt_qa_documentation_keeps_gates_and_architecture_traceability`
 
-**Expected measurable result:** Required maintained docs include tables of contents; pytest, coverage, QRT, CI, and secret scan gates remain documented; QR/QRT IDs stay linked through the public and architecture quality-requirement evidence; accepted ADRs remain linked from quality requirement evidence.
+**Expected measurable result:** Required maintained docs include tables of contents; pytest, coverage, QRT, CI, and secret scan gates remain documented; QR/QRT IDs stay linked through the public and architecture quality-requirement evidence; accepted ADRs remain linked from quality requirement evidence; the Week 7 final report is linked from roadmap, handover, UAT, and the root README and preserves protected-default-branch CI evidence links.
 
-**Evidence location:** [tests/when2meet/test_quality_requirements.py](../../../tests/when2meet/test_quality_requirements.py); latest tests CI run after merge.
+**Evidence location:** [tests/when2meet/test_quality_requirements.py](../../../tests/when2meet/test_quality_requirements.py); [Week 7 final report](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week7/README.md); latest tests CI run after merge.

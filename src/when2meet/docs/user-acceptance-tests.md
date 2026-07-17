@@ -2,6 +2,19 @@
 
 Maintained end-user-facing acceptance scenarios for When2Meet. Customer execution results and scenarios awaiting execution are recorded below without private customer-identifying details.
 
+## Week 7 UAT Summary
+
+Week 7 UAT focused on customer-critical final MVP v3 behavior that changed or remained operationally important after the Week 6 trial release.
+
+| Scenario | Linked PBIs / criteria | Week 7 result | Notes |
+|---|---|---|---|
+| [UAT-001](#uat-001--choose-a-meeting-time-with-calendar-event-awareness) | US-004 | Passed by regression | Calendar overlay behavior remained active; hide-calendar toggle remains optional follow-up. |
+| [UAT-003](#uat-003--book-an-available-room-for-a-selected-meeting-time) | US-007; [#126](https://github.com/one-zero-eight/monorepo/issues/126); [#128](https://github.com/one-zero-eight/monorepo/issues/128); [#129](https://github.com/one-zero-eight/monorepo/issues/129); Sprint 5 timezone follow-up | Passed | Available-room lookup and booking use the selected meeting time, including explicit timezone offset, and persist the booked-room reference. |
+| [UAT-004](#uat-004--distinguish-my-selected-slots-on-the-availability-grid) | [#99](https://github.com/one-zero-eight/monorepo/issues/99); [#94](https://github.com/one-zero-eight/monorepo/issues/94); [#124](https://github.com/one-zero-eight/monorepo/issues/124) | Passed with optional polish | Legend and selected-slot distinction remain understandable; customer-facing polish can continue after course delivery. |
+| [UAT-006](#uat-006--change-or-cancel-a-booked-room) | US-007; [#139](https://github.com/one-zero-eight/monorepo/pull/139) | Passed | Change, sync, cancel, and cleanup flows remain covered by automated contract tests and final transition checks. |
+
+No failed Week 7 UAT scenario is recorded in the public repository. Private customer recordings, exact timecodes, and consent evidence are intentionally not committed. Resulting public follow-ups are limited to maintained documentation, final handover boundaries, and optional customer-driven polish after the course.
+
 ## UAT-001 — Choose a meeting time with calendar-event awareness
 
 **Traceability:** US-004
@@ -10,9 +23,10 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Customer executio
 **Result (Week 4):** Not executed — reverse calendar overlay not implemented in this increment
 **Result (Week 5):** Passed with change request — overlay works on desktop and mobile; customer requested hide-calendar toggle
 **Result (Week 6):** Passed — InNoHassle Calendar events appear in the corresponding availability-grid time slots
+**Result (Week 7):** Passed by regression — no Sprint 5 change regressed the calendar-overlay acceptance path
 **Executed by:** Lisitskii Nikita (demo)
-**Execution date:** 2026-07-12
-**Evidence:** [Sprint Review transcript](../reports/week6/sprint-review-transcript.md); private recording (Moodle only)
+**Execution date:** 2026-07-12; regression evidence reviewed 2026-07-17
+**Evidence:** [Sprint Review transcript](../reports/week6/sprint-review-transcript.md); [Week 7 report](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week7/README.md); private recording (Moodle only)
 
 ### Preconditions
 
@@ -41,6 +55,7 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Customer executio
 
 | Date | Version | Result | Notes |
 |---|---|---|---|
+| 2026-07-17 | MVP v3 | Passed by regression | Calendar-overlay flow remained active for final delivery |
 | 2026-07-12 | Trial release | Passed | InNoHassle Calendar events displayed in the availability grid |
 | 2026-07-05 | 2.0 | Passed (change request) | Hide-calendar toggle requested |
 | 2026-06-27 | 1.0 | Not executed | Reverse calendar integration deferred to backlog |
@@ -99,9 +114,10 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Customer executio
 **Result (Week 4):** Partial — modal and room list work; explicit booking time not confirmed
 **Result (Week 5):** Partial — free-room selection works; booking state, optional flow, calendar link, and participant calendar push incomplete
 **Result (Week 6):** Passed — exact meeting-time selection, eligible-room lookup, booking, and persisted booking state work as expected
+**Result (Week 7):** Passed — selected-time timezone offset is preserved for available-room lookup and room booking
 **Executed by:** Lisitskii Nikita (demo)
-**Execution date:** 2026-07-12
-**Evidence:** [Sprint Review transcript](../reports/week6/sprint-review-transcript.md); [API contract](interface.md#book-room); [automated contract tests](../../../tests/when2meet/test_events.py); private recording (Moodle only)
+**Execution date:** 2026-07-12; final regression evidence reviewed 2026-07-17
+**Evidence:** [Sprint Review transcript](../reports/week6/sprint-review-transcript.md); [Week 7 report](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week7/README.md); [API contract](interface.md#book-room); [automated contract tests](../../../tests/when2meet/test_events.py); private recording (Moodle only)
 
 ### Preconditions
 
@@ -125,16 +141,19 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Customer executio
 - The confirmed reservation uses the selected meeting start and end time.
 - The meeting details retain the booked room and booking reference after reload.
 - A second booking attempt is rejected while the meeting already has a booked room.
+- The selected meeting time includes an explicit timezone offset and room-booking calls preserve that offset.
 
 ### Feedback
 
 - Customer asked which reservation time is used; team acknowledged the flow must ask explicitly and handle multiple/zero intersection edge cases → [#93](https://github.com/one-zero-eight/monorepo/issues/93).
 - Week 6 work added explicit selected meeting time, availability checks through Room Booking, persistent booking state, and concurrent-booking protection.
+- Week 7 work confirmed that the backend does not infer or hardcode a timezone for room booking; it requires and forwards the selected-time offset.
 
 ### History
 
 | Date | Version | Result | Notes |
 |---|---|---|---|
+| 2026-07-17 | MVP v3 | Passed | Timezone-safe selected time and room booking verified by contract tests |
 | 2026-07-12 | Trial release | Passed | Exact-time room booking lifecycle verified during demo |
 | 2026-07-05 | 2.0 | Partial | Room reservation works; lifecycle and calendar push incomplete |
 | 2026-06-27 | 1.0 | Partial | Room modal works; time-selection logic incomplete |
@@ -149,14 +168,15 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Customer executio
 **Status:** Active
 **Result (Week 5):** Passed with change request — border visible; customer requested a legend
 **Result (Week 6):** Passed with change request — legend delivered; customer asked to move it from bottom to top
+**Result (Week 7):** Passed with optional polish — final MVP keeps understandable legend and selected-slot distinction
 **Executed by:** Timur Khasanov (demo); customer observed UAT segment
-**Execution date:** 2026-07-12
-**Evidence:** [Sprint Review summary](../reports/week6/sprint-review-summary.md); [Sprint Review transcript](../reports/week6/sprint-review-transcript.md); private recording (Moodle only)
+**Execution date:** 2026-07-12; final review 2026-07-17
+**Evidence:** [Sprint Review summary](../reports/week6/sprint-review-summary.md); [Sprint Review transcript](../reports/week6/sprint-review-transcript.md); [Week 7 report](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week7/README.md); private recording (Moodle only)
 
 ### Preconditions
 
 - A meeting has multiple participants with submitted availability.
-- The user opens the hosted MVP v2 grid.
+- The user opens the hosted meeting grid.
 
 ### Steps
 
@@ -179,6 +199,7 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Customer executio
 
 | Date | Version | Result | Notes |
 |---|---|---|---|
+| 2026-07-17 | MVP v3 | Passed (optional polish) | Legend and selected-slot distinction retained for final delivery |
 | 2026-07-12 | Trial release | Passed (change request) | Legend delivered; move to top requested |
 | 2026-07-05 | 2.0 | Passed (change request) | Legend requested |
 | — | 2.0 | Not executed | Initial scenario for MVP v2 |
@@ -198,7 +219,7 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Customer executio
 ### Preconditions
 
 - A meeting has at least three participants with overlapping availability.
-- The organizer opens the meeting heatmap on MVP v2.
+- The organizer opens the hosted meeting heatmap.
 
 ### Steps
 
@@ -231,9 +252,10 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Customer executio
 **Role:** Meeting organizer
 **Status:** Active
 **Result (Week 6):** Passed — changing, synchronizing, and canceling a booked room work as expected
+**Result (Week 7):** Passed — lifecycle remains active for final MVP v3 and selected-time synchronization preserves explicit timezone offset
 **Executed by:** Lisitskii Nikita (demo)
-**Execution date:** 2026-07-12
-**Evidence:** [API contract](interface.md#change-booked-room); [automated contract tests](../../../tests/when2meet/test_events.py)
+**Execution date:** 2026-07-12; final regression evidence reviewed 2026-07-17
+**Evidence:** [Week 7 report](https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week7/README.md); [API contract](interface.md#change-booked-room); [automated contract tests](../../../tests/when2meet/test_events.py)
 
 ### Preconditions
 
@@ -263,4 +285,5 @@ Maintained end-user-facing acceptance scenarios for When2Meet. Customer executio
 
 | Date | Version | Result | Notes |
 |---|---|---|---|
+| 2026-07-17 | MVP v3 | Passed | Change/cancel/update lifecycle remains covered for final delivery |
 | 2026-07-12 | Trial release | Passed | Booking change, synchronization, cancellation, and cleanup verified during demo |
