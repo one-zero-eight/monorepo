@@ -103,6 +103,9 @@ def load_root_settings() -> Settings:
         ),
         tabletennis_service=TabletennisSettings(
             environment=Environment.TESTING,
+            mongo=MongoDatabaseSettings(
+                uri=SecretStr(mongo_uri.replace("<service_name>", "tabletennis")),
+            ),
         ),
         guard_service=GuardSettings(
             environment=Environment.TESTING,
