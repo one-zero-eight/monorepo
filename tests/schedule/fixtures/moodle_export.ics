@@ -1,0 +1,458 @@
+BEGIN:VCALENDAR
+METHOD:PUBLISH
+PRODID:-//Moodle Pty Ltd//NONSGML Moodle Version 2025100604//EN
+VERSION:2.0
+BEGIN:VEVENT
+UID:153376@moodle.innopolis.university
+SUMMARY:Assignment 5 is due
+DESCRIPTION:Assignment 5 on GitLab [1]\n\n\nLinks:\n------\n[1] https://git
+	lab.pg.innopolis.university/swp_26/swp_26/-/blob/main/Assignment_05.md\n
+
+CLASS:PUBLIC
+LAST-MODIFIED:20260706T114010Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260705T205900Z
+DTEND:20260705T205900Z
+CATEGORIES:[Sum26]SofPro
+END:VEVENT
+BEGIN:VEVENT
+UID:153467@moodle.innopolis.university
+SUMMARY:Feedback opens
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260705T062317Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260706T050000Z
+DTEND:20260706T050000Z
+CATEGORIES:[S26]DatStrAndAlg
+END:VEVENT
+BEGIN:VEVENT
+UID:153473@moodle.innopolis.university
+SUMMARY:Feedback opens
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260705T064405Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260706T050000Z
+DTEND:20260706T050000Z
+CATEGORIES:[S26]MatAnaII
+END:VEVENT
+BEGIN:VEVENT
+UID:153476@moodle.innopolis.university
+SUMMARY:Feedback opens
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260705T064531Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260706T050000Z
+DTEND:20260706T050000Z
+CATEGORIES:[S26]AnaGeoAndLinAlgII
+END:VEVENT
+BEGIN:VEVENT
+UID:153479@moodle.innopolis.university
+SUMMARY:Feedback opens
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260705T064623Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260706T050000Z
+DTEND:20260706T050000Z
+CATEGORIES:[S26]TheComSci
+END:VEVENT
+BEGIN:VEVENT
+UID:153482@moodle.innopolis.university
+SUMMARY:Feedback opens
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260705T064913Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260706T050000Z
+DTEND:20260706T050000Z
+CATEGORIES:[S26]SofSysAnaAndDes
+END:VEVENT
+BEGIN:VEVENT
+UID:153485@moodle.innopolis.university
+SUMMARY:Feedback opens
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260705T065039Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260706T050000Z
+DTEND:20260706T050000Z
+CATEGORIES:[S26]SofEngToo
+END:VEVENT
+BEGIN:VEVENT
+UID:153872@moodle.innopolis.university
+SUMMARY:Feedback opens
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260706T114011Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260706T094000Z
+DTEND:20260706T094000Z
+CATEGORIES:[Sum26]SofPro
+END:VEVENT
+BEGIN:VEVENT
+UID:151551@moodle.innopolis.university
+SUMMARY:Lo-Fi Prototype (Midterm) is due
+DESCRIPTION: \n\nASSIGNMENT RUBRIC & DETAILS:\n\nhttps://www.notion.so/ulmo
+	st/Project-Lo-Fi-Prototype-Midterm-5896ada5a3264160a8e3054113cf4ac5?pvs=4\n
+	\nSUBMIT A FIGMA PAGE LINK THAT HAS FOLLOWING:\n\nA) Research Synthesis Sec
+	tion\n\n- A.1 Interviews Notes Figma Frame\n- A.2 Themes and Opportunities
+	(or Interview Synthesis) Figma Frame\n- A.3 Feature Ideation Figma Frame\n-
+	 A.4 Feature Prioritization Figma Frame\n\nB) Rapid Prototyping Section\n\n
+	- B.1 User Flow Figma Frame\n- B.2 Paper Sketches "Crazy 8's" Figma Frame\n
+	- B.3 Digital Prototype Figma Frame\n\nExample:\nhttps://www.figma.com/file
+	/k4xVgz0HDmpowrclYYXvcS/UX%2FUI-for-Startup-Course-Example-%22TevaLearn%22?
+	type=design&node-id=184-2182&mode=design\n\nIMPORTANT NOTES FOR THIS PROJEC
+	T SUBMISSION:\n\n	* Please ensure that at the end of each assignment\, you
+	have a table including the contribution from each member of the group. (You
+	 can attach the table as an "image/screenshot" in the same Figma Page)\nSee
+	 the example via link: https://docs.google.com/spreadsheets/d/13DJPUxVc4ZGX
+	PzHq_RRy2vfEUm-2V06DqATVuiMEneo/edit?usp=sharing\n\n	* Make sure that links
+	 to any submitted files have the sharing permission set to “Anyone with a l
+	ink can View/Access” or your submission won't be graded.\n	* The Figma “pro
+	ject” file should be organized logically and neatly.\n	* If you submitted l
+	inks that lead to cloud/online files\, make sure that they're completed (no
+	t just submitted\, which you will update later after the deadline)\n	* Late
+	 Submission: You will be graded as a normal submission but then it will be
+	degraded to the lower grade level.\n\n
+
+CLASS:PUBLIC
+LAST-MODIFIED:20260611T163047Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260706T205900Z
+DTEND:20260706T205900Z
+CATEGORIES:[Sum26]UX/DesBs
+END:VEVENT
+BEGIN:VEVENT
+UID:151012@moodle.innopolis.university
+SUMMARY:Videoessay about the scientist - срок сдачи
+DESCRIPTION:Here you need to attach the link for YandexDisk with your video
+	. Video about the scientist should reveal his/her role in the history of Ru
+	ssian science. Check that you opened access to your file with the link you
+	send.\n\nIt should be not less than 3 minutes and not more than 5 minutes.\
+	n\nYou must be present in the frame\, but not necessarily all the time.\n\n
+	You may use additional illustrations during your video\, in the end you hav
+	e to say several words about the sources of your information for the video.
+	\n
+
+CLASS:PUBLIC
+LAST-MODIFIED:20260626T144529Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260710T130000Z
+DTEND:20260710T130000Z
+CATEGORIES:[Sum26]HisOfRusEn
+END:VEVENT
+BEGIN:VEVENT
+UID:151994@moodle.innopolis.university
+SUMMARY:Attendance
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260605T124838Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260710T130000Z
+DTEND:20260710T143000Z
+CATEGORIES:[Sum26]HisOfRusEn
+END:VEVENT
+BEGIN:VEVENT
+UID:153873@moodle.innopolis.university
+SUMMARY:Assignment 6 - Week 6 is due
+DESCRIPTION:Assignment 6 on GitLab [1]\n\nSubmit two files:\n\n	* Assignmen
+	t 6 report (for Week 6) (PDF)\n	* Presentation slides (for rehearsal presen
+	tation at lab 7) (PDF)\n\n\n\nLinks:\n------\n[1] https://gitlab.pg.innopol
+	is.university/swp_26/swp_26/-/blob/main/Assignment_06.md\n
+
+CLASS:PUBLIC
+LAST-MODIFIED:20260706T114606Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260712T205900Z
+DTEND:20260712T205900Z
+CATEGORIES:[Sum26]SofPro
+END:VEVENT
+BEGIN:VEVENT
+UID:151171@moodle.innopolis.university
+SUMMARY:Assignment 2 is due
+DESCRIPTION:Create a 5–15 second animation of a long-abandoned toy factory
+	coming back to life. Your focus is not on visual storytelling\, but on demo
+	nstrating mastery of Blender’s animation and simulation tools.\n\nYour proj
+	ect must include AT LEAST ONE MEANINGFUL USE OF EACH of the following techn
+	iques:\n\n		FEATURE\n		REQUIREMENT\n\n		KEYFRAME ANIMATION\n		Animate at le
+	ast 3 object properties (location\, rotation\, scale\, material)\n\n		NON-L
+	INEAR ANIMATION\n		Combine at least 2 actions using the NLA editor or use A
+	ction constraint\n\n		RIGGING\n		Use armatures or bone constraints for a mo
+	ving machine or toy\n\n		RIGID BODY PHYSICS\n		Include a working simulation
+	 with falling/moving physical parts\n\n		CLOTH PHYSICS\n		Use cloth on an o
+	bject (e.g. tarp\, curtain\, banner) that reacts to forces\n\n		PARTICLE SY
+	STEM\n		Use emitter or hair particles for factory effects (dust\, sparks\,
+	fur\, etc.)\n\nGrading criteria:\n\n	* 5% Keyframe Animation\n	* Smooth\, b
+	elievable use of keyframes with clean interpolation and curves\n\n	* 3% NLA
+	 Animation\n	* Two or more actions correctly combined\, blended and timed\n
+		* OR\n	* Action constraint used to control progress of a complex repeated
+	sequence with a single keyframe channel.\n\n	* 3% Rigging\n	* Functional ri
+	g setup\n	* correct parenting\n	* used constraints \n	* used in animation\n
+	\n	* 3% Rigid Body Physics\n	* Accurate use of rigid bodies\, including col
+	lision settings\n\n	* 3% Cloth Physics\n	* Cloth behaves believably\n	* Pin
+	ned areas or weights used correctly\n\n	* 3% Particle System\n	* At least o
+	ne particle system used \n	* Settings and forces used\n\n	* 2% Scene Manage
+	ment\n	* Naming\, baking\, file organization\, and cleanliness of the scene
+	\n\n	* 3% Playback Accuracy\n	* Scene plays correctly in rendered video and
+	 Blender viewport\n\nPenalties (additive):\n\n	* Late submission: -50% (of
+	the grade deserved for this assignment)\n	* Improper naming: -25% (of the g
+	rade deserved for this assignment)\n\nAppend your (.BLEND file or .ZIP with
+	 assets and bakes) and RENDERED ANIMATION\n\nNAME FILES %3D_HW2_Name_Surnam
+	e.format% for example 3D_HW2_Egor_Dmitriev.blend\n\n
+
+CLASS:PUBLIC
+LAST-MODIFIED:20260708T125620Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260714T205900Z
+DTEND:20260714T205900Z
+CATEGORIES:[Sum26]IntTo3DMod
+END:VEVENT
+BEGIN:VEVENT
+UID:151995@moodle.innopolis.university
+SUMMARY:Attendance
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260605T124838Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260717T130000Z
+DTEND:20260717T143000Z
+CATEGORIES:[Sum26]HisOfRusEn
+END:VEVENT
+BEGIN:VEVENT
+UID:151552@moodle.innopolis.university
+SUMMARY:Hi-Fi Prototype is due
+DESCRIPTION:ASSIGNMENT RUBRIC & DETAILS:\n\nhttps://www.notion.so/ulmost/Pr
+	oject-Hi-Fi-Prototype-6f38e799691a44acab0b031d188cf047?pvs=4\n\nSUBMIT A FI
+	GMA PAGE LINK THAT HAS FOLLOWING:\n\nA) Usability Study Figma Section\n\nA.
+	1 Idea Brief Figma Frame\nA.2 Usability Study Guide Figma Frame\nA.3 User F
+	low V2.0 Figma Frame\nA.4 Design V1.1 (Lo-Fi Prototype) Figma Frame (Option
+	al)\n\nB) High-Fidelity Prototype Figma Section\n\nB.1 Visual Design Inspir
+	ation Figma Frame\nB.2 Style Guide Figma Frame\nB.3 UI Pattern Library Figm
+	a Frame\nB.4 High-fidelity Mockups & Prototype Figma Frame\n\nExample:\nhtt
+	ps://www.figma.com/file/k4xVgz0HDmpowrclYYXvcS/UX%2FUI-for-Startups-Course-
+	Example-"TevaLearn"?type=design&node-id=1334-3072&mode=design [1]\n\nIMPORT
+	ANT NOTES FOR THIS PROJECT SUBMISSION:\n\n	* Make sure that links to any su
+	bmitted files have the sharing permission set to “Anyone with a link can Vi
+	ew/Access” or your submission won't be graded.\n	* The Figma “project” file
+	 should be organized logically and neatly.\n	* If you submitted links that
+	lead to cloud/online files\, make sure that they're completed (not just sub
+	mitted\, which you will update later after the deadline)\n	* Late Submissio
+	n: You will get 0 points for this assignment.\n\n\n\nLinks:\n------\n[1] ht
+	tps://www.figma.com/file/k4xVgz0HDmpowrclYYXvcS/UX%2FUI-for-Startups-Course
+	-Example-%22TevaLearn%22?type=design&amp\;node-id=1334-3072&amp\;mode=desig
+	n\n
+
+CLASS:PUBLIC
+LAST-MODIFIED:20260611T163434Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260719T205900Z
+DTEND:20260719T205900Z
+CATEGORIES:[Sum26]UX/DesBs
+END:VEVENT
+BEGIN:VEVENT
+UID:153881@moodle.innopolis.university
+SUMMARY:Assignment 6 - Week 7 is due
+DESCRIPTION:Assignment 6 on GitLab [1]\n\nSubmit two files:\n\n	* Assignmen
+	t 6 report (for Week 7) (PDF)\n	* Presentation slides (for the Demo Day) (P
+	DF)\n\n\n\nLinks:\n------\n[1] https://gitlab.pg.innopolis.university/swp_2
+	6/swp_26/-/blob/main/Assignment_06.md\n
+
+CLASS:PUBLIC
+LAST-MODIFIED:20260706T114532Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260719T205900Z
+DTEND:20260719T205900Z
+CATEGORIES:[Sum26]SofPro
+END:VEVENT
+BEGIN:VEVENT
+UID:153469@moodle.innopolis.university
+SUMMARY:Feedback should be completed
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260705T062317Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260720T070000Z
+DTEND:20260720T070000Z
+CATEGORIES:[S26]DatStrAndAlg
+END:VEVENT
+BEGIN:VEVENT
+UID:153475@moodle.innopolis.university
+SUMMARY:Feedback should be completed
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260705T064405Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260720T070000Z
+DTEND:20260720T070000Z
+CATEGORIES:[S26]MatAnaII
+END:VEVENT
+BEGIN:VEVENT
+UID:153478@moodle.innopolis.university
+SUMMARY:Feedback should be completed
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260705T064531Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260720T070000Z
+DTEND:20260720T070000Z
+CATEGORIES:[S26]AnaGeoAndLinAlgII
+END:VEVENT
+BEGIN:VEVENT
+UID:153481@moodle.innopolis.university
+SUMMARY:Feedback should be completed
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260705T064623Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260720T070000Z
+DTEND:20260720T070000Z
+CATEGORIES:[S26]TheComSci
+END:VEVENT
+BEGIN:VEVENT
+UID:153484@moodle.innopolis.university
+SUMMARY:Feedback should be completed
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260705T064913Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260720T070000Z
+DTEND:20260720T070000Z
+CATEGORIES:[S26]SofSysAnaAndDes
+END:VEVENT
+BEGIN:VEVENT
+UID:153487@moodle.innopolis.university
+SUMMARY:Feedback should be completed
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260705T065039Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260720T070000Z
+DTEND:20260720T070000Z
+CATEGORIES:[S26]SofEngToo
+END:VEVENT
+BEGIN:VEVENT
+UID:150927@moodle.innopolis.university
+SUMMARY:Exercise Physiology Quiz закрывается
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260703T131214Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260721T205900Z
+DTEND:20260721T205900Z
+CATEGORIES:[Sum26]PhyEduAndSpoEn
+END:VEVENT
+BEGIN:VEVENT
+UID:151172@moodle.innopolis.university
+SUMMARY:Term project: Dynamic Machines is due
+DESCRIPTION:Create an animation as if you were participating in the\n\nFor
+	the term project\, you only need to do one box and render it for the entire
+	 duration (0-499 frames). \n\nThe camera motion is correct. Your box starts
+	 out of sight and ends out of sight. DON'T TOUCH THE CAMERA and DON'T MOVE
+	THE BOX BORDERS\n\nA ball should enter the box at frame 113 and a ball shou
+	ld leave the box between frames 335-340. At those moments they have to be v
+	isible and metallic. In between\, you can do anything\, even create more ba
+	lls or remove the existing one.\n\nThe initial files are appended\n\nGradin
+	g criteria: \n\n	* 10% Animation\nAnimation quality\n\n	* 10% Materials and
+	 Lighting\nStyle consistency\nMaterial quality\nOverall look of the scene\n
+	\n	* 10% Procedural generation\nMax grade for this category will be awarded
+	 for good use of at least 2 tools from the following list: Physics\, Riggin
+	g\, GeoNodes\, Particle systems\, Fluids\n\n	* 10% Creativity\n\n	* 5% Base
+	 meshes\nNo overlapping geometry\nOverall quality of the models\n\n	* 5% Sc
+	ene setup\nScene objects are named and arranged for easy work with them\nNo
+	de Trees are arranged\, framed\, and grouped for easy understanding of thei
+	r function\n\nSUBMIT 1 FILE:\n\n	* _%3D_TP_Name_Surname.blend%_ or _%3D_TP_
+	Name_Surname.zip%_ for your PROJECT FILE or PROJECT ARCHIVE if you have use
+	d assets from other files\n	* RENDER should go to https://moodle.innopolis.
+	university/mod/assign/view.php?id=148951 [1]\n\n\n\nLinks:\n------\n[1] htt
+	ps://moodle.innopolis.university/mod/assign/view.php?id=148951\n
+
+CLASS:PUBLIC
+LAST-MODIFIED:20260603T105344Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260722T205900Z
+DTEND:20260722T205900Z
+CATEGORIES:[Sum26]IntTo3DMod
+END:VEVENT
+BEGIN:VEVENT
+UID:153468@moodle.innopolis.university
+SUMMARY:Feedback closes
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260705T062317Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260726T205900Z
+DTEND:20260726T205900Z
+CATEGORIES:[S26]DatStrAndAlg
+END:VEVENT
+BEGIN:VEVENT
+UID:153474@moodle.innopolis.university
+SUMMARY:Feedback closes
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260705T064405Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260726T205900Z
+DTEND:20260726T205900Z
+CATEGORIES:[S26]MatAnaII
+END:VEVENT
+BEGIN:VEVENT
+UID:153477@moodle.innopolis.university
+SUMMARY:Feedback closes
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260705T064531Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260726T205900Z
+DTEND:20260726T205900Z
+CATEGORIES:[S26]AnaGeoAndLinAlgII
+END:VEVENT
+BEGIN:VEVENT
+UID:153480@moodle.innopolis.university
+SUMMARY:Feedback closes
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260705T064623Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260726T205900Z
+DTEND:20260726T205900Z
+CATEGORIES:[S26]TheComSci
+END:VEVENT
+BEGIN:VEVENT
+UID:153483@moodle.innopolis.university
+SUMMARY:Feedback closes
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260705T064913Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260726T205900Z
+DTEND:20260726T205900Z
+CATEGORIES:[S26]SofSysAnaAndDes
+END:VEVENT
+BEGIN:VEVENT
+UID:153486@moodle.innopolis.university
+SUMMARY:Feedback closes
+DESCRIPTION:
+CLASS:PUBLIC
+LAST-MODIFIED:20260705T065039Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260726T205900Z
+DTEND:20260726T205900Z
+CATEGORIES:[S26]SofEngToo
+END:VEVENT
+BEGIN:VEVENT
+UID:151173@moodle.innopolis.university
+SUMMARY:Term project: Dynamic Machines (Video Submission) is due
+DESCRIPTION:SUBMIT 1 FILE:\n\n	* _%3D_TP_Name_Surname.mp4%_ - RENDER of you
+	r project in mp.4 format\n\n
+
+CLASS:PUBLIC
+LAST-MODIFIED:20260619T092006Z
+DTSTAMP:20260708T173053Z
+DTSTART:20260731T205900Z
+DTEND:20260731T205900Z
+CATEGORIES:[Sum26]IntTo3DMod
+END:VEVENT
+END:VCALENDAR
