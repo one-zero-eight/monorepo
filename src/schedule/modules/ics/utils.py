@@ -400,152 +400,155 @@ async def get_personal_sport_ics(user: ViewUser) -> bytes:
     return ical_bytes
 
 
+def _moodle_course_name(event: icalendar.Event) -> str:
+    categories = _to_ical_str(event["categories"])
+    return html.unescape(categories.split("]")[1].replace(r"\;", ";"))
+
+
+def _moodle_make_deadline(event: icalendar.Event) -> icalendar.Event:
+    new = icalendar.Event()
+    end = _prop_dt(event["dtend"]).astimezone(MOSCOW_TZ)
+    new["dtstart"] = icalendar.vDate(end.date())
+    new["uid"] = event["uid"]
+    new["dtstamp"] = event["dtstamp"]
+    course_name = _moodle_course_name(event)
+    new["summary"] = _prop_str(event["summary"]) + f" - {course_name}"
+    new["description"] = f"Course: {course_name}\nDue to: {end.timetz().isoformat()}"
+    return new
+
+
+def _moodle_create_quiz(
+    quiz_name: str, opens: icalendar.Event, closes: icalendar.Event | None = None
+) -> icalendar.Event:
+    new = icalendar.Event()
+    start = _prop_dt(opens["dtstart"]).astimezone(MOSCOW_TZ)
+    due: dtm.datetime | None = None
+    if closes:
+        due = _prop_dt(closes["dtend"]).astimezone(MOSCOW_TZ)
+    if due and start.date() != due.date():  # Display only on deadline day
+        new["dtstart"] = icalendar.vDate(due.date())
+    else:
+        new["dtstart"] = icalendar.vDatetime(start)
+        if due:
+            new["dtend"] = icalendar.vDatetime(due)
+
+    new["uid"] = opens["uid"]
+    new["dtstamp"] = opens["dtstamp"]
+    course_name = _moodle_course_name(opens)
+    new["summary"] = quiz_name + f" - {course_name}"
+
+    new["description"] = "\n".join(
+        [
+            f"Course: {course_name}",
+            _prop_str(opens["description"]) if opens.get("description") else "",
+            f"Due to: {due.timetz().isoformat()}" if due else "",
+        ]
+    ).strip()
+
+    new["color"] = "darkorange"
+    return new
+
+
+def _moodle_quiz_suffix(event_name: str) -> tuple[str, str] | None:
+    """Return (kind, quiz_name) for open/close markers, else None."""
+    for kind, suffix in (
+        ("opens", "opens"),
+        ("opens", "открывается"),
+        ("closes", "closes"),
+        ("closes", "закрывается"),
+    ):
+        if event_name.endswith(suffix):
+            return kind, event_name[: -len(suffix)].strip()
+    return None
+
+
+def fix_moodle_events(calendar: icalendar.Calendar) -> icalendar.Calendar:
+    """Normalize Moodle VEVENTs: pair quiz open/close per course, deadlines, drop attendance."""
+    fixed_calendar = get_base_calendar()
+    fixed_calendar["x-wr-calname"] = "Moodle"
+
+    fixed_events: list[icalendar.Event] = []
+    # Key by (quiz_name, course) so same-named activities on different courses do not collide.
+    quiz_opens: dict[tuple[str, str], icalendar.Event] = {}
+    quiz_closes: dict[tuple[str, str], icalendar.Event] = {}
+
+    for raw_event in calendar.walk(name="VEVENT"):
+        event = _as_event(raw_event)
+        event_timedelta = _prop_dt(event["dtend"]) - _prop_dt(event["dtstart"])
+        event_name = _prop_str(event["summary"]).strip()
+
+        if event_timedelta == dtm.timedelta():
+            marker = _moodle_quiz_suffix(event_name)
+            if marker is not None:
+                kind, quiz_name = marker
+                course_name = _moodle_course_name(event)
+                key = (quiz_name, course_name)
+                if kind == "opens":
+                    if key in quiz_opens:
+                        logger.warning(f"Quiz open '{quiz_name}' for course '{course_name}' appears twice")
+                    quiz_opens[key] = event
+                else:
+                    if key in quiz_closes:
+                        logger.warning(f"Quiz close '{quiz_name}' for course '{course_name}' appears twice")
+                    quiz_closes[key] = event
+            else:
+                fixed_events.append(_moodle_make_deadline(event))
+            continue
+
+        if "Attendance" in event_name:
+            continue
+
+        categories = _to_ical_str(event["categories"])
+        if categories:
+            if "]" in categories:
+                course_name = categories.split("]")[1]
+            else:
+                course_name = categories
+            event["summary"] = _prop_str(event["summary"]) + f" - {course_name}"
+            description = _prop_str(event["description"]) if event.get("description") else ""
+            event["description"] = "\n".join(
+                [
+                    f"Course: {course_name}",
+                    description,
+                ]
+            )
+
+        start_prop = event["dtstart"]
+        if start_prop:
+            event["dtstart"] = icalendar.vDatetime(_prop_dt(start_prop).astimezone(MOSCOW_TZ))
+
+        end_prop = event["dtend"]
+        if end_prop:
+            event["dtend"] = icalendar.vDatetime(_prop_dt(end_prop).astimezone(MOSCOW_TZ))
+
+        fixed_events.append(event)
+
+    for key, opens in quiz_opens.items():
+        quiz_name, _course = key
+        closes = quiz_closes.pop(key, None)
+        fixed_events.append(_moodle_create_quiz(quiz_name, opens, closes))
+
+    # Orphan closes (no matching open for that course) become deadlines instead of being dropped.
+    for closes in quiz_closes.values():
+        fixed_events.append(_moodle_make_deadline(closes))
+
+    for event in fixed_events:
+        event["color"] = "darkorange"
+        fixed_calendar.add_component(event)
+
+    return fixed_calendar
+
+
 async def get_moodle_ics(user: ViewUser) -> bytes:
     """
     Get schedule in ICS format for the user from user link to moodle calendar;
     """
-
-    def get_course_name(event: icalendar.Event) -> str:
-        categories = _to_ical_str(event["categories"])
-        course_name = html.unescape(categories.split("]")[1].replace(r"\;", ";"))
-        return course_name
-
-    def make_deadline(event: icalendar.Event) -> icalendar.Event:
-        new = icalendar.Event()
-        end = _prop_dt(event["dtend"])
-        end = end.astimezone(MOSCOW_TZ)
-        new["dtstart"] = icalendar.vDate(end.date())
-        new["uid"] = event["uid"]
-        new["dtstamp"] = event["dtstamp"]
-        course_name = get_course_name(event)
-        new["summary"] = _prop_str(event["summary"]) + f" - {course_name}"
-
-        new["description"] = f"Course: {course_name}\nDue to: {end.timetz().isoformat()}"
-
-        return new
-
-    def create_quiz(quiz_name: str, opens: icalendar.Event, closes: icalendar.Event | None = None) -> icalendar.Event:
-        new = icalendar.Event()
-        start = _prop_dt(opens["dtstart"])
-        start = start.astimezone(MOSCOW_TZ)
-        due: dtm.datetime | None = None
-        if closes:
-            due = _prop_dt(closes["dtend"])
-            due = due.astimezone(MOSCOW_TZ)
-        if due and start.date() != due.date():  # Display only on deadline day
-            new["dtstart"] = icalendar.vDate(due.date())
-        else:
-            new["dtstart"] = icalendar.vDatetime(start)
-            if due:
-                new["dtend"] = icalendar.vDatetime(due)
-
-        new["uid"] = opens["uid"]
-        new["dtstamp"] = opens["dtstamp"]
-        course_name = get_course_name(opens)
-        new["summary"] = quiz_name + f" - {course_name}"
-
-        new["description"] = "\n".join(
-            [
-                f"Course: {course_name}",
-                _prop_str(opens["description"]) if opens.get("description") else "",
-                f"Due to: {due.timetz().isoformat()}" if due else "",
-            ]
-        ).strip()
-
-        new["color"] = "darkorange"
-        return new
 
     async def read_moodle_schedule(url: str) -> icalendar.Calendar:
         _generator = generate_ics_from_url(url)
         content = "".join([bytes_data.decode("utf-8") async for bytes_data in _generator if bytes_data is not None])
         calendar = icalendar.Calendar.from_ical(content)
         return calendar
-
-    async def _async_fix_moodle_events(calendar: icalendar.Calendar) -> icalendar.Calendar:
-        fixed_calendar = get_base_calendar()
-        fixed_calendar["x-wr-calname"] = "Moodle"
-
-        vevents = calendar.walk(name="VEVENT")
-        fixed_events = []
-        quizes_halfs_opens = {}
-        quizes_halfs_closes = {}
-
-        for raw_event in vevents:
-            event = _as_event(raw_event)
-            event_timedelta = _prop_dt(event["dtend"]) - _prop_dt(event["dtstart"])
-            event_name = _prop_str(event["summary"]).strip()
-
-            if event_timedelta == dtm.timedelta():
-                if event_name.endswith("opens"):
-                    quiz_name = event_name.split("opens", maxsplit=1)[0].strip()
-                    if quiz_name in quizes_halfs_opens:
-                        logger.warning(f"Quiz '{quiz_name}' appears twice")
-                    quizes_halfs_opens[quiz_name] = event
-                elif event_name.endswith("открывается"):
-                    quiz_name = event_name.split("открывается", maxsplit=1)[0].strip()
-                    if quiz_name in quizes_halfs_opens:
-                        logger.warning(f"Quiz '{quiz_name}' appears twice")
-                    quizes_halfs_opens[quiz_name] = event
-                elif event_name.endswith("closes"):
-                    quiz_name = event_name.split("closes", maxsplit=1)[0].strip()
-                    if quiz_name in quizes_halfs_closes:
-                        logger.warning(f"Quiz '{quiz_name}' appears twice")
-                    quizes_halfs_closes[quiz_name] = event
-                elif event_name.endswith("закрывается"):
-                    quiz_name = event_name.split("закрывается", maxsplit=1)[0].strip()
-                    if quiz_name in quizes_halfs_closes:
-                        logger.warning(f"Quiz '{quiz_name}' appears twice")
-                    quizes_halfs_closes[quiz_name] = event
-                else:
-                    # DEADLINE TYPE
-                    deadline = make_deadline(event)
-                    fixed_events.append(deadline)
-            else:
-                if "Attendance" in event_name:
-                    continue
-
-                categories = _to_ical_str(event["categories"])
-                if categories:
-                    if "]" in categories:
-                        course_name = categories.split("]")[1]
-                    else:
-                        course_name = categories
-                    event["summary"] = _prop_str(event["summary"]) + f" - {course_name}"
-                    description = _prop_str(event["description"]) if event.get("description") else ""
-                    event["description"] = "\n".join(
-                        [
-                            f"Course: {course_name}",
-                            description,
-                        ]
-                    )
-
-                start_prop = event["dtstart"]
-                if start_prop:
-                    start_dt = _prop_dt(start_prop).astimezone(MOSCOW_TZ)
-                    event["dtstart"] = icalendar.vDatetime(start_dt)
-
-                end_prop = event["dtend"]
-                if end_prop:
-                    end_dt = _prop_dt(end_prop).astimezone(MOSCOW_TZ)
-                    event["dtend"] = icalendar.vDatetime(end_dt)
-
-                fixed_events.append(event)
-
-        for quiz_name, opens in quizes_halfs_opens.items():
-            closes = quizes_halfs_closes.get(quiz_name)
-
-            if closes:  # Paired
-                quiz = create_quiz(quiz_name, opens, closes)
-                fixed_events.append(quiz)
-            else:  # Non pair (no deadline)
-                quiz = create_quiz(quiz_name, opens, closes=None)
-                fixed_events.append(quiz)
-
-        for event in fixed_events:
-            event["color"] = "darkorange"
-            fixed_calendar.add_component(event)
-
-        return fixed_calendar
 
     token = user.moodle_calendar_authtoken
     if token is None:
@@ -556,7 +559,7 @@ async def get_moodle_ics(user: ViewUser) -> bytes:
         f"userid={user.moodle_userid}&authtoken={encoded_token}&preset_what=all&preset_time=custom"
     )
     moodle_calendar = await read_moodle_schedule(user_moodle_calendar_url)
-    calendar = await _async_fix_moodle_events(moodle_calendar)
+    calendar = fix_moodle_events(moodle_calendar)
     return calendar.to_ical()
 
 
