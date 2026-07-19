@@ -1,0 +1,100 @@
+transcript:
+- section: Sprint 5 Discussion
+  entries:
+  - time: 00:00:02
+    speaker: Nikita Lisitckii
+    text: The goal of our sprint this week was to process the feedback we received in week six, fully close out the project, and ensure it's handed off to your team. We'll now show you the final MVP. Let's start with the frontend; Misha will demonstrate it.
+- section: MVP v3 demonstration
+  entries:
+  - time: 00:00:39
+    speaker: Mikhail Istomin
+    text: This is what the meeting creation process looks like. There are no significant changes on the desktop version.
+  - time: 00:01:07
+    speaker: Mikhail Istomin
+    text: The main changes affected the mobile version. Scrolling now works properly. Slot selection has also been improved, allowing you to view information on your phone without having to constantly scroll down.
+  - time: 00:01:44
+    speaker: Customer
+    text: Please explain again, a little more slowly. What exactly can I see?
+  - time: 00:01:48
+    speaker: Mikhail Istomin
+    text: This part of the interface.
+  - time: 00:01:51
+    speaker: Customer
+    text: If I click here, I still can't see the information I need. I don't want to keep scrolling up and down—I just can't remember where I clicked. I need the results to appear on this screen.
+  - time: 00:02:16
+    speaker: Mikhail Istomin
+    text: Okay, we'll take that into account. That concludes the major interface changes.
+  - time: 00:02:23
+    speaker: Nikita Lisitckii
+    text: Please clarify how exactly time slots are now allocated.
+  - time: 00:02:29
+    speaker: Mikhail Istomin
+    text: The current logic will likely need to be refined after the SWP course is completed. Currently, slots are selected by double-clicking and dragging, as otherwise, scrolling makes it difficult to select them properly. This isn't entirely user-friendly, so we'll need to discuss a better implementation in the future.
+  - time: 00:02:55
+    speaker: Mikhail Istomin
+    text: Regarding the signatures (labels), you mentioned that they should be located at the top?
+  - time: 00:03:11
+    speaker: Customer
+    text: Yes, because I'm completely clueless about these shades of purple. I need everything to be intuitive or clearly labeled right in front of me. I log into this service and the visuals make me want to cry. I won't scroll down a page if I don't understand what I'm seeing.
+  - time: 00:03:32
+    speaker: Mikhail Istomin
+    text: Got it. So, this will need to be fixed for the mobile version.
+  - time: 00:03:38
+    speaker: Customer
+    text: Why only for mobile? The desktop version has the same problems.
+  - time: 00:03:45
+    speaker: Mikhail Istomin
+    text: Nevertheless, the product is now in working order and can be used fully.
+- section: Final project evaluation and transition
+  entries:
+  - time: 00:03:55
+    speaker: Nikita Lisitckii
+    text: Do you agree that the project is ready for release?
+  - time: 00:04:00
+    speaker: Customer
+    text: Yes.
+  - time: 00:04:02
+    speaker: Nikita Lisitckii
+    text: Do you agree that the project is fully completed in terms of its stated functionality?
+  - time: 00:04:12
+    speaker: Customer
+    text: Yes.
+  - time: 00:04:16
+    speaker: Nikita Lisitckii
+    text: Did you notice any other details that need improvement?
+  - time: 00:04:22
+    speaker: Customer
+    text: Only minor issues. Overall, none.
+  - time: 00:04:26
+    speaker: Nikita Lisitckii
+    text: Excellent. Do you agree that we'll make these minor changes outside of the SWP course?
+  - time: 00:04:35
+    speaker: Customer
+    text: Yes.
+  - time: 00:04:38
+    speaker: Nikita Lisitckii
+    text: Great. Do you agree that the application deployment is entirely on InnoHassle's servers and website, and that the product is currently fully owned by InnoHassle?
+  - time: 00:04:55
+    speaker: Customer
+    text: Yes.
+  - time: 00:05:00
+    speaker: Nikita Lisitckii
+    text: Do you agree that the project has been effectively completely handed over to Team 108?
+  - time: 00:05:06
+    speaker: Customer
+    text: Yes.
+  - time: 00:05:12
+    speaker: Nikita Lisitckii
+    text: Please clarify what kind of support will be required from us after completing the SWP course?
+  - time: 00:05:17
+    speaker: Customer
+    text: "If you remain on Team 108, this project will be entirely yours. You must support it: listen to user feedback, promptly fix bugs, and discuss and implement relevant new ideas from the audience."
+  - time: 00:05:37
+    speaker: Nikita Lisitckii
+    text: Okay. We'll also ask you to separately review the documentation we've compiled—the README.md and customer-handover.md files.
+  - time: 00:05:53
+    speaker: Customer
+    text: Okay.
+  - time: 00:05:56
+    speaker: Nikita Lisitckii
+    text: In that case, I think we're done for today. Thank you!

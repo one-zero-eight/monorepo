@@ -1,0 +1,48 @@
+team:
+  - name: "Nikita Lisitskiy"
+    email: "n.lisitckii@innopolis.university"
+    github: "keamka"
+    scrum_role: "Product Owner"
+    tech_responsibility: "Backend, product coordination"
+    contributions:
+      - "Sprint 5 Planning and backlog refinement"
+      - "Week 7 Sprint Review facilitation; final transition confirmation with customer"
+
+  - name: "Vladislav Konovalov"
+    email: "vl.konovalov@innopolis.university"
+    github: "dofi4ka"
+    scrum_role: "Scrum Master"
+    tech_responsibility: "DevOps, frontend, reporting"
+    contributions:
+      - "Week 7 report assets and Moodle PDF"
+      - "Demo Day / Week 7 rehearsal slide deck (When2Meet-presentation-v1-4)"
+      - "Public report and feedback/transition indexing"
+
+  - name: "Mikhail Istomin"
+    email: "m.istomin@innopolis.university"
+    github: "PoweredDeveloper"
+    scrum_role: "Developer"
+    tech_responsibility: "Frontend, prototype design"
+    contributions:
+      - "Frontend MVP v3 UX: mobile scrolling, slot selection, legend placement"
+      - "Sprint Review product demonstration"
+
+  - name: "Dmitrii Chudin"
+    email: "d.chudin@innopolis.university"
+    github: "GrigsyChudin"
+    scrum_role: "Developer"
+    tech_responsibility: "Backend"
+    contributions:
+      - "Timezone-safe selected time and room-booking API (#152)"
+      - "CHANGELOG / API contract support for MVP v3"
+
+  - name: "Timur Khasanov"
+    email: "t.khasanov@innopolis.university"
+    github: "l1berty-dev"
+    scrum_role: "Developer"
+    tech_responsibility: "Backend, QA, documentation"
+    contributions:
+      - "Customer handover / UAT / docs maintenance for final transition"
+      - "Sprint Review transcript and summary support"
+
+non_participants: []

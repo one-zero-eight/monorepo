@@ -186,11 +186,11 @@ Manual smoke check:
 
 ## Handover Status
 
-Current level reached: **Ready for independent use on the hosted pre-production deployment**.
+Current level reached: **Ready for independent use**.
 
-Customer-confirmation status for this document and the README entry point: **Maintained for final MVP v3 handover**.
+Customer-confirmation status: **Accepted with follow-up items**.
 
-The customer reviewed `README.md` and this handover page during the Week 6 meeting and stated that the documentation matched her expectations for the trial release. Week 7 updates document the final MVP v3 state, UAT execution, CI evidence, and remaining support boundaries without exposing private recordings, timecodes, consent evidence, credentials, or customer-identifying data.
+During the Week 7 Sprint Review the customer confirmed that MVP v3 is ready for release, functionally complete against the agreed scope, deployed on InNoHassle infrastructure, and handed over to Team 108. Remaining follow-up items are optional post-course UX polish (mobile viewport feedback, heatmap legend prominence on desktop and mobile, slot-selection discoverability) and continued Team 108 support for bugs and user-driven improvements. The customer also agreed to a separate review of the final `README.md` and this handover page.
 
 This means the customer can access and use the deployed pre-production product with InNoHassle SSO, and the repository/docs are sufficient to understand current normal use, API behavior, setup, testing, deployment model, known gaps, and recovery expectations for the reached handover level.
 

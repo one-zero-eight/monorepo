@@ -1,0 +1,32 @@
+links:
+  public:
+    week7_readme: "https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week7/README.md"
+    week6_readme: "https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week6/README.md"
+    product_tree: "https://github.com/one-zero-eight/monorepo/tree/main/src/when2meet"
+    sprint_review_transcript: "https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week7/sprint-review-transcript.md"
+    sprint_review_summary: "https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/reports/week7/sprint-review-summary.md"
+    deployed_product: "https://pre.innohassle.ru/when2meet"
+    public_demo_video: "https://disk.yandex.ru/i/K8_tvcbO6OXcbQ"
+    sprint_milestone: "https://github.com/one-zero-eight/monorepo/milestone/5"
+    product_backlog: "https://github.com/orgs/one-zero-eight/projects/4/views/19"
+    sprint_backlog: "https://github.com/orgs/one-zero-eight/projects/4/views/20"
+    hosted_docs: "https://one-zero-eight.github.io/monorepo/"
+    changelog: "https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/CHANGELOG.md"
+    customer_handover: "https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/docs/customer-handover.md"
+    ci_tests: "https://github.com/one-zero-eight/monorepo/actions/runs/29689579980"
+    ci_secret_scan: "https://github.com/one-zero-eight/monorepo/actions/runs/29689579983"
+    ci_lychee: "https://github.com/one-zero-eight/monorepo/actions/runs/29689579981"
+  private:
+    sprint_review_uat_recording: "https://disk.yandex.ru/d/fTQ0k1RMHwOQZA"
+    uat_timecode_demo: "00:00:02 – 00:03:45"
+    uat_timecode_transition: "00:03:55 – 00:05:56"
+    private_access_instructions: >-
+      Skipped — product uses InnoHassle SSO on the public pre-production URL
+      https://pre.innohassle.ru/when2meet . API docs:
+      https://api.innohassle.ru/when2meet/v0/docs .
+    transition_confirmation_proof: >-
+      Private proof: Week 7 Sprint Review recording (timecode 00:03:55–00:05:56)
+      where the customer verbally accepted release readiness, functional
+      completeness, InNoHassle deployment, and Team 108 handover. Written
+      screenshot of any separate chat confirmation — attach on Moodle if
+      available; otherwise the recording is the confirmation evidence.
