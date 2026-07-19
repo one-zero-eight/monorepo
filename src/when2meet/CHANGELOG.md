@@ -5,16 +5,30 @@ Releases follow [SemVer](https://semver.org/) and map to MVP increments.
 
 ## [Unreleased]
 
+## [0.4.0] — MVP v3 (Sprint 5 / Assignment 6)
+
+**Release date:** 2026-07-19
+**Sprint milestone:** [Sprint 5](https://github.com/one-zero-eight/monorepo/milestone/5)
+**Week 7 report:** [reports/week7/README.md](reports/week7/README.md)
+**Customer handover:** [docs/customer-handover.md](docs/customer-handover.md)
+
+Final course release of When2Meet, deployed at [pre.innohassle.ru/when2meet](https://pre.innohassle.ru/when2meet) and approved by the customer as complete against the agreed functionality.
+
+### Added
+
+- Timezone-aware selected meeting times: API requests require an explicit timezone offset and preserve it through available-room lookup, booking, and booking updates ([#152](https://github.com/one-zero-eight/monorepo/pull/152)).
+
+### Changed
+
+- Moved the heatmap legend above the availability grid for clearer interpretation of personal and aggregate availability.
+- Organizers can clear or replace the selected final meeting time when no room is booked.
+- Improved mobile scrolling and slot-selection behavior and completed final customer validation on desktop and mobile.
+
 ### Documentation
 
 - Updated roadmap, customer handover, Week 7 UAT summary, and Week 7 final report for MVP v3 course delivery ([#156](https://github.com/one-zero-eight/monorepo/issues/156), [#160](https://github.com/one-zero-eight/monorepo/issues/160), [#166](https://github.com/one-zero-eight/monorepo/issues/166)).
 - Extended Sprint 5 quality and CI evidence links for When2Meet testing, QRTs, secret scan, and link-check gates ([#167](https://github.com/one-zero-eight/monorepo/issues/167)).
-
-### Planned for MVP v3 (Sprint 5 / Week 7)
-
-- Move heatmap legend to the top of the interface.
-- Allow clearing or replacing the selected final meeting time when no room is booked.
-- Mobile validation with the customer before final release.
+- Added the Week 7 Sprint Review transcript, summary, and retrospective, including final release approval and post-course follow-up boundaries ([#191](https://github.com/one-zero-eight/monorepo/pull/191)).
 
 ## [0.3.0] — Week 6 Trial Release (Sprint 4 / Assignment 6)
 
