@@ -13,9 +13,9 @@ links:
     hosted_docs: "https://one-zero-eight.github.io/monorepo/"
     changelog: "https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/CHANGELOG.md"
     customer_handover: "https://github.com/one-zero-eight/monorepo/blob/main/src/when2meet/docs/customer-handover.md"
-    ci_tests: "https://github.com/one-zero-eight/monorepo/actions/runs/29689579980"
-    ci_secret_scan: "https://github.com/one-zero-eight/monorepo/actions/runs/29689579983"
-    ci_lychee: "https://github.com/one-zero-eight/monorepo/actions/runs/29689579981"
+    ci_tests: "https://github.com/one-zero-eight/monorepo/actions/runs/29701895700/job/88232206487"
+    ci_secret_scan: "https://github.com/one-zero-eight/monorepo/actions/runs/29701895707/job/88232206375"
+    ci_lychee: "https://github.com/one-zero-eight/monorepo/actions/runs/29701895698/job/88232206373"
   private:
     sprint_review_uat_recording: "https://disk.yandex.ru/d/fTQ0k1RMHwOQZA"
     uat_timecode_demo: "00:00:02 – 00:03:45"
@@ -25,8 +25,6 @@ links:
       https://pre.innohassle.ru/when2meet . API docs:
       https://api.innohassle.ru/when2meet/v0/docs .
     transition_confirmation_proof: >-
-      Private proof: Week 7 Sprint Review recording (timecode 00:03:55–00:05:56)
-      where the customer verbally accepted release readiness, functional
-      completeness, InNoHassle deployment, and Team 108 handover. Written
-      screenshot of any separate chat confirmation — attach on Moodle if
-      available; otherwise the recording is the confirmation evidence.
+      Week 7 Sprint Review recording (timecode 00:03:55–00:05:56): customer
+      verbally accepted release readiness, functional completeness, InNoHassle
+      deployment, and Team 108 handover.

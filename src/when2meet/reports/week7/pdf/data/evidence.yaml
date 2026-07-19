@@ -1,6 +1,6 @@
 images:
   - file: ../images/sprint-milestone.png
-    caption: "Sprint milestone / Sprint backlog (reused board evidence; replace with Sprint 5 capture if available)"
+    caption: "Sprint 5 milestone / Sprint backlog"
   - file: ../images/product-backlog.png
     caption: "Product backlog"
   - file: ../images/latest-ci-run.png

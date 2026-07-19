@@ -14,7 +14,7 @@ InNoHassle service for planning meeting availability (SWP Assignment 6 / Sprint 
 | **Sprint Goal** | Use Week 6 trial feedback to complete final maintenance, confirm transition status, and deliver the final course version `MVP v3` |
 | **Dates** | 13 July 2026 – 19 July 2026 (Week 7) |
 | **Sprint milestone** | [Sprint 5](https://github.com/one-zero-eight/monorepo/milestone/5) |
-| **Total Story Points** | _Confirm from Sprint 5 board (see ask below)_ |
+| **Total Story Points** | 43 |
 | **Scope summary** | Week 6 follow-ups (selected-time clear, legend placement, mobile validation), timezone-safe selected time, final handover docs, UAT, MVP v3 delivery, Demo Day prep |
 
 ### Workflow links
@@ -144,9 +144,9 @@ Latest protected-default-branch CI (at report assembly):
 
 | Check | Result | Link |
 |---|---|---|
-| Run tests | Success | [GitHub Actions run 29689579980](https://github.com/one-zero-eight/monorepo/actions/runs/29689579980) |
-| When2Meet QA secret scan | Success | [GitHub Actions run 29689579983](https://github.com/one-zero-eight/monorepo/actions/runs/29689579983) |
-| Links | Success | [GitHub Actions run 29689579981](https://github.com/one-zero-eight/monorepo/actions/runs/29689579981) |
+| Run tests | Success | [GitHub Actions job 88232206487](https://github.com/one-zero-eight/monorepo/actions/runs/29701895700/job/88232206487) |
+| When2Meet QA secret scan | Success | [GitHub Actions job 88232206375](https://github.com/one-zero-eight/monorepo/actions/runs/29701895707/job/88232206375) |
+| Links | Success | [GitHub Actions job 88232206373](https://github.com/one-zero-eight/monorepo/actions/runs/29701895698/job/88232206373) |
 
 ## Contribution traceability (Sprint 5)
 
@@ -159,8 +159,6 @@ Latest protected-default-branch CI (at report assembly):
 | Timur Khasanov | Customer handover / UAT / docs maintenance; Sprint Review transcript and summary support |
 
 ## Screenshots
-
-Screenshots reused from prior weeks where Sprint 5-specific captures were not regenerated (CI / protection / product access patterns are unchanged). Replace `sprint-milestone.png` / `product-backlog.png` with Sprint 5 board captures when available.
 
 | Screenshot | File |
 |---|---|
@@ -195,4 +193,4 @@ Screenshots reused from prior weeks where Sprint 5-specific captures were not re
 
 Typst sources: [pdf/week7-report.typ](pdf/week7-report.typ) — compile with [pdf/README.md](pdf/README.md).
 
-Private items in PDF only: university emails, private Sprint Review / transition recording link, exact timecodes, private access notes, transition-confirmation proof note, participation attribution. Slide deck PDF is submitted on Moodle only (not committed). `assignment.md` is local only and must not be committed.
+Private items in PDF only: university emails, private Sprint Review / transition recording link, exact timecodes, private access notes, participation attribution. Slide deck PDF is submitted on Moodle only (not committed). `assignment.md` is local only and must not be committed.
