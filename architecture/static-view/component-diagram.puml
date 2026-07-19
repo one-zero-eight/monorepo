@@ -1,0 +1,83 @@
+@startuml component-diagram
+' When2Meet — Static view (component diagram)
+' Source of truth for the maintained architecture static view.
+
+skinparam monochrome false
+skinparam shadowing false
+skinparam roundCorner 6
+skinparam component {
+  BackgroundColor #FFFFFF
+  BorderColor #2C3E50
+  ArrowColor #2C3E50
+}
+skinparam interface {
+  BackgroundColor #ECF0F1
+  BorderColor #2C3E50
+}
+
+title When2Meet — Component Diagram (Static View)
+
+actor "Organizer" as Organizer
+actor "Participant" as Participant
+
+package "When2Meet Frontend (React)" as Frontend {
+}
+
+package "When2Meet API (FastAPI)" as API {
+  component "Events Routes\n(/events)" as Routes
+  component "Events Repository\n(events_repo)" as Repo
+  component "Schemas & Validators\n(schemas.py)" as Schemas
+  component "Mongo Document Models\n(Event, Participant)" as Docs
+  component "App & Lifespan\n(app.py, config.py)" as App
+  component "Auth Dependency\n(INH_TOKEN_AUTH)" as AuthDep
+}
+
+component "InNoHassle Accounts API" as Accounts
+component "Room Booking API" as RoomBooking
+component "Calendar API" as Calendar
+
+database "MongoDB\nevents collection" as Mongo
+
+cloud "InNoHassle Platform" as Platform {
+
+}
+
+Organizer --> Frontend : manage events
+Participant --> Frontend : share link, pick slots
+
+Frontend ..> App : HTTPS / REST
+App --> Routes : router
+Routes --> AuthDep : verify Bearer
+AuthDep ..> Accounts : verify JWT / JWKS
+Routes --> Schemas : validate I/O
+Routes --> Repo : CRUD
+Repo --> Docs : Beanie models
+Docs ..> Mongo : ODM read/write
+
+Routes ..> Accounts : enrich participants\n(get_users)
+Routes ..> RoomBooking : book room (Sprint 3 #93)
+Routes ..> Calendar : personal calendar overlay\n(Sprint 3 #92)
+
+note right of Repo
+  Slug + ObjectId lookup,
+  unique slug generation,
+  participant upsert,
+  owner-only mutation guards
+end note
+
+note right of AuthDep
+  Accounts JWKS cached at
+  lifespan startup; rejected
+  tokens raise 401.
+end note
+
+note bottom of API
+  Single deployable FastAPI service.
+  Internal modules are cohesive by
+  feature (events) and coupled only
+  through the repository boundary,
+  which keeps persistence and I/O
+  validation isolated from HTTP.
+end note
+
+@enduml

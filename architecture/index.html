@@ -1,0 +1,1521 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://one-zero-eight.github.io/monorepo/architecture/">
+      
+      
+        <link rel="prev" href="../quality-requirement-tests/">
+      
+      
+        <link rel="next" href="adr/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Overview - When2Meet Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#when2meet-architecture" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="When2Meet Documentation" class="md-header__button md-logo" aria-label="When2Meet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            When2Meet Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Overview
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/one-zero-eight/monorepo" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    one-zero-eight/monorepo
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../roadmap/" class="md-tabs__link">
+          
+  
+  
+  Product
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../development-process/" class="md-tabs__link">
+          
+  
+  
+  Engineering
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../reports/week5/README.md" class="md-tabs__link">
+          
+  
+  
+  Reports
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="When2Meet Documentation" class="md-nav__button md-logo" aria-label="When2Meet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    When2Meet Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/one-zero-eight/monorepo" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    one-zero-eight/monorepo
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Product
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Product
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../customer-handover/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Customer handover
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-acceptance-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User acceptance tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engineering
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Engineering
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development-process/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development process
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../definition-of-done/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Definition of Done
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quality-requirements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quality requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quality-requirement-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quality requirement tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#views" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Views
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Views">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#static-view-component-diagram" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Static view — component diagram
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dynamic-view-sequence-diagram" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dynamic view — sequence diagram
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deployment-view-deployment-diagram" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deployment view — deployment diagram
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-decision-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture decision records
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-the-architecture-and-the-decisions-fit-together" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the architecture and the decisions fit together
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-artifacts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related artifacts
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="adr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADRs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reports
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reports
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reports/week5/README.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Week 5 report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#views" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Views
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Views">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#static-view-component-diagram" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Static view — component diagram
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dynamic-view-sequence-diagram" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dynamic view — sequence diagram
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deployment-view-deployment-diagram" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deployment view — deployment diagram
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-decision-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture decision records
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-the-architecture-and-the-decisions-fit-together" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the architecture and the decisions fit together
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-artifacts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related artifacts
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="when2meet-architecture">When2Meet Architecture</h1>
+<p>This is the maintained architecture artifact for the When2Meet service. It
+documents the system from three complementary views, records the architecture
+decisions behind the current design, and links those decisions back to the
+quality requirements they support.</p>
+<p>The architecture is versioned together with the product: every diagram and ADR
+lives in this repository and is reviewed through the normal pull-request
+workflow described in <a href="../development-process/">development-process.md</a>.</p>
+<h2 id="overview">Overview</h2>
+<p>When2Meet is an InNoHassle service that helps organizers find a meeting time by
+collecting participant availability on a shared grid and showing the
+intersection as a heatmap. The product is delivered as:</p>
+<ul>
+<li>a <strong>React single-page application</strong> hosted at
+  <code>https://pre.innohassle.ru/when2meet</code>, and</li>
+<li>a <strong>FastAPI service</strong> hosted at
+  <code>https://api.innohassle.ru/when2meet/v0</code> that persists events and
+  participant availability in MongoDB and verifies identity through the
+  InNoHassle Accounts API.</li>
+</ul>
+<p>MVP v3 (Sprint 5 final delivery) keeps the single-service API shape and hardens
+it with owner-only mutation guards, slug-based sharing, calendar overlay,
+selected final meeting time, timezone-safe room-booking integration, and
+participant-reply editing.</p>
+<h2 id="views">Views</h2>
+<p>The three required architectural views are stored as diagrams-as-code so the
+sources are reviewed and versioned with the product. Each view directory below
+contains the editable PlantUML source plus the rendered SVG and PNG.</p>
+<h3 id="static-view-component-diagram">Static view — component diagram</h3>
+<ul>
+<li>Source: <a href="static-view/component-diagram.puml">static-view/component-diagram.puml</a></li>
+<li>Rendered: <a href="static-view/component-diagram.svg">static-view/component-diagram.svg</a> · <a href="static-view/component-diagram.png">PNG</a></li>
+</ul>
+<p><strong>What the diagram shows.</strong> The main internal components of the When2Meet API
+(<code>App &amp; Lifespan</code>, <code>Events Routes</code>, <code>Events Repository</code>, <code>Schemas &amp; Validators</code>,
+<code>Mongo Document Models</code>, <code>Auth Dependency</code>), the React frontend, the external
+systems the product interacts with (InNoHassle Accounts API, Room Booking API,
+Calendar API, MongoDB), and the communication paths between them — REST/HTTPS
+at the edge, Beanie ODM reads/writes to MongoDB, and JWT/JWKS verification plus
+<code>get_users</code> enrichment against Accounts.</p>
+<p><strong>Coupling and cohesion.</strong> The API is a single deployable FastAPI service
+organized by feature. The <code>events</code> module is highly cohesive: routes,
+repository, schemas, and document models for the same domain live together.
+Cross-cutting concerns are deliberately isolated:</p>
+<ul>
+<li>HTTP and authorization stay in <code>routes.py</code> and the <code>INH_TOKEN_AUTH</code>
+  dependency.</li>
+<li>Persistence stays behind <code>events_repo.py</code> (the repository boundary).</li>
+<li>I/O normalization stays in <code>schemas.py</code>.</li>
+<li>MongoDB shape stays in <code>mongo.py</code> (Beanie document models).</li>
+</ul>
+<p>Routes depend on the repository interface, not on the database driver, so the
+HTTP layer never imports Beanie or pymongo directly. This keeps coupling low
+and lets each layer be replaced or tested independently.</p>
+<p><strong>Maintainability implications.</strong> Because persistence is hidden behind the
+repository, Sprint 3 changes such as participant-reply editing (#97), slot-grid
+change policy (#98), and room-booking integration (#93) touched <code>routes.py</code> and
+<code>events_repo.py</code> without rippling into schemas or the frontend contract. New
+features that need a new external integration (calendar overlay #92, room
+booking #93) are added as outbound calls from <code>routes.py</code> rather than as new
+shared mutable state, which keeps the blast radius of future changes small.</p>
+<p><strong>Quality requirements supported or constrained.</strong></p>
+<ul>
+<li>The repository boundary directly supports <strong><a href="../quality-requirements/#qr-001-critical-module-testability">QR-001</a></strong>:
+  <code>routes.py</code>, <code>events_repo.py</code>, and <code>schemas.py</code> can be unit-tested with a
+  mocked repository or Mongo, which is how the ≥30% coverage gate is met.</li>
+<li>Owner-only mutation checks live in <code>routes.py</code> and back
+  <strong><a href="../quality-requirements/#qr-002-owner-only-event-mutation">QR-002</a></strong>; see
+  <a href="adr/0001-repository-pattern-for-events-persistence/">ADR-0001</a> and
+  <a href="adr/0003-inh-accounts-jwt-verification-and-user-enrichment/">ADR-0003</a>.</li>
+<li>The indexed slug/ObjectId lookup (see
+  <a href="adr/0002-slug-based-public-event-references/">ADR-0002</a>) supports
+  <strong><a href="../quality-requirements/#qr-003-event-read-response-time">QR-003</a></strong> by
+  keeping the shared-link read path a single indexed query.</li>
+</ul>
+<h3 id="dynamic-view-sequence-diagram">Dynamic view — sequence diagram</h3>
+<ul>
+<li>Source: <a href="dynamic-view/sequence-diagram.puml">dynamic-view/sequence-diagram.puml</a></li>
+<li>Rendered: <a href="dynamic-view/sequence-diagram.svg">dynamic-view/sequence-diagram.svg</a> · <a href="dynamic-view/sequence-diagram.png">PNG</a></li>
+</ul>
+<p><strong>Scenario represented.</strong> A participant opens a shared event link and submits
+their availability. This is the core availability-collection flow that the
+entire product exists to support.</p>
+<p><strong>Why this scenario is important.</strong> It is on the critical path for every
+participant and exercises every backend component in a single interaction:
+SSO login against InNoHassle Accounts, JWT verification through
+<code>INH_TOKEN_AUTH</code>, slug-based event lookup, Beanie read from MongoDB,
+participant enrichment via <code>inh_accounts.get_users</code>, slot validation against
+<code>event.slots</code>, the participant upsert in <code>events_repo</code>, and the enriched
+<code>EventView</code> response that the frontend turns into a heatmap.</p>
+<p><strong>What it helps the reader reason about.</strong></p>
+<ul>
+<li>The <strong>integration boundary</strong> with Accounts: identity is resolved once per
+  request by the auth dependency, and profile enrichment is a separate
+  best-effort call that degrades gracefully (missing profiles become <code>null</code>
+  fields, not 500s). This boundary is the subject of
+  <a href="adr/0003-inh-accounts-jwt-verification-and-user-enrichment/">ADR-0003</a>.</li>
+<li>The <strong>persistence boundary</strong>: the API never lets the frontend write slots
+  that are not in <code>event.slots</code>, which is the invariant that makes reply
+  editing (#97) and slot-grid changes (#98) safe.</li>
+<li>The <strong>quality requirements</strong> the flow touches: QR-002 (only the
+  authenticated participant can write their own availability), QR-003 (the read
+  path is one indexed query plus one enrichment call), and QR-001 (every step
+  is covered by an integration test in <code>tests/when2meet/test_events.py</code>).</li>
+</ul>
+<h3 id="deployment-view-deployment-diagram">Deployment view — deployment diagram</h3>
+<ul>
+<li>Source: <a href="deployment-view/deployment-diagram.puml">deployment-view/deployment-diagram.puml</a></li>
+<li>Rendered: <a href="deployment-view/deployment-diagram.svg">deployment-view/deployment-diagram.svg</a> · <a href="deployment-view/deployment-diagram.png">PNG</a></li>
+</ul>
+<p><strong>What the diagram shows.</strong> The customer-facing access path
+(browser → public internet → InNoHassle nginx edge → frontend host and API
+host), the FastAPI container and Room Booking container on the API host, the
+shared Docker host running MongoDB and MinIO, the external InNoHassle Accounts
+API, and the GitHub Actions CI that builds and deploys both the SPA and the API
+image on merge to <code>main</code>.</p>
+<p><strong>Why this model was chosen.</strong> When2Meet is a small service with a single
+domain (events) and modest load. A single FastAPI container behind the existing
+InNoHassle edge proxy reuses platform TLS termination, routing, and the shared
+MongoDB instance, which keeps operational cost and configuration surface area
+low. The React SPA is served as static assets from the same edge, so there is no
+separate frontend runtime to operate. This matches the InNoHassle platform
+convention used by sibling services in the monorepo.</p>
+<p><strong>How the deployment supports or constrains the product.</strong></p>
+<ul>
+<li><strong>Supports:</strong> fast deploys (rebuild <code>api.Dockerfile</code>, redeploy one
+  container), simple configuration (<code>settings.yaml</code> mounted read-only), and a
+  clear customer access path that the Week 5 report and SemVer release can
+  point to.</li>
+<li><strong>Constrains:</strong> the API is a single process with a 1 GB memory limit, so
+  CPU-bound work (e.g. large intersection recomputation) must stay O(participants
+  × slots). Horizontal scaling would require moving session affinity and the
+  Accounts JWKS cache out of process state — tracked as future work.</li>
+</ul>
+<p><strong>What to consider when deploying or operating for the customer.</strong></p>
+<ul>
+<li>MongoDB and MinIO run in the same Docker Compose stack as the API and are
+  <strong>not</strong> exposed to the public internet; only the API port is published
+  through the edge proxy.</li>
+<li><code>settings.yaml</code> carries the Mongo URI and Accounts configuration and is
+  mounted read-only; it must never be committed. The <code>when2meet-qa.yaml</code>
+  gitleaks job prevents secret leakage.</li>
+<li>The hosted API and frontend URLs must be linked from the SemVer release and
+  the Week 5 public report so graders and the customer can reach the increment
+  until grading is complete.</li>
+</ul>
+<h2 id="architecture-decision-records">Architecture decision records</h2>
+<p>ADRs are stored under <a href="adr/">adr/</a> and indexed in <a href="adr/">adr/README.md</a>.
+Each ADR identifies the Assignment 4 or later quality requirement(s) it
+addresses.</p>
+<table>
+<thead>
+<tr>
+<th>ADR</th>
+<th>Decision</th>
+<th>Status</th>
+<th>Addresses</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="adr/0001-repository-pattern-for-events-persistence/">ADR-0001</a></td>
+<td>Repository pattern for events persistence</td>
+<td>Accepted</td>
+<td>QR-001, QR-002</td>
+</tr>
+<tr>
+<td><a href="adr/0002-slug-based-public-event-references/">ADR-0002</a></td>
+<td>Slug-based public event references with ObjectId fallback</td>
+<td>Accepted</td>
+<td>QR-003</td>
+</tr>
+<tr>
+<td><a href="adr/0003-inh-accounts-jwt-verification-and-user-enrichment/">ADR-0003</a></td>
+<td>InNoHassle Accounts JWT verification and best-effort user enrichment</td>
+<td>Accepted</td>
+<td>QR-002</td>
+</tr>
+</tbody>
+</table>
+<h2 id="how-the-architecture-and-the-decisions-fit-together">How the architecture and the decisions fit together</h2>
+<p>The three views describe one system from three angles, and the three ADRs
+explain the load-bearing choices that hold those views together:</p>
+<ul>
+<li><strong>ADR-0001</strong> defines the repository boundary that the static view draws
+  between <code>Events Routes</code> and <code>Mongo Document Models</code>, and that the dynamic
+  view relies on for testable, isolated persistence.</li>
+<li><strong>ADR-0002</strong> defines the slug + ObjectId lookup that makes the shared-link
+  read path in the dynamic view a single indexed query, supporting the
+  response-time quality requirement.</li>
+<li><strong>ADR-0003</strong> defines the Accounts integration that appears in all three
+  views: as the <code>Auth Dependency</code> + outbound <code>get_users</code> calls in the static
+  view, as the SSO + JWT verification + enrichment steps in the dynamic view,
+  and as the external Accounts API cloud in the deployment view.</li>
+</ul>
+<p>Together they keep the service small, testable, and operable while leaving room
+for the Sprint 3 additions (calendar overlay, room booking, reply editing)
+without changing the overall shape.</p>
+<h2 id="related-artifacts">Related artifacts</h2>
+<ul>
+<li><a href="../quality-requirements/">quality-requirements.md</a></li>
+<li><a href="../quality-requirement-tests/">quality-requirement-tests.md</a></li>
+<li><a href="../testing/">testing.md</a></li>
+<li><a href="../definition-of-done/">definition-of-done.md</a></li>
+<li><a href="../development-process/">development-process.md</a></li>
+<li><a href="../roadmap/">roadmap.md</a></li>
+<li><a href="../interface/">interface.md</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

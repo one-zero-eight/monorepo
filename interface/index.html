@@ -1,0 +1,1954 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://one-zero-eight.github.io/monorepo/interface/">
+      
+      
+        <link rel="prev" href="../roadmap/">
+      
+      
+        <link rel="next" href="../customer-handover/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Interface - When2Meet Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#when2meet-api-interface" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="When2Meet Documentation" class="md-header__button md-logo" aria-label="When2Meet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            When2Meet Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Interface
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/one-zero-eight/monorepo" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    one-zero-eight/monorepo
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../roadmap/" class="md-tabs__link">
+          
+  
+  
+  Product
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../development-process/" class="md-tabs__link">
+          
+  
+  
+  Engineering
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../architecture/" class="md-tabs__link">
+          
+  
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../reports/week5/README.md" class="md-tabs__link">
+          
+  
+  
+  Reports
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="When2Meet Documentation" class="md-nav__button md-logo" aria-label="When2Meet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    When2Meet Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/one-zero-eight/monorepo" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    one-zero-eight/monorepo
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Product
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Product
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interface
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#base-url" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Base URL
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authentication
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Endpoints
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Endpoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#list-my-meetings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        List My Meetings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-meeting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create Meeting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#list-participating-meetings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        List Participating Meetings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-meeting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Get Meeting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#update-meeting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Update Meeting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-meeting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Delete Meeting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#update-my-availability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Update My Availability
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-participant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Delete Participant
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-available-rooms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Get Available Rooms
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#book-room" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Book Room
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#change-booked-room" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Change Booked Room
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cancel-booked-room" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cancel Booked Room
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Models
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data Models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#eventsummary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EventSummary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#eventview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EventView
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#participantview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ParticipantView
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bookedroom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BookedRoom
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../customer-handover/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Customer handover
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-acceptance-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User acceptance tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engineering
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Engineering
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development-process/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development process
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../definition-of-done/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Definition of Done
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quality-requirements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quality requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quality-requirement-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quality requirement tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/adr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADRs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reports
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reports
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reports/week5/README.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Week 5 report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#base-url" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Base URL
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authentication
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Endpoints
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Endpoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#list-my-meetings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        List My Meetings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-meeting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create Meeting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#list-participating-meetings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        List Participating Meetings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-meeting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Get Meeting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#update-meeting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Update Meeting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-meeting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Delete Meeting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#update-my-availability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Update My Availability
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-participant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Delete Participant
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-available-rooms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Get Available Rooms
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#book-room" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Book Room
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#change-booked-room" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Change Booked Room
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cancel-booked-room" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cancel Booked Room
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Models
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data Models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#eventsummary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EventSummary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#eventview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EventView
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#participantview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ParticipantView
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bookedroom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BookedRoom
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="when2meet-api-interface">When2Meet API Interface</h1>
+<p>The When2Meet service provides authenticated APIs for creating meetings, sharing short meeting links, and managing participant availability.</p>
+<h2 id="base-url">Base URL</h2>
+<ul>
+<li><strong>Hosted:</strong> <code>https://api.innohassle.ru/when2meet/v0</code> — <a href="https://api.innohassle.ru/when2meet/v0/docs">Swagger UI</a></li>
+<li><strong>Local development:</strong> <code>http://localhost:8020/api/v0</code></li>
+</ul>
+<h2 id="authentication">Authentication</h2>
+<p>All endpoints require an InNoHassle Accounts Bearer token:</p>
+<pre><code class="language-http">Authorization: Bearer &lt;JWT&gt;
+</code></pre>
+<h2 id="endpoints">Endpoints</h2>
+<h3 id="list-my-meetings">List My Meetings</h3>
+<ul>
+<li><strong>URL:</strong> <code>/meetings/</code></li>
+<li><strong>Method:</strong> <code>GET</code></li>
+<li><strong>Response:</strong> <code>200 OK</code> — <code>EventSummary[]</code></li>
+</ul>
+<p>Returns meetings owned by the authenticated user. Backend search is not supported; filter by name on the client.</p>
+<h3 id="create-meeting">Create Meeting</h3>
+<ul>
+<li><strong>URL:</strong> <code>/meetings/</code></li>
+<li><strong>Method:</strong> <code>POST</code></li>
+<li><strong>Request Body:</strong>
+  <code>json
+  {
+    "name": "Team Sync",
+    "description": "Weekly team synchronization meeting",
+    "slots": [
+      "2026-06-15T10:00:00Z",
+      "2026-06-15T11:00:00Z"
+    ],
+    "timezone": "Europe/Moscow",
+    "specific_time": true,
+    "time_range": {
+      "start": "10:00",
+      "end": "12:00"
+    }
+  }</code></li>
+<li><strong>Response:</strong> <code>201 Created</code> — <code>EventView</code></li>
+</ul>
+<p>The backend sets <code>owner_id</code> from the token and generates a unique <code>slug</code>.</p>
+<h3 id="list-participating-meetings">List Participating Meetings</h3>
+<ul>
+<li><strong>URL:</strong> <code>/meetings/participating</code></li>
+<li><strong>Method:</strong> <code>GET</code></li>
+<li><strong>Response:</strong> <code>200 OK</code> — <code>EventSummary[]</code></li>
+</ul>
+<p>Returns meetings where the authenticated user is a participant but not the owner.</p>
+<h3 id="get-meeting">Get Meeting</h3>
+<ul>
+<li><strong>URL:</strong> <code>/meetings/{meeting_ref}</code></li>
+<li><strong>Method:</strong> <code>GET</code></li>
+<li><strong>Path Parameter:</strong> <code>meeting_ref</code> is either a meeting ObjectId or a short slug.</li>
+<li><strong>Response:</strong></li>
+<li><code>200 OK</code> — <code>EventView</code></li>
+<li><code>404 Not Found</code> — meeting does not exist.</li>
+</ul>
+<h3 id="update-meeting">Update Meeting</h3>
+<ul>
+<li><strong>URL:</strong> <code>/meetings/{meeting_ref}</code></li>
+<li><strong>Method:</strong> <code>PATCH</code></li>
+<li><strong>Access:</strong> owner only</li>
+<li><strong>Request Body:</strong> partial <code>EventUpdate</code></li>
+<li><strong>Response:</strong></li>
+<li><code>200 OK</code> — <code>EventView</code></li>
+<li><code>400 Bad Request</code> — selected meeting time cannot be cleared while a room is booked.</li>
+<li><code>403 Forbidden</code> — authenticated user is not the owner.</li>
+<li><code>404 Not Found</code> — meeting does not exist.</li>
+<li><code>409 Conflict</code> — room booking is already being changed for this meeting.</li>
+</ul>
+<p>Participant availability is preserved when slots are removed from the meeting.</p>
+<h3 id="delete-meeting">Delete Meeting</h3>
+<ul>
+<li><strong>URL:</strong> <code>/meetings/{meeting_ref}</code></li>
+<li><strong>Method:</strong> <code>DELETE</code></li>
+<li><strong>Access:</strong> owner only</li>
+<li><strong>Response:</strong></li>
+<li><code>204 No Content</code></li>
+<li><code>403 Forbidden</code> — authenticated user is not the owner.</li>
+<li><code>404 Not Found</code> — meeting does not exist.</li>
+<li><code>409 Conflict</code> — room booking is already being changed for this meeting.</li>
+</ul>
+<h3 id="update-my-availability">Update My Availability</h3>
+<ul>
+<li><strong>URL:</strong> <code>/meetings/{meeting_ref}/participants</code></li>
+<li><strong>Method:</strong> <code>PUT</code></li>
+<li><strong>Request Body:</strong>
+  <code>json
+  {
+    "availability": [
+      "2026-06-15T10:00:00Z"
+    ]
+  }</code></li>
+<li><strong>Response:</strong></li>
+<li><code>200 OK</code> — <code>EventView</code></li>
+<li><code>404 Not Found</code> — meeting does not exist.</li>
+</ul>
+<p>The backend takes participant <code>user_id</code> from the Bearer token. Request fields such as <code>user_id</code>, <code>name</code>, and <code>if_needed</code> are rejected.
+Availability can include slots outside the current meeting grid; existing hidden slots are preserved on updates.</p>
+<h3 id="delete-participant">Delete Participant</h3>
+<ul>
+<li><strong>URL:</strong> <code>/meetings/{meeting_ref}/participants/{user_id}</code></li>
+<li><strong>Method:</strong> <code>DELETE</code></li>
+<li><strong>Access:</strong> meeting owner or the participant themselves</li>
+<li><strong>Response:</strong></li>
+<li><code>200 OK</code> — <code>EventView</code></li>
+<li><code>403 Forbidden</code> — authenticated user is neither owner nor participant.</li>
+<li><code>404 Not Found</code> — meeting or participant does not exist.</li>
+</ul>
+<h3 id="get-available-rooms">Get Available Rooms</h3>
+<ul>
+<li><strong>URL:</strong> <code>/meetings/{meeting_ref}/available-rooms</code></li>
+<li><strong>Method:</strong> <code>GET</code></li>
+<li><strong>Response:</strong></li>
+<li><code>200 OK</code> — <code>AvailableRoom[]</code></li>
+<li><code>400 Bad Request</code> — selected meeting time is not set.</li>
+<li><code>404 Not Found</code> — meeting does not exist.</li>
+</ul>
+<p>Returns rooms that are free for the full selected meeting time window and bookable by the authenticated user according to Room Booking rules. The selected time must include an explicit timezone offset, and that exact offset is forwarded to Room Booking. Room metadata includes <code>id</code>, <code>name</code>, <code>capacity</code>, and <code>location</code>.</p>
+<h3 id="book-room">Book Room</h3>
+<ul>
+<li><strong>URL:</strong> <code>/meetings/{meeting_ref}/book-room</code></li>
+<li><strong>Method:</strong> <code>POST</code></li>
+<li><strong>Access:</strong> owner only</li>
+<li><strong>Request Body:</strong>
+  <code>json
+  {
+    "room_id": "3.2"
+  }</code></li>
+<li><strong>Response:</strong></li>
+<li><code>200 OK</code> — <code>EventView</code></li>
+<li><code>400 Bad Request</code> — selected meeting time is not set or the room is unavailable.</li>
+<li><code>403 Forbidden</code> — authenticated user is not the meeting owner or Room Booking rejects the booking.</li>
+<li><code>404 Not Found</code> — meeting or room does not exist.</li>
+<li><code>409 Conflict</code> — the meeting already has a booked room.</li>
+</ul>
+<p>Books the requested room through the Room Booking service for the meeting's selected time window, using the timezone offset provided in <code>selected_time</code>, then stores the booking reference on the meeting.</p>
+<h3 id="change-booked-room">Change Booked Room</h3>
+<ul>
+<li><strong>URL:</strong> <code>/meetings/{meeting_ref}/book-room</code></li>
+<li><strong>Method:</strong> <code>PATCH</code></li>
+<li><strong>Access:</strong> owner only</li>
+<li><strong>Request Body:</strong>
+  <code>json
+  {
+    "room_id": "3.3"
+  }</code></li>
+<li><strong>Response:</strong></li>
+<li><code>200 OK</code> — <code>EventView</code></li>
+<li><code>400 Bad Request</code> — no room is booked, selected meeting time is not set, or the new room is unavailable.</li>
+<li><code>403 Forbidden</code> — authenticated user is not the meeting owner or Room Booking rejects the change.</li>
+<li><code>404 Not Found</code> — meeting, booking, or room does not exist.</li>
+<li><code>409 Conflict</code> — room booking is already being changed.</li>
+</ul>
+<p>Creates a booking for the new room, cancels the old Room Booking reservation, and stores the new room reference on the meeting.</p>
+<h3 id="cancel-booked-room">Cancel Booked Room</h3>
+<ul>
+<li><strong>URL:</strong> <code>/meetings/{meeting_ref}/book-room</code></li>
+<li><strong>Method:</strong> <code>DELETE</code></li>
+<li><strong>Access:</strong> owner only</li>
+<li><strong>Response:</strong></li>
+<li><code>200 OK</code> — <code>EventView</code></li>
+<li><code>400 Bad Request</code> — no room is booked for the meeting.</li>
+<li><code>403 Forbidden</code> — authenticated user is not the meeting owner or Room Booking rejects the cancellation.</li>
+<li><code>404 Not Found</code> — meeting or booking does not exist.</li>
+<li><code>409 Conflict</code> — room booking is already being changed.</li>
+</ul>
+<p>Cancels the Room Booking reservation and clears <code>booked_room</code> on the meeting. If a meeting with a booked room is deleted, the backend cancels the room booking before deleting the meeting.</p>
+<p>When the meeting owner changes <code>selected_time</code> on a meeting with <code>booked_room</code>, the backend updates the existing Room Booking reservation before persisting the new selected time.</p>
+<h2 id="data-models">Data Models</h2>
+<h3 id="eventsummary">EventSummary</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>id</code></td>
+<td style="text-align: left;"><code>string</code></td>
+<td style="text-align: left;">MongoDB ObjectId</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>slug</code></td>
+<td style="text-align: left;"><code>string</code></td>
+<td style="text-align: left;">Short URL-safe meeting reference</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>name</code></td>
+<td style="text-align: left;"><code>string</code></td>
+<td style="text-align: left;">Meeting name</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>description</code></td>
+<td style="text-align: left;"><code>string \| null</code></td>
+<td style="text-align: left;">Meeting description</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>created_at</code></td>
+<td style="text-align: left;"><code>datetime</code></td>
+<td style="text-align: left;">Creation time</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>participants_count</code></td>
+<td style="text-align: left;"><code>integer</code></td>
+<td style="text-align: left;">Number of participants</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>date_range_label</code></td>
+<td style="text-align: left;"><code>string \| null</code></td>
+<td style="text-align: left;">Optional display label</td>
+</tr>
+</tbody>
+</table>
+<h3 id="eventview">EventView</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>id</code></td>
+<td style="text-align: left;"><code>string</code></td>
+<td style="text-align: left;">MongoDB ObjectId</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>slug</code></td>
+<td style="text-align: left;"><code>string</code></td>
+<td style="text-align: left;">Short URL-safe meeting reference</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>name</code></td>
+<td style="text-align: left;"><code>string</code></td>
+<td style="text-align: left;">Meeting name</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>description</code></td>
+<td style="text-align: left;"><code>string \| null</code></td>
+<td style="text-align: left;">Meeting description</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>slots</code></td>
+<td style="text-align: left;"><code>list[datetime]</code></td>
+<td style="text-align: left;">All possible slots</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>participants</code></td>
+<td style="text-align: left;"><code>list[ParticipantView]</code></td>
+<td style="text-align: left;">Participants with profile data</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>created_at</code></td>
+<td style="text-align: left;"><code>datetime</code></td>
+<td style="text-align: left;">Creation time</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>timezone</code></td>
+<td style="text-align: left;"><code>string</code></td>
+<td style="text-align: left;">IANA timezone name</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>owner_id</code></td>
+<td style="text-align: left;"><code>string \| null</code></td>
+<td style="text-align: left;">InNoHassle Accounts ID of meeting owner</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>specific_time</code></td>
+<td style="text-align: left;"><code>boolean</code></td>
+<td style="text-align: left;">Whether meeting has specific time slots</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>time_range</code></td>
+<td style="text-align: left;"><code>TimeRange \| null</code></td>
+<td style="text-align: left;">Optional display/edit metadata</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>selected_time</code></td>
+<td style="text-align: left;"><code>MeetingTime \| null</code></td>
+<td style="text-align: left;">Final time selected by the meeting owner</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>booked_room</code></td>
+<td style="text-align: left;"><code>BookedRoom \| null</code></td>
+<td style="text-align: left;">Room booking reference stored after <code>POST /book-room</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="participantview">ParticipantView</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>user_id</code></td>
+<td style="text-align: left;"><code>string</code></td>
+<td style="text-align: left;">InNoHassle Accounts user ID</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>email</code></td>
+<td style="text-align: left;"><code>string \| null</code></td>
+<td style="text-align: left;">Innopolis email</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>first_name</code></td>
+<td style="text-align: left;"><code>string \| null</code></td>
+<td style="text-align: left;">First name from Telegram or Innopolis profile</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>last_name</code></td>
+<td style="text-align: left;"><code>string \| null</code></td>
+<td style="text-align: left;">Last name from Telegram or Innopolis profile</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>telegram</code></td>
+<td style="text-align: left;"><code>string \| null</code></td>
+<td style="text-align: left;">Telegram <code>@username</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>availability</code></td>
+<td style="text-align: left;"><code>list[datetime]</code></td>
+<td style="text-align: left;">Selected slots</td>
+</tr>
+</tbody>
+</table>
+<p>If Accounts lookup fails or a profile is missing, <code>user_id</code> and <code>availability</code> are still returned and profile fields are <code>null</code>.</p>
+<h3 id="bookedroom">BookedRoom</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>room_id</code></td>
+<td style="text-align: left;"><code>string</code></td>
+<td style="text-align: left;">Booked room ID</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>outlook_booking_id</code></td>
+<td style="text-align: left;"><code>string \| null</code></td>
+<td style="text-align: left;">Room Booking service booking ID</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>outlook_entry_id</code></td>
+<td style="text-align: left;"><code>string \| null</code></td>
+<td style="text-align: left;">Outlook entry ID</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
