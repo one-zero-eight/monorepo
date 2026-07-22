@@ -355,7 +355,11 @@ def _manageable_booking_path(booked_room: BookedRoom) -> str:
 
 
 async def _cancel_room_booking(booked_room: BookedRoom, user_auth_header: str) -> None:
-    await _room_booking_delete(_manageable_booking_path(booked_room), user_auth_header=user_auth_header)
+    try:
+        await _room_booking_delete(_manageable_booking_path(booked_room), user_auth_header=user_auth_header)
+    except HTTPException as exc:
+        if exc.status_code != status.HTTP_404_NOT_FOUND:
+            raise
 
 
 async def _update_room_booking(event: Event, selected_time: bool, title: bool, user_auth_header: str) -> BookedRoom:
@@ -476,12 +480,17 @@ async def _update_meeting_room_booking(
         locked_event = await _locked_event_with_booked_room(event)
         for field_name in event_update.model_fields_set:
             setattr(locked_event, field_name, getattr(event_update, field_name))
-        locked_event.booked_room = await _update_room_booking(
-            locked_event,
-            selected_time=updates_booking_time,
-            title=updates_booking_title,
-            user_auth_header=user_auth_header,
-        )
+        try:
+            locked_event.booked_room = await _update_room_booking(
+                locked_event,
+                selected_time=updates_booking_time,
+                title=updates_booking_title,
+                user_auth_header=user_auth_header,
+            )
+        except HTTPException as exc:
+            if exc.status_code != status.HTTP_404_NOT_FOUND:
+                raise
+            locked_event.booked_room = None
         locked_event.room_booking_in_progress = False
         return await locked_event.save()
     except Exception:

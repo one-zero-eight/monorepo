@@ -1112,6 +1112,48 @@ def test_owner_changes_selected_time_updates_room_booking(when2meet_client: Test
     }
 
 
+@pytest.mark.parametrize(
+    ("event_update", "expected_field", "expected_value"),
+    [
+        ({"name": "Updated Without Room"}, "name", "Updated Without Room"),
+        (
+            {"selected_time": {"start": "2026-06-15T12:00:00Z", "end": "2026-06-15T13:00:00Z"}},
+            "selected_time",
+            {"start": "2026-06-15T12:00:00Z", "end": "2026-06-15T13:00:00Z"},
+        ),
+    ],
+)
+def test_owner_updates_meeting_when_room_booking_is_already_deleted(
+    when2meet_client: TestClient,
+    user_headers,
+    event_update,
+    expected_field,
+    expected_value,
+):
+    """Verify a stale room reference does not prevent updating the meeting."""
+    event_id = _book_meeting_room(when2meet_client, user_headers, name="Update Missing Room")
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.patch(_booking_url("booking/1")).mock(
+            return_value=httpx.Response(404, json={"detail": "Booking not found"})
+        )
+        response = when2meet_client.patch(
+            f"/api/v0/meetings/{event_id}",
+            json=event_update,
+            headers=user_headers,
+        )
+
+    assert response.status_code == 200
+    assert response.json()[expected_field] == expected_value
+    assert response.json()["booked_room"] is None
+
+    portal = when2meet_client.portal
+    assert portal is not None
+    event = portal.call(events_repo.read, PydanticObjectId(event_id))
+    assert event is not None
+    assert event.room_booking_in_progress is False
+
+
 def test_owner_cannot_clear_selected_time_while_room_is_booked(when2meet_client: TestClient, user_headers):
     """Verify selected time cannot be cleared while an external room booking exists."""
     create_resp = when2meet_client.post(
@@ -1264,6 +1306,34 @@ def test_owner_changes_booked_room(when2meet_client: TestClient, user_headers):
     }
     assert new_booking_route.called
     assert old_delete_route.called
+
+
+def test_owner_changes_booked_room_when_old_booking_is_already_deleted(
+    when2meet_client: TestClient,
+    user_headers,
+):
+    """Verify a missing old external booking does not prevent replacing it."""
+    event_id = _book_meeting_room(when2meet_client, user_headers, name="Change Missing Room")
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.get(f"{ROOM_BOOKING_API_URL}/room/3.3/can-book").mock(
+            return_value=httpx.Response(200, json={"can_book": True, "reason_why_cannot": ""})
+        )
+        respx_mock.post(f"{ROOM_BOOKING_API_URL}/bookings/").mock(
+            return_value=httpx.Response(200, json=_created_booking("3.3", outlook_booking_id="booking/2"))
+        )
+        respx_mock.delete(_booking_url("booking/1")).mock(
+            return_value=httpx.Response(404, json={"detail": "Booking not found"})
+        )
+        response = when2meet_client.patch(
+            f"/api/v0/meetings/{event_id}/book-room",
+            json={"room_id": "3.3"},
+            headers=user_headers,
+        )
+
+    assert response.status_code == 200
+    assert response.json()["booked_room"]["room_id"] == "3.3"
+    assert response.json()["booked_room"]["outlook_booking_id"] == "booking/2"
 
 
 def test_change_booked_room_requires_existing_booking(when2meet_client: TestClient, user_headers):
@@ -1507,6 +1577,23 @@ def test_owner_cancels_booked_room(when2meet_client: TestClient, user_headers):
     assert delete_route.calls.last.request.headers["Authorization"] == user_headers["Authorization"]
 
 
+def test_owner_cancels_booked_room_when_booking_is_already_deleted(
+    when2meet_client: TestClient,
+    user_headers,
+):
+    """Verify a missing external booking is reconciled with the meeting state."""
+    event_id = _book_meeting_room(when2meet_client, user_headers, name="Cancel Missing Room")
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.delete(_booking_url("booking/1")).mock(
+            return_value=httpx.Response(404, json={"detail": "Booking not found"})
+        )
+        response = when2meet_client.delete(f"/api/v0/meetings/{event_id}/book-room", headers=user_headers)
+
+    assert response.status_code == 200
+    assert response.json()["booked_room"] is None
+
+
 def test_cancel_booked_room_requires_existing_booking(when2meet_client: TestClient, user_headers):
     """Verify room cancellation requires an existing meeting room booking."""
     create_resp = when2meet_client.post(
@@ -1625,6 +1712,21 @@ def test_delete_meeting_cancels_booked_room(when2meet_client: TestClient, user_h
 
     assert response.status_code == 204
     assert delete_route.called
+    get_response = when2meet_client.get(f"/api/v0/meetings/{event_id}", headers=user_headers)
+    assert get_response.status_code == 404
+
+
+def test_delete_meeting_when_room_booking_is_already_deleted(when2meet_client: TestClient, user_headers):
+    """Verify a missing external booking does not prevent deleting the meeting."""
+    event_id = _book_meeting_room(when2meet_client, user_headers, name="Delete Missing Room")
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.delete(_booking_url("booking/1")).mock(
+            return_value=httpx.Response(404, json={"detail": "Booking not found"})
+        )
+        response = when2meet_client.delete(f"/api/v0/meetings/{event_id}", headers=user_headers)
+
+    assert response.status_code == 204
     get_response = when2meet_client.get(f"/api/v0/meetings/{event_id}", headers=user_headers)
     assert get_response.status_code == 404
 
