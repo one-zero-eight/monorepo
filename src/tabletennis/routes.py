@@ -376,6 +376,20 @@ async def register_player(auth: INH_TOKEN_AUTH) -> Player:
     return new_player
 
 
+@router.post("/set-status")
+async def set_status(
+    auth: TABLETENNIS_ADMIN_AUTH, innohassle_id: str, status: Literal["beginner", "advanced", "admin"]
+) -> dict[str, Any]:
+    """Sets a player's status by innohassle_id."""
+    player = await Player.find_one(Player.innohassle_id == innohassle_id)
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    player.status = status.capitalize()
+    await player.save()
+    return await format_player_data(player)
+
+
 @router.post("/reg-tour")
 async def register_tour(
     auth: TABLETENNIS_ADMIN_AUTH,
