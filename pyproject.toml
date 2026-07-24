@@ -11,35 +11,35 @@ dependencies = [
     "beanie>=2.1.0", # ~347 KiB
     "colorlog>=6.10.1", # ~27 KiB
     "cryptography>=49.0.0", # ~13.7 MiB
-    "fastapi>=0.137.2", # ~737 KiB
+    "fastapi>=0.139.2", # ~737 KiB
     "fastapi-derive-responses>=0.1.7", # ~25 KiB
-    "fastapi-swagger>=0.4.50", # ~1.6 MiB
+    "fastapi-swagger>=0.4.52", # ~1.6 MiB
     "filetype>=1.2.0", # ~71 KiB
     "gunicorn>=26.0.0", # ~761 KiB
     "httpx>=0.28.1", # ~288 KiB
-    "joserfc>=1.7.1", # ~212 KiB
+    "joserfc>=1.7.3", # ~212 KiB
     "minio>=7.2.20", # ~381 KiB
     "pydantic>=2.13.4", # ~1.8 MiB
     "pydantic-settings>=2.14.2", # ~225 KiB
     "python-multipart>=0.0.32", # ~101 KiB
     "pytz>=2026.2", # ~988 KiB
     "pyyaml>=6.0.3", # ~2.7 MiB
-    "uvicorn>=0.49.0", # ~229 KiB
+    "uvicorn>=0.51.0", # ~229 KiB
 ]
 
 [dependency-groups]
 dev = [
-    "prek>=0.4.5", # ~14.0 MiB
+    "prek>=0.4.10", # ~14.0 MiB
     "pytest>=9.1.1", # ~1.3 MiB
     "pytest-asyncio>=1.4.0", # ~45 KiB
     "pytest-cov>=7.1.0", # ~71 KiB
-    "pytest-durations>=1.6.2", # ~34 KiB
-    "pytest-memray>=1.8.0; sys_platform != 'win32'", # ~48 KiB
+    "pytest-durations>=1.7.0", # ~34 KiB
+    "pytest-memray>=1.9.0; sys_platform != 'win32'", # ~48 KiB
     "pytest-socket>=0.8.0", # ~8 KiB
     "pytest-xdist>=3.8.0", # ~142 KiB
     "respx>=0.23.1", # ~87 KiB
-    "ruff>=0.15.18", # ~27.0 MiB
-    "ty>=0.0.51", # ~25.0 MiB
+    "ruff>=0.15.22", # ~27.0 MiB
+    "ty>=0.0.60", # ~25.0 MiB
     "types-pyyaml>=6.0.12.20260518", # ~65 KiB
 ]
 schedule = [
@@ -47,15 +47,15 @@ schedule = [
     "asyncpg>=0.31.0", # ~3.4 MiB
     "icalendar>=7.1.0", # ~460 KiB
     "prometheus-fastapi-instrumentator>=7.1.0", # ~19 KiB
-    "sqlalchemy[postgresql-asyncpg]>=2.0.49", # ~3.4 MiB
+    "sqlalchemy[postgresql-asyncpg]>=2.0.51", # ~3.4 MiB
 ]
 schedule-assistant = [
     "alembic>=1.18.4", # ~258 KiB
     "numpy>=2.4.4", # ~17.8 MiB
     "openpyxl>=3.1.5", # ~245 KiB
     "pandas>=3.0.2", # ~11.8 MiB
-    "psycopg[binary]>=3.2.10", # ~4.2 MiB
-    "sqlalchemy[postgresql-psycopg]>=2.0.49", # ~3.4 MiB
+    "psycopg[binary]>=3.3.4", # ~4.2 MiB
+    "sqlalchemy[postgresql-psycopg]>=2.0.51", # ~3.4 MiB
     "jsonpatch>=1.33", # ~13 KiB
 ]
 room-booking = [
@@ -69,7 +69,7 @@ maps = [
     "rapidfuzz>=3.14.5", # ~11.5 MiB
 ]
 clubs = [
-    "pillow>=12.2.0", # ~18.6 MiB
+    "pillow>=12.3.0", # ~18.6 MiB
 ]
 #workshops = [
 #    "alembic>=1.18.4", # ~258 KiB
@@ -81,8 +81,8 @@ forms = [
     "nanoid>=2.0.0", # ~9 KiB
 ]
 guard = [
-    "google-api-python-client>=2.197.0", # ~95.4 MiB
-    "google-auth>=2.55.0", # ~871 KiB
+    "google-api-python-client>=2.198.0", # ~95.4 MiB
+    "google-auth>=2.56.0", # ~871 KiB
     "google-auth-oauthlib>=1.4.0", # ~52 KiB
 ]
 #search = [
