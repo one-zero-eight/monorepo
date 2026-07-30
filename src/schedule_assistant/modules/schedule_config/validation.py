@@ -324,6 +324,13 @@ def validate_sections(config: SectionsConfig) -> list[str]:
                         f"sections[{section_index}].programs[{program_index}].applies_to "
                         f"references unknown group {applies_to_code!r}",
                     )
+            if program.time_slots:
+                for slot_index, slot in enumerate(program.time_slots):
+                    if slot.start_time >= slot.end_time:
+                        errors.append(
+                            f"sections[{section_index}].programs[{program_index}].time_slots[{slot_index}]: "
+                            "start_time must be before end_time",
+                        )
 
     errors.extend(f"Duplicate program code: {code!r}" for code in find_duplicates(program_codes))
     return errors

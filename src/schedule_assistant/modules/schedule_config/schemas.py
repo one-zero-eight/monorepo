@@ -150,6 +150,8 @@ class SectionConfig(SettingBaseModel):
         "Program tracks (optional wrapper when groups are split by track)"
         groups: list[str] = []
         "Program-level groups when tracks are not used (for example, elective bucket ids)"
+        time_slots: list[TermTimeSlot] | None = None
+        "Optional custom teaching slots for this program; when set, replaces term.time_slots for this program"
 
     code: str
     "Section identifier"
