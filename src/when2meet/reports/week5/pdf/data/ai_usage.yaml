@@ -1,4 +1,0 @@
-tools:
-  - "speech2text.ru — speech-to-text for Sprint Review and customer UAT recording."
-  - "LLM — translation of transcribed meeting text from Russian to English for sprint-review-transcript.md."
-  - "GitHub Copilot Autofix powered by AI — suggested automated fixes on pull requests; team reviewed before merge."

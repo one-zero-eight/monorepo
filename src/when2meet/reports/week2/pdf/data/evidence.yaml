@@ -1,9 +1,0 @@
-images:
-    - file: evidence-of-git-workflow.png
-      caption: "Reviewed PR/MR — review by another team member"
-    - file: evidence-of-protected-default-branch.png
-      caption: "Protected default branch settings"
-    - file: evidence-of-deployed-mvp-v0.png
-      caption: "Deployed MVP v0 frontend at pre.innohassle.ru"
-    - file: evidence-of-swagger.png
-      caption: "API prototype — Swagger UI"
