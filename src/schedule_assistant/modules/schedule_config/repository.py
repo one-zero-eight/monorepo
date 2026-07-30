@@ -306,9 +306,12 @@ class ScheduleConfigRepository:
         with self._session() as session:
             return self._assemble_config(session)
 
-    def get_term(self) -> TermConfig:
+    def get_term(self) -> TermConfig | None:
         with self._session() as session:
-            return self._term_row_to_term(self._load_term_row(session))
+            row = session.get(TermRow, TERM_SINGLETON_ID)
+            if row is None:
+                return None
+            return self._term_row_to_term(row)
 
     def set_term(self, term: TermConfig, *, saved_by: str) -> tuple[TermConfig, int]:
         with self._session() as session:

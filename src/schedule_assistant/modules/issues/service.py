@@ -24,15 +24,13 @@ def _merge_room_capacities(config_rooms: RoomConfig, booking_rooms: list[RoomDTO
 
 
 def _require_term() -> TermConfig:
-    try:
-        return schedule_config_repository.get_term()
-    except HTTPException as exc:
-        if exc.status_code == status.HTTP_404_NOT_FOUND:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Schedule term config is required for issue checks",
-            ) from exc
-        raise
+    term = schedule_config_repository.get_term()
+    if term is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Schedule term config is required for issue checks",
+        )
+    return term
 
 
 async def check_schedule_issues(params: CheckParameters) -> CheckResults:

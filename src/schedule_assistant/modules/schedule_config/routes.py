@@ -131,7 +131,7 @@ async def put_schedule_config_yaml(
 
 
 @router.get("/term")
-async def get_term(_user_and_token: VerifyTokenDep) -> TermConfig:
+async def get_term(_user_and_token: VerifyTokenDep) -> TermConfig | None:
     return schedule_config_repository.get_term()
 
 

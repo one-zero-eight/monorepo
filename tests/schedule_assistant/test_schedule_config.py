@@ -45,6 +45,16 @@ async def test_get_assembled_schedule_config_requires_term(
 
 
 @pytest.mark.asyncio
+async def test_get_term_returns_null_when_missing(
+    authenticated_client: AsyncClient,
+    schedule_config_repo: ScheduleConfigRepository,
+) -> None:
+    response = await authenticated_client.get("/schedule-config/term")
+    assert response.status_code == 200
+    assert response.json() is None
+
+
+@pytest.mark.asyncio
 async def test_put_term_requires_moderator(
     authenticated_client: AsyncClient,
     schedule_config_repo: ScheduleConfigRepository,
