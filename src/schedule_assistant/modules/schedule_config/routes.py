@@ -1,7 +1,7 @@
 from typing import Annotated
 
 import yaml
-from fastapi import APIRouter, Body, HTTPException, Response, status
+from fastapi import APIRouter, Body, File, HTTPException, Response, UploadFile, status
 from pydantic import ValidationError
 
 from src.schedule_assistant.dependencies import ModeratorDep, VerifyTokenDep, is_moderator_email
@@ -121,6 +121,29 @@ async def put_schedule_config_yaml(
     moderator: ModeratorDep,
     yaml_text: YamlBody,
 ) -> ScheduleConfig:
+    config = _parse_yaml_schedule_config_update(yaml_text)
+    saved_config, revision = schedule_config_repository.set_config(
+        config,
+        saved_by=_moderator_email(moderator),
+    )
+    _set_revision_etag(response, revision)
+    return saved_config
+
+
+@router.put("/yaml-file")
+async def put_schedule_config_yaml_file(
+    response: Response,
+    moderator: ModeratorDep,
+    file: Annotated[UploadFile, File(description="Schedule config YAML file")],
+) -> ScheduleConfig:
+    raw = await file.read()
+    try:
+        yaml_text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must be UTF-8 text",
+        ) from exc
     config = _parse_yaml_schedule_config_update(yaml_text)
     saved_config, revision = schedule_config_repository.set_config(
         config,

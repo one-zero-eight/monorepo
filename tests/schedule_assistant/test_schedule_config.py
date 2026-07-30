@@ -376,6 +376,38 @@ students_groups: []
 
 
 @pytest.mark.asyncio
+async def test_put_full_schedule_config_yaml_file(
+    authenticated_client: AsyncClient,
+    schedule_config_repo: ScheduleConfigRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    yaml_text = """
+term:
+  name: Spring 2026
+  semester:
+    start_date: 2026-06-01
+    end_date: 2026-08-02
+rooms:
+  - id: "108"
+    name: Lecture Room 108
+    capacity: 312
+courses: []
+instructors: []
+students_groups: []
+"""
+
+    response = await authenticated_client.put(
+        "/schedule-config/yaml-file",
+        files={"file": ("config.yaml", yaml_text.encode("utf-8"), "application/x-yaml")},
+    )
+    assert response.status_code == 200
+    assert response.json()["term"]["name"] == "Spring 2026"
+    assert response.json()["rooms"][0]["id"] == "108"
+    assert _revision(response.headers["etag"]) == 1
+
+
+@pytest.mark.asyncio
 async def test_partial_put_leaves_unspecified_resources_unchanged(
     authenticated_client: AsyncClient,
     schedule_config_repo: ScheduleConfigRepository,
