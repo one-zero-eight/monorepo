@@ -6,10 +6,12 @@ from pydantic import ValidationError
 
 from src.schedule_assistant.dependencies import ModeratorDep, VerifyTokenDep, is_moderator_email
 from src.schedule_assistant.modules.schedule_config.event_log import ConfigChangeEvent, ConfigChangeEventSummary
+from src.schedule_assistant.modules.schedule_config.instructor_meetings import count_meetings_by_instructor
 from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
 from src.schedule_assistant.modules.schedule_config.schemas import (
     CourseConfig,
     InstructorConfig,
+    InstructorListItem,
     RoomConfig,
     ScheduleConfig,
     ScheduleConfigUpdate,
@@ -211,8 +213,22 @@ async def delete_course(response: Response, moderator: ModeratorDep, course_name
 
 
 @router.get("/instructors")
-async def list_instructors(_user_and_token: VerifyTokenDep) -> list[InstructorConfig.Instructor]:
-    return schedule_config_repository.list_instructors()
+async def list_instructors(_user_and_token: VerifyTokenDep) -> list[InstructorListItem]:
+    instructors = schedule_config_repository.list_instructors()
+    term = schedule_config_repository.get_term()
+    courses = schedule_config_repository.list_courses()
+    counts = count_meetings_by_instructor(
+        courses,
+        term,
+        [instructor.id for instructor in instructors],
+    )
+    return [
+        InstructorListItem(
+            **instructor.model_dump(),
+            meetings_count=counts.get(instructor.id, 0),
+        )
+        for instructor in instructors
+    ]
 
 
 @router.post("/instructors", status_code=status.HTTP_201_CREATED)

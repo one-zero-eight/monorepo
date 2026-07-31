@@ -120,6 +120,11 @@ class InstructorConfig(SettingBaseModel):
     "Available instructors"
 
 
+class InstructorListItem(InstructorConfig.Instructor):
+    meetings_count: int = 0
+    "Placed meetings in the current term; weekly patterns expand by +1 per week"
+
+
 class SectionConfig(SettingBaseModel):
     class SectionProgram(SettingBaseModel):
         class ProgramTrack(SettingBaseModel):
