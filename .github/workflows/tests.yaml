@@ -45,7 +45,7 @@ jobs:
           --health-retries 5
 
       mongodb:
-        image: mongo:8.0
+        image: mongo:8.2
         ports:
           - 37017:27017
         env:

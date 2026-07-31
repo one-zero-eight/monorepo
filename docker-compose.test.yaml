@@ -29,7 +29,9 @@ services:
       - "lazytainer.group.test-infra.minPacketThreshold=1"
 
   test-mongodb:
-    image: "mongo:8.0"
+    # 8.0.x refuses to start on Linux kernels ≥6.19 (SERVER-121912 / TCMalloc rseq).
+    # 8.2+ runs on those kernels (verified on 7.1.x).
+    image: "mongo:8.2"
     restart: no
     network_mode: service:lazytainer
     depends_on:
