@@ -253,9 +253,9 @@ def parse_location_string(x: str, from_parent: bool = False) -> Item | None:
     x = x.replace("(ONLINE)", r"ONLINE")
     x = x.replace("(ОНЛАЙН)", r"ОНЛАЙН")
     x = x.strip()
-    # replace AND with ,
-    x = re.sub(r"\s+AND\s+", ", ", x)
-    x = re.sub(r"\s+И\s+", ", ", x)
+    # replace AND with , (bounded whitespace to avoid ReDoS)
+    x = re.sub(r"\s{1,32}AND\s{1,32}", ", ", x)
+    x = re.sub(r"\s{1,32}И\s{1,32}", ", ", x)
 
     def combine_patterns(patterns):
         return r"(" + "|".join(patterns) + r")"
@@ -267,16 +267,16 @@ def parse_location_string(x: str, from_parent: bool = False) -> Item | None:
         if m := re.fullmatch(r"^\?$", y):
             return "?"
 
-        if m := re.fullmatch(r"^ROOM\s*#?\s*(\d+)$", y):
+        if m := re.fullmatch(r"^ROOM\s{0,8}#?\s{0,8}(\d+)$", y):
             return m.group(1)
 
         if m := re.fullmatch(r"^(ONLINE|ОНЛАЙН)$", y):
             return m.group(0)
 
-        if m := re.fullmatch(r"^(ONLINE|ОНЛАЙН)\s*\(TBA\)$", y):
+        if m := re.fullmatch(r"^(ONLINE|ОНЛАЙН)\s{0,8}\(TBA\)$", y):
             return m.group(0)
 
-        if m := re.fullmatch(r"^((\d|ONLINE|ОНЛАЙН)+(?:\s*/\s*(\d|ONLINE|ОНЛАЙН)+)+)$", y):
+        if m := re.fullmatch(r"^((\d|ONLINE|ОНЛАЙН)+(?:\s{0,8}/\s{0,8}(\d|ONLINE|ОНЛАЙН)+)+)$", y):
             locations = m.group(1)
             locations = locations.split("/")
             locations = [location.strip() for location in locations]
@@ -286,10 +286,10 @@ def parse_location_string(x: str, from_parent: bool = False) -> Item | None:
         [
             r"(\d+)",
             r"\?",
-            r"ROOM\s*#?\s*(\d+)",
+            r"ROOM\s{0,8}#?\s{0,8}(\d+)",
             r"(ONLINE|ОНЛАЙН)",
-            r"(ONLINE|ОНЛАЙН)\s*\(TBA\)",
-            r"((\d|ONLINE|ОНЛАЙН)+(?:\s*/\s*(\d|ONLINE|ОНЛАЙН)+)+)",
+            r"(ONLINE|ОНЛАЙН)\s{0,8}\(TBA\)",
+            r"((\d|ONLINE|ОНЛАЙН)+(?:\s{0,8}/\s{0,8}(\d|ONLINE|ОНЛАЙН)+)+)",
         ]
     )
 
