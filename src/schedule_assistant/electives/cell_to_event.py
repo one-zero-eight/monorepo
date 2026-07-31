@@ -8,6 +8,11 @@ from ..utils import MOSCOW_TZ
 from .config import Elective
 
 
+def _parse_hhmm(value: str) -> dtm.time:
+    hour_text, minute_text = value.split(":")
+    return dtm.time(hour=int(hour_text), minute=int(minute_text))
+
+
 class ElectiveEvent(BaseModel):
     elective: Elective
     "Elective object"
@@ -88,6 +93,8 @@ def parse_one_line_in_value(
     - IQC (17:05-18:35) online
     - SMP online
     - ASEM (starts at 18:05) 101
+    - AD STARTS AT 18:00 TILL 21:00
+    - PM НАЧАЛО В 15:30 КОНЕЦ В 18:00 ОНЛАЙН
     """
     start = overall_start
     end = overall_end
@@ -102,23 +109,27 @@ def parse_one_line_in_value(
 
     # find time xx:xx-xx:xx
     starts_at = ends_at = None
-    if timeslot_m := re.search(r"\(?(\d{2}:\d{2})-(\d{2}:\d{2})\)?", string):
-        starts_at = dtm.datetime.strptime(timeslot_m.group(1), "%H:%M").time()
-        ends_at = dtm.datetime.strptime(timeslot_m.group(2), "%H:%M").time()
+    if timeslot_m := re.search(r"\(?(\d{1,2}:\d{2})-(\d{1,2}:\d{2})\)?", string):
+        starts_at = _parse_hhmm(timeslot_m.group(1))
+        ends_at = _parse_hhmm(timeslot_m.group(2))
         string = string.replace(timeslot_m.group(0), "")
 
-    # find starts at xx:xx
-    if timeslot_m := (
-        re.search(r"\(?starts at (\d{2}:\d{2})\)?", string) or re.search(r"\(?начало в (\d{2}:\d{2})\)?", string)
+    # find starts at / STARTS AT / начало в
+    if timeslot_m := re.search(
+        r"\(?((?:starts?\s+at)|(?:начало\s+в))\s+(\d{1,2}:\d{2})\)?",
+        string,
+        flags=re.IGNORECASE,
     ):
-        starts_at = dtm.datetime.strptime(timeslot_m.group(1), "%H:%M").time()
+        starts_at = _parse_hhmm(timeslot_m.group(2))
         string = string.replace(timeslot_m.group(0), "")
 
-    # find ends at xx:xx
-    if timeslot_m := re.search(r"\(?ends at (\d{2}:\d{2})\)?", string) or re.search(
-        r"\(?конец в (\d{2}:\d{2})\)?", string
+    # find ends at / TILL / конец в
+    if timeslot_m := re.search(
+        r"\(?((?:ends?\s+at)|(?:till)|(?:конец\s+в)|(?:до))\s+(\d{1,2}:\d{2})\)?",
+        string,
+        flags=re.IGNORECASE,
     ):
-        ends_at = dtm.datetime.strptime(timeslot_m.group(1), "%H:%M").time()
+        ends_at = _parse_hhmm(timeslot_m.group(2))
         string = string.replace(timeslot_m.group(0), "")
 
     # find (lab), (lec)
@@ -128,25 +139,29 @@ def parse_one_line_in_value(
     else:
         class_type = None
 
-    # find (G1)
-    if group_m := re.search(r"\(?(G\d+)\)?", string):
-        group = group_m.group(1)
+    # find (G1) / (Г1)
+    if group_m := re.search(r"\(?((?:G|Г)\d+)\)?", string, flags=re.IGNORECASE):
+        group = group_m.group(1).upper().replace("Г", "G")
         string = string.replace(group_m.group(0), "")
     else:
         group = None
 
     # find location (what is left)
-    string = string.strip()
+    string = re.sub(r"\s+", " ", string).strip(" ,;/")
     if string:
-        location = string
+        location = "ONLINE" if string.casefold() in {"online", "онлайн"} else string
     else:
         location = None
 
-    if starts_at:
+    if starts_at and not ends_at:
+        duration = overall_end - overall_start
         start = dtm.datetime.combine(date, starts_at, tzinfo=MOSCOW_TZ)
-
-    if ends_at:
-        end = dtm.datetime.combine(date, ends_at, tzinfo=MOSCOW_TZ)
+        end = start + duration
+    else:
+        if starts_at:
+            start = dtm.datetime.combine(date, starts_at, tzinfo=MOSCOW_TZ)
+        if ends_at:
+            end = dtm.datetime.combine(date, ends_at, tzinfo=MOSCOW_TZ)
 
     return ElectiveEvent(
         elective=elective or Elective(alias=elective_short_name.lower(), short_name=elective_short_name),
