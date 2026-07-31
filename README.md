@@ -15,53 +15,6 @@ This is the monorepo for some of the backend services of InNoHassle ecosystem, a
 - Table Tennis - leaderboard and queue for the [Innopolis University table tennis club](https://innohassle.ru/clubs/inno-table-tennis).
 - When2Meet - meeting availability planner for the InNoHassle ecosystem.
 
-## When2Meet
-
-**Project name:** When2Meet
-
-**One-line description:** InNoHassle meeting availability planner where organizers create a shared time grid, participants mark free slots, and the product shows the best intersections as a heatmap.
-
-**Project goal:** Help InNoHassle users choose a meeting time with less back-and-forth by combining shared availability, participant context, calendar awareness, and room-booking support.
-
-**Current status:** Week 7 final course delivery / MVP v3 is available on the InNoHassle pre-production environment with maintained handover, UAT, and quality evidence; see the [roadmap](src/when2meet/docs/roadmap.md) and [Week 7 report](src/when2meet/reports/week7/README.md).
-
-**Current features:**
-
-- Create a meeting with candidate time slots and share an invitation link.
-- Submit participant availability and edit stored replies through the supported flow.
-- View aggregated availability as a heatmap with participant search/filtering and a legend for personal selection.
-- Use personal calendar context while choosing availability.
-- Select a final meeting time, then optionally book, change, or cancel a room for that window.
-
-**Access and guidance:**
-
-| Resource | Link |
-|---|---|
-| Product access | [pre.innohassle.ru/when2meet](https://pre.innohassle.ru/when2meet) |
-| Hosted documentation | [one-zero-eight.github.io/monorepo](https://one-zero-eight.github.io/monorepo/) |
-| API / Swagger | [api.innohassle.ru/when2meet/v0/docs](https://api.innohassle.ru/when2meet/v0/docs) |
-| Usage guidance | [Customer access and use](src/when2meet/docs/customer-handover.md#customer-access-and-use) |
-| Local setup and run | [Customer handover: local setup](src/when2meet/docs/customer-handover.md#local-setup) and [Development: console run commands](#development) |
-| Deployment instructions | [Customer handover: deployment](src/when2meet/docs/customer-handover.md#deployment) |
-| Contributing | [CONTRIBUTING.md](https://github.com/one-zero-eight/.github/blob/main/CONTRIBUTING.md) |
-| Agent instructions | [AGENTS.md](AGENTS.md) |
-| Customer handover | [docs/customer-handover.md](src/when2meet/docs/customer-handover.md) |
-| Week 7 final report | [reports/week7/README.md](src/when2meet/reports/week7/README.md) |
-
-**Maintained documentation for customers and TA reviewers:**
-
-- [Interface](src/when2meet/docs/interface.md)
-- [Architecture and diagrams](src/when2meet/docs/architecture/README.md)
-- [Testing strategy](src/when2meet/docs/testing.md)
-- [Quality requirements](src/when2meet/docs/quality-requirements.md)
-- [Quality requirement tests](src/when2meet/docs/quality-requirement-tests.md)
-- [User acceptance tests](src/when2meet/docs/user-acceptance-tests.md)
-- [Definition of Done](src/when2meet/docs/definition-of-done.md)
-- [Development process](src/when2meet/docs/development-process.md)
-- [Week 7 report](src/when2meet/reports/week7/README.md)
-- [Week 6 report](src/when2meet/reports/week6/README.md)
-- [Week 5 report](src/when2meet/reports/week5/README.md)
-
 ### Technologies
 
 - [Python 3.14](https://www.python.org/downloads/) & [uv](https://docs.astral.sh/uv/)
@@ -73,7 +26,6 @@ This is the monorepo for some of the backend services of InNoHassle ecosystem, a
 - Testing: [pytest](https://docs.pytest.org)
 - CI/CD: [Docker](https://www.docker.com/), [Docker Compose](https://docs.docker.com/compose/),
   [GitHub Actions](https://github.com/features/actions)
-
 
 ## Contributing
 
