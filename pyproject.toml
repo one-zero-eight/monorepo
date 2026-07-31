@@ -69,7 +69,7 @@ maps = [
     "rapidfuzz>=3.14.5", # ~11.5 MiB
 ]
 clubs = [
-    "pillow>=12.2.0", # ~18.6 MiB
+    "pillow>=12.3.0", # ~18.6 MiB
 ]
 #workshops = [
 #    "alembic>=1.18.4", # ~258 KiB
