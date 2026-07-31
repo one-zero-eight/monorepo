@@ -96,6 +96,7 @@ from src.schedule_assistant.modules.issues import routes as issues_routes  # noq
 from src.schedule_assistant.modules.parser import routes as parser_routes  # noqa: E402
 from src.schedule_assistant.modules.schedule import routes as schedule_routes  # noqa: E402
 from src.schedule_assistant.modules.schedule_config import routes as schedule_config_routes  # noqa: E402
+from src.schedule_assistant.modules.users import routes as users_routes  # noqa: E402
 
 app.include_router(bookings_routes.router)
 popule_openapi_tags(app, bookings_routes)
@@ -107,3 +108,5 @@ app.include_router(schedule_routes.router)
 popule_openapi_tags(app, schedule_routes)
 app.include_router(schedule_config_routes.router)
 popule_openapi_tags(app, schedule_config_routes)
+app.include_router(users_routes.router)
+popule_openapi_tags(app, users_routes)
