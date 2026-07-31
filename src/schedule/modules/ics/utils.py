@@ -6,7 +6,7 @@ import socket
 from collections.abc import AsyncGenerator
 from pathlib import Path
 from typing import Any, cast
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, urlparse, urlunparse
 from zlib import crc32
 
 import aiofiles
@@ -46,7 +46,12 @@ def _to_ical_str(prop: object) -> str:
     return raw.decode(encoding="utf-8") if isinstance(raw, bytes) else str(raw)
 
 
-def _validate_public_https_url(url: str) -> None:
+def _pin_public_https_url(url: str) -> tuple[str, str]:
+    """Validate a user-provided HTTPS URL and pin it to a resolved public IP.
+
+    Returns ``(pinned_url, hostname)`` so the request connects to the verified IP
+    while TLS SNI / Host still use the original hostname (DNS-rebinding safe).
+    """
     parsed = urlparse(url)
 
     if parsed.scheme.lower() != "https":
@@ -67,21 +72,40 @@ def _validate_public_https_url(url: str) -> None:
     if not addrinfo:
         raise HTTPException(status_code=400, detail=f"Could not resolve hostname: {hostname}")
 
+    pinned_ip: ipaddress.IPv4Address | ipaddress.IPv6Address | None = None
     for entry in addrinfo:
-        ip_raw = entry[4][0]
-        ip = ipaddress.ip_address(ip_raw)
+        ip = ipaddress.ip_address(entry[4][0])
         if not ip.is_global:
             raise HTTPException(status_code=400, detail=f"URL resolves to non-public IP: {ip}")
+        # Prefer IPv4: production egress is often IPv4-only.
+        if pinned_ip is None or (pinned_ip.version == 6 and ip.version == 4):
+            pinned_ip = ip
+
+    if pinned_ip is None:
+        raise HTTPException(status_code=400, detail=f"Could not resolve hostname: {hostname}")
+
+    netloc = f"[{pinned_ip}]" if pinned_ip.version == 6 else str(pinned_ip)
+    pinned_url = urlunparse(("https", netloc, parsed.path, parsed.params, parsed.query, ""))
+    return pinned_url, hostname
 
 
 async def generate_ics_from_url(
     url: str, headers: dict | None = None, should_validate_url=True
 ) -> AsyncGenerator[bytes]:
+    request_url = url
+    request_headers = dict(headers or {})
+    sni_hostname: str | None = None
+
     if should_validate_url:
-        _validate_public_https_url(url)
+        request_url, sni_hostname = _pin_public_https_url(url)
+        request_headers.setdefault("Host", sni_hostname)
+
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.get(url, timeout=TIMEOUT, headers=headers, follow_redirects=False)
+            request = client.build_request("GET", request_url, timeout=TIMEOUT, headers=request_headers)
+            if sni_hostname is not None:
+                request.extensions["sni_hostname"] = sni_hostname
+            response = await client.send(request, follow_redirects=False)
             logger.info(f"Response: {response.status_code}, {response.headers}")
             response.raise_for_status()
         except httpx.HTTPStatusError as e:
