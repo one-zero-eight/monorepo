@@ -18,12 +18,8 @@ on:
     inputs:
       environment:
         description: Environment to deploy to
-        type: choice
+        type: environment
         required: true
-        default: staging
-        options:
-          - staging
-          - production
       service:
         description: Compose service to deploy
         type: choice
