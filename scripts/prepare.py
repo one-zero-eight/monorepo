@@ -54,7 +54,8 @@ def replace_settings_text(replacements: list[tuple[str, str]]) -> bool:
 
     if updated:
         with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
-            f.write(text)
+            # Local-dev settings.yaml is intentionally cleartext; not a production secret store.
+            f.write(text)  # codeql[py/clear-text-storage-sensitive-data]
 
     return updated
 
@@ -111,8 +112,8 @@ def fill_auto_generated_secrets() -> None:
 
     if replace_settings_text(replacements):
         print("✅ Generated local secrets in `settings.yaml`:")
-        for _, new in replacements:
-            key = new.split(":", 1)[0].strip()
+        for old, _ in replacements:
+            key = old.split(":", 1)[0].strip()
             print(f"  - {key}")
 
 
