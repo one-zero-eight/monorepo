@@ -148,6 +148,29 @@ def test_room_issues(issue_checker: IssueChecker, data: list[ScheduledMeeting], 
         assert len(issue.meetings) >= 2
 
 
+def test_touching_room_slots_ignored_by_default(issue_checker: IssueChecker) -> None:
+    data = [
+        _weekly_meeting(
+            course_name="Introduction to AI (lab)",
+            start_time=dtm.time(12, 50),
+            end_time=dtm.time(14, 20),
+            room="314",
+            instructor="Teacher 1",
+            groups=("Group 1",),
+        ),
+        _weekly_meeting(
+            course_name="Computer Architecture (lab)",
+            start_time=dtm.time(14, 20),
+            end_time=dtm.time(15, 50),
+            room="314",
+            instructor="Teacher 2",
+            groups=("Group 2",),
+        ),
+    ]
+    assert issue_checker.check_for_room_issue(data) == []
+    assert len(issue_checker.check_for_room_issue(data, count_touching=True)) == 1
+
+
 def test_meetings_from_schedule_config() -> None:
     sections = SectionsConfig(students_groups=[StudentsGroups(code="SUM26-AAI", kind="elective", estimated_size=25)])
     courses = CoursesConfig(

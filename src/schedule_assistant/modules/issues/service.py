@@ -41,7 +41,9 @@ async def check_schedule_issues(params: CheckParameters) -> CheckResults:
     config_rooms = schedule_config_repository.get_rooms()
 
     meetings = meetings_from_schedule_config(courses, sections)
-    booking_rooms = await booking_client.get_rooms()
+    booking_rooms: list[RoomDTO] = []
+    if params.check_outlook or params.check_unbooked:
+        booking_rooms = await booking_client.get_rooms()
     room_capacities = _merge_room_capacities(config_rooms, booking_rooms)
     valid_room_ids = set(room_capacities)
 
@@ -83,6 +85,10 @@ async def check_schedule_issues(params: CheckParameters) -> CheckResults:
         check_student=params.check_student,
         check_outlook=params.check_outlook,
         check_unbooked=params.check_unbooked,
+        count_touching_room=params.count_touching_room,
+        count_touching_teacher=params.count_touching_teacher,
+        count_touching_group=params.count_touching_group,
+        count_touching_student=params.count_touching_student,
     )
     issues.extend(checker_issues)
     logger.info(f"Found {len(issues)} total issues")

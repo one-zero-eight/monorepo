@@ -224,6 +224,14 @@ class CheckParameters(ScheduleAssistantSchema):
     check_per_week: bool = True
     check_instructor_id: bool = True
     check_instructor_preference: bool = True
+    count_touching_room: bool = False
+    "Treat back-to-back room slots that only touch at an endpoint as room conflicts"
+    count_touching_teacher: bool = False
+    "Treat back-to-back teacher slots that only touch at an endpoint as teacher conflicts"
+    count_touching_group: bool = False
+    "Treat back-to-back group slots that only touch at an endpoint as group conflicts"
+    count_touching_student: bool = False
+    "Treat back-to-back student slots that only touch at an endpoint as student conflicts"
 
 
 class CheckResults(ScheduleAssistantSchema):

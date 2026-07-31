@@ -7,7 +7,7 @@ from src.common_pydantic import BaseSchema
 class RoomBookingSettings(BaseSchema):
     """Room Booking API integration settings."""
 
-    api_url: str = "https://api.innohassle.ru/room-booking/v0"
+    api_url: str = "https://api.innohassle.ru/room-booking/v0/"
     "URL of the Room Booking API"
     api_key: SecretStr
     "Shared secret for accessing the room-booking API as a service"

@@ -51,7 +51,7 @@ class RoomDTO(ScheduleAssistantSchema):
 
 class BookingClient:
     def __init__(self, url: str, api_key: str) -> None:
-        self.url = url
+        self.url = url if url.endswith("/") else f"{url}/"
         self._headers = {"Authorization": f"Bearer {api_key}"}
 
     async def get_room_bookings(

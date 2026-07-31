@@ -51,8 +51,13 @@ def _occurrence_weekday(placement: OccurrencePlacement) -> int:
     return placement.date.weekday()
 
 
-def meetings_overlap(meeting1: ScheduledMeeting, meeting2: ScheduledMeeting) -> bool:
-    if not _times_overlap(meeting1, meeting2):
+def meetings_overlap(
+    meeting1: ScheduledMeeting,
+    meeting2: ScheduledMeeting,
+    *,
+    count_touching: bool = False,
+) -> bool:
+    if not _times_overlap(meeting1, meeting2, count_touching=count_touching):
         return False
 
     placement1 = meeting1.placement
@@ -75,13 +80,20 @@ def meetings_overlap(meeting1: ScheduledMeeting, meeting2: ScheduledMeeting) -> 
     return not _is_week_cancelled(occurrence.date, weekly.edits)
 
 
-def _times_overlap(meeting1: ScheduledMeeting, meeting2: ScheduledMeeting) -> bool:
+def _times_overlap(
+    meeting1: ScheduledMeeting,
+    meeting2: ScheduledMeeting,
+    *,
+    count_touching: bool = False,
+) -> bool:
     today = dtm.date.today()
     start_a = dtm.datetime.combine(today, meeting1.start_time)
     end_a = dtm.datetime.combine(today, meeting1.end_time)
     start_b = dtm.datetime.combine(today, meeting2.start_time)
     end_b = dtm.datetime.combine(today, meeting2.end_time)
-    return (start_a <= start_b <= end_a) or (start_b <= start_a <= end_b)
+    if count_touching:
+        return start_a <= end_b and start_b <= end_a
+    return start_a < end_b and start_b < end_a
 
 
 def meeting_sort_key(meeting: ScheduledMeeting) -> tuple[str | None, dtm.time]:
