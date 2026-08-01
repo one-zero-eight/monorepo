@@ -265,4 +265,5 @@ async def test_booking_load_fails_fast() -> None:
         await checker._load_booking_snapshot(
             start_date=dtm.date(2026, 6, 1),
             end_date=dtm.date(2026, 8, 2),
+            now=dtm.datetime(2026, 6, 1, tzinfo=dtm.timezone(dtm.timedelta(hours=3))),
         )

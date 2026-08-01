@@ -11,6 +11,7 @@ from src.schedule_assistant.modules.issues.booking_match import (
     slot_has_matching_booking,
 )
 from src.schedule_assistant.modules.issues.booking_slots import build_bookable_slots
+from src.schedule_assistant.modules.issues.booking_window import resolve_booking_fetch_window
 from src.schedule_assistant.modules.issues.issue_text import attach_issue_text
 from src.schedule_assistant.modules.issues.meetings import meeting_instructor_ids
 from src.schedule_assistant.modules.issues.placement import meeting_sort_key, meetings_overlap
@@ -414,10 +415,12 @@ class IssueChecker:
         *,
         start_date: dtm.date,
         end_date: dtm.date,
+        now: dtm.datetime | None = None,
     ) -> BookingSnapshot:
-        tz = dtm.timezone(dtm.timedelta(hours=3))
-        min_needed_time = dtm.datetime.combine(start_date, dtm.time.min).replace(tzinfo=tz)
-        max_needed_time = dtm.datetime.combine(end_date, dtm.time.max).replace(tzinfo=tz)
+        window = resolve_booking_fetch_window(start_date, end_date, now=now)
+        if window is None:
+            return BookingSnapshot(auto_bookings=(), existing_bookings=())
+        min_needed_time, max_needed_time = window
 
         existing_bookings = await booking_client.get_all_bookings(
             start=min_needed_time,

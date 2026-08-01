@@ -70,6 +70,7 @@ async def test_unbooked_issue_when_no_matching_booking() -> None:
         bookings = await checker._load_booking_snapshot(
             start_date=dtm.date(2026, 6, 1),
             end_date=dtm.date(2026, 8, 2),
+            now=dtm.datetime(2026, 6, 1, tzinfo=dtm.timezone(dtm.timedelta(hours=3))),
         )
         issues = checker.check_for_unbooked_issue(bookings=bookings)
 
@@ -128,6 +129,7 @@ async def test_no_unbooked_issue_when_booking_matches() -> None:
         bookings = await checker._load_booking_snapshot(
             start_date=dtm.date(2026, 6, 1),
             end_date=dtm.date(2026, 8, 2),
+            now=dtm.datetime(2026, 6, 1, tzinfo=dtm.timezone(dtm.timedelta(hours=3))),
         )
         issues = checker.check_for_unbooked_issue(bookings=bookings)
 
