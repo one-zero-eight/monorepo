@@ -21,6 +21,7 @@ dependencies = [
     "minio>=7.2.20", # ~381 KiB
     "pydantic>=2.13.4", # ~1.8 MiB
     "pydantic-settings>=2.14.2", # ~225 KiB
+    "prometheus-fastapi-instrumentator>=7.1.0", # ~19 KiB
     "python-multipart>=0.0.32", # ~101 KiB
     "pytz>=2026.2", # ~988 KiB
     "pyyaml>=6.0.3", # ~2.7 MiB
@@ -46,7 +47,6 @@ schedule = [
     "alembic>=1.18.4", # ~258 KiB
     "asyncpg>=0.31.0", # ~3.4 MiB
     "icalendar>=7.1.0", # ~460 KiB
-    "prometheus-fastapi-instrumentator>=7.1.0", # ~19 KiB
     "sqlalchemy[postgresql-asyncpg]>=2.0.49", # ~3.4 MiB
 ]
 schedule-assistant = [

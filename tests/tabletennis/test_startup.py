@@ -4,11 +4,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.tabletennis.mongo import Game, Player, Tournament
+from tests.metrics import assert_metrics_contract
 
 
 def test_tabletennis_app_startup(tabletennis_client: TestClient):
     response = tabletennis_client.get("/openapi.json")
     assert response.status_code == 200
+    assert_metrics_contract(tabletennis_client, "tabletennis")
 
 
 def test_unauthorized_returns_401(tabletennis_client: TestClient):

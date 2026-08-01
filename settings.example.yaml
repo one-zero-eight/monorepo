@@ -3,6 +3,8 @@ $schema: "./settings.schema.yaml"
 accounts:
   # get from https://api.innohassle.ru/accounts/v0/tokens/generate-service-token?sub=monorepo-local-dev&scopes=users&scopes=sport&only_for_me=true
   api_jwt_token: change-me
+metrics:
+  api_key: change-me
 maps_service: {}
 student_affairs_service: # to run student affairs service you should get omnidesk credentials
   omnidesk:

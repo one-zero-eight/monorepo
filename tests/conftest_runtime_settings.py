@@ -16,7 +16,7 @@ from urllib3.exceptions import HTTPError
 
 from src.clubs.config_schema import ClubsSettings
 from src.common_config import Environment, MinioSettings, MongoDatabaseSettings
-from src.config_root_schema import AccountsSettings, Settings
+from src.config_root_schema import AccountsSettings, MetricsSettings, Settings
 from src.forms.config_schema import FormsSettings, LinksSettings
 from src.guard.config_schema import GuardSettings
 from src.maps.config_schema import MapsSettings
@@ -31,6 +31,7 @@ from src.schedule_assistant.config_schema import (
 from src.student_affairs.config_schema import OmnideskSettings, StudentAffairsSettings
 from src.tabletennis.config_schema import TabletennisSettings
 from src.when2meet.config_schema import RoomBookingIntegrationSettings, When2MeetSettings
+from tests.metrics import METRICS_API_KEY
 
 # Host ports for docker-compose.test.yaml and CI service containers; override via SUITE_* env.
 SUITE_MONGO_NETLOC = os.environ.get("SUITE_MONGO_NETLOC", "127.0.0.1:37017")
@@ -71,6 +72,7 @@ def load_root_settings() -> Settings:
             mock=False,
             api_jwt_token=SecretStr("test-token"),
         ),
+        metrics=MetricsSettings(api_key=SecretStr(METRICS_API_KEY)),
         maps_service=MapsSettings(
             environment=Environment.TESTING,
         ),

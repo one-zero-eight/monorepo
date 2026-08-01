@@ -7,7 +7,12 @@ import httpx
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
-from src.common_fastapi import MIT_LICENSE_INFO, ONE_ZERO_EIGHT_CONTACT_INFO, popule_openapi_tags, tune_fastapi
+from src.common_fastapi import (
+    MIT_LICENSE_INFO,
+    ONE_ZERO_EIGHT_CONTACT_INFO,
+    popule_openapi_tags,
+    tune_fastapi,
+)
 from src.logging_ import logger
 
 from .config import settings
@@ -48,7 +53,7 @@ This is the API for Student Affairs project developed by one-zero-eight communit
     redoc_url=None,
     swagger_ui_oauth2_redirect_url=None,
 )
-tune_fastapi(app, logger=logger)
+tune_fastapi(app, logger=logger, metrics_namespace="student_affairs")
 
 
 # CORS settings

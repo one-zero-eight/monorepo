@@ -32,10 +32,19 @@ class AccountsSettings(BaseSchema):
     """
 
 
+class MetricsSettings(BaseSchema):
+    """Shared metrics endpoint settings."""
+
+    api_key: SecretStr
+    "Bearer token required to access service metrics"
+
+
 class Settings(BaseSchema):
     schema_: str | None = Field(default=None, alias="$schema", init=False)
     accounts: AccountsSettings
     "Shared InNoHassle Accounts integration settings"
+    metrics: MetricsSettings
+    "Shared metrics endpoint settings"
 
     maps_service: MapsSettings = MapsSettings()
     clubs_service: ClubsSettings | None = None

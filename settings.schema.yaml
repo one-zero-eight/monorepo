@@ -296,6 +296,20 @@ $defs:
         type: string
     title: MapsSettings
     type: object
+  MetricsSettings:
+    additionalProperties: false
+    description: Shared metrics endpoint settings.
+    properties:
+      api_key:
+        description: Bearer token required to access service metrics
+        format: password
+        title: Api Key
+        type: string
+        writeOnly: true
+    required:
+    - api_key
+    title: MetricsSettings
+    type: object
   MinioSettings:
     additionalProperties: false
     properties:
@@ -559,6 +573,8 @@ $defs:
           Specify as a regex: `https://.*.innohassle.ru`'
         title: Cors Allow Origin Regex
         type: string
+      mongo:
+        $ref: '#/$defs/MongoDatabaseSettings'
       admin_emails:
         description: List of coach emails who can manage games
         items:
@@ -709,7 +725,7 @@ $defs:
     description: Room Booking API integration settings.
     properties:
       api_url:
-        default: https://api.innohassle.ru/room-booking/v0
+        default: https://api.innohassle.ru/room-booking/v0/
         description: URL of the Room Booking API
         title: Api Url
         type: string
@@ -745,6 +761,9 @@ properties:
   accounts:
     $ref: '#/$defs/AccountsSettings'
     description: Shared InNoHassle Accounts integration settings
+  metrics:
+    $ref: '#/$defs/MetricsSettings'
+    description: Shared metrics endpoint settings
   maps_service:
     $ref: '#/$defs/MapsSettings'
     default:
@@ -800,5 +819,6 @@ properties:
     default: null
 required:
 - accounts
+- metrics
 title: Settings
 type: object

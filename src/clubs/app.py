@@ -67,7 +67,7 @@ Admins can manage the clubs information.
     redoc_url=None,
     swagger_ui_oauth2_redirect_url=None,
 )
-tune_fastapi(app, logger=logger)
+tune_fastapi(app, logger=logger, metrics_namespace="clubs")
 
 
 # CORS settings

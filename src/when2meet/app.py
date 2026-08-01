@@ -55,7 +55,7 @@ app = FastAPI(
     swagger_ui_oauth2_redirect_url=None,
     swagger_ui_parameters={"filter": True},
 )
-tune_fastapi(app, logger=logger)
+tune_fastapi(app, logger=logger, metrics_namespace="when2meet")
 
 app.add_middleware(
     CORSMiddleware,

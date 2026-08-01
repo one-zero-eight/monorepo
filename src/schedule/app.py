@@ -4,7 +4,6 @@ import json
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.middleware.cors import CORSMiddleware
 
 from src.common_config import Environment
@@ -31,18 +30,6 @@ def setup_predefined_data_from_file() -> None:
     predefined_storage = JsonPredefinedUsers.from_jsons(predefined_json)
     setup_predefined_data_from_object(predefined_storage)
     _ = predefined_repository
-
-
-def configure_metrics(app: FastAPI) -> None:
-    Instrumentator(excluded_handlers=["/metrics"]).instrument(
-        app,
-        metric_namespace="schedule",
-        metric_subsystem="api",
-    ).expose(
-        app,
-        endpoint="metrics",
-        include_in_schema=False,
-    )
 
 
 @asynccontextmanager
@@ -95,7 +82,7 @@ app = FastAPI(
     redoc_url=None,
     swagger_ui_oauth2_redirect_url=None,
 )
-tune_fastapi(app, logger=logger)
+tune_fastapi(app, logger=logger, metrics_namespace="schedule")
 
 app.add_middleware(
     CORSMiddleware,
@@ -104,8 +91,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-configure_metrics(app)
 
 import src.schedule.modules.event_groups.routes  # noqa: E402
 import src.schedule.modules.ics.routes  # noqa: E402

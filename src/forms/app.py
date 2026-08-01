@@ -55,7 +55,7 @@ This is the API for Forms project developed by one-zero-eight community.
     redoc_url=None,
     swagger_ui_oauth2_redirect_url=None,
 )
-tune_fastapi(app, logger=logger)
+tune_fastapi(app, logger=logger, metrics_namespace="forms")
 
 
 # CORS settings
