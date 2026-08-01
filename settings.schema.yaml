@@ -762,7 +762,10 @@ properties:
     $ref: '#/$defs/AccountsSettings'
     description: Shared InNoHassle Accounts integration settings
   metrics:
-    $ref: '#/$defs/MetricsSettings'
+    anyOf:
+    - $ref: '#/$defs/MetricsSettings'
+    - type: 'null'
+    default: null
     description: Shared metrics endpoint settings
   maps_service:
     $ref: '#/$defs/MapsSettings'
@@ -819,6 +822,5 @@ properties:
     default: null
 required:
 - accounts
-- metrics
 title: Settings
 type: object

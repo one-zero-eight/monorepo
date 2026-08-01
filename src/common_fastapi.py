@@ -80,10 +80,14 @@ def tune_fastapi(
 
     from src.config_root_schema import load_root_settings
 
+    metrics_settings = load_root_settings().metrics
+    if metrics_settings is None:
+        return
+
     configure_metrics(
         app,
         namespace=metrics_namespace,
-        api_key=load_root_settings().metrics.api_key,
+        api_key=metrics_settings.api_key,
     )
 
 

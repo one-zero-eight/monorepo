@@ -43,7 +43,7 @@ class Settings(BaseSchema):
     schema_: str | None = Field(default=None, alias="$schema", init=False)
     accounts: AccountsSettings
     "Shared InNoHassle Accounts integration settings"
-    metrics: MetricsSettings
+    metrics: MetricsSettings | None = None
     "Shared metrics endpoint settings"
 
     maps_service: MapsSettings = MapsSettings()

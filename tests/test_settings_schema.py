@@ -4,7 +4,6 @@ import yaml
 from src.config_root_schema import Settings
 
 _TEST_ACCOUNTS = {"api_jwt_token": "test-token"}
-_TEST_METRICS = {"api_key": "test-metrics-api-key"}
 
 
 def test_accounts_mock_rejected_when_maps_not_development(tmp_path):
@@ -13,7 +12,6 @@ def test_accounts_mock_rejected_when_maps_not_development(tmp_path):
         yaml.safe_dump(
             {
                 "accounts": {**_TEST_ACCOUNTS, "mock": True},
-                "metrics": _TEST_METRICS,
                 "maps_service": {"environment": "testing"},
             },
             sort_keys=False,
@@ -30,7 +28,6 @@ def test_accounts_mock_accepted_when_all_development(tmp_path):
         yaml.safe_dump(
             {
                 "accounts": {**_TEST_ACCOUNTS, "mock": True},
-                "metrics": _TEST_METRICS,
                 "maps_service": {"environment": "development"},
             },
             sort_keys=False,
@@ -45,7 +42,6 @@ def test_accounts_mock_validates_clubs_and_student_affairs_environments():
     loaded = Settings.model_validate(
         {
             "accounts": {**_TEST_ACCOUNTS, "mock": True},
-            "metrics": _TEST_METRICS,
             "maps_service": {"environment": "development"},
             "clubs_service": {"environment": "development"},
             "student_affairs_service": {
@@ -63,7 +59,6 @@ def test_accounts_mock_rejected_when_clubs_not_development():
         Settings.model_validate(
             {
                 "accounts": {**_TEST_ACCOUNTS, "mock": True},
-                "metrics": _TEST_METRICS,
                 "maps_service": {"environment": "development"},
                 "clubs_service": {"environment": "testing"},
             }
@@ -77,7 +72,6 @@ def test_settings_from_yaml(tmp_path):
             {
                 "$schema": "./settings.schema.yaml",
                 "accounts": {"api_url": "https://api.innohassle.ru/accounts/v0", "api_jwt_token": "token"},
-                "metrics": _TEST_METRICS,
                 "maps_service": {"environment": "testing"},
                 "clubs_service": {"environment": "testing"},
                 "student_affairs_service": {"environment": "testing", "omnidesk": {"jwt_marker": "marker-0123456789"}},
@@ -88,6 +82,7 @@ def test_settings_from_yaml(tmp_path):
     )
 
     loaded = Settings.from_yaml(settings_path)
+    assert loaded.metrics is None
     assert loaded.maps_service.environment == "testing"
     assert loaded.clubs_service is not None
     assert loaded.clubs_service.environment == "testing"
