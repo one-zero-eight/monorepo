@@ -23,6 +23,20 @@ DO NOT USE response_model= in route decorator, use type hints instead:
 
 If you need to scaffold a new service, use the [NEW_SERVICE.md](NEW_SERVICE.md) guide.
 
+For parallel branches via git worktrees, see [WORKTREE.md](WORKTREE.md).
+
+
+### Git
+
+When finishing a task with code changes:
+- stage only the relevant changes (not the full working tree / unrelated diffs); do not stage secrets (`.env`, credentials, local `settings.yaml`)
+- draft a concise conventional commit message matching recent `git log` style (focus on why). **Always include a scope:**
+  - service/area scope when the change is local (e.g. `feat(maps): …`, `fix(schedule): …`)
+  - comma-separated scopes when a few services are touched (e.g. `chore(schedule, maps): …`)
+  - `general` for repo-wide / all-services changes (e.g. `chore(general): …`, `docs(general): …`)
+- propose that message to the IDE Source Control input by writing it to `.scm-commit-msg` at the repo root (gitignored — do not stage it). Requires the SCM Commit Message extension in `tools/scm-commit-msg-from-file` (install once per machine into `~/.cursor/extensions/local.scm-commit-msg-from-file-<version>/`, then Reload Window). After an IDE commit the extension clears the SCM input only when it still matches `.scm-commit-msg`, then deletes the file. After a CLI commit, always `rm -f .scm-commit-msg` (the extension then clears the matching SCM input).
+- do **not** run `git commit` unless the user explicitly asks
+
 
 ### Testing
 

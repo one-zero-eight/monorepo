@@ -1,6 +1,7 @@
 ### Ours ###
 .env
 settings.yaml
+.scm-commit-msg
 private.pem
 public.pem
 service_account.json

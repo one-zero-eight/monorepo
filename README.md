@@ -197,6 +197,10 @@ To rerun only failed tests, you can use:
 uv run -m pytest --lf
 ```
 
+### Git worktrees
+
+To work on several branches in parallel without stashing or switching in the main checkout, see [WORKTREE.md](./WORKTREE.md).
+
 ### How to update dependencies
 
 1. Run `uv sync --upgrade` to update uv.lock file and install the latest versions of the dependencies.

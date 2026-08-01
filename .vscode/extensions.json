@@ -4,6 +4,7 @@
     "charliermarsh.ruff",
     "astral-sh.ty",
     "redhat.vscode-yaml",
-    "github.vscode-github-actions"
+    "github.vscode-github-actions",
+    "local.scm-commit-msg-from-file"
   ]
 }
