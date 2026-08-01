@@ -33,6 +33,18 @@ def setup_predefined_data_from_file() -> None:
     _ = predefined_repository
 
 
+def configure_metrics(app: FastAPI) -> None:
+    Instrumentator(excluded_handlers=["/metrics"]).instrument(
+        app,
+        metric_namespace="schedule",
+        metric_subsystem="api",
+    ).expose(
+        app,
+        endpoint="metrics",
+        include_in_schema=False,
+    )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from src.schedule.modules.event_groups.repository import event_group_repository
@@ -93,6 +105,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+configure_metrics(app)
+
 import src.schedule.modules.event_groups.routes  # noqa: E402
 import src.schedule.modules.ics.routes  # noqa: E402
 import src.schedule.modules.parse.routes  # noqa: E402
@@ -119,5 +133,3 @@ if settings.environment == Environment.DEVELOPMENT:
     logger.warning("Enable sqlalchemy logging")
     logging.basicConfig()
     logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
-
-Instrumentator(excluded_handlers=["/metrics"]).instrument(app).expose(app)
