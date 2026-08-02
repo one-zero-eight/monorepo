@@ -16,11 +16,15 @@ docker compose -f docker-compose.test.yaml up --wait
 
 Note that the test infrastructure will be stopped after 1 hour of inactivity.
 
-Run tests:
+Run tests for one service (preferred; matches CI):
 
 ```bash
-uv run -m pytest
+uv run -m pytest tests/clubs/
 ```
+
+CI runs each suite in a separate job/process. Do not rely on a single
+`uv run -m pytest` across multiple Beanie services — shared `BeanieDocument`
+class state in one process can break inserts.
 
 Useful variants:
 

@@ -19,16 +19,33 @@ concurrency:
 
 jobs:
   test:
-    name: Run pytest
+    name: pytest (${{ matrix.suite }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    strategy:
+      fail-fast: false
+      matrix:
+        # One suite per job so Beanie services do not share a Python process
+        # (BeanieDocument class state breaks inserts across services otherwise).
+        suite:
+          - board_games
+          - clubs
+          - events
+          - forms
+          - guard
+          - maps
+          - room_booking
+          - schedule
+          - schedule_assistant
+          - student_affairs
+          - tabletennis
+          - when2meet
+          - shared
 
     permissions:
       contents: read
-      checks: write
-      pull-requests: write
 
     # Host ports match docker-compose.test.yaml (37017, 19000, 35432); service containers use default listen ports inside.
     services:
@@ -87,17 +104,109 @@ jobs:
         id: tests
         env:
           PYTHONUNBUFFERED: "1"
+          COVERAGE_FILE: .coverage.${{ matrix.suite }}
         run: |
           set -o pipefail
           mkdir -p reports
-          uv run -m pytest \
+
+          if [ "${{ matrix.suite }}" = "shared" ]; then
+            set -- \
+              tests/test_common_fastapi.py \
+              tests/test_dependencies.py \
+              tests/test_inh_accounts_sdk.py \
+              tests/test_settings_schema.py
+          else
+            set -- "tests/${{ matrix.suite }}/"
+          fi
+
+          uv run -m pytest "$@" \
             --color=no \
             --memray \
-            --junitxml=reports/junit.xml \
-            --cov-report=xml:coverage.xml \
-            --cov-report=markdown:coverage.md 2>&1 | tee reports/pytest.log
+            --junitxml=reports/junit-${{ matrix.suite }}.xml \
+            --cov-report=xml:reports/coverage-${{ matrix.suite }}.xml \
+            --cov-report=term-missing \
+            2>&1 | tee "reports/pytest-${{ matrix.suite }}.log"
 
-          grep -v "100% |" coverage.md > coverage-skip-covered.md
+      - name: 📤 Upload reports
+        uses: actions/upload-artifact@v7
+        if: (!cancelled())
+        with:
+          name: pytest-${{ matrix.suite }}
+          path: |
+            reports/junit-${{ matrix.suite }}.xml
+            reports/coverage-${{ matrix.suite }}.xml
+            reports/pytest-${{ matrix.suite }}.log
+            .coverage.${{ matrix.suite }}
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: 📋 pytest log
+        if: (!cancelled()) && hashFiles('reports/pytest-${{ matrix.suite }}.log') != ''
+        run: |
+          {
+            echo "<details>"
+            echo "<summary>pytest (${{ matrix.suite }}) output</summary>"
+            echo ""
+            echo '```text'
+            cat "reports/pytest-${{ matrix.suite }}.log"
+            echo '```'
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  report:
+    name: Test report
+    needs: test
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+
+    steps:
+      - name: 👾 Check out repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref }}
+
+      - name: 📦 Set up uv
+        uses: astral-sh/setup-uv@v8.2.0
+        with:
+          enable-cache: true
+          activate-environment: true
+
+      - name: 📦 Install the project
+        run: uv sync --frozen
+
+      - name: 📥 Download suite reports
+        uses: actions/download-artifact@v7
+        with:
+          pattern: pytest-*
+          merge-multiple: true
+          path: .
+
+      - name: 📊 Combine coverage
+        id: coverage
+        run: |
+          set -o pipefail
+          mkdir -p reports
+          shopt -s nullglob
+          coverage_files=(.coverage.*)
+          if [ ${#coverage_files[@]} -eq 0 ]; then
+            echo "coverage_md=" >> "$GITHUB_OUTPUT"
+            echo "No coverage data files found" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          uv run -m coverage combine "${coverage_files[@]}"
+          uv run -m coverage xml -o coverage.xml
+          uv run -m coverage report --skip-covered --show-missing | tee coverage.md
+
+          grep -v "100% |" coverage.md > coverage-skip-covered.md || cp coverage.md coverage-skip-covered.md
           delimiter="$(openssl rand -hex 16)"
           {
             echo "coverage_md<<$delimiter"
@@ -105,39 +214,26 @@ jobs:
             echo "$delimiter"
           } >> "$GITHUB_OUTPUT"
 
-      - name: 📤 Upload reports
+      - name: 📤 Upload combined reports
         uses: actions/upload-artifact@v7
         if: (!cancelled())
         with:
           name: pytest-reports
           path: |
-            reports/junit.xml
+            reports/junit-*.xml
             coverage.xml
           retention-days: 30
           if-no-files-found: ignore
 
       - name: 📋 Publish test results
         uses: EnricoMi/publish-unit-test-result-action@v2
-        if: (!cancelled()) && hashFiles('reports/junit.xml') != ''
+        if: (!cancelled()) && hashFiles('reports/junit-*.xml') != ''
         with:
-          files: reports/junit.xml
+          files: reports/junit-*.xml
           check_run: false
           comment_title: |
             Coverage
 
-            ${{ steps.tests.outputs.coverage_md }}
+            ${{ steps.coverage.outputs.coverage_md }}
 
             ## Tests
-
-      - name: 📋 pytest log
-        if: (!cancelled()) && hashFiles('reports/pytest.log') != ''
-        run: |
-          {
-            echo "<details>"
-            echo "<summary>pytest output</summary>"
-            echo ""
-            echo '```text'
-            cat reports/pytest.log
-            echo '```'
-            echo "</details>"
-          } >> "$GITHUB_STEP_SUMMARY"

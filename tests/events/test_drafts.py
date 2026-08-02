@@ -167,20 +167,29 @@ def test_delete_locale(events_client: TestClient, user_headers: dict[str, str]):
 
 def test_eligible_reports_guardrail_violations(events_client: TestClient, user_headers: dict[str, str]):
     created = create_draft(events_client, user_headers)  # locales empty, host set
-    response = events_client.post(f"/drafts/{created['id']}/eligible", headers=user_headers)
+    response = events_client.get(f"/drafts/{created['id']}/eligible", headers=user_headers)
     assert response.status_code == 200
     payload = response.json()
     assert payload["eligible"] is False
     assert "Event start time" not in "".join(payload["why"])  # starts_at is set and in the future
 
     fill_locales(events_client, created["id"], user_headers)
-    past = events_client.patch(
+    cleared_location = events_client.patch(
         f"/drafts/{created['id']}",
-        json={"starts_at": past_iso()},
+        json={"location": ""},
         headers=user_headers,
     )
-    assert past.status_code == 200
-    response = events_client.post(f"/drafts/{created['id']}/eligible", headers=user_headers)
+    assert cleared_location.status_code == 200
+    response = events_client.get(f"/drafts/{created['id']}/eligible", headers=user_headers)
+    assert "Location is empty" in response.json()["why"]
+
+    restored_location = events_client.patch(
+        f"/drafts/{created['id']}",
+        json={"location": "108", "starts_at": past_iso()},
+        headers=user_headers,
+    )
+    assert restored_location.status_code == 200
+    response = events_client.get(f"/drafts/{created['id']}/eligible", headers=user_headers)
     payload = response.json()
     assert payload["eligible"] is False
     assert "Event start time in the past" in payload["why"]
@@ -189,7 +198,7 @@ def test_eligible_reports_guardrail_violations(events_client: TestClient, user_h
 def test_eligible_true_for_complete_draft(events_client: TestClient, user_headers: dict[str, str]):
     created = create_draft(events_client, user_headers)
     fill_locales(events_client, created["id"], user_headers)
-    response = events_client.post(f"/drafts/{created['id']}/eligible", headers=user_headers)
+    response = events_client.get(f"/drafts/{created['id']}/eligible", headers=user_headers)
     assert response.status_code == 200
     assert response.json() == {"eligible": True, "why": []}
 
