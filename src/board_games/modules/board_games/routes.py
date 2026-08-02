@@ -4,7 +4,7 @@ from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 from pydantic import Field
 
 from src.board_games.dependencies import BOARD_GAMES_ADMIN_AUTH
-from src.board_games.mongo import BoardGame, Reservation
+from src.board_games.mongo import BoardGame, Reservation, ReservationStatus
 from src.common_pydantic import BaseSchema
 from src.dependencies import INH_TOKEN_AUTH
 
@@ -140,6 +140,8 @@ async def edit_user_reservation(
     existing = await board_games_repo.read_reservation(id)
     if existing is None or existing.user_innohassle_id != current_user.innohassle_id:
         raise HTTPException(status_code=404, detail="Reservation not found")
+    if existing.status != ReservationStatus.RESERVED:
+        raise HTTPException(status_code=409, detail="Reservation is not reserved")
     reservation = await board_games_repo.update_reservation(id, body)
     if reservation is None:
         raise HTTPException(status_code=404, detail="Reservation not found")
@@ -154,6 +156,8 @@ async def remove_user_reservation(
     existing = await board_games_repo.read_reservation(id)
     if existing is None or existing.user_innohassle_id != current_user.innohassle_id:
         raise HTTPException(status_code=404, detail="Reservation not found")
+    if existing.status != ReservationStatus.RESERVED:
+        raise HTTPException(status_code=409, detail="Reservation is not reserved")
 
     deleted = await board_games_repo.delete_reservation(id)
     if not deleted:

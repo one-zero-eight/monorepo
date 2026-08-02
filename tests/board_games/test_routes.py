@@ -112,6 +112,18 @@ def test_admin_can_lend_reservation_and_see_borrower(
     assert lent.json()["status"] == "taken"
     assert lent.json()["borrower_name"] == "Test User One"
 
+    edit_taken = board_games_client.patch(
+        f"/users/me/reservations/{reservation_id}",
+        json={"comments": "Cannot change taken reservation"},
+        headers=user_headers,
+    )
+    assert edit_taken.status_code == 409
+    assert edit_taken.json()["detail"] == "Reservation is not reserved"
+
+    delete_taken = board_games_client.delete(f"/users/me/reservations/{reservation_id}", headers=user_headers)
+    assert delete_taken.status_code == 409
+    assert delete_taken.json()["detail"] == "Reservation is not reserved"
+
     current_after_lend = board_games_client.get("/admin/reservations", params={"how": "current"}, headers=user_headers)
     assert current_after_lend.status_code == 200
     assert current_after_lend.json()[0]["status"] == "taken"
@@ -141,6 +153,18 @@ def test_admin_can_lend_reservation_and_see_borrower(
     reservations = board_games_client.get("/users/me/reservations", params={"how": "all"}, headers=user_headers)
     assert reservations.status_code == 200
     assert reservations.json()[0]["borrower_name"] == "Test User One"
+
+    edit_returned = board_games_client.patch(
+        f"/users/me/reservations/{reservation_id}",
+        json={"comments": "Cannot change returned reservation"},
+        headers=user_headers,
+    )
+    assert edit_returned.status_code == 409
+    assert edit_returned.json()["detail"] == "Reservation is not reserved"
+
+    delete_returned = board_games_client.delete(f"/users/me/reservations/{reservation_id}", headers=user_headers)
+    assert delete_returned.status_code == 409
+    assert delete_returned.json()["detail"] == "Reservation is not reserved"
 
     deleted = board_games_client.delete(f"/admin/reservations/{reservation_id}", headers=user_headers)
     assert deleted.status_code == 200
