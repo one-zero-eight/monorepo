@@ -118,6 +118,30 @@ def _new_instructor_row(instructor: InstructorConfig.Instructor) -> InstructorRo
     )
 
 
+def _room_row_to_model(row: RoomRow) -> RoomConfig.Room:
+    return RoomConfig.Room(
+        id=row.id,
+        name=row.name,
+        capacity=row.capacity,
+        features=dict(row.features or {}),
+    )
+
+
+def _new_room_row(room: RoomConfig.Room) -> RoomRow:
+    return RoomRow(
+        id=room.id,
+        name=room.name,
+        capacity=room.capacity,
+        features=dict(room.features or {}),
+    )
+
+
+def _apply_room_fields(row: RoomRow, room: RoomConfig.Room) -> None:
+    row.name = room.name
+    row.capacity = room.capacity
+    row.features = dict(room.features or {})
+
+
 class ScheduleConfigRepository:
     def __init__(self, db_url: str | None = None) -> None:
         self.db_url = db_url or settings.db_url.get_secret_value()
@@ -268,10 +292,7 @@ class ScheduleConfigRepository:
         return SectionsConfig(sections=sections, students_groups=student_groups)
 
     def _load_room_config(self, session: Session) -> RoomConfig:
-        rooms = [
-            RoomConfig.Room(id=row.id, name=row.name, capacity=row.capacity)
-            for row in session.scalars(select(RoomRow).order_by(RoomRow.id)).all()
-        ]
+        rooms = [_room_row_to_model(row) for row in session.scalars(select(RoomRow).order_by(RoomRow.id)).all()]
         return RoomConfig(rooms=rooms)
 
     def _load_instructor_config(self, session: Session) -> InstructorConfig:
@@ -717,7 +738,7 @@ class ScheduleConfigRepository:
             row = session.get(RoomRow, room_id)
             if row is None:
                 return None
-            return RoomConfig.Room(id=row.id, name=row.name, capacity=row.capacity)
+            return _room_row_to_model(row)
 
     def create_room(self, room: RoomConfig.Room, *, saved_by: str) -> tuple[RoomConfig.Room, int]:
         with self._session() as session:
@@ -727,7 +748,7 @@ class ScheduleConfigRepository:
             self._raise_validation_errors(
                 validate_room(room, self._load_room_config(session), courses=self._load_courses_config(session)),
             )
-            session.add(RoomRow(id=room.id, name=room.name, capacity=room.capacity))
+            session.add(_new_room_row(room))
             session.flush()
             revision = self._append_history(
                 session,
@@ -757,11 +778,10 @@ class ScheduleConfigRepository:
                     )
                 session.delete(row)
                 session.flush()
-                row = RoomRow(id=room.id, name=room.name, capacity=room.capacity)
+                row = _new_room_row(room)
                 session.add(row)
             else:
-                row.name = room.name
-                row.capacity = room.capacity
+                _apply_room_fields(row, room)
             session.flush()
             revision = self._append_history(
                 session,
@@ -809,7 +829,7 @@ class ScheduleConfigRepository:
             self._raise_validation_errors(validate_rooms(config, courses=ctx.courses))
             session.execute(delete(RoomRow))
             for room in config.rooms:
-                session.add(RoomRow(id=room.id, name=room.name, capacity=room.capacity))
+                session.add(_new_room_row(room))
             session.flush()
             revision = self._append_history(
                 session,
@@ -905,7 +925,7 @@ class ScheduleConfigRepository:
     def _apply_rooms_update(self, session: Session, rooms: list[RoomConfig.Room]) -> None:
         session.execute(delete(RoomRow))
         for room in rooms:
-            session.add(RoomRow(id=room.id, name=room.name, capacity=room.capacity))
+            session.add(_new_room_row(room))
 
     def _apply_instructors_update(self, session: Session, instructors: list[InstructorConfig.Instructor]) -> None:
         session.execute(delete(InstructorRow))

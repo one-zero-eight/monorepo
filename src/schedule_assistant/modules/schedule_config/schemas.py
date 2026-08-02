@@ -92,8 +92,10 @@ class RoomConfig(SettingBaseModel):
         "Room identifier used in schedule output"
         name: str
         "Human-readable room name"
-        capacity: int
+        capacity: int | None = None
         "Maximum room capacity"
+        features: dict[str, bool | str | int] = Field(default_factory=dict)
+        "Arbitrary room attributes (for example projector, board, outlets); not a fixed enum"
 
     rooms: list[Room] = Field(default_factory=list)
     "Available rooms"

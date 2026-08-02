@@ -58,7 +58,8 @@ class RoomRow(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
-    capacity: Mapped[int] = mapped_column(Integer, nullable=False)
+    capacity: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    features: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
 
 
 class ConfigMetaRow(Base):
