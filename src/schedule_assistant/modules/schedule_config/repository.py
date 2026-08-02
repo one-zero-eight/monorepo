@@ -243,6 +243,7 @@ class ScheduleConfigRepository:
                 "starting_day": row.starting_day,
                 "time_slots": row.time_slots,
                 "sections": row.sections,
+                "instructor_roles": row.instructor_roles or [],
             }
         )
 
@@ -257,6 +258,7 @@ class ScheduleConfigRepository:
         row.starting_day = payload["starting_day"]
         row.time_slots = payload["time_slots"]
         row.sections = payload["sections"]
+        row.instructor_roles = payload.get("instructor_roles") or []
         return row
 
     def _merge_term_partial(self, existing: TermConfig | None, partial: TermPartialUpdate) -> TermConfig:

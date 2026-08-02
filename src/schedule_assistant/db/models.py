@@ -18,6 +18,7 @@ class TermRow(Base):
     starting_day: Mapped[str] = mapped_column(String, nullable=False)
     time_slots: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
     sections: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    instructor_roles: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
 
 
 class StudentGroupRow(Base):

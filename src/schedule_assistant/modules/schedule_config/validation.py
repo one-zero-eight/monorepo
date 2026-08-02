@@ -251,9 +251,13 @@ def validate_instructors(config: InstructorConfig, *, term: TermConfig | None = 
     errors: list[str] = []
     instructor_ids = [instructor.id for instructor in config.instructors]
     errors.extend(f"Duplicate instructor id: {instructor_id!r}" for instructor_id in find_duplicates(instructor_ids))
+    allowed_roles = [role for role in (term.instructor_roles if term is not None else []) if role.strip()]
     for index, instructor in enumerate(config.instructors):
         if not instructor.id.strip():
             errors.append(f"instructors[{index}].id must not be empty")
+        position = (instructor.position or "").strip()
+        if allowed_roles and position and position not in allowed_roles:
+            errors.append(f"instructors[{index}].position {position!r} is not in term.instructor_roles")
         if term is not None:
             errors.extend(
                 _validate_instructor_slot_preferences(

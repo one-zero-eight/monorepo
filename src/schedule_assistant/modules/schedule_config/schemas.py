@@ -70,6 +70,8 @@ class TermConfig(SettingBaseModel):
     "Teaching slots for the term"
     sections: list[SectionConfig] = Field(default_factory=list)
     "Section-based hierarchy from dtsn.yaml"
+    instructor_roles: list[str] = Field(default_factory=list)
+    "Allowed instructor position/role values; empty means unrestricted"
 
 
 class TermPartialUpdate(SettingBaseModel):
@@ -79,6 +81,7 @@ class TermPartialUpdate(SettingBaseModel):
     starting_day: Weekday | None = None
     time_slots: list[TermTimeSlot] | None = None
     sections: list[SectionConfig] | None = None
+    instructor_roles: list[str] | None = None
 
 
 class TermResourceConfig(SettingBaseModel):
