@@ -14,7 +14,7 @@ from pymongo.errors import DuplicateKeyError
 from starlette import status
 from starlette.responses import RedirectResponse
 
-from src.clubs.dependencies import CLUB_LEADER_OR_ADMIN, CLUBS_ADMIN_AUTH
+from src.clubs.dependencies import CLUB_LEADER_OR_ADMIN, CLUBS_ADMIN_AUTH, CLUBS_SERVICE_API_KEY
 from src.clubs.modules.users import users_repo
 from src.clubs.mongo import Club, PendingClubUpdate, UserRole
 from src.common_pydantic import BaseSchema
@@ -30,6 +30,26 @@ router = APIRouter(
     tags=["Clubs"],
     route_class=AutoDeriveResponsesAPIRoute,
 )
+
+
+class OwnedClub(BaseSchema):
+    """Minimal club info for service-to-service integration."""
+
+    club_id: str
+    title: str
+
+
+@router.get(
+    "/owned-by/{innohassle_id}",
+    responses={
+        status.HTTP_200_OK: {"description": "Clubs owned by the given user"},
+        status.HTTP_401_UNAUTHORIZED: {"description": "Invalid service API key"},
+    },
+)
+async def get_clubs_owned_by(innohassle_id: str, _: CLUBS_SERVICE_API_KEY) -> list[OwnedClub]:
+    """Get clubs owned by a user (service-to-service integration)."""
+    clubs = await clubs_repo.read_by_leader_innohassle_id(innohassle_id)
+    return [OwnedClub(club_id=str(club.id), title=club.title) for club in clubs]
 
 
 @router.get("/", responses={status.HTTP_200_OK: {"description": "List of clubs"}})

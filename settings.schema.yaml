@@ -44,6 +44,26 @@ $defs:
     - api_jwt_token
     title: AccountsSettings
     type: object
+  BmpExchange:
+    additionalProperties: false
+    description: Dedicated BMP mailbox; bookings go to the default calendar with Auto
+      markers.
+    properties:
+      username:
+        description: BMP account email
+        title: Username
+        type: string
+      password:
+        description: Password for the BMP account
+        format: password
+        title: Password
+        type: string
+        writeOnly: true
+    required:
+    - username
+    - password
+    title: BmpExchange
+    type: object
   BoardGamesSettings:
     additionalProperties: false
     description: Settings for Board Games service.
@@ -76,25 +96,24 @@ $defs:
         type: array
     title: BoardGamesSettings
     type: object
-  BmpExchange:
+  ClubsIntegrationSettings:
     additionalProperties: false
-    description: Dedicated BMP mailbox; bookings go to the default calendar with Auto
-      markers.
+    description: InNoHassle Clubs integration settings.
     properties:
-      username:
-        description: BMP account email
-        title: Username
+      api_url:
+        default: https://api.innohassle.ru/clubs/v0
+        description: URL of the Clubs API
+        title: Api Url
         type: string
-      password:
-        description: Password for the BMP account
+      api_key:
+        description: API key for accessing the Clubs API as a service
         format: password
-        title: Password
+        title: Api Key
         type: string
         writeOnly: true
     required:
-    - username
-    - password
-    title: BmpExchange
+    - api_key
+    title: ClubsIntegrationSettings
     type: object
   ClubsSettings:
     additionalProperties: false
@@ -129,6 +148,15 @@ $defs:
           type: string
         title: Superadmin Emails
         type: array
+      api_key:
+        anyOf:
+        - format: password
+          type: string
+          writeOnly: true
+        - type: 'null'
+        default: null
+        description: API key for service-to-service integration (e.g. the Events service)
+        title: Api Key
       at:
         format: date-time
         title: At
@@ -142,6 +170,64 @@ $defs:
     - production
     title: Environment
     type: string
+  EventsSettings:
+    additionalProperties: false
+    description: Settings for the Events service.
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: ''
+        description: Prefix for the API path (e.g. "/api/v0")
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      mongo:
+        $ref: '#/$defs/MongoDatabaseSettings'
+        description: Configuration for MongoDB
+      minio:
+        $ref: '#/$defs/MinioSettings'
+        description: Configuration for S3 object storage
+      images_prefix:
+        default: events-images/
+        description: Prefix for event images in MinIO
+        title: Images Prefix
+        type: string
+      event_manager_emails:
+        description: Innomails of users who can act as event managers (can use any
+          external host)
+        items:
+          type: string
+        title: Event Manager Emails
+        type: array
+      moderator_emails:
+        description: Innomails of users who can review and publish events
+        items:
+          type: string
+        title: Moderator Emails
+        type: array
+      locales:
+        description: Allowed event locales
+        items:
+          type: string
+        title: Locales
+        type: array
+      clubs:
+        $ref: '#/$defs/ClubsIntegrationSettings'
+        description: Clubs service integration settings
+    required:
+    - clubs
+    title: EventsSettings
+    type: object
   Exchange:
     additionalProperties: false
     description: Exchange (Outlook) integration settings
@@ -321,6 +407,7 @@ $defs:
         title: Static Mount Path
         type: string
       static_directory:
+        default: src/maps/static
         description: Path to the directory with static files
         format: path
         title: Static Directory
@@ -805,10 +892,15 @@ properties:
       app_root_path: ''
       cors_allow_origin_regex: .*
       static_mount_path: /static
-      static_directory: src\maps\static
+      static_directory: src/maps/static
   clubs_service:
     anyOf:
     - $ref: '#/$defs/ClubsSettings'
+    - type: 'null'
+    default: null
+  events_service:
+    anyOf:
+    - $ref: '#/$defs/EventsSettings'
     - type: 'null'
     default: null
   student_affairs_service:

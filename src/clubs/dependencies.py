@@ -2,12 +2,31 @@ from typing import Annotated
 
 from beanie import PydanticObjectId
 from fastapi import Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from src.clubs.config import settings
 from src.clubs.modules.clubs import clubs_repo
 from src.clubs.modules.users import users_repo
 from src.clubs.mongo import Club, User, UserRole
-from src.dependencies import INH_TOKEN_AUTH
+from src.dependencies import INH_TOKEN_AUTH, IncorrectCredentialsException
 from src.logging_ import logger
+
+bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def ensure_clubs_service_api_key(
+    bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> str:
+    """Check that the request comes from an authorized service using the API key."""
+    if bearer is None or not bearer.credentials:
+        raise IncorrectCredentialsException(no_credentials=True)
+    expected = settings.api_key.get_secret_value() if settings.api_key is not None else None
+    if expected is None or bearer.credentials != expected:
+        raise IncorrectCredentialsException(no_credentials=False)
+    return bearer.credentials
+
+
+CLUBS_SERVICE_API_KEY = Annotated[str, Depends(ensure_clubs_service_api_key)]
 
 
 async def ensure_clubs_admin(auth: INH_TOKEN_AUTH):

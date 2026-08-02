@@ -18,6 +18,7 @@ from src.board_games.config_schema import BoardGamesSettings
 from src.clubs.config_schema import ClubsSettings
 from src.common_config import Environment, MinioSettings, MongoDatabaseSettings
 from src.config_root_schema import AccountsSettings, MetricsSettings, Settings
+from src.events.config_schema import ClubsIntegrationSettings, EventsSettings
 from src.forms.config_schema import FormsSettings, LinksSettings
 from src.guard.config_schema import GuardSettings
 from src.maps.config_schema import MapsSettings
@@ -80,6 +81,7 @@ def load_root_settings() -> Settings:
         clubs_service=ClubsSettings(
             environment=Environment.TESTING,
             superadmin_emails=["admin@innopolis.university"],
+            api_key=SecretStr("test-clubs-api-key"),
             mongo=MongoDatabaseSettings(
                 uri=SecretStr(mongo_uri.replace("<service_name>", "clubs")),
             ),
@@ -88,6 +90,24 @@ def load_root_settings() -> Settings:
                 access_key=SUITE_MINIO_ACCESS_KEY,
                 secret_key=SecretStr(SUITE_MINIO_KEY),
                 bucket=minio_bucket.replace("<service_name>", "clubs"),
+            ),
+        ),
+        events_service=EventsSettings(
+            environment=Environment.TESTING,
+            mongo=MongoDatabaseSettings(
+                uri=SecretStr(mongo_uri.replace("<service_name>", "events")),
+            ),
+            minio=MinioSettings(
+                endpoint=SUITE_MINIO_ENDPOINT,
+                access_key=SUITE_MINIO_ACCESS_KEY,
+                secret_key=SecretStr(SUITE_MINIO_KEY),
+                bucket=minio_bucket.replace("<service_name>", "events"),
+            ),
+            event_manager_emails=["test-user-1@innopolis.university"],
+            moderator_emails=["admin@innopolis.university"],
+            clubs=ClubsIntegrationSettings(
+                api_url="https://clubs.test/api/v0",
+                api_key=SecretStr("test-clubs-api-key"),
             ),
         ),
         student_affairs_service=StudentAffairsSettings(
