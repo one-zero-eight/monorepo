@@ -12,7 +12,6 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from src.inh_accounts_sdk import UserTokenData
 from tests.conftest_runtime_settings import (
     SUITE_POSTGRES_NETLOC,
     schedule_assistant_test_database_name,
@@ -155,6 +154,8 @@ async def fastapi_test_client(
 
 @pytest_asyncio.fixture(scope="function")
 async def authenticated_client(fastapi_app: FastAPI) -> AsyncGenerator[AsyncClient]:
+    # Import after pytest_configure patches load_root_settings (suite isolation).
+    from src.inh_accounts_sdk import UserTokenData
     from src.schedule_assistant.dependencies import verify_token_dep
 
     async def fake_verify_token_dep() -> tuple[UserTokenData, str]:
