@@ -1031,6 +1031,9 @@ dev = [
     { name = "ty" },
     { name = "types-pyyaml" },
 ]
+events = [
+    { name = "pillow" },
+]
 forms = [
     { name = "nanoid" },
 ]
@@ -1105,6 +1108,7 @@ dev = [
     { name = "ty", specifier = ">=0.0.51" },
     { name = "types-pyyaml", specifier = ">=6.0.12.20260518" },
 ]
+events = [{ name = "pillow", specifier = ">=12.3.0" }]
 forms = [{ name = "nanoid", specifier = ">=2.0.0" }]
 guard = [
     { name = "google-api-python-client", specifier = ">=2.197.0" },

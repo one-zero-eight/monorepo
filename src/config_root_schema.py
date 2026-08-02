@@ -8,6 +8,7 @@ from pydantic import Field, SecretStr, model_validator
 from src.board_games.config_schema import BoardGamesSettings
 from src.clubs.config_schema import ClubsSettings
 from src.common_config import BaseSchema, Environment
+from src.events.config_schema import EventsSettings
 from src.forms.config_schema import FormsSettings
 from src.guard.config_schema import GuardSettings
 from src.maps.config_schema import MapsSettings
@@ -49,6 +50,7 @@ class Settings(BaseSchema):
 
     maps_service: MapsSettings = MapsSettings()
     clubs_service: ClubsSettings | None = None
+    events_service: EventsSettings | None = None
     student_affairs_service: StudentAffairsSettings | None = None
     board_games_service: BoardGamesSettings | None = None
     when2meet_service: When2MeetSettings | None = None
@@ -66,6 +68,8 @@ class Settings(BaseSchema):
         contexts: list[tuple[str, Environment]] = [("maps_service", self.maps_service.environment)]
         if self.clubs_service is not None:
             contexts.append(("clubs_service", self.clubs_service.environment))
+        if self.events_service is not None:
+            contexts.append(("events_service", self.events_service.environment))
         if self.student_affairs_service is not None:
             contexts.append(("student_affairs_service", self.student_affairs_service.environment))
         if self.board_games_service is not None:

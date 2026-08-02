@@ -71,6 +71,9 @@ maps = [
 clubs = [
     "pillow>=12.3.0", # ~18.6 MiB
 ]
+events = [
+    "pillow>=12.3.0", # ~18.6 MiB
+]
 #workshops = [
 #    "alembic>=1.18.4", # ~258 KiB
 #    "asyncpg>=0.31.0", # ~3.4 MiB

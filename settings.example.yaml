@@ -7,7 +7,8 @@ maps_service: {}
 student_affairs_service: # to run student affairs service you should get omnidesk credentials
   omnidesk:
     jwt_marker: change-me-0123456789abcdef
-clubs_service: {}
+clubs_service:
+  api_key: change-me # service API key for service-to-service integration (e.g. Events service)
 board_games_service: {}
 when2meet_service: {}
 tabletennis_service: {}
@@ -42,3 +43,14 @@ schedule_assistant_service:
     api_key: change-me
   moderator_emails: []
   db_url: postgresql+psycopg://postgres:postgres@127.0.0.1:5432/schedule_assistant
+events_service:
+  event_manager_emails:
+    - change-me@innopolis.university
+  moderator_emails:
+    - change-me@innopolis.university
+  locales:
+    - en
+    - ru
+  clubs:
+    api_url: http://127.0.0.1:8014 # local Clubs service (host port from src/clubs/__main__.py)
+    api_key: change-me

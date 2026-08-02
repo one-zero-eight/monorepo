@@ -1,0 +1,126 @@
+"""Response builders with per-role visibility rules."""
+
+from src.events.config import settings
+from src.events.mongo import Event, EventData, PublicEvent, Submission, SubmissionData
+from src.events.schemas import (
+    DraftListItem,
+    DraftOut,
+    EventDataSummary,
+    EventListItem,
+    EventOut,
+    LocaleSummary,
+    SubmissionDataSummary,
+    SubmissionListItem,
+    SubmissionOut,
+    SubmissionSummary,
+)
+from src.events.service import draft_status
+from src.inh_accounts_sdk import UserTokenData
+
+
+def _summarize_locales(locales: dict) -> dict[str, LocaleSummary]:
+    return {code: LocaleSummary(name=locale.name) for code, locale in locales.items()}
+
+
+def _summarize_draft_data(data: EventData) -> EventDataSummary:
+    return EventDataSummary(
+        starts_at=data.starts_at,
+        image_id=data.image_id,
+        location=data.location,
+        locales=_summarize_locales(data.locales),
+        host=data.host,
+    )
+
+
+def _summarize_submission_data(data: SubmissionData) -> SubmissionDataSummary:
+    return SubmissionDataSummary(
+        starts_at=data.starts_at,
+        image_id=data.image_id,
+        location=data.location,
+        locales=_summarize_locales(data.locales),
+        host=data.host,
+    )
+
+
+def build_draft_out(event: Event) -> DraftOut:
+    return DraftOut(
+        id=event.id,
+        creator_id=event.creator_id,
+        status=draft_status(event),
+        revision=event.draft.revision,
+        data=event.draft.data,
+    )
+
+
+def build_draft_list_item(event: Event) -> DraftListItem:
+    return DraftListItem(
+        id=event.id,
+        creator_id=event.creator_id,
+        status=draft_status(event),
+        revision=event.draft.revision,
+        data=_summarize_draft_data(event.draft.data),
+    )
+
+
+def build_submission_out(event: Event, submission: Submission) -> SubmissionOut:
+    return SubmissionOut(
+        id=event.id,
+        creator_id=event.creator_id,
+        submission=submission,
+    )
+
+
+def build_submission_list_item(event: Event, submission: Submission) -> SubmissionListItem:
+    return SubmissionListItem(
+        id=event.id,
+        creator_id=event.creator_id,
+        submission=SubmissionSummary(
+            revision=submission.revision,
+            submitted_at=submission.submitted_at,
+            moderation=submission.moderation,
+            data=_summarize_submission_data(submission.data),
+        ),
+    )
+
+
+def _is_moderator(auth: UserTokenData | None) -> bool:
+    return auth is not None and auth.email in settings.moderator_emails
+
+
+def _is_author(event: Event, auth: UserTokenData | None) -> bool:
+    return auth is not None and auth.innohassle_id == event.creator_id
+
+
+def build_event_out(event: Event, public: PublicEvent, auth: UserTokenData | None) -> EventOut:
+    out = EventOut(
+        id=event.id,
+        creator_id=event.creator_id,
+        data=public.data,
+        enrolled_count=len(public.enrolled_users),
+    )
+    if auth is not None:
+        out.enrolled = auth.innohassle_id in public.enrolled_users
+    if _is_author(event, auth) or _is_moderator(auth):
+        out.enrolled_users = list(public.enrolled_users)
+        out.revision = public.revision
+        out.approved_at = public.approved_at
+    if _is_moderator(auth):
+        out.approved_by = public.approved_by
+    return out
+
+
+def build_event_list_item(event: Event, public: PublicEvent, auth: UserTokenData | None) -> EventListItem:
+    item = EventListItem(
+        id=event.id,
+        creator_id=event.creator_id,
+        data=_summarize_submission_data(public.data),
+        enrolled_count=len(public.enrolled_users),
+    )
+    if auth is not None:
+        item.enrolled = auth.innohassle_id in public.enrolled_users
+    if _is_author(event, auth) or _is_moderator(auth):
+        item.revision = public.revision
+        item.approved_at = public.approved_at
+    if _is_moderator(auth):
+        item.approved_by = public.approved_by
+    return item

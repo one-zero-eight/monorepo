@@ -38,6 +38,15 @@
       "console": "integratedTerminal"
     },
     {
+      "name": "events",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src.events",
+      "args": ["--reload"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
       "name": "guard",
       "type": "debugpy",
       "request": "launch",
