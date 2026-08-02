@@ -82,6 +82,7 @@ def test_settings_from_yaml(tmp_path):
     )
 
     loaded = Settings.from_yaml(settings_path)
+    assert loaded.metrics is None
     assert loaded.maps_service.environment == "testing"
     assert loaded.clubs_service is not None
     assert loaded.clubs_service.environment == "testing"

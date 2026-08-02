@@ -1,0 +1,114 @@
+import datetime as dtm
+from typing import Literal
+from urllib.parse import quote, urljoin
+
+import httpx
+from pydantic import Field
+
+from src.schedule_assistant.config import settings
+from src.schedule_assistant.schema_base import ScheduleAssistantSchema
+
+
+class BookingDTO(ScheduleAssistantSchema):
+    """Booking description"""
+
+    room_id: str
+    "ID of the room"
+    event_id: str | None = None
+    "ID of the event"
+    title: str
+    "Title of the booking"
+    start_time: dtm.datetime = Field(validation_alias="start")
+    "Start time of booking"
+    end_time: dtm.datetime = Field(validation_alias="end")
+    "End time of booking"
+    categories: list[str] | None = None
+    "Outlook categories on the calendar item"
+    recurrence: str | None = None
+    "EWS recurrence XML for recurring masters"
+    outlook_booking_id: str | None = None
+    "ID of outlook booking in service account calendar. Only set if we can manage the booking."
+
+
+class RoomDTO(ScheduleAssistantSchema):
+    """Room description."""
+
+    id: str
+    "Room slug"
+    title: str | None = None
+    "Room title"
+    short_name: str | None = None
+    "Shorter version of room title"
+    my_uni_id: int | None = None
+    "ID of room on My University portal"
+    capacity: int | None = None
+    "Room capacity, amount of people"
+    access_level: Literal["yellow", "red", "special"] | None = None
+    "Access level to the room. Yellow = for students. Red = for employees. Special = special rules apply."
+    restrict_daytime: bool = False
+    "Prohibit to book during working hours. True = this room is available only at night 19:00-8:00, or full day on weekends."
+
+
+class BookingClient:
+    def __init__(self, url: str, api_key: str) -> None:
+        self.url = url if url.endswith("/") else f"{url}/"
+        self._headers = {"Authorization": f"Bearer {api_key}"}
+
+    async def get_room_bookings(
+        self,
+        room_id: str,
+        start: dtm.datetime,
+        end: dtm.datetime,
+    ) -> list[BookingDTO]:
+        async with httpx.AsyncClient(headers=self._headers) as client:
+            safe_room_id = quote(room_id, safe="")
+            full_url = urljoin(self.url, f"room/{safe_room_id}/bookings")
+            response = await client.get(
+                full_url,
+                params={"start": start.isoformat(), "end": end.isoformat()},
+            )
+            response.raise_for_status()
+            data = response.json()
+            return [BookingDTO.model_validate(entry) for entry in data]
+
+    async def get_all_bookings(
+        self,
+        start: dtm.datetime,
+        end: dtm.datetime,
+    ) -> list[BookingDTO]:
+        async with httpx.AsyncClient(headers=self._headers) as client:
+            response = await client.get(
+                urljoin(self.url, "bookings/"),
+                params={"start": start.isoformat(), "end": end.isoformat(), "include_red": True},
+                timeout=60,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return [BookingDTO.model_validate(entry) for entry in data]
+
+    async def get_rooms(self) -> list[RoomDTO]:
+        async with httpx.AsyncClient(headers=self._headers) as client:
+            response = await client.get(urljoin(self.url, "rooms/"), params={"include_red": True})
+            response.raise_for_status()
+            return [RoomDTO.model_validate(entry) for entry in response.json()]
+
+    async def get_auto_bookings(
+        self,
+        start: dtm.datetime,
+        end: dtm.datetime,
+    ) -> list[BookingDTO]:
+        async with httpx.AsyncClient(headers=self._headers) as client:
+            response = await client.get(
+                urljoin(self.url, "bmp/auto-bookings/"),
+                params={"start": start.isoformat(), "end": end.isoformat()},
+                timeout=60,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return [BookingDTO.model_validate(entry) for entry in data]
+
+
+booking_client: BookingClient = BookingClient(
+    url=settings.booking.api_url,
+    api_key=settings.booking.api_key.get_secret_value(),
+)

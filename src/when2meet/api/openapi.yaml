@@ -1,0 +1,862 @@
+openapi: 3.1.0
+info:
+  title: InNoHassle When2Meet API
+  summary: InNoHassle service API.
+  description: '### About this project
+
+
+    Service foundation for When2Meet designed during SWP course.'
+  contact:
+    name: one-zero-eight (Telegram)
+    url: https://t.me/one_zero_eight
+  license:
+    name: MIT License
+    identifier: MIT
+  version: 0.2.0
+servers:
+- url: /api/v0
+  description: MVP v0
+paths:
+  /meetings/:
+    get:
+      tags:
+      - Meetings
+      summary: Get My Meetings
+      description: Get meetings owned by the authenticated user.
+      operationId: meetings_get_my_meetings
+      responses:
+        '200':
+          description: List of meetings owned by the user
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/EventSummary'
+                type: array
+                title: Response Meetings Get My Meetings
+        '401':
+          description: Unable to verify credentials OR Credentials not provided
+      security:
+      - Bearer: []
+    post:
+      tags:
+      - Meetings
+      summary: Create Meeting
+      description: Create a new meeting with time slots.
+      operationId: meetings_create_meeting
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventCreate'
+        required: true
+      responses:
+        '201':
+          description: New meeting is created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventView'
+        '401':
+          description: Unable to verify credentials OR Credentials not provided
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - Bearer: []
+  /meetings/participating:
+    get:
+      tags:
+      - Meetings
+      summary: Get Participating Meetings
+      description: Get meetings where the authenticated user is a participant.
+      operationId: meetings_get_participating_meetings
+      responses:
+        '200':
+          description: List of meetings where the user is a participant
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/EventSummary'
+                type: array
+                title: Response Meetings Get Participating Meetings
+        '401':
+          description: Unable to verify credentials OR Credentials not provided
+      security:
+      - Bearer: []
+  /meetings/{meeting_ref}:
+    get:
+      tags:
+      - Meetings
+      summary: Get Meeting
+      description: Get meeting details and participants' availability.
+      operationId: meetings_get_meeting
+      security:
+      - Bearer: []
+      parameters:
+      - name: meeting_ref
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Meeting Ref
+      responses:
+        '200':
+          description: Meeting info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventView'
+        '404':
+          description: Meeting not found
+        '401':
+          description: Unable to verify credentials OR Credentials not provided
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+      - Meetings
+      summary: Update Meeting
+      description: Update meeting details (owner only).
+      operationId: meetings_update_meeting
+      security:
+      - Bearer: []
+      parameters:
+      - name: meeting_ref
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Meeting Ref
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventUpdate'
+      responses:
+        '200':
+          description: Meeting updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventView'
+        '403':
+          description: Not an owner
+        '404':
+          description: Meeting not found
+        '400':
+          description: Cannot clear selected meeting time while a room is booked
+        '409':
+          description: Room booking is already being changed for this meeting
+        '401':
+          description: Unable to verify credentials OR Credentials not provided
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Meetings
+      summary: Delete Meeting
+      description: Delete a meeting (owner only).
+      operationId: meetings_delete_meeting
+      security:
+      - Bearer: []
+      parameters:
+      - name: meeting_ref
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Meeting Ref
+      responses:
+        '204':
+          description: Meeting deleted
+        '403':
+          description: Not an owner
+        '404':
+          description: Meeting not found
+        '409':
+          description: Room booking is already being changed for this meeting
+        '401':
+          description: Unable to verify credentials OR Credentials not provided
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /meetings/{meeting_ref}/participants:
+    put:
+      tags:
+      - Meetings
+      summary: Update Participant
+      description: Add or update a participant's availability for a meeting.
+      operationId: meetings_update_participant
+      security:
+      - Bearer: []
+      parameters:
+      - name: meeting_ref
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Meeting Ref
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParticipantUpdate'
+      responses:
+        '200':
+          description: Participant availability updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventView'
+        '404':
+          description: Meeting not found
+        '401':
+          description: Unable to verify credentials OR Credentials not provided
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /meetings/{meeting_ref}/participants/{user_id}:
+    delete:
+      tags:
+      - Meetings
+      summary: Delete Participant
+      description: Remove a participant from a meeting (owner or the participant themselves).
+      operationId: meetings_delete_participant
+      security:
+      - Bearer: []
+      parameters:
+      - name: meeting_ref
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Meeting Ref
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: User Id
+      responses:
+        '200':
+          description: Participant removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventView'
+        '403':
+          description: Not allowed to remove this participant
+        '404':
+          description: Meeting or participant not found
+        '401':
+          description: Unable to verify credentials OR Credentials not provided
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /meetings/{meeting_ref}/book-room:
+    post:
+      tags:
+      - Meetings
+      summary: Book Room For Meeting
+      description: Book a room for the meeting's selected time window (owner only).
+      operationId: meetings_book_room_for_meeting
+      security:
+      - Bearer: []
+      parameters:
+      - name: meeting_ref
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Meeting Ref
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookRoomRequest'
+      responses:
+        '200':
+          description: Room booked for the meeting
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventView'
+        '400':
+          description: Selected meeting time is not set or room is unavailable
+        '403':
+          description: Not an owner or room booking is forbidden
+        '404':
+          description: Meeting or room not found
+        '409':
+          description: Room is already booked for this meeting
+        '401':
+          description: Unable to verify credentials OR Credentials not provided
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+      - Meetings
+      summary: Change Room For Meeting
+      description: Change the booked room for a meeting (owner only).
+      operationId: meetings_change_room_for_meeting
+      security:
+      - Bearer: []
+      parameters:
+      - name: meeting_ref
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Meeting Ref
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookRoomRequest'
+      responses:
+        '200':
+          description: Booked room changed for the meeting
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventView'
+        '400':
+          description: Room is not booked, selected time is not set, or room is unavailable
+        '403':
+          description: Not an owner or room booking is forbidden
+        '404':
+          description: Meeting, booking, or room not found
+        '409':
+          description: Room booking is already being changed for this meeting
+        '401':
+          description: Unable to verify credentials OR Credentials not provided
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Meetings
+      summary: Cancel Room For Meeting
+      description: Cancel the booked room for a meeting (owner only).
+      operationId: meetings_cancel_room_for_meeting
+      security:
+      - Bearer: []
+      parameters:
+      - name: meeting_ref
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Meeting Ref
+      responses:
+        '200':
+          description: Booked room canceled for the meeting
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventView'
+        '400':
+          description: Room is not booked for this meeting
+        '403':
+          description: Not an owner or room booking is forbidden
+        '404':
+          description: Meeting or booking not found
+        '409':
+          description: Room booking is already being changed for this meeting
+        '401':
+          description: Unable to verify credentials OR Credentials not provided
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /meetings/{meeting_ref}/available-rooms:
+    get:
+      tags:
+      - Meetings
+      summary: Get Available Rooms
+      description: Get rooms free for the meeting's selected time window.
+      operationId: meetings_get_available_rooms
+      security:
+      - Bearer: []
+      parameters:
+      - name: meeting_ref
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Meeting Ref
+      responses:
+        '200':
+          description: Rooms available for the selected meeting time
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AvailableRoom'
+                title: Response Meetings Get Available Rooms
+        '400':
+          description: Selected meeting time is not set
+        '404':
+          description: Meeting not found
+        '401':
+          description: Unable to verify credentials OR Credentials not provided
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    AvailableRoom:
+      properties:
+        id:
+          type: string
+          title: Id
+          description: Room ID
+        name:
+          type: string
+          title: Name
+          description: Room name
+        capacity:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Capacity
+          description: Room capacity
+        location:
+          type: string
+          title: Location
+          description: Room location label
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - name
+      - location
+      title: AvailableRoom
+    BookRoomRequest:
+      properties:
+        room_id:
+          type: string
+          title: Room Id
+          description: Room ID to book
+      additionalProperties: false
+      type: object
+      required:
+      - room_id
+      title: BookRoomRequest
+    BookedRoom:
+      properties:
+        room_id:
+          type: string
+          title: Room Id
+          description: Booked room ID
+        outlook_booking_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Outlook Booking Id
+          description: Room Booking service booking ID
+        outlook_entry_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Outlook Entry Id
+          description: Outlook entry ID
+      additionalProperties: false
+      type: object
+      required:
+      - room_id
+      title: BookedRoom
+    EventCreate:
+      properties:
+        name:
+          type: string
+          title: Name
+          description: Name of the event
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          description: Description of the event
+        slots:
+          items:
+            type: string
+            format: date-time
+          type: array
+          title: Slots
+          description: All possible slots for the event
+        timezone:
+          type: string
+          title: Timezone
+          description: IANA timezone name
+          default: UTC
+        specific_time:
+          type: boolean
+          title: Specific Time
+          description: Whether the event has specific time slots
+          default: false
+        time_range:
+          anyOf:
+          - $ref: '#/components/schemas/TimeRange'
+          - type: 'null'
+          description: Optional metadata for display/edit
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      - slots
+      title: EventCreate
+    EventSummary:
+      properties:
+        id:
+          $ref: '#/components/schemas/PydanticObjectId'
+          description: Event ID
+        slug:
+          type: string
+          title: Slug
+          description: Short URL-safe public event reference
+        name:
+          type: string
+          title: Name
+          description: Name of the event
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          description: Description of the event
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+          description: Time when the event was created
+        participants_count:
+          type: integer
+          title: Participants Count
+          description: Number of participants in the event
+        date_range_label:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Date Range Label
+          description: Optional; frontend can derive from slots
+        selected_time:
+          anyOf:
+          - $ref: '#/components/schemas/MeetingTime'
+          - type: 'null'
+          description: Final selected meeting time
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - slug
+      - name
+      - created_at
+      - participants_count
+      title: EventSummary
+    EventUpdate:
+      properties:
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+          description: Name of the event
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          description: Description of the event
+        slots:
+          anyOf:
+          - items:
+              type: string
+              format: date-time
+            type: array
+          - type: 'null'
+          title: Slots
+          description: All possible slots for the event
+        timezone:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Timezone
+          description: IANA timezone name
+        specific_time:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Specific Time
+          description: Whether the event has specific time slots
+        time_range:
+          anyOf:
+          - $ref: '#/components/schemas/TimeRange'
+          - type: 'null'
+          description: Optional metadata for display/edit
+        selected_time:
+          anyOf:
+          - $ref: '#/components/schemas/MeetingTime'
+          - type: 'null'
+          description: Final selected meeting time
+      additionalProperties: false
+      type: object
+      title: EventUpdate
+    EventView:
+      properties:
+        id:
+          $ref: '#/components/schemas/PydanticObjectId'
+          description: Event ID
+        slug:
+          type: string
+          title: Slug
+          description: Short URL-safe public event reference
+        name:
+          type: string
+          title: Name
+          description: Name of the event
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          description: Description of the event
+        slots:
+          items:
+            type: string
+            format: date-time
+          type: array
+          title: Slots
+          description: All possible slots for the event
+        participants:
+          items:
+            $ref: '#/components/schemas/ParticipantView'
+          type: array
+          title: Participants
+          description: Participants with profile data and availability
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+          description: Time when the event was created
+        timezone:
+          type: string
+          title: Timezone
+          description: IANA timezone name
+          default: UTC
+        owner_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Owner Id
+          description: ID of the user who created the event
+        specific_time:
+          type: boolean
+          title: Specific Time
+          description: Whether the event has specific time slots
+          default: false
+        time_range:
+          anyOf:
+          - $ref: '#/components/schemas/TimeRange'
+          - type: 'null'
+          description: Optional metadata for display/edit
+        selected_time:
+          anyOf:
+          - $ref: '#/components/schemas/MeetingTime'
+          - type: 'null'
+          description: Final selected meeting time
+        booked_room:
+          anyOf:
+          - $ref: '#/components/schemas/BookedRoom'
+          - type: 'null'
+          description: Booked room reference
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - slug
+      - name
+      - slots
+      - participants
+      - created_at
+      title: EventView
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    MeetingTime:
+      properties:
+        start:
+          type: string
+          format: date-time
+          title: Start
+          description: Selected meeting start time
+        end:
+          type: string
+          format: date-time
+          title: End
+          description: Selected meeting end time
+      additionalProperties: false
+      type: object
+      required:
+      - start
+      - end
+      title: MeetingTime
+    ParticipantUpdate:
+      properties:
+        availability:
+          items:
+            type: string
+            format: date-time
+          type: array
+          title: Availability
+          description: List of slots the participant is available for
+      additionalProperties: false
+      type: object
+      required:
+      - availability
+      title: ParticipantUpdate
+    ParticipantView:
+      properties:
+        user_id:
+          type: string
+          title: User Id
+          description: InNoHassle Accounts user ID
+        email:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Email
+          description: Innopolis email
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+          description: Full name of the participant
+        telegram:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Telegram
+          description: Telegram @username if linked
+        availability:
+          items:
+            type: string
+            format: date-time
+          type: array
+          title: Availability
+          description: List of slots the participant is available for
+      additionalProperties: false
+      type: object
+      required:
+      - user_id
+      - availability
+      title: ParticipantView
+    PydanticObjectId:
+      type: string
+      maxLength: 24
+      minLength: 24
+      pattern: ^[0-9a-f]{24}$
+      example: 5eb7cf5a86d9755df3a6c593
+    TimeRange:
+      properties:
+        start:
+          type: string
+          title: Start
+        end:
+          type: string
+          title: End
+      additionalProperties: false
+      type: object
+      required:
+      - start
+      - end
+      title: TimeRange
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    Bearer:
+      type: http
+      description: 'Token from [InNoHassle Accounts](https://innohassle.ru/account/token)
+        (`JWT`).
+
+
+        When **`accounts.mock`** is enabled (development-only; gated in settings):
+        the Bearer credential may instead be JSON with `innohassle_id`, `email`, and
+        optional `telegram_id` (same shape as user token payload; see **`UserTokenData`**
+        in schemas).'
+      scheme: bearer
+      bearerFormat: JWT
+tags:
+- name: Meetings
+  description: Operations for creating and managing meetings, including tracking participant
+    availability and scheduling time slots.

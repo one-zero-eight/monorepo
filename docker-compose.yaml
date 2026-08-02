@@ -6,7 +6,9 @@
 services:
   mongodb:
     # See more: https://hub.docker.com/_/mongo
-    image: "mongo:8.0"
+    # 8.0.x refuses to start on Linux kernels ≥6.19 (SERVER-121912 / TCMalloc rseq).
+    # 8.2+ runs on those kernels (verified on 7.1.x).
+    image: "mongo:8.2"
     restart: no
     ports:
       - "27017:27017"
@@ -99,10 +101,10 @@ services:
 
   board-games:
     build:
-      context: .
-      dockerfile: api.Dockerfile
-      args:
-        APP_MODULE: src.board_games.app:app
+        context: .
+        dockerfile: api.Dockerfile
+        args:
+            APP_MODULE: src.board_games.app:app
     restart: no
     ports:
       - "8016:8000"
@@ -118,6 +120,198 @@ services:
       mongodb:
         condition: service_healthy
 
+  when2meet:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.when2meet.app:app
+    restart: no
+    ports:
+      - "8020:8000"
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 500m
+
+  tabletennis:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.tabletennis.app:app
+    restart: no
+    ports:
+      - "8023:8000"
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 500m
+
+  guard:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.guard.app:app
+    restart: no
+    ports:
+      - "8013:8000"
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+      - "./service_account.json:/app/service_account.json:ro"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 500m
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  forms:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.forms.app:app
+    restart: no
+    ports:
+      - "8017:8000"
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 500m
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  room-booking:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.room_booking.app:app
+    restart: no
+    ports:
+      - "8008:8000"
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 500m
+
+  postgres:
+    image: "postgres:17.1"
+    restart: no
+    ports:
+      - "5432:5432"
+    volumes:
+      - "postgres:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      timeout: 5s
+      start_period: 30s
+      interval: 1m
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+
+  schedule-alembic-migrate:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.schedule.app:app
+    restart: no
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+    command: alembic -c src/schedule/alembic.ini upgrade head
+
+  schedule:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.schedule.app:app
+    restart: no
+    ports:
+      - "8024:8000"
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+      - "./src/schedule/predefined:/app/src/schedule/predefined:rw"
+    environment:
+      TZ: Europe/Moscow
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 500m
+    depends_on:
+      postgres:
+        condition: service_healthy
+      schedule-alembic-migrate:
+        condition: service_completed_successfully
+
+  schedule-assistant-alembic-migrate:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.schedule_assistant.app:app
+    restart: no
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+    command: alembic -c src/schedule_assistant/alembic.ini upgrade head
+
+  schedule-assistant:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.schedule_assistant.app:app
+    restart: no
+    ports:
+      - "8012:8000"
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+    environment:
+      TZ: Europe/Moscow
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 500m
+    depends_on:
+      postgres:
+        condition: service_healthy
+      schedule-assistant-alembic-migrate:
+        condition: service_completed_successfully
+
 volumes:
   mongodb:
   minio:
+  postgres:

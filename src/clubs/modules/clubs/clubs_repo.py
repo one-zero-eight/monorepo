@@ -1,6 +1,9 @@
 from beanie import PydanticObjectId
+from pydantic import Field
 
 from src.clubs.mongo import Club, ClubSchema
+
+CLUB_SCHEMA_FIELDS = set(ClubSchema.model_fields)
 
 
 class CreateClub(ClubSchema):
@@ -8,10 +11,14 @@ class CreateClub(ClubSchema):
 
 
 class UpdateClub(ClubSchema):
-    new_leader_email: str | None = None
+    new_leader_email: str | None = Field(default=None, exclude=True)
 
     def to_club_schema(self) -> ClubSchema:
-        return ClubSchema.model_validate(self.model_dump(include=set(ClubSchema.model_fields)))
+        clean_data = self.model_dump(
+            include=CLUB_SCHEMA_FIELDS,
+            exclude_unset=True,
+        )
+        return ClubSchema.model_validate(clean_data)
 
 
 async def create(data: CreateClub) -> Club:
@@ -35,12 +42,42 @@ async def read_all() -> list[Club]:
 
 
 async def update(id: PydanticObjectId, data: ClubSchema) -> Club | None:
-    obj = await Club.get(id)
-    if obj:
-        await obj.set(data.model_dump())
-    return obj
+    update_data = data.model_dump(include=CLUB_SCHEMA_FIELDS, exclude_unset=True)
+    result = await Club.get_pymongo_collection().update_one(
+        {"_id": id},
+        {"$set": update_data, "$unset": {"new_leader_email": ""}},
+    )
+    return await Club.get(id) if result.matched_count else None
 
 
 async def delete(id: PydanticObjectId) -> bool:
     result = await Club.find_one({"_id": id}).delete()
     return bool(result and (result.deleted_count > 0))
+
+
+async def get_pending_updates() -> list[Club]:
+    return await Club.find({"pending_update": {"$ne": None}}).to_list()
+
+
+async def approve_update(id: PydanticObjectId) -> Club | None:
+    club = await Club.get(id)
+    if not club or not club.pending_update:
+        return club
+
+    update_data = club.pending_update.model_dump(exclude_unset=True)
+    for k, v in update_data.items():
+        setattr(club, k, v)
+
+    club.pending_update = None
+    await club.save()
+    return club
+
+
+async def reject_update(id: PydanticObjectId) -> Club | None:
+    club = await Club.get(id)
+    if not club or not club.pending_update:
+        return club
+
+    club.pending_update = None
+    await club.save()
+    return club

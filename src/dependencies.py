@@ -1,4 +1,9 @@
-__all__ = ["INH_TOKEN_AUTH", "get_innohassle_token_auth"]
+__all__ = [
+    "INH_TOKEN_AUTH",
+    "OPTIONAL_INH_TOKEN_AUTH",
+    "get_innohassle_token_auth",
+    "get_optional_innohassle_token_auth",
+]
 
 from typing import Annotated, ClassVar
 
@@ -69,6 +74,22 @@ async def get_innohassle_token_auth(
 
 INH_TOKEN_AUTH = Annotated[UserTokenData, Depends(get_innohassle_token_auth)]
 "Dependency to get current user authentication data from InNoHassle Accounts Token"
+
+
+async def get_optional_innohassle_token_auth(
+    bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> UserTokenData | None:
+    if bearer is None:
+        return None
+    token = bearer.credentials
+    if not token:
+        return None
+    token_data = inh_accounts.decode_user_token(token)
+    return token_data
+
+
+OPTIONAL_INH_TOKEN_AUTH = Annotated[UserTokenData | None, Depends(get_optional_innohassle_token_auth)]
+"Dependency to get optional user authentication data from InNoHassle Accounts Token"
 
 
 async def ensure_innohassle_admin(auth: INH_TOKEN_AUTH):

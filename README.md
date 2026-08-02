@@ -1,31 +1,31 @@
-# InNoHassle monorepo
-
-## Table of contents
-
-Did you know that GitHub supports table of
-contents [by default](https://github.blog/changelog/2021-04-13-table-of-contents-support-in-markdown-files/) 🤔
-
+# InNoHassle Monorepo
 
 ## About
 
-This is the monorepo for backend services of InNoHassle ecosystem, all of them are FastAPI ASGI applications.
+This is the monorepo for some of the backend services of InNoHassle ecosystem, all of them are FastAPI ASGI applications.
 
 - Clubs service - Innopolis University student clubs management system to view clubs, add new clubs, and edit their descriptions and logos.
+- Forms - managing Yandex Forms links and generating signed prefilled URLs for authenticated users.
+- Guard - gating access to Google Spreadsheets by requiring InNoHassle Accounts authentication before adding users.
 - Maps - hosting Innopolis University maps to view them on innohassle.ru.
+- Room booking - view and manage room bookings at innohassle.ru via integration with Microsoft Outlook.
+- Schedule - aggregate university schedules, personalize favorites, and export ICS calendars at [innohassle.ru/schedule](https://innohassle.ru/schedule).
+- Schedule Assistant - build and manage academic schedules, validate placement issues.
 - Student Affairs - omnidesk authentication via SSO for Student Affairs department to issue tickets.
+- Table Tennis - leaderboard and queue for the [Innopolis University table tennis club](https://innohassle.ru/clubs/inno-table-tennis).
+- When2Meet - meeting availability planner for the InNoHassle ecosystem.
 
 ### Technologies
 
 - [Python 3.14](https://www.python.org/downloads/) & [uv](https://docs.astral.sh/uv/)
 - [FastAPI](https://fastapi.tiangolo.com/)
-- Database and ORM: [MongoDB](https://www.mongodb.com/) & [Beanie](https://beanie-odm.dev/)
+- Database and ORM: [MongoDB](https://www.mongodb.com/) & [Beanie](https://beanie-odm.dev/); [PostgreSQL](https://www.postgresql.org/) & [SQLAlchemy](https://www.sqlalchemy.org/)
 - File storage: [MinIO](https://github.com/minio/minio)
 - Formatting and linting: [Ruff](https://docs.astral.sh/ruff/), [prek](https://prek.j178.dev/)
 - Type checking: [ty](https://docs.astral.sh/ty/)
 - Testing: [pytest](https://docs.pytest.org)
 - CI/CD: [Docker](https://www.docker.com/), [Docker Compose](https://docs.docker.com/compose/),
   [GitHub Actions](https://github.com/features/actions)
-
 
 ## Contributing
 
@@ -62,6 +62,32 @@ our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CON
    <summary>For VSCode</summary>
    In the left menu of the IDE go to "Run and Debug" tab, choose the service name and click play button to start the API.
    After that, open the URL from console in your browser to view Swagger.
+
+   **Set up VSCode plugins**
+
+   Go to Extensions and install the following plugins (recommendations in [.vscode/extensions.json](.vscode/extensions.json)):
+   - Python (by Microsoft)
+   - Ruff (by Charlie Marsh)
+   - ty (by astral-sh)
+
+   Also, if you will use **ty** typechecker, you should disable others in VSCode settings:
+
+   ```json
+   {
+      "python.languageServer": "None",
+      "python.analysis.typeCheckingMode": "off",
+
+      "cursorpyright.disableLanguageServices": true,
+      "cursorpyright.analysis.typeCheckingMode": "off",
+
+      "basedpyright.disableLanguageServices": true,
+      "basedpyright.analysis.typeCheckingMode": "off",
+
+      "pyright.disableLanguageServices": true,
+      "pyright.analysis.typeCheckingMode": "off"
+   }
+   ```
+
    </details>
 
    <details>
@@ -82,11 +108,23 @@ our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CON
    <details>
    <summary>Using console</summary>
 
+   For room booking service:
+   ```bash
+   uv run -m src.room_booking --reload
+   ```
+   > It will be available at http://localhost:8008
+
    For maps service:
    ```bash
    uv run -m src.maps --reload
    ```
    > It will be available at http://localhost:8009
+
+   For guard service:
+   ```bash
+   uv run -m src.guard --reload
+   ```
+   > It will be available at http://localhost:8013
 
    For clubs service:
    ```bash
@@ -99,6 +137,30 @@ our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CON
    uv run -m src.student_affairs --reload
    ```
    > It will be available at http://localhost:8015
+
+   For forms service:
+   ```bash
+   uv run -m src.forms --reload
+   ```
+   > It will be available at http://localhost:8017
+
+   For when2meet service:
+   ```bash
+   uv run -m src.when2meet --reload
+   ```
+   > It will be available at http://localhost:8020
+
+   For table tennis service:
+   ```bash
+   uv run -m src.tabletennis --reload
+   ```
+   > It will be available at http://localhost:8023
+
+   For schedule service:
+   ```bash
+   uv run -m src.schedule --reload
+   ```
+   > It will be available at http://localhost:8024
    </details>
 
 
@@ -107,7 +169,7 @@ our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CON
 
 > [!TIP]
 > Edit `settings.yaml` according to your needs, you can view schema in
-> [config_schema.py](src/config_schema.py) and in [settings.schema.yaml](settings.schema.yaml)
+> [settings.schema.yaml](settings.schema.yaml)
 
 ### Testing
 
@@ -134,6 +196,10 @@ To rerun only failed tests, you can use:
 ```bash
 uv run -m pytest --lf
 ```
+
+### Git worktrees
+
+To work on several branches in parallel without stashing or switching in the main checkout, see [WORKTREE.md](./WORKTREE.md).
 
 ### How to update dependencies
 

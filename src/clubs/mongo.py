@@ -4,6 +4,7 @@ __all__ = [
     "ClubType",
     "LinkSchema",
     "LinkType",
+    "PendingClubUpdate",
     "User",
     "UserRole",
     "UserSchema",
@@ -40,6 +41,17 @@ class ClubType(StrEnum):
     ART = "art"
 
 
+class PendingClubUpdate(BaseSchema):
+    title: str | None = None
+    short_description: str | None = None
+    description: str | None = None
+    logo_file_id: str | None = None
+    type: ClubType | None = None
+    links: list[LinkSchema] | None = None
+    leader_innohassle_id: str | None = None
+    sport_id: str | None = None
+
+
 class ClubSchema(BaseSchema):
     is_active: bool = True
     "False if the club is closed"
@@ -61,6 +73,8 @@ class ClubSchema(BaseSchema):
     "Club resources links (channels, chats, websites)"
     sport_id: str | None = None
     "ID of sport type in InnoSport system (None if the club is not sport)"
+    pending_update: PendingClubUpdate | None = None
+    "Pending update proposed by the club leader, waiting for admin approval"
 
 
 class Club(ClubSchema, BeanieDocument):

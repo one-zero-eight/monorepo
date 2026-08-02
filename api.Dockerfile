@@ -7,7 +7,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     rm -f /etc/apt/apt.conf.d/docker-clean \
     && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache \
     && apt-get update && apt-get install -y --no-install-recommends \
-    build-essential
+    build-essential \
+    git
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -42,8 +43,12 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     rm -f /etc/apt/apt.conf.d/docker-clean \
     && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache \
     && apt-get update && apt-get install --no-install-recommends -y \
+    curl \
     libmagic1 \
-    libvips-dev
+    libcairo2 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf-2.0-0
 
 
 RUN groupadd -g 1500 uv && \
@@ -58,4 +63,6 @@ WORKDIR /app
 USER uv
 
 EXPOSE 8000
+HEALTHCHECK --interval=1m --timeout=10s --retries=3 --start-period=1m --start-interval=1s \
+    CMD ["curl", "-fsSI", "http://127.0.0.1:8000/openapi.json"]
 CMD ["sh", "-c", "exec gunicorn --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --workers \"$WORKERS\" \"$APP_MODULE\" --timeout 300 --forwarded-allow-ips=*"]

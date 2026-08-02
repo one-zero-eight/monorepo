@@ -1,5 +1,22 @@
 $schema: https://json-schema.org/draft-07/schema
 $defs:
+  AccessToRoom:
+    additionalProperties: false
+    properties:
+      email:
+        description: Email of the user
+        title: Email
+        type: string
+      reason:
+        default: ''
+        description: Reason for access (f.e. 'Leader of 'one-zero-eight' club', or
+          `Academic Tutorship`)
+        title: Reason
+        type: string
+    required:
+    - email
+    title: AccessToRoom
+    type: object
   AccountsSettings:
     additionalProperties: false
     description: InNoHassle Accounts integration settings
@@ -59,6 +76,26 @@ $defs:
         type: array
     title: BoardGamesSettings
     type: object
+  BmpExchange:
+    additionalProperties: false
+    description: Dedicated BMP mailbox; bookings go to the default calendar with Auto
+      markers.
+    properties:
+      username:
+        description: BMP account email
+        title: Username
+        type: string
+      password:
+        description: Password for the BMP account
+        format: password
+        title: Password
+        type: string
+        writeOnly: true
+    required:
+    - username
+    - password
+    title: BmpExchange
+    type: object
   ClubsSettings:
     additionalProperties: false
     description: Settings for the application.
@@ -105,6 +142,159 @@ $defs:
     - production
     title: Environment
     type: string
+  Exchange:
+    additionalProperties: false
+    description: Exchange (Outlook) integration settings
+    properties:
+      ews_endpoint:
+        default: https://mail.innopolis.ru/EWS/Exchange.asmx
+        description: URL of the EWS endpoint
+        title: Ews Endpoint
+        type: string
+      username:
+        description: Username for accessing the EWS endpoint (email)
+        title: Username
+        type: string
+      password:
+        description: Password for accessing the EWS endpoint
+        format: password
+        title: Password
+        type: string
+        writeOnly: true
+      ews_callback_url:
+        anyOf:
+        - type: string
+        - type: 'null'
+        default: null
+        description: URL of the EWS callback for push subscription
+        title: Ews Callback Url
+      bmp:
+        $ref: '#/$defs/BmpExchange'
+        description: Dedicated BMP account and Auto calendar
+    required:
+    - username
+    - password
+    - bmp
+    title: Exchange
+    type: object
+  FormsSettings:
+    additionalProperties: false
+    description: Settings for the application.
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: ''
+        description: Prefix for the API path (e.g. "/api/v0")
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      mongo:
+        $ref: '#/$defs/MongoDatabaseSettings'
+        description: Configuration for MongoDB
+      links:
+        $ref: '#/$defs/LinksSettings'
+    required:
+    - links
+    title: FormsSettings
+    type: object
+  GoogleServiceSettings:
+    additionalProperties: false
+    description: Google API settings (Service Account + Drive)
+    properties:
+      service_account_file_path:
+        default: service_account.json
+        description: 'Path to the Google service account file with credentials.
+
+
+          Plain ``Path`` (not ``FilePath``): the monorepo loads the whole root ``Settings``
+          for
+
+          every service, so requiring the file to exist here would break other services
+          that do
+
+          not mount it. Existence is enforced lazily where the file is actually read.'
+        format: path
+        title: Service Account File Path
+        type: string
+      subject:
+        anyOf:
+        - type: string
+        - type: 'null'
+        default: null
+        description: Email address to impersonate for domain-wide delegation (e.g.,
+          service@innoguard.ru)
+        title: Subject
+      drive_folder_id:
+        anyOf:
+        - type: string
+        - type: 'null'
+        default: null
+        description: Google Drive folder ID where new files will be created (optional)
+        title: Drive Folder Id
+    title: GoogleServiceSettings
+    type: object
+  GuardSettings:
+    additionalProperties: false
+    description: Settings for the application.
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: ''
+        description: Prefix for the API path (e.g. "/api/v0")
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      mongo:
+        $ref: '#/$defs/MongoDatabaseSettings'
+        description: Configuration for MongoDB
+      innohassle_url:
+        default: https://innohassle.ru
+        description: URL of the InNoHassle to use for links
+        title: Innohassle Url
+        type: string
+      base_url:
+        default: https://innohassle.ru
+        description: Base URL for generating join links
+        title: Base Url
+        type: string
+      google:
+        $ref: '#/$defs/GoogleServiceSettings'
+    title: GuardSettings
+    type: object
+  LinksSettings:
+    additionalProperties: false
+    description: Links and signature settings
+    properties:
+      signature_secret:
+        description: Secret used to sign and verify form payload
+        format: password
+        title: Signature Secret
+        type: string
+        writeOnly: true
+    required:
+    - signature_secret
+    title: LinksSettings
+    type: object
   MapsSettings:
     additionalProperties: false
     properties:
@@ -136,6 +326,20 @@ $defs:
         title: Static Directory
         type: string
     title: MapsSettings
+    type: object
+  MetricsSettings:
+    additionalProperties: false
+    description: Shared metrics endpoint settings.
+    properties:
+      api_key:
+        description: Bearer token required to access service metrics
+        format: password
+        title: Api Key
+        type: string
+        writeOnly: true
+    required:
+    - api_key
+    title: MetricsSettings
     type: object
   MinioSettings:
     additionalProperties: false
@@ -180,6 +384,10 @@ $defs:
         default: logos/
         title: Club Logos Prefix
         type: string
+      club_description_images_prefix:
+        default: description-images/
+        title: Club Description Images Prefix
+        type: string
     title: MinioSettings
     type: object
   MongoDatabaseSettings:
@@ -196,6 +404,25 @@ $defs:
         type: string
         writeOnly: true
     title: MongoDatabaseSettings
+    type: object
+  MusicRoomSettings:
+    additionalProperties: false
+    description: InNoHassle Music Room integration settings.
+    properties:
+      api_url:
+        description: URL of the Music Room API
+        title: Api Url
+        type: string
+      api_key:
+        description: API key for the Music Room API
+        format: password
+        title: Api Key
+        type: string
+        writeOnly: true
+    required:
+    - api_url
+    - api_key
+    title: MusicRoomSettings
     type: object
   OmnideskSettings:
     additionalProperties: false
@@ -215,6 +442,120 @@ $defs:
     required:
     - jwt_marker
     title: OmnideskSettings
+    type: object
+  ScheduleAssistantSettings:
+    additionalProperties: false
+    description: Settings for the Schedule Assistant service.
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: /schedule-assistant/v0
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      moderator_emails:
+        description: Innopolis emails allowed to access moderator-only endpoints
+        items:
+          type: string
+        title: Moderator Emails
+        type: array
+      db_url:
+        description: PostgreSQL database connection URL
+        examples:
+        - postgresql+psycopg://postgres:postgres@127.0.0.1:5432/schedule_assistant
+        - postgresql+psycopg://postgres:postgres@postgres:5432/schedule_assistant
+        format: password
+        title: Db Url
+        type: string
+        writeOnly: true
+      booking:
+        $ref: '#/$defs/src__schedule_assistant__config_schema__RoomBookingSettings'
+        description: Room Booking API integration settings
+    required:
+    - db_url
+    - booking
+    title: ScheduleAssistantSettings
+    type: object
+  ScheduleSettings:
+    additionalProperties: false
+    description: Settings for the Schedule service.
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: /schedule/v0
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      db_url:
+        description: PostgreSQL database connection URL
+        examples:
+        - postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/postgres
+        - postgresql+asyncpg://postgres:postgres@postgres:5432/postgres
+        format: password
+        title: Db Url
+        type: string
+        writeOnly: true
+      predefined_dir:
+        default: src/schedule/predefined
+        description: Path to the directory with predefined ICS data
+        format: path
+        title: Predefined Dir
+        type: string
+      music_room:
+        anyOf:
+        - $ref: '#/$defs/MusicRoomSettings'
+        - type: 'null'
+        default: null
+        description: InNoHassle Music Room integration settings
+      sport:
+        $ref: '#/$defs/SportSettings'
+        description: Innopolis Sport integration settings
+      workshops:
+        anyOf:
+        - $ref: '#/$defs/WorkshopsSettings'
+        - type: 'null'
+        default: null
+        description: InNoHassle Workshops integration settings
+      room_booking:
+        anyOf:
+        - $ref: '#/$defs/src__schedule__config_schema__RoomBookingIntegrationSettings'
+        - type: 'null'
+        default: null
+        description: InNoHassle Room Booking integration settings
+    required:
+    - db_url
+    title: ScheduleSettings
+    type: object
+  SportSettings:
+    additionalProperties: false
+    description: Innopolis Sport integration settings.
+    properties:
+      api_url:
+        default: https://sport.innopolis.university/api
+        description: URL of the Sport API
+        title: Api Url
+        type: string
+    title: SportSettings
     type: object
   StudentAffairsSettings:
     additionalProperties: false
@@ -243,6 +584,203 @@ $defs:
     - omnidesk
     title: StudentAffairsSettings
     type: object
+  TabletennisSettings:
+    additionalProperties: false
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: ''
+        description: Prefix for the API path (e.g. "/api/v0")
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      mongo:
+        $ref: '#/$defs/MongoDatabaseSettings'
+      admin_emails:
+        description: List of coach emails who can manage games
+        items:
+          type: string
+        title: Admin Emails
+        type: array
+    title: TabletennisSettings
+    type: object
+  When2MeetSettings:
+    additionalProperties: false
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: ''
+        description: Prefix for the API path (e.g. "/api/v0")
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      service_name:
+        default: when2meet
+        description: Human-readable service name returned by the health endpoint
+        title: Service Name
+        type: string
+      mongo:
+        $ref: '#/$defs/MongoDatabaseSettings'
+        description: Configuration for MongoDB
+      room_booking:
+        anyOf:
+        - $ref: '#/$defs/src__when2meet__config_schema__RoomBookingIntegrationSettings'
+        - type: 'null'
+        default: null
+        description: Room Booking API integration settings
+    title: When2MeetSettings
+    type: object
+  WorkshopsSettings:
+    additionalProperties: false
+    description: InNoHassle Workshops integration settings.
+    properties:
+      api_url:
+        default: https://api.innohassle.ru/workshops/v0
+        description: URL of the Workshops API
+        title: Api Url
+        type: string
+      api_key:
+        description: API key for the Workshops API
+        format: password
+        title: Api Key
+        type: string
+        writeOnly: true
+    required:
+    - api_key
+    title: WorkshopsSettings
+    type: object
+  src__room_booking__config_schema__RoomBookingSettings:
+    additionalProperties: false
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: ''
+        description: Prefix for the API path (e.g. "/api/v0")
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      api_key:
+        description: Secret key for accessing API by external services
+        format: password
+        title: Api Key
+        type: string
+        writeOnly: true
+      access_lists:
+        additionalProperties:
+          items:
+            $ref: '#/$defs/AccessToRoom'
+          type: array
+        description: Dictionary of access lists (room id -> access list)
+        title: Access Lists
+        type: object
+      ttl_bookings_from_account_calendar:
+        default: 60
+        description: TTL for the bookings from account calendar cache in seconds
+        title: Ttl Bookings From Account Calendar
+        type: integer
+      ttl_bookings_from_busy_info:
+        default: 60
+        description: TTL for the bookings from busy info cache in seconds
+        title: Ttl Bookings From Busy Info
+        type: integer
+      recently_canceled_booking_ttl_sec:
+        default: 300
+        description: TTL for the recently-canceled booking IDs cache in seconds (skip
+          cancel if already canceled within this window)
+        title: Recently Canceled Booking Ttl Sec
+        type: integer
+      exchange:
+        $ref: '#/$defs/Exchange'
+      bmp_batch_confirm_timeout_s:
+        default: 180
+        description: Seconds to wait for each room meeting response during BMP batch
+          booking confirm
+        title: Bmp Batch Confirm Timeout S
+        type: integer
+    required:
+    - api_key
+    - exchange
+    title: RoomBookingSettings
+    type: object
+  src__schedule__config_schema__RoomBookingIntegrationSettings:
+    additionalProperties: false
+    description: InNoHassle Room Booking integration settings.
+    properties:
+      api_url:
+        default: https://api.innohassle.ru/room-booking/v0
+        description: URL of the Room Booking API
+        title: Api Url
+        type: string
+      api_key:
+        description: API key for the Room Booking API
+        format: password
+        title: Api Key
+        type: string
+        writeOnly: true
+    required:
+    - api_key
+    title: RoomBookingIntegrationSettings
+    type: object
+  src__schedule_assistant__config_schema__RoomBookingSettings:
+    additionalProperties: false
+    description: Room Booking API integration settings.
+    properties:
+      api_url:
+        default: https://api.innohassle.ru/room-booking/v0/
+        description: URL of the Room Booking API
+        title: Api Url
+        type: string
+      api_key:
+        description: Shared secret for accessing the room-booking API as a service
+        format: password
+        title: Api Key
+        type: string
+        writeOnly: true
+    required:
+    - api_key
+    title: RoomBookingSettings
+    type: object
+  src__when2meet__config_schema__RoomBookingIntegrationSettings:
+    additionalProperties: false
+    description: InNoHassle Room Booking integration settings.
+    properties:
+      api_url:
+        default: https://api.innohassle.ru/room-booking/v0
+        description: URL of the Room Booking API
+        title: Api Url
+        type: string
+    title: RoomBookingIntegrationSettings
+    type: object
 additionalProperties: false
 properties:
   $schema:
@@ -254,6 +792,12 @@ properties:
   accounts:
     $ref: '#/$defs/AccountsSettings'
     description: Shared InNoHassle Accounts integration settings
+  metrics:
+    anyOf:
+    - $ref: '#/$defs/MetricsSettings'
+    - type: 'null'
+    default: null
+    description: Shared metrics endpoint settings
   maps_service:
     $ref: '#/$defs/MapsSettings'
     default:
@@ -275,6 +819,41 @@ properties:
   board_games_service:
     anyOf:
     - $ref: '#/$defs/BoardGamesSettings'
+    - type: 'null'
+    default: null
+  when2meet_service:
+    anyOf:
+    - $ref: '#/$defs/When2MeetSettings'
+    - type: 'null'
+    default: null
+  tabletennis_service:
+    anyOf:
+    - $ref: '#/$defs/TabletennisSettings'
+    - type: 'null'
+    default: null
+  guard_service:
+    anyOf:
+    - $ref: '#/$defs/GuardSettings'
+    - type: 'null'
+    default: null
+  forms_service:
+    anyOf:
+    - $ref: '#/$defs/FormsSettings'
+    - type: 'null'
+    default: null
+  room_booking_service:
+    anyOf:
+    - $ref: '#/$defs/src__room_booking__config_schema__RoomBookingSettings'
+    - type: 'null'
+    default: null
+  schedule_service:
+    anyOf:
+    - $ref: '#/$defs/ScheduleSettings'
+    - type: 'null'
+    default: null
+  schedule_assistant_service:
+    anyOf:
+    - $ref: '#/$defs/ScheduleAssistantSettings'
     - type: 'null'
     default: null
 required:

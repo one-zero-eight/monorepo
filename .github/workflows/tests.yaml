@@ -30,10 +30,22 @@ jobs:
       checks: write
       pull-requests: write
 
-    # Host ports match docker-compose.test.yaml (37017, 19000); service containers use default listen ports inside.
+    # Host ports match docker-compose.test.yaml (37017, 19000, 35432); service containers use default listen ports inside.
     services:
+      postgres:
+        image: postgres:17.1
+        ports:
+          - 35432:5432
+        env:
+          POSTGRES_PASSWORD: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
       mongodb:
-        image: mongo:8.0
+        image: mongo:8.2
         ports:
           - 37017:27017
         env:
@@ -52,18 +64,18 @@ jobs:
 
     steps:
       - name: 👾 Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref }}
 
       - name: 📦 Install native libraries
         uses: awalsh128/cache-apt-pkgs-action@v1
         with:
-          packages: libmagic1 libvips-dev
+          packages: libmagic1
           version: 1.0
 
       - name: 📦 Set up uv
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@v8.2.0
         with:
           enable-cache: true
           activate-environment: true

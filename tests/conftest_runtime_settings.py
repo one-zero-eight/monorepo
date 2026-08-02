@@ -1,7 +1,9 @@
 """Wait on suite Mongo/MinIO; point ``load_root_settings`` at suite-sized ``Settings``."""
 
 import os
+import tempfile
 import time as tm
+from pathlib import Path
 
 import pytest
 import urllib3
@@ -15,9 +17,22 @@ from urllib3.exceptions import HTTPError
 from src.board_games.config_schema import BoardGamesSettings
 from src.clubs.config_schema import ClubsSettings
 from src.common_config import Environment, MinioSettings, MongoDatabaseSettings
-from src.config_root_schema import AccountsSettings, Settings
+from src.config_root_schema import AccountsSettings, MetricsSettings, Settings
+from src.forms.config_schema import FormsSettings, LinksSettings
+from src.guard.config_schema import GuardSettings
 from src.maps.config_schema import MapsSettings
+from src.room_booking.config_schema import BmpExchange, Exchange, RoomBookingSettings
+from src.schedule.config_schema import ScheduleSettings
+from src.schedule_assistant.config_schema import (
+    RoomBookingSettings as ScheduleAssistantRoomBookingSettings,
+)
+from src.schedule_assistant.config_schema import (
+    ScheduleAssistantSettings,
+)
 from src.student_affairs.config_schema import OmnideskSettings, StudentAffairsSettings
+from src.tabletennis.config_schema import TabletennisSettings
+from src.when2meet.config_schema import RoomBookingIntegrationSettings, When2MeetSettings
+from tests.metrics import METRICS_API_KEY
 
 # Host ports for docker-compose.test.yaml and CI service containers; override via SUITE_* env.
 SUITE_MONGO_NETLOC = os.environ.get("SUITE_MONGO_NETLOC", "127.0.0.1:37017")
@@ -26,6 +41,7 @@ SUITE_MONGO_AUTH = os.environ.get("SUITE_MONGO_AUTH", "test")
 SUITE_MINIO_ENDPOINT = os.environ.get("SUITE_MINIO_ENDPOINT", "127.0.0.1:19000")
 SUITE_MINIO_ACCESS_KEY = os.environ.get("SUITE_MINIO_ACCESS_KEY", "test")
 SUITE_MINIO_KEY = os.environ.get("SUITE_MINIO_KEY", "testsecret")
+SUITE_POSTGRES_NETLOC = os.environ.get("SUITE_POSTGRES_NETLOC", "127.0.0.1:35432")
 
 
 def is_xdist_worker() -> bool:
@@ -34,6 +50,18 @@ def is_xdist_worker() -> bool:
 
 def get_worker_id() -> str:
     return os.environ.get("PYTEST_XDIST_WORKER", "master")
+
+
+def schedule_test_database_name() -> str:
+    return f"worker-{get_worker_id()}-schedule"
+
+
+def schedule_test_predefined_dir() -> Path:
+    return Path(tempfile.gettempdir()) / f"worker-{get_worker_id()}-schedule-predefined"
+
+
+def schedule_assistant_test_database_name() -> str:
+    return f"worker-{get_worker_id()}-schedule-assistant"
 
 
 def load_root_settings() -> Settings:
@@ -45,6 +73,7 @@ def load_root_settings() -> Settings:
             mock=False,
             api_jwt_token=SecretStr("test-token"),
         ),
+        metrics=MetricsSettings(api_key=SecretStr(METRICS_API_KEY)),
         maps_service=MapsSettings(
             environment=Environment.TESTING,
         ),
@@ -72,6 +101,63 @@ def load_root_settings() -> Settings:
                 uri=SecretStr(mongo_uri.replace("<service_name>", "board_games")),
             ),
         ),
+        when2meet_service=When2MeetSettings(
+            environment=Environment.TESTING,
+            app_root_path="/api/v0",
+            mongo=MongoDatabaseSettings(
+                uri=SecretStr(mongo_uri.replace("<service_name>", "when2meet")),
+            ),
+            room_booking=RoomBookingIntegrationSettings(
+                api_url="https://room-booking.test/api/v0",
+            ),
+        ),
+        tabletennis_service=TabletennisSettings(
+            environment=Environment.TESTING,
+            mongo=MongoDatabaseSettings(
+                uri=SecretStr(mongo_uri.replace("<service_name>", "tabletennis")),
+            ),
+        ),
+        guard_service=GuardSettings(
+            environment=Environment.TESTING,
+            mongo=MongoDatabaseSettings(
+                uri=SecretStr(mongo_uri.replace("<service_name>", "guard")),
+            ),
+        ),
+        forms_service=FormsSettings(
+            environment=Environment.TESTING,
+            mongo=MongoDatabaseSettings(
+                uri=SecretStr(mongo_uri.replace("<service_name>", "forms")),
+            ),
+            links=LinksSettings(signature_secret=SecretStr("test-secret")),
+        ),
+        room_booking_service=RoomBookingSettings(
+            environment=Environment.TESTING,
+            api_key=SecretStr("test-room-booking-api-key"),
+            exchange=Exchange(
+                username="test@innopolis.ru",
+                password=SecretStr("test-password"),
+                bmp=BmpExchange(
+                    username="bmp-test@innopolis.ru",
+                    password=SecretStr("bmp-test-password"),
+                ),
+            ),
+        ),
+        schedule_service=ScheduleSettings(
+            environment=Environment.TESTING,
+            app_root_path="/schedule/v0",
+            db_url=SecretStr(
+                f"postgresql+asyncpg://postgres:test@{SUITE_POSTGRES_NETLOC}/{schedule_test_database_name()}"
+            ),
+            predefined_dir=schedule_test_predefined_dir(),
+        ),
+        schedule_assistant_service=ScheduleAssistantSettings(
+            environment=Environment.TESTING,
+            app_root_path="/schedule-assistant/v0",
+            db_url=SecretStr(
+                f"postgresql+psycopg://postgres:test@{SUITE_POSTGRES_NETLOC}/{schedule_assistant_test_database_name()}"
+            ),
+            booking=ScheduleAssistantRoomBookingSettings(api_key=SecretStr("test-room-booking-api-key")),
+        ),
     )
 
 
@@ -81,6 +167,23 @@ def _wait_mongo_ready(uri: str, timeout_s: float = 1) -> None:
         client.admin.command("ping")
     finally:
         client.close()
+
+
+def _wait_postgres_ready(dsn: str, timeout_s: float = 1) -> None:
+    import asyncio
+
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    async def ping() -> None:
+        engine = create_async_engine(dsn)
+        try:
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+        finally:
+            await engine.dispose()
+
+    asyncio.run(ping())
 
 
 def _wait_minio_ready(timeout_s: float = 1) -> None:
@@ -131,6 +234,18 @@ def pytest_configure(config: pytest.Config) -> None:
                 returncode=1,
             )
         timings["infra.mongo_wait_ready_s"] = tm.perf_counter() - t0
+
+        t0 = tm.perf_counter()
+        from sqlalchemy.exc import SQLAlchemyError
+
+        try:
+            _wait_postgres_ready(f"postgresql+asyncpg://postgres:test@{SUITE_POSTGRES_NETLOC}/postgres")
+        except (OSError, SQLAlchemyError) as exc:
+            pytest.exit(
+                f"PostgreSQL not ready, run it with `docker compose -f docker-compose.test.yaml up --wait` and try again:\n{exc}",
+                returncode=1,
+            )
+        timings["infra.postgres_wait_ready_s"] = tm.perf_counter() - t0
 
         timings["infra.total_start_s"] = tm.perf_counter() - t_suite
 

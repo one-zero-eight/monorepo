@@ -1,0 +1,362 @@
+{
+  "info": {
+    "name": "InNoHassle When2Meet API",
+    "description": "Service foundation for When2Meet designed during SWP course. MVP v0.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000/api/v0",
+      "type": "string"
+    },
+    {
+      "key": "bearer_token",
+      "value": "YOUR_JWT_TOKEN_HERE",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{bearer_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Meetings",
+      "item": [
+        {
+          "name": "Get My Meetings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/meetings/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "meetings",
+                ""
+              ]
+            },
+            "description": "Get meetings owned by the authenticated user."
+          }
+        },
+        {
+          "name": "Create Meeting",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Meeting Name\",\n  \"description\": \"Meeting description goes here\",\n  \"slots\": [\n    \"2026-06-26T17:36:00Z\"\n  ],\n  \"timezone\": \"UTC\",\n  \"specific_time\": false,\n  \"time_range\": {\n    \"start\": \"09:00\",\n    \"end\": \"18:00\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/meetings/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "meetings",
+                ""
+              ]
+            },
+            "description": "Create a new meeting with time slots."
+          }
+        },
+        {
+          "name": "Get Participating Meetings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/meetings/participating",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "meetings",
+                "participating"
+              ]
+            },
+            "description": "Get meetings where the authenticated user is a participant."
+          }
+        },
+        {
+          "name": "Get Meeting",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/meetings/:meeting_ref",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "meetings",
+                ":meeting_ref"
+              ],
+              "variable": [
+                {
+                  "key": "meeting_ref",
+                  "value": "example_meeting_slug_or_id"
+                }
+              ]
+            },
+            "description": "Get meeting details and participants' availability."
+          }
+        },
+        {
+          "name": "Update Meeting",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Meeting Name\",\n  \"description\": \"Updated description\",\n  \"slots\": [\n    \"2026-06-26T17:36:00Z\",\n    \"2026-06-27T10:00:00Z\"\n  ],\n  \"timezone\": \"UTC\",\n  \"specific_time\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/meetings/:meeting_ref",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "meetings",
+                ":meeting_ref"
+              ],
+              "variable": [
+                {
+                  "key": "meeting_ref",
+                  "value": "example_meeting_slug_or_id"
+                }
+              ]
+            },
+            "description": "Update meeting details (owner only)."
+          }
+        },
+        {
+          "name": "Delete Meeting",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/meetings/:meeting_ref",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "meetings",
+                ":meeting_ref"
+              ],
+              "variable": [
+                {
+                  "key": "meeting_ref",
+                  "value": "example_meeting_slug_or_id"
+                }
+              ]
+            },
+            "description": "Delete a meeting (owner only)."
+          }
+        },
+        {
+          "name": "Update Participant",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"availability\": [\n    \"2026-06-26T17:36:00Z\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/meetings/:meeting_ref/participants",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "meetings",
+                ":meeting_ref",
+                "participants"
+              ],
+              "variable": [
+                {
+                  "key": "meeting_ref",
+                  "value": "example_meeting_slug_or_id"
+                }
+              ]
+            },
+            "description": "Add or update a participant's availability for a meeting."
+          }
+        },
+        {
+          "name": "Get Available Rooms",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/meetings/:meeting_ref/available-rooms",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "meetings",
+                ":meeting_ref",
+                "available-rooms"
+              ],
+              "variable": [
+                {
+                  "key": "meeting_ref",
+                  "value": "example_meeting_slug_or_id"
+                }
+              ]
+            },
+            "description": "Get rooms available for the full selected meeting time window and bookable by the authenticated user."
+          }
+        },
+        {
+          "name": "Book Room",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"room_id\": \"3.2\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/meetings/:meeting_ref/book-room",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "meetings",
+                ":meeting_ref",
+                "book-room"
+              ],
+              "variable": [
+                {
+                  "key": "meeting_ref",
+                  "value": "example_meeting_slug_or_id"
+                }
+              ]
+            },
+            "description": "Book a room for the meeting's selected time window (owner only)."
+          }
+        },
+        {
+          "name": "Change Booked Room",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"room_id\": \"3.3\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/meetings/:meeting_ref/book-room",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "meetings",
+                ":meeting_ref",
+                "book-room"
+              ],
+              "variable": [
+                {
+                  "key": "meeting_ref",
+                  "value": "example_meeting_slug_or_id"
+                }
+              ]
+            },
+            "description": "Change the booked room for the meeting (owner only)."
+          }
+        },
+        {
+          "name": "Cancel Booked Room",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/meetings/:meeting_ref/book-room",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "meetings",
+                ":meeting_ref",
+                "book-room"
+              ],
+              "variable": [
+                {
+                  "key": "meeting_ref",
+                  "value": "example_meeting_slug_or_id"
+                }
+              ]
+            },
+            "description": "Cancel the booked room for the meeting (owner only)."
+          }
+        },
+        {
+          "name": "Delete Participant",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/meetings/:meeting_ref/participants/:user_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "meetings",
+                ":meeting_ref",
+                "participants",
+                ":user_id"
+              ],
+              "variable": [
+                {
+                  "key": "meeting_ref",
+                  "value": "example_meeting_slug_or_id"
+                },
+                {
+                  "key": "user_id",
+                  "value": "example_user_id"
+                }
+              ]
+            },
+            "description": "Remove a participant from a meeting (owner or the participant themselves)."
+          }
+        }
+      ]
+    }
+  ]
+}

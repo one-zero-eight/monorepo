@@ -131,6 +131,30 @@ def inh_accounts_mock_users() -> dict[str, dict[str, Any]]:
             },
             "innohassle_admin": False,
         },
+        "507f1f77bcf86cd799439011": {
+            "id": "507f1f77bcf86cd799439011",
+            "innopolis_info": {
+                "email": "guard-author@innopolis.university",
+                "name": "Guard Author",
+                "is_student": True,
+                "is_staff": False,
+                "is_college": False,
+                "updated_at": now,
+            },
+            "innohassle_admin": False,
+        },
+        "507f1f77bcf86cd799439012": {
+            "id": "507f1f77bcf86cd799439012",
+            "innopolis_info": {
+                "email": "guard-other@innopolis.university",
+                "name": "Guard Other",
+                "is_student": True,
+                "is_staff": False,
+                "is_college": False,
+                "updated_at": now,
+            },
+            "innohassle_admin": False,
+        },
     }
 
 

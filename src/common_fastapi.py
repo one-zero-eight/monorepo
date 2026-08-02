@@ -1,6 +1,7 @@
 __all__ = [
     "MIT_LICENSE_INFO",
     "ONE_ZERO_EIGHT_CONTACT_INFO",
+    "configure_metrics",
     "generate_unique_operation_id",
     "popule_openapi_tags",
     "tune_fastapi",
@@ -8,26 +9,58 @@ __all__ = [
 
 
 import re
+import secrets
 from inspect import cleandoc
 from logging import Logger
 from types import ModuleType
+from typing import Annotated
 
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.requests import Request
 from fastapi.routing import APIRoute
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 from fastapi_swagger import patch_fastapi
-from pydantic import ValidationError
+from prometheus_fastapi_instrumentator import Instrumentator
+from pydantic import SecretStr, ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from src.logging_ import logger
+
+metrics_bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def configure_metrics(app: FastAPI, namespace: str, api_key: SecretStr) -> None:
+    expected_api_key = api_key.get_secret_value()
+
+    async def authorize_metrics(
+        bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(metrics_bearer_scheme)],
+    ) -> None:
+        if bearer is None or not secrets.compare_digest(bearer.credentials, expected_api_key):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid metrics credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+    Instrumentator(excluded_handlers=[r"^/metrics$"]).instrument(
+        app,
+        metric_namespace=namespace,
+        metric_subsystem="api",
+    ).expose(
+        app,
+        endpoint="/metrics",
+        include_in_schema=False,
+        dependencies=[Depends(authorize_metrics)],
+    )
 
 
 def tune_fastapi(
     app: FastAPI,
     logger: Logger,
+    metrics_namespace: str,
     use_auto_derive_route: bool = True,
     use_fastapi_swagger_patch: bool = True,
     use_custom_exception_handlers: bool = True,
@@ -44,6 +77,18 @@ def tune_fastapi(
         patch_fastapi(app)
     if use_custom_exception_handlers:
         register_exception_handlers(app)
+
+    from src.config_root_schema import load_root_settings
+
+    metrics_settings = load_root_settings().metrics
+    if metrics_settings is None:
+        return
+
+    configure_metrics(
+        app,
+        namespace=metrics_namespace,
+        api_key=metrics_settings.api_key,
+    )
 
 
 def register_exception_handlers(app: FastAPI) -> None:

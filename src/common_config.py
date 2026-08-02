@@ -102,3 +102,4 @@ class MinioSettings(BaseSchema):
     secret_key: SecretStr = SecretStr("herewethinkbig")
     "Secret key (password) for the user account."
     club_logos_prefix: str = "logos/"
+    club_description_images_prefix: str = "description-images/"

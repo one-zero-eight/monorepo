@@ -2,8 +2,43 @@
 $schema: "./settings.schema.yaml"
 accounts:
   # get from https://api.innohassle.ru/accounts/v0/tokens/generate-service-token?sub=monorepo-local-dev&scopes=users&scopes=sport&only_for_me=true
-  api_jwt_token: null
+  api_jwt_token: change-me
 maps_service: {}
-student_affairs_service: null # to run student affairs service you should get omnidesk credentials
+student_affairs_service: # to run student affairs service you should get omnidesk credentials
+  omnidesk:
+    jwt_marker: change-me-0123456789abcdef
 clubs_service: {}
 board_games_service: {}
+when2meet_service: {}
+tabletennis_service: {}
+guard_service: # to run guard service you should provide a Google service account file
+  google:
+    service_account_file_path: service_account.json
+forms_service:
+  links:
+    signature_secret: change-me # secret used to sign and verify form payloads
+room_booking_service: # configure exchange credentials, api_key, and access_lists for local dev
+  api_key: change-me
+  exchange: # to create room booking you should provide exchange credentials from outlook account
+    ews_endpoint: https://mail.innopolis.ru/EWS/Exchange.asmx
+    username: change-me@innopolis.university
+    password: change-me
+    ews_callback_url: null
+    bmp:
+      username: change-me@innopolis.university
+      password: change-me
+  access_lists:
+    "309A": []
+    "108": []
+    "107": []
+    "106": []
+    "105": []
+    "300": []
+    "321": []
+schedule_service:
+  db_url: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/postgres
+schedule_assistant_service:
+  booking:
+    api_key: change-me
+  moderator_emails: []
+  db_url: postgresql+psycopg://postgres:postgres@127.0.0.1:5432/schedule_assistant

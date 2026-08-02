@@ -1,8 +1,13 @@
 ### Ours ###
 .env
 settings.yaml
+.scm-commit-msg
 private.pem
 public.pem
+service_account.json
+src/maps/static/*.pdf
+src/schedule/predefined/*
+!src/schedule/predefined/.gitkeep
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,linux,windows,vs,jetbrains+all,macos
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,linux,windows,vs,jetbrains+all,macos
@@ -196,6 +201,9 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 reports/
+!src/when2meet/reports/
+!src/when2meet/reports/week2/
+!src/when2meet/reports/week2/**
 cover/
 
 # Translations
@@ -284,6 +292,7 @@ venv.bak/
 
 # mkdocs documentation
 /site
+src/when2meet/site/
 
 # mypy
 .mypy_cache/

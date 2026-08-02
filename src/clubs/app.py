@@ -19,6 +19,7 @@ from .config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from src.clubs.modules.clubs.description_images_repo import description_images_repo
     from src.clubs.modules.clubs.logos_repo import logos_repo
     from src.clubs.mongo import document_models
     from src.common_minio import setup_minio
@@ -33,6 +34,7 @@ async def lifespan(app: FastAPI):
     app.state.minio_store = minio_store
 
     logos_repo.post_init(minio_store)
+    description_images_repo.post_init(minio_store)
 
     yield
 
@@ -65,7 +67,7 @@ Admins can manage the clubs information.
     redoc_url=None,
     swagger_ui_oauth2_redirect_url=None,
 )
-tune_fastapi(app, logger=logger)
+tune_fastapi(app, logger=logger, metrics_namespace="clubs")
 
 
 # CORS settings

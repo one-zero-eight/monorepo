@@ -8,8 +8,15 @@ from pydantic import Field, SecretStr, model_validator
 from src.board_games.config_schema import BoardGamesSettings
 from src.clubs.config_schema import ClubsSettings
 from src.common_config import BaseSchema, Environment
+from src.forms.config_schema import FormsSettings
+from src.guard.config_schema import GuardSettings
 from src.maps.config_schema import MapsSettings
+from src.room_booking.config_schema import RoomBookingSettings
+from src.schedule.config_schema import ScheduleSettings
+from src.schedule_assistant.config_schema import ScheduleAssistantSettings
 from src.student_affairs.config_schema import StudentAffairsSettings
+from src.tabletennis.config_schema import TabletennisSettings
+from src.when2meet.config_schema import When2MeetSettings
 
 
 class AccountsSettings(BaseSchema):
@@ -26,15 +33,31 @@ class AccountsSettings(BaseSchema):
     """
 
 
+class MetricsSettings(BaseSchema):
+    """Shared metrics endpoint settings."""
+
+    api_key: SecretStr
+    "Bearer token required to access service metrics"
+
+
 class Settings(BaseSchema):
     schema_: str | None = Field(default=None, alias="$schema", init=False)
     accounts: AccountsSettings
     "Shared InNoHassle Accounts integration settings"
+    metrics: MetricsSettings | None = None
+    "Shared metrics endpoint settings"
 
     maps_service: MapsSettings = MapsSettings()
     clubs_service: ClubsSettings | None = None
     student_affairs_service: StudentAffairsSettings | None = None
     board_games_service: BoardGamesSettings | None = None
+    when2meet_service: When2MeetSettings | None = None
+    tabletennis_service: TabletennisSettings | None = None
+    guard_service: GuardSettings | None = None
+    forms_service: FormsSettings | None = None
+    room_booking_service: RoomBookingSettings | None = None
+    schedule_service: ScheduleSettings | None = None
+    schedule_assistant_service: ScheduleAssistantSettings | None = None
 
     @model_validator(mode="after")
     def accounts_mock_requires_development(self) -> Settings:
@@ -47,6 +70,20 @@ class Settings(BaseSchema):
             contexts.append(("student_affairs_service", self.student_affairs_service.environment))
         if self.board_games_service is not None:
             contexts.append(("board_games_service", self.board_games_service.environment))
+        if self.when2meet_service is not None:
+            contexts.append(("when2meet_service", self.when2meet_service.environment))
+        if self.tabletennis_service is not None:
+            contexts.append(("tabletennis_service", self.tabletennis_service.environment))
+        if self.guard_service is not None:
+            contexts.append(("guard_service", self.guard_service.environment))
+        if self.forms_service is not None:
+            contexts.append(("forms_service", self.forms_service.environment))
+        if self.room_booking_service is not None:
+            contexts.append(("room_booking_service", self.room_booking_service.environment))
+        if self.schedule_service is not None:
+            contexts.append(("schedule_service", self.schedule_service.environment))
+        if self.schedule_assistant_service is not None:
+            contexts.append(("schedule_assistant_service", self.schedule_assistant_service.environment))
         bad = [(name, env.value) for name, env in contexts if env != Environment.DEVELOPMENT]
         if bad:
             names = ", ".join(f"{n}={e}" for n, e in bad)
