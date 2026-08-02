@@ -146,7 +146,7 @@ async def upload_image(id: PydanticObjectId, image_file: UploadFile, auth: INH_T
     return ImageUploadResponse(image_id=image_id)
 
 
-@router.post("/{id}/eligible")
+@router.get("/{id}/eligible")
 async def check_eligible(id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLES) -> Eligibility:
     """Check submission guardrails and report which of them are violated."""
     event = await get_own_draft(id, auth.innohassle_id)

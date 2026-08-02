@@ -66,6 +66,8 @@ def eligibility_reasons(event: Event, roles: UserRoles) -> list[str]:
         reasons.append("Host is not set")
     else:
         reasons.extend(host_policy_reasons(host, roles))
+    if not (event.draft.data.location or "").strip():
+        reasons.append("Location is empty")
     starts_at = event.draft.data.starts_at
     if starts_at is None:
         reasons.append("Event start time is not set")
