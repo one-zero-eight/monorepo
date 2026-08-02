@@ -469,6 +469,13 @@ $defs:
           type: string
         title: Moderator Emails
         type: array
+      preference_link_secret:
+        default: dev-preference-link-secret-change-me
+        description: HMAC secret for signed instructor preference share links
+        format: password
+        title: Preference Link Secret
+        type: string
+        writeOnly: true
       db_url:
         description: PostgreSQL database connection URL
         examples:
