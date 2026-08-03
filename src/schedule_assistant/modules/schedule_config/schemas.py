@@ -36,6 +36,19 @@ class TermTimeSlot(SettingBaseModel):
     "Slot end time"
 
 
+class RoomAttributeDef(SettingBaseModel):
+    key: str
+    "Attribute key stored in room.features"
+    type: Literal["boolean", "string", "number", "enum", "list"]
+    "Value type for this attribute"
+    default: None = None
+    "Reserved; always null (attributes have no defaults)"
+    hint: str | None = None
+    "Short hint shown next to the attribute in the room editor"
+    enum_values: list[str] = Field(default_factory=list)
+    "Allowed values when type is enum; ignored otherwise"
+
+
 class TermConfig(SettingBaseModel):
     class DateRange(SettingBaseModel):
         start_date: dtm.date
@@ -76,6 +89,8 @@ class TermConfig(SettingBaseModel):
     "Allowed course.instructors[].role values (subject roles); empty means unrestricted"
     course_component_tags: list[str] = Field(default_factory=list)
     "Allowed course.components[].tag values; empty means unrestricted"
+    room_attributes: list[RoomAttributeDef] = Field(default_factory=list)
+    "Allowed room.features keys with types; empty means unrestricted legacy keys"
 
 
 class TermPartialUpdate(SettingBaseModel):
@@ -88,6 +103,7 @@ class TermPartialUpdate(SettingBaseModel):
     instructor_positions: list[str] | None = None
     course_instructor_roles: list[str] | None = None
     course_component_tags: list[str] | None = None
+    room_attributes: list[RoomAttributeDef] | None = None
 
 
 class TermResourceConfig(SettingBaseModel):
@@ -103,8 +119,8 @@ class RoomConfig(SettingBaseModel):
         "Human-readable room name"
         capacity: int | None = None
         "Maximum room capacity"
-        features: dict[str, bool | str | int] = Field(default_factory=dict)
-        "Arbitrary room attributes (for example projector, board, outlets); not a fixed enum"
+        features: dict[str, bool | str | int | list[str]] = Field(default_factory=dict)
+        "Room attribute values keyed by term.room_attributes[].key"
 
     rooms: list[Room] = Field(default_factory=list)
     "Available rooms"

@@ -253,6 +253,7 @@ class ScheduleConfigRepository:
                 "instructor_positions": row.instructor_positions or [],
                 "course_instructor_roles": row.course_instructor_roles or [],
                 "course_component_tags": row.course_component_tags or [],
+                "room_attributes": row.room_attributes or [],
             }
         )
 
@@ -270,6 +271,7 @@ class ScheduleConfigRepository:
         row.instructor_positions = payload.get("instructor_positions") or []
         row.course_instructor_roles = payload.get("course_instructor_roles") or []
         row.course_component_tags = payload.get("course_component_tags") or []
+        row.room_attributes = payload.get("room_attributes") or []
         return row
 
     def _merge_term_partial(self, existing: TermConfig | None, partial: TermPartialUpdate) -> TermConfig:
@@ -760,7 +762,12 @@ class ScheduleConfigRepository:
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Room already exists: {room.id!r}")
             old_dump = self._assembled_dump_if_possible(session)
             self._raise_validation_errors(
-                validate_room(room, self._load_room_config(session), courses=self._load_courses_config(session)),
+                validate_room(
+                    room,
+                    self._load_room_config(session),
+                    courses=self._load_courses_config(session),
+                    term=self._load_term_config(session),
+                ),
             )
             session.add(_new_room_row(room))
             session.flush()
@@ -783,7 +790,11 @@ class ScheduleConfigRepository:
             rooms = [item for item in self._load_room_config(session).rooms if item.id != room_id]
             rooms.append(room)
             self._raise_validation_errors(
-                validate_rooms(RoomConfig(rooms=rooms), courses=self._load_courses_config(session)),
+                validate_rooms(
+                    RoomConfig(rooms=rooms),
+                    courses=self._load_courses_config(session),
+                    term=self._load_term_config(session),
+                ),
             )
             if room.id != room_id:
                 if session.get(RoomRow, room.id) is not None:
@@ -840,7 +851,9 @@ class ScheduleConfigRepository:
                 instructors=self._load_instructor_config(session),
                 courses=self._load_courses_config(session),
             )
-            self._raise_validation_errors(validate_rooms(config, courses=ctx.courses))
+            self._raise_validation_errors(
+                validate_rooms(config, courses=ctx.courses, term=self._load_term_config(session))
+            )
             session.execute(delete(RoomRow))
             for room in config.rooms:
                 session.add(_new_room_row(room))
@@ -1003,7 +1016,14 @@ class ScheduleConfigRepository:
                 errors.extend(validate_sections_update(existing_sections, new_sections, courses=new_courses))
                 changed_resources.append("sections")
             if "rooms" in resources:
-                errors.extend(validate_rooms_update(existing_rooms, new_rooms, courses=new_courses))
+                errors.extend(
+                    validate_rooms_update(
+                        existing_rooms,
+                        new_rooms,
+                        courses=new_courses,
+                        term=merged_term,
+                    )
+                )
                 changed_resources.append("rooms")
             if "instructors" in resources:
                 errors.extend(

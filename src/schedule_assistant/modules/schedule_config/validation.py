@@ -8,6 +8,7 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     CoursesConfig,
     InstructorConfig,
     InstructorSlotPreferenceLevel,
+    RoomAttributeDef,
     RoomConfig,
     SectionsConfig,
     SessionOccurrence,
@@ -185,21 +186,100 @@ def validate_term(term: TermConfig) -> list[str]:
     for index, slot in enumerate(term.time_slots):
         if slot.start_time >= slot.end_time:
             errors.append(f"term.time_slots[{index}]: start_time must be before end_time")
+    errors.extend(_validate_room_attribute_defs(term.room_attributes))
     return errors
 
 
-def validate_rooms(config: RoomConfig, *, courses: CoursesConfig) -> list[str]:
+def _validate_room_attribute_defs(defs: list[RoomAttributeDef]) -> list[str]:
+    errors: list[str] = []
+    seen_keys: set[str] = set()
+    for index, attr in enumerate(defs):
+        path = f"term.room_attributes[{index}]"
+        key = attr.key.strip()
+        if not key:
+            errors.append(f"{path}.key must not be empty")
+        elif key in seen_keys:
+            errors.append(f"{path}.key {key!r} is duplicated")
+        else:
+            seen_keys.add(key)
+
+        if attr.default is not None:
+            errors.append(f"{path}.default must be null")
+
+        if attr.type == "enum":
+            values = [value.strip() for value in attr.enum_values]
+            if not any(values):
+                errors.append(f"{path}.enum_values must not be empty when type is enum")
+            empty_indexes = [i for i, value in enumerate(attr.enum_values) if not value.strip()]
+            for empty_index in empty_indexes:
+                errors.append(f"{path}.enum_values[{empty_index}] must not be empty")
+    return errors
+
+
+def _feature_value_matches_type(value: bool | str | int | list[str], attr_type: str) -> bool:
+    if attr_type == "boolean":
+        return isinstance(value, bool)
+    if attr_type == "string" or attr_type == "enum":
+        return isinstance(value, str)
+    if attr_type == "number":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if attr_type == "list":
+        return isinstance(value, list) and all(isinstance(item, str) for item in value)
+    return False
+
+
+def _validate_room_features(
+    room: RoomConfig.Room,
+    *,
+    path: str,
+    attribute_defs: list[RoomAttributeDef],
+) -> list[str]:
+    if not attribute_defs:
+        return []
+    errors: list[str] = []
+    by_key = {attr.key: attr for attr in attribute_defs if attr.key.strip()}
+    for key, value in room.features.items():
+        attr = by_key.get(key)
+        if attr is None:
+            errors.append(f"{path}.features has unknown key {key!r}")
+            continue
+        if not _feature_value_matches_type(value, attr.type):
+            errors.append(f"{path}.features[{key!r}] has invalid type for {attr.type}")
+            continue
+        if attr.type == "enum" and isinstance(value, str) and value not in attr.enum_values:
+            errors.append(f"{path}.features[{key!r}] value {value!r} is not in enum_values")
+        if attr.type == "list" and isinstance(value, list):
+            empty_indexes = [i for i, item in enumerate(value) if not item.strip()]
+            for empty_index in empty_indexes:
+                errors.append(f"{path}.features[{key!r}][{empty_index}] must not be empty")
+    return errors
+
+
+def validate_rooms(
+    config: RoomConfig,
+    *,
+    courses: CoursesConfig,
+    term: TermConfig | None = None,
+) -> list[str]:
     errors: list[str] = []
     room_ids = [room.id for room in config.rooms]
     errors.extend(f"Duplicate room id: {room_id!r}" for room_id in find_duplicates(room_ids))
+    attribute_defs = term.room_attributes if term is not None else []
     for index, room in enumerate(config.rooms):
         if not room.id.strip():
             errors.append(f"rooms[{index}].id must not be empty")
+        errors.extend(_validate_room_features(room, path=f"rooms[{index}]", attribute_defs=attribute_defs))
     return errors
 
 
-def validate_rooms_update(old: RoomConfig, new: RoomConfig, *, courses: CoursesConfig) -> list[str]:
-    errors = validate_rooms(new, courses=courses)
+def validate_rooms_update(
+    old: RoomConfig,
+    new: RoomConfig,
+    *,
+    courses: CoursesConfig,
+    term: TermConfig | None = None,
+) -> list[str]:
+    errors = validate_rooms(new, courses=courses, term=term)
     removed_ids = collect_room_ids(old) - collect_room_ids(new)
     referenced_ids = {
         room_id for room_id in collect_course_references(courses).room_ids if not _is_virtual_room_id(room_id)
@@ -499,8 +579,14 @@ def validate_instructor(
     return validate_instructors(InstructorConfig(instructors=[*instructors.instructors, instructor]), term=term)
 
 
-def validate_room(room: RoomConfig.Room, rooms: RoomConfig, *, courses: CoursesConfig) -> list[str]:
-    return validate_rooms(RoomConfig(rooms=[*rooms.rooms, room]), courses=courses)
+def validate_room(
+    room: RoomConfig.Room,
+    rooms: RoomConfig,
+    *,
+    courses: CoursesConfig,
+    term: TermConfig | None = None,
+) -> list[str]:
+    return validate_rooms(RoomConfig(rooms=[*rooms.rooms, room]), courses=courses, term=term)
 
 
 def validate_student_group(
@@ -546,7 +632,7 @@ def validate_resource_update(
         return validate_term(new_value)
     if resource == "rooms":
         assert isinstance(new_value, RoomConfig) and isinstance(old_value, RoomConfig)
-        return validate_rooms_update(old_value, new_value, courses=ctx.courses)
+        return validate_rooms_update(old_value, new_value, courses=ctx.courses, term=ctx.term)
     if resource == "instructors":
         assert isinstance(new_value, InstructorConfig) and isinstance(old_value, InstructorConfig)
         return validate_instructors_update(old_value, new_value, courses=ctx.courses)

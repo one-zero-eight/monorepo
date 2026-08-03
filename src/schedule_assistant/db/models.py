@@ -21,6 +21,7 @@ class TermRow(Base):
     instructor_positions: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     course_instructor_roles: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     course_component_tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    room_attributes: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
 
 
 class StudentGroupRow(Base):
