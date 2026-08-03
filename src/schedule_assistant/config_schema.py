@@ -19,8 +19,6 @@ class ScheduleAssistantSettings(ServiceSettingsBase):
     app_root_path: str = "/schedule-assistant/v0"
     moderator_emails: list[str] = Field(default_factory=list)
     "Innopolis emails allowed to access moderator-only endpoints"
-    preference_link_secret: SecretStr = SecretStr("dev-preference-link-secret-change-me")
-    "HMAC secret for signed instructor preference share links"
     db_url: SecretStr = Field(
         examples=[
             "postgresql+psycopg://postgres:postgres@127.0.0.1:5432/schedule_assistant",

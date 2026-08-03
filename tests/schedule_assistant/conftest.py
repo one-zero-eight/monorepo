@@ -42,6 +42,7 @@ def schedule_assistant_db_url() -> str:
 
 
 def _prepare_schedule_assistant_schema() -> None:
+    import src.schedule_assistant.db.models  # noqa: F401
     from src.schedule_assistant.config import settings
     from src.schedule_assistant.db.base import Base
     from src.schedule_assistant.db.session import get_engine
@@ -53,6 +54,7 @@ def _prepare_schedule_assistant_schema() -> None:
 
 
 async def _truncate_schedule_assistant_tables() -> None:
+    import src.schedule_assistant.db.models  # noqa: F401
     from src.schedule_assistant.config import settings
     from src.schedule_assistant.db.base import Base
     from src.schedule_assistant.db.session import get_engine
@@ -78,13 +80,23 @@ def schedule_assistant_repo(
     schedule_assistant_postgres: None,
     monkeypatch: pytest.MonkeyPatch,
 ):
+    from src.schedule_assistant.modules.instructor_preferences.repository import PreferenceInviteRepository
     from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
 
     asyncio.run(_truncate_schedule_assistant_tables())
     repo = ScheduleConfigRepository(schedule_assistant_db_url())
+    invite_repo = PreferenceInviteRepository(schedule_assistant_db_url())
     monkeypatch.setattr(
         "src.schedule_assistant.modules.schedule_config.repository.schedule_config_repository",
         repo,
+    )
+    monkeypatch.setattr(
+        "src.schedule_assistant.modules.instructor_preferences.repository.preference_invite_repository",
+        invite_repo,
+    )
+    monkeypatch.setattr(
+        "src.schedule_assistant.modules.instructor_preferences.routes.preference_invite_repository",
+        invite_repo,
     )
     return repo
 

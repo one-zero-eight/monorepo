@@ -1,7 +1,7 @@
 import datetime as dtm
 from typing import Any
 
-from sqlalchemy import JSON, Date, Integer, String
+from sqlalchemy import JSON, Date, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.schedule_assistant.db.base import Base
@@ -64,6 +64,16 @@ class RoomRow(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     capacity: Mapped[int | None] = mapped_column(Integer, nullable=True)
     features: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+
+
+class PreferenceInviteLinkRow(Base):
+    __tablename__ = "preference_invite_links"
+
+    key: Mapped[str] = mapped_column(String, primary_key=True)
+    instructor_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    expires_at: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_by: Mapped[str] = mapped_column(String, nullable=False)
 
 
 class ConfigMetaRow(Base):

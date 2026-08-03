@@ -3,15 +3,13 @@ import datetime as dtm
 from fastapi import APIRouter, HTTPException, status
 
 from src.schedule_assistant.dependencies import ModeratorDep, VerifyTokenDep
+from src.schedule_assistant.modules.instructor_preferences.repository import (
+    preference_invite_repository,
+)
 from src.schedule_assistant.modules.instructor_preferences.schemas import (
     InstructorPreferenceForm,
     InstructorPreferenceUpdate,
     PreferenceShareLinkResponse,
-)
-from src.schedule_assistant.modules.instructor_preferences.tokens import (
-    PreferenceTokenPayload,
-    sign_preference_token,
-    verify_preference_token,
 )
 from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
 from src.schedule_assistant.modules.schedule_config.schemas import InstructorConfig, InstructorSlotPreferenceEntry
@@ -19,8 +17,6 @@ from src.schedule_assistant.modules.schedule_config.validation import validate_i
 from src.schedule_assistant.modules.solver.instructor_preferences import validate_instructor_slot_preferences
 
 router = APIRouter(prefix="/instructor-preferences", tags=["Instructor Preferences"])
-
-TOKEN_TTL = dtm.timedelta(days=30)
 
 
 def _find_instructor_by_email(email: str) -> InstructorConfig.Instructor | None:
@@ -74,6 +70,19 @@ def _save_slot_preferences(
     return saved
 
 
+def _instructor_for_invite_key(token: str) -> InstructorConfig.Instructor:
+    invite = preference_invite_repository.get_active_by_key(token)
+    if invite is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid or expired preference link",
+        )
+    instructor = schedule_config_repository.get_instructor(invite.instructor_id)
+    if instructor is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Instructor not found")
+    return instructor
+
+
 @router.get("/me")
 async def get_my_preferences(user_and_token: VerifyTokenDep) -> InstructorPreferenceForm:
     user, _token = user_and_token
@@ -115,26 +124,20 @@ async def create_preference_share_link(
     if instructor is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Instructor not found: {instructor_id!r}")
 
-    expires_at = dtm.datetime.now(dtm.UTC) + TOKEN_TTL
-    token = sign_preference_token(
-        PreferenceTokenPayload(
-            instructor_id=instructor.id,
-            exp=int(expires_at.timestamp()),
-        )
+    user, _tok = moderator
+    invite = preference_invite_repository.get_or_create_for_instructor(
+        instructor.id,
+        created_by=user.email,
     )
-    _user, _tok = moderator
-    return PreferenceShareLinkResponse(token=token, expires_at=expires_at)
+    expires_at = invite.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=dtm.UTC)
+    return PreferenceShareLinkResponse(token=invite.key, expires_at=expires_at)
 
 
 @router.get("/link/{token}")
 async def get_preferences_by_token(token: str) -> InstructorPreferenceForm:
-    payload = verify_preference_token(token)
-    if payload is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid or expired preference link")
-    instructor = schedule_config_repository.get_instructor(payload.instructor_id)
-    if instructor is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Instructor not found")
-    return _preference_form(instructor)
+    return _preference_form(_instructor_for_invite_key(token))
 
 
 @router.put("/link/{token}")
@@ -142,15 +145,10 @@ async def update_preferences_by_token(
     token: str,
     body: InstructorPreferenceUpdate,
 ) -> InstructorPreferenceForm:
-    payload = verify_preference_token(token)
-    if payload is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid or expired preference link")
-    instructor = schedule_config_repository.get_instructor(payload.instructor_id)
-    if instructor is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Instructor not found")
+    instructor = _instructor_for_invite_key(token)
     saved = _save_slot_preferences(
         instructor,
         body.slot_preferences,
-        saved_by=f"preference-link:{payload.instructor_id}",
+        saved_by=f"preference-link:{instructor.id}",
     )
     return _preference_form(saved)
