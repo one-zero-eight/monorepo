@@ -1,6 +1,7 @@
 import datetime as dtm
 
 import pytest
+import pytest_asyncio
 from pydantic import SecretStr
 
 from src.schedule_assistant.modules.instructor_preferences.tokens import (
@@ -10,7 +11,7 @@ from src.schedule_assistant.modules.instructor_preferences.tokens import (
 )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def preference_fixtures(authenticated_client, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "src.schedule_assistant.dependencies.settings.moderator_emails",
