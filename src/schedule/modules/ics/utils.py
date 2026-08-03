@@ -355,6 +355,7 @@ async def get_personal_sport_ics(user: ViewUser) -> bytes:
 
         vevent = icalendar.Event()
         vevent.add("uid", uid)
+        vevent.add("dtstamp", icalendar.vDatetime(_now))
 
         vevent.add("summary", training.title)
         if training.all_day:
