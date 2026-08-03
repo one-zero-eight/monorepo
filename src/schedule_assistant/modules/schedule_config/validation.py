@@ -203,9 +203,6 @@ def _validate_room_attribute_defs(defs: list[RoomAttributeDef]) -> list[str]:
         else:
             seen_keys.add(key)
 
-        if attr.default is not None:
-            errors.append(f"{path}.default must be null")
-
         if attr.type == "enum":
             values = [value.strip() for value in attr.enum_values]
             if not any(values):

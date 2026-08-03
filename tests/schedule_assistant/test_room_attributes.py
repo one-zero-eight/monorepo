@@ -40,7 +40,7 @@ def test_validate_term_rejects_enum_without_values() -> None:
     assert any("enum_values must not be empty" in error for error in errors)
 
 
-def test_validate_term_rejects_non_null_default() -> None:
+def test_validate_term_rejects_unknown_room_attribute_fields() -> None:
     import pytest
     from pydantic import ValidationError
 

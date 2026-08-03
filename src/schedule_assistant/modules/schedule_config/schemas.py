@@ -41,8 +41,6 @@ class RoomAttributeDef(SettingBaseModel):
     "Attribute key stored in room.features"
     type: Literal["boolean", "string", "number", "enum", "list"]
     "Value type for this attribute"
-    default: None = None
-    "Reserved; always null (attributes have no defaults)"
     hint: str | None = None
     "Short hint shown next to the attribute in the room editor"
     enum_values: list[str] = Field(default_factory=list)
