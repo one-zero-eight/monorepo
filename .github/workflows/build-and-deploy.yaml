@@ -28,6 +28,7 @@ on:
         options:
           - all
           - maps
+          - board-games
           - clubs
           - student-affairs
           - when2meet
