@@ -1,4 +1,5 @@
 import datetime as dtm
+from collections.abc import Sequence
 from typing import Literal
 
 from src.schedule_assistant.modules.issues.issue_text import attach_issue_text
@@ -25,10 +26,74 @@ def _normalize(value: str) -> str:
     return value.strip().casefold()
 
 
-def _source_kind(course_tags: list[str]) -> Literal["core_course", "elective"]:
-    if "core_course" in course_tags:
+def build_token_to_section_kind(sections: SectionsConfig) -> dict[str, str]:
+    """Map group codes and @selectors to section.kind (or students_groups.kind fallback)."""
+    token_to_kind: dict[str, str] = {}
+    for section in sections.sections:
+        kind = str(section.kind or section.code or "").strip().lower()
+        if not kind:
+            continue
+        for program in section.programs:
+            token_to_kind[f"@{program.code}"] = kind
+            for group in program.groups:
+                token_to_kind[group] = kind
+            for track in program.tracks:
+                token_to_kind[f"@{program.code}/{track.name}"] = kind
+                token_to_kind[f"@{program.code}/{track.code}"] = kind
+                for group in track.groups:
+                    token_to_kind[group] = kind
+    for group in sections.students_groups:
+        code = group.code.strip()
+        kind = str(group.kind or "").strip().lower()
+        if code and kind and code not in token_to_kind:
+            token_to_kind[code] = kind
+    return token_to_kind
+
+
+def resolve_section_kind(
+    audiences: Sequence[str],
+    token_to_kind: dict[str, str],
+) -> str | None:
+    for audience in audiences:
+        token = audience.strip()
+        if not token:
+            continue
+        kind = token_to_kind.get(token)
+        if kind is not None:
+            return kind
+        if token.startswith("@") and "/" in token:
+            program_token = token.split("/", 1)[0]
+            kind = token_to_kind.get(program_token)
+            if kind is not None:
+                return kind
+    return None
+
+
+def booking_section_category(section_kind: str | None) -> str:
+    if section_kind is None:
+        return "unknown"
+    if section_kind in ("core", "core_course"):
+        return "core"
+    if section_kind in ("electives", "elective"):
+        return "elective"
+    if section_kind == "english":
+        return "english"
+    return section_kind
+
+
+def source_kind_from_section_kind(
+    section_kind: str | None,
+) -> Literal["core_course", "elective"]:
+    if section_kind in ("core", "core_course"):
         return "core_course"
     return "elective"
+
+
+def source_kind_from_audiences(
+    audiences: Sequence[str],
+    token_to_kind: dict[str, str],
+) -> Literal["core_course", "elective"]:
+    return source_kind_from_section_kind(resolve_section_kind(audiences, token_to_kind))
 
 
 def _group_codes_for_session(
@@ -67,6 +132,7 @@ def _base_meeting(
     *,
     course: CourseConfig,
     component_tag: str,
+    source_kind: Literal["core_course", "elective"],
     group_codes: tuple[str, ...],
     students_number: int | None,
     placement: OccurrencePlacement | WeeklyPatternPlacement,
@@ -78,7 +144,7 @@ def _base_meeting(
     return ScheduledMeeting(
         course_name=course.name,
         component_tag=component_tag,
-        source_kind=_source_kind(course.course_tags),
+        source_kind=source_kind,
         placement=placement,
         start_time=start_time,
         end_time=end_time,
@@ -92,6 +158,7 @@ def _base_meeting(
 def _meeting_from_occurrence(
     course: CourseConfig,
     component_tag: str,
+    source_kind: Literal["core_course", "elective"],
     group_codes: tuple[str, ...],
     students_number: int | None,
     occurrence: SessionOccurrence,
@@ -99,6 +166,7 @@ def _meeting_from_occurrence(
     return _base_meeting(
         course=course,
         component_tag=component_tag,
+        source_kind=source_kind,
         group_codes=group_codes,
         students_number=students_number,
         placement=OccurrencePlacement(date=occurrence.date),
@@ -112,6 +180,7 @@ def _meeting_from_occurrence(
 def _meeting_from_weekly_slot(
     course: CourseConfig,
     component_tag: str,
+    source_kind: Literal["core_course", "elective"],
     group_codes: tuple[str, ...],
     students_number: int | None,
     slot: WeeklyPatternSlot,
@@ -119,6 +188,7 @@ def _meeting_from_weekly_slot(
     return _base_meeting(
         course=course,
         component_tag=component_tag,
+        source_kind=source_kind,
         group_codes=group_codes,
         students_number=students_number,
         placement=WeeklyPatternPlacement(
@@ -156,6 +226,7 @@ def build_group_to_studying_teachers(
 
 def meetings_from_schedule_config(courses: CoursesConfig, sections: SectionsConfig) -> list[ScheduledMeeting]:
     selector_map = build_selector_map(sections)
+    token_to_kind = build_token_to_section_kind(sections)
     meetings: list[ScheduledMeeting] = []
 
     for course in courses.courses:
@@ -164,6 +235,8 @@ def meetings_from_schedule_config(courses: CoursesConfig, sections: SectionsConf
                 continue
             component_groups = component.student_groups
             for session in component.sessions:
+                audience_tokens = session.audience or component_groups
+                source_kind = source_kind_from_audiences(audience_tokens, token_to_kind)
                 group_codes = _group_codes_for_session(component_groups, session, selector_map)
                 students_number = component.expected_enrollment
                 if students_number is None:
@@ -175,6 +248,7 @@ def meetings_from_schedule_config(courses: CoursesConfig, sections: SectionsConf
                             _meeting_from_occurrence(
                                 course,
                                 component.tag,
+                                source_kind,
                                 group_codes,
                                 students_number,
                                 occurrence,
@@ -186,6 +260,7 @@ def meetings_from_schedule_config(courses: CoursesConfig, sections: SectionsConf
                             _meeting_from_weekly_slot(
                                 course,
                                 component.tag,
+                                source_kind,
                                 group_codes,
                                 students_number,
                                 slot,
@@ -201,6 +276,7 @@ def _session_is_placed(session: ComponentSessionSeries) -> bool:
 
 def unplaced_issues_from_schedule_config(courses: CoursesConfig, sections: SectionsConfig) -> list[UnplacedIssue]:
     selector_map = build_selector_map(sections)
+    token_to_kind = build_token_to_section_kind(sections)
     issues: list[UnplacedIssue] = []
 
     for course in courses.courses:
@@ -212,7 +288,7 @@ def unplaced_issues_from_schedule_config(courses: CoursesConfig, sections: Secti
                     issue_type=IssueTypeEnum.UNPLACED,
                     course_name=course.name,
                     component_tag=component.tag,
-                    source_kind=_source_kind(course.course_tags),
+                    source_kind=source_kind_from_audiences(component.student_groups, token_to_kind),
                     student_groups=group_codes,
                 )
                 attach_issue_text(issue)
@@ -222,12 +298,13 @@ def unplaced_issues_from_schedule_config(courses: CoursesConfig, sections: Secti
             for session in sessions:
                 if _session_is_placed(session):
                     continue
+                audience_tokens = session.audience or component.student_groups
                 group_codes = _group_codes_for_session(component.student_groups, session, selector_map)
                 issue = UnplacedIssue(
                     issue_type=IssueTypeEnum.UNPLACED,
                     course_name=course.name,
                     component_tag=component.tag,
-                    source_kind=_source_kind(course.course_tags),
+                    source_kind=source_kind_from_audiences(audience_tokens, token_to_kind),
                     student_groups=group_codes,
                 )
                 attach_issue_text(issue)

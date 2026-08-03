@@ -38,7 +38,6 @@ async def test_unbooked_issue_when_no_matching_booking() -> None:
         courses=[
             CourseConfig(
                 name="Algorithms",
-                course_tags=["core_course"],
                 components=[
                     CourseConfig.Component(
                         tag="lec",
@@ -87,7 +86,6 @@ async def test_no_unbooked_issue_when_booking_matches() -> None:
         courses=[
             CourseConfig(
                 name="Algorithms",
-                course_tags=["core_course"],
                 components=[
                     CourseConfig.Component(
                         tag="lec",

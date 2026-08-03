@@ -65,7 +65,7 @@ def test_resolve_preference_grids_splits_banned_and_discouraged() -> None:
     term = _minimal_term()
     instructor = InstructorConfig.Instructor(
         id="alice@innopolis.ru",
-        position="Professor",
+        position="Full Professor",
         slot_preferences=[
             InstructorSlotPreferenceEntry(
                 weekday=Weekday.MONDAY,

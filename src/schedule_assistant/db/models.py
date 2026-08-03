@@ -18,7 +18,9 @@ class TermRow(Base):
     starting_day: Mapped[str] = mapped_column(String, nullable=False)
     time_slots: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
     sections: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
-    instructor_roles: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    instructor_positions: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    course_instructor_roles: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    course_component_tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
 
 
 class StudentGroupRow(Base):
@@ -38,7 +40,7 @@ class CourseRow(Base):
     short_name: Mapped[str | None] = mapped_column(String, nullable=True)
     name_ru: Mapped[str | None] = mapped_column(String, nullable=True)
     short_name_ru: Mapped[str | None] = mapped_column(String, nullable=True)
-    course_tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    instructors: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
     components: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
 
 

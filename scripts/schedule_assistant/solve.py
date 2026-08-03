@@ -24,12 +24,17 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+from src.schedule_assistant.modules.issues.meetings import (
+    build_token_to_section_kind,
+    source_kind_from_audiences,
+)
 from src.schedule_assistant.modules.schedule_config.helpers import expand_groups, resolve_selector_map
 from src.schedule_assistant.modules.schedule_config.schemas import (
     ComponentSessionSeries,
     CourseConfig,
     CoursesConfig,
     ScheduleConfig,
+    SectionsConfig,
     WeeklyPatternSlot,
 )
 from src.schedule_assistant.modules.solver.helpers import teaching_days
@@ -1396,6 +1401,9 @@ def solve_schedule(
 
     # Precompute static scheduling inputs from config.
     selector_map = resolve_selector_map(cfg)
+    token_to_kind = build_token_to_section_kind(
+        SectionsConfig(sections=cfg.term.sections, students_groups=cfg.students_groups)
+    )
     days = teaching_days(cfg)
     num_days = len(days)
     if num_days == 0:
@@ -1423,8 +1431,8 @@ def solve_schedule(
     # Expand course components into concrete meeting instances (one per week/audience).
     meetings: list[Meeting] = []
     for c_idx, course in enumerate(tqdm(cfg.courses, desc="Building meetings", disable=not show_progress)):
-        is_core_course = "core_course" in {str(t).lower() for t in course.course_tags}
         for cls_idx, cls in enumerate(course.components):
+            is_core_course = source_kind_from_audiences(cls.student_groups, token_to_kind) == "core_course"
             relates_to_value = cls.relates_to
             if relates_to_value is None:
                 relates_to_tuple: tuple[int, ...] | None = None
@@ -1563,7 +1571,6 @@ def solve_schedule(
     for c_idx, course_cfg in enumerate(cfg.courses):
         course_output = CourseConfig(
             name=course_cfg.name,
-            course_tags=list(course_cfg.course_tags),
             components=[],
         )
 

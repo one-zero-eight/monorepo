@@ -16,7 +16,7 @@ DISCOURAGED_BASE_WEIGHT = 1
 
 def instructor_role_multiplier(position: str | None) -> int:
     normalized = (position or "").strip().casefold()
-    if normalized in {"professor", "visiting"}:
+    if normalized in {"full professor", "professor", "visiting"}:
         return 2
     return 1
 

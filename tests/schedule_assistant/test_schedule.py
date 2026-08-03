@@ -70,7 +70,6 @@ def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@t
             courses=[
                 CourseConfig(
                     name="Agentic AI",
-                    course_tags=["elective"],
                     components=[
                         CourseConfig.Component(
                             tag="class",
@@ -101,7 +100,6 @@ def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@t
                 ),
                 CourseConfig(
                     name="Algorithms",
-                    course_tags=["core_course"],
                     components=[
                         CourseConfig.Component(
                             tag="lec",

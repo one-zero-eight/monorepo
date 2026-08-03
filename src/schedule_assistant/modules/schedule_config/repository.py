@@ -67,7 +67,7 @@ def _course_row_payload(row: CourseRow) -> dict[str, Any]:
         "short_name": row.short_name,
         "name_ru": row.name_ru,
         "short_name_ru": row.short_name_ru,
-        "course_tags": row.course_tags,
+        "instructors": row.instructors or [],
         "components": row.components,
     }
 
@@ -78,7 +78,7 @@ def _course_to_row(course: CourseConfig) -> CourseRow:
         short_name=course.short_name,
         name_ru=course.name_ru,
         short_name_ru=course.short_name_ru,
-        course_tags=course.course_tags,
+        instructors=[item.model_dump(mode="json") for item in course.instructors],
         components=[component.model_dump(mode="json") for component in course.components],
     )
 
@@ -219,12 +219,19 @@ class ScheduleConfigRepository:
         )
         return new_revision
 
+    def _load_term_config(self, session: Session) -> TermConfig | None:
+        row = session.get(TermRow, TERM_SINGLETON_ID)
+        if row is None:
+            return None
+        return self._term_row_to_term(row)
+
     def _validation_context(self, session: Session) -> ValidationContext:
         return ValidationContext(
             sections=self._load_sections_config(session),
             rooms=self._load_room_config(session),
             instructors=self._load_instructor_config(session),
             courses=self._load_courses_config(session),
+            term=self._load_term_config(session),
         )
 
     def _raise_validation_errors(self, errors: list[str]) -> None:
@@ -243,7 +250,9 @@ class ScheduleConfigRepository:
                 "starting_day": row.starting_day,
                 "time_slots": row.time_slots,
                 "sections": row.sections,
-                "instructor_roles": row.instructor_roles or [],
+                "instructor_positions": row.instructor_positions or [],
+                "course_instructor_roles": row.course_instructor_roles or [],
+                "course_component_tags": row.course_component_tags or [],
             }
         )
 
@@ -258,7 +267,9 @@ class ScheduleConfigRepository:
         row.starting_day = payload["starting_day"]
         row.time_slots = payload["time_slots"]
         row.sections = payload["sections"]
-        row.instructor_roles = payload.get("instructor_roles") or []
+        row.instructor_positions = payload.get("instructor_positions") or []
+        row.course_instructor_roles = payload.get("course_instructor_roles") or []
+        row.course_component_tags = payload.get("course_component_tags") or []
         return row
 
     def _merge_term_partial(self, existing: TermConfig | None, partial: TermPartialUpdate) -> TermConfig:
@@ -441,7 +452,7 @@ class ScheduleConfigRepository:
                 row.short_name = course.short_name
                 row.name_ru = course.name_ru
                 row.short_name_ru = course.short_name_ru
-                row.course_tags = course.course_tags
+                row.instructors = [item.model_dump(mode="json") for item in course.instructors]
                 row.components = [component.model_dump(mode="json") for component in course.components]
             session.flush()
             revision = self._append_history(
@@ -484,6 +495,7 @@ class ScheduleConfigRepository:
                 rooms=self._load_room_config(session),
                 instructors=self._load_instructor_config(session),
                 courses=CoursesConfig(),
+                term=self._load_term_config(session),
             )
             self._raise_validation_errors(validate_courses(config, ctx))
             session.execute(delete(CourseRow))
@@ -491,7 +503,7 @@ class ScheduleConfigRepository:
                 session.add(
                     CourseRow(
                         name=course.name,
-                        course_tags=course.course_tags,
+                        instructors=[item.model_dump(mode="json") for item in course.instructors],
                         components=[component.model_dump(mode="json") for component in course.components],
                     )
                 )
@@ -978,6 +990,7 @@ class ScheduleConfigRepository:
                 rooms=new_rooms,
                 instructors=new_instructors,
                 courses=new_courses,
+                term=merged_term,
             )
 
             errors: list[str] = []

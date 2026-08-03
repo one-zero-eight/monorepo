@@ -29,6 +29,7 @@ class ValidationContext:
     rooms: RoomConfig
     instructors: InstructorConfig
     courses: CoursesConfig
+    term: TermConfig | None = None
 
 
 def find_duplicates(values: Iterable[str]) -> list[str]:
@@ -251,13 +252,15 @@ def validate_instructors(config: InstructorConfig, *, term: TermConfig | None = 
     errors: list[str] = []
     instructor_ids = [instructor.id for instructor in config.instructors]
     errors.extend(f"Duplicate instructor id: {instructor_id!r}" for instructor_id in find_duplicates(instructor_ids))
-    allowed_roles = [role for role in (term.instructor_roles if term is not None else []) if role.strip()]
+    allowed_positions = [
+        position for position in (term.instructor_positions if term is not None else []) if position.strip()
+    ]
     for index, instructor in enumerate(config.instructors):
         if not instructor.id.strip():
             errors.append(f"instructors[{index}].id must not be empty")
         position = (instructor.position or "").strip()
-        if allowed_roles and position and position not in allowed_roles:
-            errors.append(f"instructors[{index}].position {position!r} is not in term.instructor_roles")
+        if allowed_positions and position and position not in allowed_positions:
+            errors.append(f"instructors[{index}].position {position!r} is not in term.instructor_positions")
         if term is not None:
             errors.extend(
                 _validate_instructor_slot_preferences(
@@ -372,9 +375,34 @@ def validate_courses(config: CoursesConfig, ctx: ValidationContext) -> list[str]
     errors.extend(f"Duplicate course name: {name!r}" for name in find_duplicates(course_names))
 
     for course_index, course in enumerate(config.courses):
+        course_path = f"courses[{course_index}]"
+        assignment_ids = [item.id for item in course.instructors]
+        errors.extend(
+            f"{course_path}.instructors duplicate instructor id: {item_id!r}"
+            for item_id in find_duplicates(assignment_ids)
+        )
+        allowed_roles = [
+            role for role in (ctx.term.course_instructor_roles if ctx.term is not None else []) if role.strip()
+        ]
+        allowed_tags = [tag for tag in (ctx.term.course_component_tags if ctx.term is not None else []) if tag.strip()]
+        for assignment_index, assignment in enumerate(course.instructors):
+            assignment_path = f"{course_path}.instructors[{assignment_index}]"
+            if not assignment.id.strip():
+                errors.append(f"{assignment_path}.id must not be empty")
+            elif assignment.id not in instructor_ids:
+                errors.append(f"{assignment_path}.id references unknown instructor {assignment.id!r}")
+            role = assignment.role.strip()
+            if not role:
+                errors.append(f"{assignment_path}.role must not be empty")
+            elif allowed_roles and role not in allowed_roles:
+                errors.append(f"{assignment_path}.role {role!r} is not in term.course_instructor_roles")
+
         component_count = len(course.components)
         for component_index, component in enumerate(course.components):
-            path = f"courses[{course_index}].components[{component_index}]"
+            path = f"{course_path}.components[{component_index}]"
+            tag = str(component.tag or "").strip()
+            if allowed_tags and tag and tag not in allowed_tags:
+                errors.append(f"{path}.tag {tag!r} is not in term.course_component_tags")
             for token in component.student_groups:
                 if not _is_known_group_token(token, group_codes, selector_map):
                     errors.append(f"{path}.student_groups references unknown group or selector {token!r}")

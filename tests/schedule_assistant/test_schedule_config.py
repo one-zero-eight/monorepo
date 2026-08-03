@@ -182,10 +182,9 @@ async def test_update_course_leaves_other_resources_unchanged(
 
     response = await authenticated_client.put(
         "/schedule-config/courses/Algorithms",
-        json=CourseConfig(name="Algorithms", course_tags=["core_course"], components=[]).model_dump(mode="json"),
+        json=CourseConfig(name="Algorithms", components=[]).model_dump(mode="json"),
     )
     assert response.status_code == 200
-    assert response.json()["course_tags"] == ["core_course"]
 
     assembled_response = await authenticated_client.get("/schedule-config/")
     assert assembled_response.json()["rooms"][0]["id"] == "108"
@@ -216,7 +215,6 @@ async def test_non_moderator_sees_only_scheduled_instructors(
     schedule_config_repo.create_course(
         CourseConfig(
             name="Agentic AI",
-            course_tags=["elective"],
             components=[
                 CourseConfig.Component(
                     tag="class",
@@ -285,7 +283,6 @@ async def test_moderator_sees_all_instructors(
     schedule_config_repo.create_course(
         CourseConfig(
             name="Agentic AI",
-            course_tags=["elective"],
             components=[
                 CourseConfig.Component(
                     tag="class",

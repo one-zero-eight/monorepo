@@ -177,7 +177,6 @@ def test_meetings_from_schedule_config() -> None:
         courses=[
             CourseConfig(
                 name="Agentic AI",
-                course_tags=["elective"],
                 components=[
                     CourseConfig.Component(
                         tag="class",
@@ -201,7 +200,6 @@ def test_meetings_from_schedule_config() -> None:
             ),
             CourseConfig(
                 name="Algorithms",
-                course_tags=["core_course"],
                 components=[
                     CourseConfig.Component(
                         tag="lec",
@@ -285,7 +283,6 @@ def test_co_teaching_produces_single_meeting() -> None:
         courses=[
             CourseConfig(
                 name="Co-taught Course",
-                course_tags=["core_course"],
                 components=[
                     CourseConfig.Component(
                         tag="lec",
@@ -322,7 +319,6 @@ def test_unplaced_issues_from_schedule_config() -> None:
         courses=[
             CourseConfig(
                 name="Unplaced Course",
-                course_tags=["core_course"],
                 components=[
                     CourseConfig.Component(tag="lec", student_groups=["G1"]),
                 ],

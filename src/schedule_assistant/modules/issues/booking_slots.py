@@ -2,6 +2,12 @@ import datetime as dtm
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from src.schedule_assistant.modules.issues.meetings import (
+    booking_section_category,
+    build_token_to_section_kind,
+    resolve_section_kind,
+    source_kind_from_audiences,
+)
 from src.schedule_assistant.modules.issues.schemas import (
     OccurrencePlacement,
     ScheduledMeeting,
@@ -76,21 +82,6 @@ def _slot_bookable(room: str | None, known_room_ids: set[str]) -> tuple[bool, st
     if room not in known_room_ids:
         return False, "unknown room"
     return True, None
-
-
-def _source_kind(course_tags: list[str]) -> Literal["core_course", "elective"]:
-    if "core_course" in course_tags:
-        return "core_course"
-    return "elective"
-
-
-def _section_label(course_tags: list[str]) -> str:
-    for tag in course_tags:
-        if tag == "core_course":
-            return "core"
-        if tag:
-            return tag
-    return "unknown"
 
 
 def _program_code_from_audiences(audiences: list[str]) -> str:
@@ -206,13 +197,14 @@ def _recurrence_segments_excluding_edit_weeks(
 
 
 def _booking_categories(
-    course: CourseConfig,
     audiences: list[str],
+    course_name: str,
+    token_to_kind: dict[str, str],
 ) -> list[str]:
     return [
-        _section_label(list(course.course_tags)),
+        booking_section_category(resolve_section_kind(audiences, token_to_kind)),
         _program_code_from_audiences(audiences),
-        course.name,
+        course_name,
     ]
 
 
@@ -258,6 +250,7 @@ def _build_payload(
     audiences: list[str],
     group_codes: tuple[str, ...],
     source_kind: Literal["core_course", "elective"],
+    token_to_kind: dict[str, str],
     instructor: str | list[str] | None,
     room: str | None,
     meeting_date: dtm.date | str,
@@ -289,7 +282,7 @@ def _build_payload(
         "start": start.isoformat(),
         "end": end.isoformat(),
         "participant_emails": [],
-        "categories": _booking_categories(course, audiences),
+        "categories": _booking_categories(audiences, course.name, token_to_kind),
     }
     if recurrence is not None:
         payload["recurrence"] = recurrence
@@ -302,6 +295,8 @@ def _slots_from_weekly_pattern(
     component_tag: str,
     audiences: list[str],
     group_codes: tuple[str, ...],
+    source_kind: Literal["core_course", "elective"],
+    token_to_kind: dict[str, str],
     pattern: WeeklyPatternSlot,
     term: TermConfig,
     known_room_ids: set[str],
@@ -312,7 +307,6 @@ def _slots_from_weekly_pattern(
     start_time = pattern.start_time.strftime("%H:%M:%S")
     end_time = pattern.end_time.strftime("%H:%M:%S")
     base_room = _normalize_room(pattern.room)
-    source_kind = _source_kind(course.course_tags)
     slots: list[BookableSlot] = []
     excluded_week_starts: set[dtm.date] = set()
 
@@ -335,6 +329,7 @@ def _slots_from_weekly_pattern(
             audiences=audiences,
             group_codes=group_codes,
             source_kind=source_kind,
+            token_to_kind=token_to_kind,
             instructor=resolved_instructor,
             room=resolved_room,
             meeting_date=resolved_date,
@@ -353,6 +348,7 @@ def _slots_from_weekly_pattern(
             audiences=audiences,
             group_codes=group_codes,
             source_kind=source_kind,
+            token_to_kind=token_to_kind,
             instructor=instructor,
             room=base_room,
             meeting_date=str(day_label),
@@ -381,10 +377,10 @@ def build_bookable_slots(
     from src.schedule_assistant.modules.schedule_config.validation import build_selector_map, expand_group_tokens
 
     selector_map = build_selector_map(sections)
+    token_to_kind = build_token_to_section_kind(sections)
     slots: list[BookableSlot] = []
 
     for course in courses.courses:
-        source_kind = _source_kind(course.course_tags)
         for component in course.components:
             if not component.sessions:
                 continue
@@ -392,6 +388,7 @@ def build_bookable_slots(
                 audiences = _session_audiences(component, session)
                 if not audiences:
                     continue
+                source_kind = source_kind_from_audiences(audiences, token_to_kind)
                 group_codes = tuple(sorted(expand_group_tokens(audiences, selector_map)))
                 instructor = None
                 if session.occurrences:
@@ -410,6 +407,7 @@ def build_bookable_slots(
                         audiences=audiences,
                         group_codes=group_codes,
                         source_kind=source_kind,
+                        token_to_kind=token_to_kind,
                         instructor=occurrence.instructor,
                         room=room,
                         meeting_date=occurrence.date,
@@ -429,6 +427,8 @@ def build_bookable_slots(
                             component_tag=str(component.tag),
                             audiences=audiences,
                             group_codes=group_codes,
+                            source_kind=source_kind,
+                            token_to_kind=token_to_kind,
                             pattern=pattern,
                             term=term,
                             known_room_ids=known_room_ids,

@@ -179,7 +179,6 @@ def test_per_week_issue_when_slot_count_mismatch() -> None:
         courses=[
             CourseConfig(
                 name="Algorithms",
-                course_tags=["core_course"],
                 components=[
                     CourseConfig.Component(
                         tag="lec",
@@ -219,7 +218,6 @@ def test_no_per_week_issue_when_count_matches() -> None:
         courses=[
             CourseConfig(
                 name="Algorithms",
-                course_tags=["core_course"],
                 components=[
                     CourseConfig.Component(
                         tag="lec",
