@@ -5,6 +5,7 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter, HTTPException, UploadFile
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 from PIL import Image
+from starlette.responses import RedirectResponse
 
 from src.dependencies import INH_TOKEN_AUTH
 from src.events import repo as events_repo
@@ -144,6 +145,16 @@ async def upload_image(id: PydanticObjectId, image_file: UploadFile, auth: INH_T
     event.draft.revision = utcnow()
     await event.save()
     return ImageUploadResponse(image_id=image_id)
+
+
+@router.get("/{id}/image")
+async def get_draft_image(id: PydanticObjectId, auth: INH_TOKEN_AUTH) -> RedirectResponse:
+    """Redirect to the draft image in MinIO."""
+    event = await get_own_draft(id, auth.innohassle_id)
+    image_id = event.draft.data.image_id
+    if not image_id:
+        raise HTTPException(status_code=404, detail="No image available")
+    return RedirectResponse(url=images_repo.get_url(image_id))
 
 
 @router.get("/{id}/eligible")

@@ -1,10 +1,12 @@
 from beanie import PydanticObjectId
 from fastapi import APIRouter, HTTPException
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
+from starlette.responses import RedirectResponse
 
 from src.dependencies import INH_TOKEN_AUTH
 from src.events import repo as events_repo
 from src.events.dependencies import MODERATOR_AUTH, ROLES
+from src.events.images_repo import images_repo
 from src.events.mongo import Event, Moderation, ModerationStatus, PublicEvent, Submission
 from src.events.schemas import DeclineBody, FeedbackBody, SubmissionListItem, SubmissionOut
 from src.events.service import build_submission_data, eligibility_reasons, get_own_draft, utcnow
@@ -73,6 +75,18 @@ async def get_submission(id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLE
     if not roles.is_moderator and event.creator_id != auth.innohassle_id:
         raise HTTPException(status_code=404, detail="Submission not found")
     return build_submission_out(event, submission)
+
+
+@router.get("/{id}/image")
+async def get_submission_image(id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLES) -> RedirectResponse:
+    """Redirect to the submission image in MinIO."""
+    event, submission = await _get_submission_or_404(id)
+    if not roles.is_moderator and event.creator_id != auth.innohassle_id:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    image_id = submission.data.image_id
+    if not image_id:
+        raise HTTPException(status_code=404, detail="No image available")
+    return RedirectResponse(url=images_repo.get_url(image_id))
 
 
 @router.post("/{id}/approve")
