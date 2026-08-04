@@ -177,9 +177,7 @@ def test_submission_image_redirect(events_client: TestClient, user_headers, plai
     fill_locales(events_client, created["id"], user_headers)
     submit(events_client, created["id"], user_headers)
 
-    no_image = events_client.get(
-        f"/submissions/{created['id']}/image", headers=user_headers, follow_redirects=False
-    )
+    no_image = events_client.get(f"/submissions/{created['id']}/image", headers=user_headers, follow_redirects=False)
     assert no_image.status_code == 404
 
     events_client.delete(f"/submissions/{created['id']}", headers=user_headers)
@@ -192,9 +190,7 @@ def test_submission_image_redirect(events_client: TestClient, user_headers, plai
     image_id = upload.json()["image_id"]
     submit(events_client, created["id"], user_headers)
 
-    response = events_client.get(
-        f"/submissions/{created['id']}/image", headers=user_headers, follow_redirects=False
-    )
+    response = events_client.get(f"/submissions/{created['id']}/image", headers=user_headers, follow_redirects=False)
     assert response.status_code == 307
     assert image_id in response.headers["location"]
 
