@@ -15,6 +15,7 @@ DO NOT USE response_model= in route decorator, use type hints instead:
     async def scenes() -> list[Scene]:
         return await repo.get_all_scenes()
 
+
     # Bad.
     @router.get("/scenes/", response_model=list[Scene])
     async def scenes():
