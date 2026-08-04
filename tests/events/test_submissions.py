@@ -1,6 +1,15 @@
+from io import BytesIO
+
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from tests.events.helpers import create_draft, fill_locales, submit
+
+
+def _white_png() -> bytes:
+    buf = BytesIO()
+    Image.new("RGB", (32, 32), color=(255, 255, 255)).save(buf, format="PNG")
+    return buf.getvalue()
 
 
 def test_submit_incomplete_draft_rejected(events_client: TestClient, user_headers: dict[str, str]):
@@ -161,3 +170,41 @@ def test_get_submission_visibility(events_client: TestClient, user_headers, plai
     assert events_client.get(f"/submissions/{created['id']}", headers=user_headers).status_code == 200
     assert events_client.get(f"/submissions/{created['id']}", headers=superadmin_headers).status_code == 200
     assert events_client.get(f"/submissions/{created['id']}", headers=plain_user_headers).status_code == 404
+
+
+def test_submission_image_redirect(events_client: TestClient, user_headers, plain_user_headers, superadmin_headers):
+    created = create_draft(events_client, user_headers)
+    fill_locales(events_client, created["id"], user_headers)
+    submit(events_client, created["id"], user_headers)
+
+    no_image = events_client.get(
+        f"/submissions/{created['id']}/image", headers=user_headers, follow_redirects=False
+    )
+    assert no_image.status_code == 404
+
+    events_client.delete(f"/submissions/{created['id']}", headers=user_headers)
+    upload = events_client.post(
+        f"/drafts/{created['id']}/image",
+        files={"image_file": ("image.png", _white_png(), "image/png")},
+        headers=user_headers,
+    )
+    assert upload.status_code == 200
+    image_id = upload.json()["image_id"]
+    submit(events_client, created["id"], user_headers)
+
+    response = events_client.get(
+        f"/submissions/{created['id']}/image", headers=user_headers, follow_redirects=False
+    )
+    assert response.status_code == 307
+    assert image_id in response.headers["location"]
+
+    moderator = events_client.get(
+        f"/submissions/{created['id']}/image", headers=superadmin_headers, follow_redirects=False
+    )
+    assert moderator.status_code == 307
+    assert image_id in moderator.headers["location"]
+
+    forbidden = events_client.get(
+        f"/submissions/{created['id']}/image", headers=plain_user_headers, follow_redirects=False
+    )
+    assert forbidden.status_code == 404

@@ -223,6 +223,24 @@ def test_upload_image(events_client: TestClient, user_headers: dict[str, str]):
     assert invalid.status_code == 400
 
 
+def test_draft_image_redirect(events_client: TestClient, user_headers: dict[str, str]):
+    created = create_draft(events_client, user_headers)
+    missing = events_client.get(f"/drafts/{created['id']}/image", headers=user_headers, follow_redirects=False)
+    assert missing.status_code == 404
+
+    upload = events_client.post(
+        f"/drafts/{created['id']}/image",
+        files={"image_file": ("image.png", _white_png(), "image/png")},
+        headers=user_headers,
+    )
+    assert upload.status_code == 200
+    image_id = upload.json()["image_id"]
+
+    response = events_client.get(f"/drafts/{created['id']}/image", headers=user_headers, follow_redirects=False)
+    assert response.status_code == 307
+    assert image_id in response.headers["location"]
+
+
 def test_restore_from_submission(events_client: TestClient, user_headers: dict[str, str]):
     created = create_draft(events_client, user_headers)
     fill_locales(events_client, created["id"], user_headers)
