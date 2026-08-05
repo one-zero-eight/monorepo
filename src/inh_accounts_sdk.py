@@ -1,7 +1,9 @@
 # This file should be synced with:
 # https://github.com/one-zero-eight/accounts/blob/main/inh_accounts_sdk.py
 
+import base64
 import datetime as dtm
+import json
 import logging
 from logging import Logger
 from typing import Any
@@ -12,6 +14,8 @@ from joserfc.errors import JoseError
 from joserfc.jwk import RSAKey
 from joserfc.jwt import JWTClaimsRegistry
 from pydantic import BaseModel, SecretStr
+
+_TOKEN_EXPIRY_WARN_DAYS = 14
 
 
 class TelegramInfo(BaseModel):
@@ -53,6 +57,18 @@ class RoomTvTokenData(BaseModel):
     "Room ID in Room Booking service"
 
 
+def _peek_jwt_claims(token: str) -> dict[str, Any] | None:
+    """Read JWT payload without verifying signature (for local expiry checks)."""
+    try:
+        parts = token.split(".")
+        if len(parts) != 3:
+            return None
+        payload_b64 = parts[1] + "=" * (-len(parts[1]) % 4)
+        return json.loads(base64.urlsafe_b64decode(payload_b64))
+    except ValueError, json.JSONDecodeError:
+        return None
+
+
 class InNoHassleAccounts:
     api_url: str
     api_jwt_token: str | SecretStr | None
@@ -78,16 +94,51 @@ class InNoHassleAccounts:
             self.logger.warning(
                 "InNoHassle Accounts API JWT token is not set, you will not be able to call service endpoints that require authorization"
             )
+        else:
+            self._warn_if_api_jwt_expiring_soon()
+
+    def _api_jwt_token_value(self) -> str | None:
+        if self.api_jwt_token is None:
+            return None
+        if isinstance(self.api_jwt_token, SecretStr):
+            return self.api_jwt_token.get_secret_value()
+        return self.api_jwt_token
+
+    def _warn_if_api_jwt_expiring_soon(self) -> None:
+        token = self._api_jwt_token_value()
+        if not token:
+            return
+        claims = _peek_jwt_claims(token)
+        if claims is None:
+            return
+        exp = claims.get("exp")
+        if exp is None:
+            return
+        try:
+            expires_at = dtm.datetime.fromtimestamp(exp, tz=dtm.UTC)
+        except TypeError, OSError, ValueError:
+            return
+        remaining = expires_at - dtm.datetime.now(dtm.UTC)
+        if remaining <= dtm.timedelta(days=_TOKEN_EXPIRY_WARN_DAYS):
+            if remaining.total_seconds() <= 0:
+                self.logger.warning(
+                    "InNoHassle Accounts API JWT token has already expired at %s. "
+                    "Regenerate via /tokens/generate-service-token",
+                    expires_at.isoformat(),
+                )
+            else:
+                self.logger.warning(
+                    "InNoHassle Accounts API JWT token expires in %s days (at %s). "
+                    "Regenerate via /tokens/generate-service-token",
+                    remaining.days,
+                    expires_at.isoformat(),
+                )
 
     def _ensure_http_client(self) -> httpx.AsyncClient:
         if self._http is None:
             headers: dict[str, str] = {}
-            if self.api_jwt_token is not None:
-                token = (
-                    self.api_jwt_token.get_secret_value()
-                    if isinstance(self.api_jwt_token, SecretStr)
-                    else self.api_jwt_token
-                )
+            token = self._api_jwt_token_value()
+            if token is not None:
                 headers["Authorization"] = f"Bearer {token}"
             self._http = httpx.AsyncClient(base_url=self.api_url, headers=headers)
         return self._http
@@ -176,7 +227,7 @@ class InNoHassleAccounts:
             return None
 
     def get_authorized_client(self) -> httpx.AsyncClient:
-        if self.api_jwt_token is None:
+        if self._api_jwt_token_value() is None:
             raise ValueError("API JWT token is not set")
         return self._ensure_http_client()
 

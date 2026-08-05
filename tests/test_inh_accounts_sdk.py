@@ -1,3 +1,6 @@
+import base64
+import datetime as dtm
+import json
 import logging
 from unittest.mock import Mock
 
@@ -8,6 +11,16 @@ import respx
 from src.inh_accounts_sdk import InNoHassleAccounts
 
 _TEST_API_JWT = "token"
+
+
+def _make_unsigned_jwt(*, exp: int | None) -> str:
+    def b64(data: dict) -> str:
+        return base64.urlsafe_b64encode(json.dumps(data).encode()).rstrip(b"=").decode()
+
+    payload: dict = {"sub": "test"}
+    if exp is not None:
+        payload["exp"] = exp
+    return f"{b64({'alg': 'none'})}.{b64(payload)}.sig"
 
 
 def test_init_logs_warning_when_token_missing(caplog):
@@ -22,6 +35,43 @@ def test_init_uses_default_logger_when_not_provided(monkeypatch):
         m.setattr(logging, "getLogger", lambda _name=None: logger)
         InNoHassleAccounts(api_url="https://example.test", api_jwt_token=None, logger=None)
         logger.warning.assert_called_once()
+
+
+def test_init_warns_when_token_expires_within_14_days():
+    logger = Mock(spec=logging.Logger)
+    exp = int((dtm.datetime.now(dtm.UTC) + dtm.timedelta(days=7)).timestamp())
+    InNoHassleAccounts(
+        api_url="https://example.test",
+        api_jwt_token=_make_unsigned_jwt(exp=exp),
+        logger=logger,
+    )
+    assert logger.warning.call_count == 1
+    msg = logger.warning.call_args.args[0]
+    assert "expires in" in msg
+    assert "generate-service-token" in msg
+
+
+def test_init_warns_when_token_already_expired():
+    logger = Mock(spec=logging.Logger)
+    exp = int((dtm.datetime.now(dtm.UTC) - dtm.timedelta(days=1)).timestamp())
+    InNoHassleAccounts(
+        api_url="https://example.test",
+        api_jwt_token=_make_unsigned_jwt(exp=exp),
+        logger=logger,
+    )
+    assert logger.warning.call_count == 1
+    assert "already expired" in logger.warning.call_args.args[0]
+
+
+def test_init_does_not_warn_when_token_far_from_expiry():
+    logger = Mock(spec=logging.Logger)
+    exp = int((dtm.datetime.now(dtm.UTC) + dtm.timedelta(days=60)).timestamp())
+    InNoHassleAccounts(
+        api_url="https://example.test",
+        api_jwt_token=_make_unsigned_jwt(exp=exp),
+        logger=logger,
+    )
+    logger.warning.assert_not_called()
 
 
 def test_get_public_key_raises_when_keyset_not_initialized():
