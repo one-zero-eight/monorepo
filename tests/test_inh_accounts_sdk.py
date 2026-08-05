@@ -2,6 +2,7 @@ import base64
 import datetime as dtm
 import json
 import logging
+from pathlib import Path
 from unittest.mock import Mock
 
 import httpx
@@ -114,6 +115,28 @@ async def test_update_key_set_skipped_when_mock():
     accounts = InNoHassleAccounts(api_url="https://unreachable.invalid", api_jwt_token=None, mock=True)
     await accounts.update_key_set()
     assert accounts.key_set == {"keys": []}
+
+
+@pytest.mark.asyncio
+async def test_update_key_set_uses_committed_fallback_when_fetch_fails():
+    accounts = InNoHassleAccounts(api_url="https://example.test", api_jwt_token=_TEST_API_JWT)
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.get("https://example.test/.well-known/jwks.json").mock(side_effect=httpx.ConnectError("offline"))
+        await accounts.update_key_set()
+    fallback_path = Path(__file__).resolve().parents[1] / "src" / "inh_accounts_jwks.json"
+    assert accounts.key_set == json.loads(fallback_path.read_text(encoding="utf-8"))
+    await accounts.aclose()
+
+
+@pytest.mark.asyncio
+async def test_update_key_set_prefers_live_jwks_over_fallback():
+    live = {"keys": [{"kid": "public", "kty": "RSA", "n": "live", "e": "AQAB"}]}
+    accounts = InNoHassleAccounts(api_url="https://example.test", api_jwt_token=_TEST_API_JWT)
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.get("https://example.test/.well-known/jwks.json").mock(return_value=httpx.Response(200, json=live))
+        await accounts.update_key_set()
+    assert accounts.key_set == live
+    await accounts.aclose()
 
 
 def test_get_authorized_client_raises_without_api_token():
