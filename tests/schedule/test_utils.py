@@ -3,7 +3,7 @@ import datetime as dtm
 import icalendar
 import pytest
 
-from src.schedule.modules.parse.utils import (
+from src.schedule.utils import (
     aware_utcnow,
     get_current_year,
     locate_ics_by_path,

@@ -24,9 +24,9 @@ from src.schedule.modules.ics.utils import (
     get_personal_sport_ics,
     get_personal_workshops_ics,
 )
-from src.schedule.modules.parse.utils import locate_ics_by_path
 from src.schedule.modules.users.linked import LinkedCalendarView
 from src.schedule.modules.users.repository import user_repository
+from src.schedule.utils import locate_ics_by_path
 
 router = APIRouter(prefix="", tags=["ICS"], route_class=AutoDeriveResponsesAPIRoute)
 

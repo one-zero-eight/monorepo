@@ -19,9 +19,9 @@ from src.inh_accounts_sdk import inh_accounts
 from src.logging_ import logger
 from src.schedule.config import settings
 from src.schedule.modules.event_groups.repository import event_group_repository
-from src.schedule.modules.parse.utils import aware_utcnow, get_base_calendar, locate_ics_by_path
 from src.schedule.modules.predefined.repository import predefined_repository
 from src.schedule.modules.users.schemas import ViewUser
+from src.schedule.utils import aware_utcnow, get_base_calendar, locate_ics_by_path
 
 TIMEOUT = 60
 MAX_SIZE = 10 * 1024 * 1024

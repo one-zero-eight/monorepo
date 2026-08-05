@@ -1,21 +1,16 @@
 __all__ = [
     "TIMEZONE",
     "aware_utcnow",
-    "get_color",
+    "get_base_calendar",
     "get_current_year",
-    "get_weekday_rrule",
     "locate_ics_by_path",
-    "nearest_weekday",
-    "sluggify",
     "validate_calendar",
     "validate_vevent",
 ]
 
 import datetime as dtm
-import re
 from pathlib import Path, PurePath
 from typing import Any, cast
-from zlib import crc32
 
 import dateutil.rrule
 import icalendar
@@ -25,94 +20,9 @@ from src.schedule.config import settings
 TIMEZONE = "Europe/Moscow"
 
 
-def nearest_weekday(date: dtm.date, day: int | str) -> dtm.date:
-    """
-    Returns the date of the next given weekday after
-    the given date. For example, the date of next Monday.
-
-    :param date: date to start from
-    :type date: datetime.date
-    :param day: weekday to find (0 is Monday, 6 is Sunday)
-    :type day: int
-    :return: date of the next given weekday
-    :rtype: datetime.date
-    """
-    if isinstance(day, str):
-        day = ["mo", "tu", "we", "th", "fr", "sa", "su"].index(day[:2].lower())
-
-    days = (day - date.weekday() + 7) % 7
-    return date + dtm.timedelta(days=days)
-
-
 def get_current_year() -> int:
     """Returns current year."""
     return dtm.datetime.now(dtm.UTC).year
-
-
-def get_weekday_rrule(end_date: dtm.date) -> dict:
-    """
-    Get RRULE for recurrence with weekly interval and end date.
-
-    :param end_date: end date
-    :type end_date: datetime.date
-    :return: RRULE dictionary with weekly interval and end date.
-        See `here <https://icalendar.org/iCalendar-RFC-5545/3-8-5-3-recurrence-rule.html>`__
-    :rtype: dict
-    """
-    return {"FREQ": "WEEKLY", "INTERVAL": 1, "UNTIL": end_date}
-
-
-css3colors = list(
-    {
-        "brown",
-        "cadetblue",
-        "chocolate",
-        "darkcyan",
-        "darkgreen",
-        "darkmagenta",
-        "darkolivegreen",
-        "darkred",
-        "darkslateblue",
-        "darkslategray",
-        "dimgray",
-        "firebrick",
-        "forestgreen",
-        "gray",
-        "indianred",
-        "lightslategray",
-        "maroon",
-        "mediumvioletred",
-        "midnightblue",
-        "indigo",
-        "rebeccapurple",
-        "seagreen",
-        "teal",
-    }
-)
-
-
-def get_color(to_hash: str):
-    hash_ = crc32(to_hash.encode("utf-8"))
-    return css3colors[hash_ % len(css3colors)]
-
-
-def sluggify(s: str) -> str:
-    """
-    Sluggify string.
-
-    :param s: string to sluggify
-    :type s: str
-    :return: sluggified string
-    :rtype: str
-    """
-    s = s.lower()
-    # also translates special symbols, brackets, commas, etc.
-    s = re.sub(r"[^a-z0-9а-я\s-]", " ", s)
-    s = re.sub(r"\s+", "-", s)
-    # remove multiple dashes
-    s = re.sub(r"-{2,}", "-", s)
-
-    return s
 
 
 def validate_calendar(calendar: icalendar.Calendar):
@@ -123,9 +33,6 @@ def validate_calendar(calendar: icalendar.Calendar):
 def validate_vevent(event: icalendar.Event):
     if "UID" not in event:
         raise ValueError("Event has no UID", event)
-    #
-    # if "DTSTAMP" not in event:
-    #     raise ValueError("Event has no DTSTAMP", event)
 
     vddd_dtstart: icalendar.vDDDTypes | None = event.get("DTSTART")
     vddd_dtend: icalendar.vDDDTypes | None = event.get("DTEND")

@@ -22,7 +22,7 @@ from src.schedule.modules.event_groups.schemas import (
     UpdateEventGroup,
     ViewEventGroup,
 )
-from src.schedule.modules.parse.utils import locate_ics_by_path
+from src.schedule.utils import locate_ics_by_path
 
 router = APIRouter(prefix="/event-groups", tags=["Event Groups"], route_class=AutoDeriveResponsesAPIRoute)
 
@@ -258,7 +258,7 @@ async def set_event_group_ics(
     #     raise OperationIsNotAllowed()
 
     try:
-        from src.schedule.modules.parse.utils import validate_calendar
+        from src.schedule.utils import validate_calendar
 
         calendar = icalendar.Calendar.from_ical(await ics_file.read())
         validate_calendar(calendar)

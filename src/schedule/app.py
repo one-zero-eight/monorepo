@@ -94,7 +94,6 @@ app.add_middleware(
 
 import src.schedule.modules.event_groups.routes  # noqa: E402
 import src.schedule.modules.ics.routes  # noqa: E402
-import src.schedule.modules.parse.routes  # noqa: E402
 import src.schedule.modules.predefined.routes  # noqa: E402
 import src.schedule.modules.tags.routes  # noqa: E402
 import src.schedule.modules.users.routes  # noqa: E402
@@ -103,8 +102,6 @@ app.include_router(src.schedule.modules.event_groups.routes.router)
 popule_openapi_tags(app, src.schedule.modules.event_groups.routes)
 app.include_router(src.schedule.modules.ics.routes.router)
 popule_openapi_tags(app, src.schedule.modules.ics.routes)
-app.include_router(src.schedule.modules.parse.routes.router)
-popule_openapi_tags(app, src.schedule.modules.parse.routes)
 app.include_router(src.schedule.modules.predefined.routes.router)
 popule_openapi_tags(app, src.schedule.modules.predefined.routes)
 app.include_router(src.schedule.modules.tags.routes.router)
