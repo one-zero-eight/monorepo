@@ -92,6 +92,7 @@ app.add_middleware(
 )
 
 from src.schedule_assistant.modules.bookings import routes as bookings_routes  # noqa: E402
+from src.schedule_assistant.modules.distributions import routes as distributions_routes  # noqa: E402
 from src.schedule_assistant.modules.instructor_preferences import routes as instructor_preferences_routes  # noqa: E402
 from src.schedule_assistant.modules.issues import routes as issues_routes  # noqa: E402
 from src.schedule_assistant.modules.parser import routes as parser_routes  # noqa: E402
@@ -101,6 +102,8 @@ from src.schedule_assistant.modules.users import routes as users_routes  # noqa:
 
 app.include_router(bookings_routes.router)
 popule_openapi_tags(app, bookings_routes)
+app.include_router(distributions_routes.router)
+popule_openapi_tags(app, distributions_routes)
 app.include_router(instructor_preferences_routes.router)
 popule_openapi_tags(app, instructor_preferences_routes)
 app.include_router(issues_routes.router)

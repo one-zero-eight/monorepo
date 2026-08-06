@@ -12,6 +12,7 @@ from src.schedule_assistant.modules.issues.meetings import (
 )
 from src.schedule_assistant.modules.issues.per_week import per_week_issues_from_schedule_config
 from src.schedule_assistant.modules.issues.schemas import CheckParameters, CheckResults, Issue
+from src.schedule_assistant.modules.issues.student_emails import student_email_issues_from_sections
 from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
 from src.schedule_assistant.modules.schedule_config.schemas import RoomConfig, TermConfig
 
@@ -61,6 +62,10 @@ async def check_schedule_issues(params: CheckParameters) -> CheckResults:
         instructor_id_issues = instructor_id_issues_from_schedule_config(instructors, courses)
         logger.info(f"Found {len(instructor_id_issues)} instructor_id issues")
         issues.extend(instructor_id_issues)
+    if params.check_student_email:
+        student_email_issues = student_email_issues_from_sections(sections)
+        logger.info(f"Found {len(student_email_issues)} student_email issues")
+        issues.extend(student_email_issues)
     if params.check_instructor_preference:
         instructor_preference_issues = instructor_preference_issues_from_meetings(meetings, instructors, term)
         logger.info(f"Found {len(instructor_preference_issues)} instructor_preference issues")

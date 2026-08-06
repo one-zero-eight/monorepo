@@ -746,6 +746,37 @@ class ScheduleConfigRepository:
             session.commit()
             return revision
 
+    def replace_student_group_students(
+        self,
+        updates: dict[str, list[str]],
+        *,
+        saved_by: str,
+    ) -> int:
+        """Replace ``students`` lists for the given group codes in one history revision."""
+        if not updates:
+            return self.get_revision()
+
+        with self._session() as session:
+            old_dump = self._assembled_dump_if_possible(session)
+            for code, students in updates.items():
+                row = session.get(StudentGroupRow, code)
+                if row is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Student group not found: {code!r}",
+                    )
+                row.students = list(students)
+            session.flush()
+            revision = self._append_history(
+                session,
+                old_dump,
+                self._assembled_dump_if_possible(session),
+                saved_by=saved_by,
+                resources=["sections"],
+            )
+            session.commit()
+            return revision
+
     def list_rooms(self) -> list[RoomConfig.Room]:
         return self.get_rooms().rooms
 

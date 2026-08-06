@@ -11,6 +11,7 @@ from src.schedule_assistant.modules.issues.schemas import (
     PerWeekIssue,
     RoomIssue,
     ScheduledMeeting,
+    StudentEmailIssue,
     StudentIssue,
     TeacherIssue,
     UnbookedIssue,
@@ -127,6 +128,16 @@ def format_instructor_id_issue_text(issue: InstructorIdIssue) -> str:
     )
 
 
+def format_student_email_issue_text(issue: StudentEmailIssue) -> str:
+    groups_part = ""
+    if issue.groups:
+        groups_part = f" (группы {', '.join(issue.groups)})"
+    return (
+        f"Email студента «{issue.student_email}»{groups_part} должен заканчиваться "
+        f"на @innopolis.ru или @innopolis.university"
+    )
+
+
 def format_unbooked_issue_text(issue: UnbookedIssue) -> str:
     meeting = issue.meeting
     when = format_meeting_when(meeting)
@@ -192,6 +203,7 @@ def attach_issue_text(
     | TeacherIssue
     | UnplacedIssue
     | InstructorIdIssue
+    | StudentEmailIssue
     | UnbookedIssue
     | GroupIssue
     | StudentIssue
@@ -209,6 +221,8 @@ def attach_issue_text(
         issue.text = format_unplaced_issue_text(issue)
     elif isinstance(issue, InstructorIdIssue):
         issue.text = format_instructor_id_issue_text(issue)
+    elif isinstance(issue, StudentEmailIssue):
+        issue.text = format_student_email_issue_text(issue)
     elif isinstance(issue, UnbookedIssue):
         issue.text = format_unbooked_issue_text(issue)
     elif isinstance(issue, GroupIssue):

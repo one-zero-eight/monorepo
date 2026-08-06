@@ -59,6 +59,7 @@ class IssueTypeEnum(StrEnum):
     PER_WEEK = "per_week"
     INSTRUCTOR_BANNED_SLOT = "instructor_banned_slot"
     INSTRUCTOR_PREFERENCE = "instructor_preference"
+    STUDENT_EMAIL = "student_email"
 
 
 class CapacityIssue(ScheduleAssistantSchema):
@@ -125,6 +126,16 @@ class InstructorIdIssue(ScheduleAssistantSchema):
 
     text: str = ""
     instructor_id: str
+
+
+class StudentEmailIssue(ScheduleAssistantSchema):
+    """Email студента в students_groups не является корпоративным адресом Innopolis."""
+
+    issue_type: Literal[IssueTypeEnum.STUDENT_EMAIL]
+
+    text: str = ""
+    student_email: str
+    groups: tuple[str, ...] = ()
 
 
 class UnbookedIssue(ScheduleAssistantSchema):
@@ -202,6 +213,7 @@ type Issue = Annotated[
     | TeacherIssue
     | UnplacedIssue
     | InstructorIdIssue
+    | StudentEmailIssue
     | UnbookedIssue
     | GroupIssue
     | StudentIssue
@@ -223,6 +235,7 @@ class CheckParameters(ScheduleAssistantSchema):
     check_unplaced: bool = True
     check_per_week: bool = True
     check_instructor_id: bool = True
+    check_student_email: bool = True
     check_instructor_preference: bool = True
     count_touching_room: bool = False
     "Treat back-to-back room slots that only touch at an endpoint as room conflicts"

@@ -79,12 +79,14 @@ def schedule_assistant_repo(
     schedule_assistant_postgres: None,
     monkeypatch: pytest.MonkeyPatch,
 ):
+    from src.schedule_assistant.modules.distributions.repository import DistributionUploadRepository
     from src.schedule_assistant.modules.instructor_preferences.repository import PreferenceInviteRepository
     from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
 
     asyncio.run(_truncate_schedule_assistant_tables())
     repo = ScheduleConfigRepository(schedule_assistant_db_url())
     invite_repo = PreferenceInviteRepository(schedule_assistant_db_url())
+    distribution_repo = DistributionUploadRepository(schedule_assistant_db_url())
     monkeypatch.setattr(
         "src.schedule_assistant.modules.schedule_config.repository.schedule_config_repository",
         repo,
@@ -96,6 +98,14 @@ def schedule_assistant_repo(
     monkeypatch.setattr(
         "src.schedule_assistant.modules.instructor_preferences.routes.preference_invite_repository",
         invite_repo,
+    )
+    monkeypatch.setattr(
+        "src.schedule_assistant.modules.distributions.repository.distribution_upload_repository",
+        distribution_repo,
+    )
+    monkeypatch.setattr(
+        "src.schedule_assistant.modules.distributions.routes.distribution_upload_repository",
+        distribution_repo,
     )
     return repo
 

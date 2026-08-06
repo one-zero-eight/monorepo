@@ -20,8 +20,13 @@ from src.schedule_assistant.modules.issues.schemas import (
     OccurrencePlacement,
     RoomIssue,
     ScheduledMeeting,
+    StudentEmailIssue,
     UnplacedIssue,
     WeeklyPatternPlacement,
+)
+from src.schedule_assistant.modules.issues.student_emails import (
+    is_valid_student_email,
+    student_email_issues_from_sections,
 )
 from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
 from src.schedule_assistant.modules.schedule_config.schemas import (
@@ -275,6 +280,44 @@ def test_instructor_id_issues_from_schedule_config() -> None:
     assert len(issues) == 2
     assert all(isinstance(issue, InstructorIdIssue) for issue in issues)
     assert {issue.instructor_id for issue in issues} == {"also-bad@gmail.com", "bad_handle"}
+
+
+@pytest.mark.parametrize(
+    "email, expected",
+    [
+        ("student@innopolis.ru", True),
+        ("Student@Innopolis.University", True),
+        ("student@gmail.com", False),
+        ("raw_handle", False),
+    ],
+)
+def test_is_valid_student_email(email: str, expected: bool) -> None:
+    assert is_valid_student_email(email) is expected
+
+
+def test_student_email_issues_from_sections() -> None:
+    sections = SectionsConfig(
+        students_groups=[
+            StudentsGroups(
+                code="G1",
+                kind="core",
+                students=["ok@innopolis.university", "bad@gmail.com"],
+            ),
+            StudentsGroups(
+                code="G2",
+                kind="english",
+                students=["bad@gmail.com", "also-bad"],
+            ),
+        ],
+    )
+    issues = student_email_issues_from_sections(sections)
+    assert len(issues) == 2
+    assert all(isinstance(issue, StudentEmailIssue) for issue in issues)
+    by_email = {issue.student_email: issue for issue in issues}
+    assert set(by_email) == {"also-bad", "bad@gmail.com"}
+    assert by_email["bad@gmail.com"].groups == ("G1", "G2")
+    assert by_email["also-bad"].groups == ("G2",)
+    assert "innopolis" in by_email["bad@gmail.com"].text
 
 
 def test_co_teaching_produces_single_meeting() -> None:

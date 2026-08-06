@@ -5,6 +5,7 @@ from src.schedule_assistant.modules.issues.issue_text import (
     format_instructor_id_issue_text,
     format_meeting_when,
     format_room_issue_text,
+    format_student_email_issue_text,
     format_unplaced_issue_text,
 )
 from src.schedule_assistant.modules.issues.schemas import (
@@ -14,6 +15,7 @@ from src.schedule_assistant.modules.issues.schemas import (
     OccurrencePlacement,
     RoomIssue,
     ScheduledMeeting,
+    StudentEmailIssue,
     UnplacedIssue,
     WeeklyPatternPlacement,
 )
@@ -94,6 +96,18 @@ def test_format_instructor_id_issue_text() -> None:
     assert (
         format_instructor_id_issue_text(issue)
         == "Идентификатор преподавателя «nikolay_kudasov» должен заканчиваться на @innopolis.ru или @innopolis.university"
+    )
+
+
+def test_format_student_email_issue_text() -> None:
+    issue = StudentEmailIssue(
+        issue_type=IssueTypeEnum.STUDENT_EMAIL,
+        student_email="bad@gmail.com",
+        groups=("G1", "G2"),
+    )
+    assert (
+        format_student_email_issue_text(issue)
+        == "Email студента «bad@gmail.com» (группы G1, G2) должен заканчиваться на @innopolis.ru или @innopolis.university"
     )
 
 

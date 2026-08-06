@@ -1,7 +1,7 @@
 import datetime as dtm
 from typing import Any
 
-from sqlalchemy import JSON, Date, DateTime, Integer, String
+from sqlalchemy import JSON, Date, DateTime, Integer, LargeBinary, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.schedule_assistant.db.base import Base
@@ -93,3 +93,23 @@ class ConfigHistoryEventRow(Base):
     saved_by: Mapped[str] = mapped_column(String, nullable=False)
     patch: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
     snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+
+
+class DistributionUploadRow(Base):
+    __tablename__ = "distribution_uploads"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    section_code: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    filename: Mapped[str] = mapped_column(String, nullable=False)
+    content_type: Mapped[str] = mapped_column(String, nullable=False)
+    file_bytes: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    uploaded_by: Mapped[str] = mapped_column(String, nullable=False)
+    uploaded_at: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    sheet_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    email_column: Mapped[str | None] = mapped_column(String, nullable=True)
+    membership_columns: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    mapping: Mapped[dict[str, str | None]] = mapped_column(JSON, nullable=False, default=dict)
+    stats: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    updated_groups: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    skipped_labels: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
