@@ -376,9 +376,6 @@ def validate_sections(config: SectionsConfig) -> list[str]:
     errors.extend(f"Duplicate students_groups code: {code!r}" for code in find_duplicates(students_group_codes))
 
     program_codes: list[str] = []
-    known_program_codes = {
-        program.code for section in config.sections for program in section.programs if program.code.strip()
-    }
     for section_index, section in enumerate(config.sections):
         if not section.code.strip():
             errors.append(f"sections[{section_index}].code must not be empty")
@@ -402,12 +399,6 @@ def validate_sections(config: SectionsConfig) -> list[str]:
                             f"sections[{section_index}].programs[{program_index}].tracks[{track_index}].groups "
                             f"references unknown group {group_code!r}",
                         )
-            for applies_to_code in program.applies_to:
-                if applies_to_code not in known_program_codes and applies_to_code not in group_codes:
-                    errors.append(
-                        f"sections[{section_index}].programs[{program_index}].applies_to "
-                        f"references unknown group {applies_to_code!r}",
-                    )
             if program.time_slots:
                 for slot_index, slot in enumerate(program.time_slots):
                     if slot.start_time >= slot.end_time:

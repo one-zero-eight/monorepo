@@ -157,8 +157,6 @@ class SectionConfig(SettingBaseModel):
             "Track identifier"
             name: str
             "Track display name"
-            kind: Literal["track", "english_program"] | str | None = None
-            "Track kind marker"
             groups: list[str] = []
             "Track groups as plain group codes"
 
@@ -166,16 +164,6 @@ class SectionConfig(SettingBaseModel):
         "Program identifier"
         name: str
         "Program display name"
-        kind: Literal["degree_year", "english_program", "elective_bucket"] | str | None = None
-        "Program kind marker"
-        degree: str | None = None
-        "Optional degree marker (for example, bs/ms/phd)"
-        language: Literal["en", "ru"] | None = None
-        "Program language marker (en/ru)"
-        year: int | None = None
-        "Program year"
-        applies_to: list[str] = []
-        "Optional list of entity codes this program applies to (for example, [BS_Y1_EN, BS_Y1_RU])"
         tracks: list[ProgramTrack] = []
         "Program tracks (optional wrapper when groups are split by track)"
         groups: list[str] = []

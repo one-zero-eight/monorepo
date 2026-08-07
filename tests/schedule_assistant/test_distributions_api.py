@@ -34,7 +34,6 @@ def _seed_config(repo: ScheduleConfigRepository) -> None:
                     SectionConfig.SectionProgram(
                         code="BS_Y1",
                         name="BS Y1",
-                        kind="degree_year",
                         groups=["B25-CSE-01", "B24-CBS-02"],
                     )
                 ],
@@ -47,7 +46,6 @@ def _seed_config(repo: ScheduleConfigRepository) -> None:
                     SectionConfig.SectionProgram(
                         code="EN",
                         name="English",
-                        kind="english_program",
                         groups=["AWA-I 10", "EAP6"],
                     )
                 ],
@@ -60,7 +58,6 @@ def _seed_config(repo: ScheduleConfigRepository) -> None:
                     SectionConfig.SectionProgram(
                         code="EL",
                         name="Electives",
-                        kind="elective_bucket",
                         groups=["python-adv", "robotics"],
                     )
                 ],
