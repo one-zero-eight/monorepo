@@ -1,5 +1,6 @@
 from fastapi import HTTPException, status
 
+from src.schedule_assistant.modules.schedule.export_xlsx import export_schedule_xlsx as build_schedule_xlsx
 from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
 from src.schedule_assistant.modules.schedule_config.schemas import (
     CourseConfig,
@@ -110,3 +111,8 @@ def get_instructor_schedule(instructor_id: str) -> CoursesConfig:
     return CoursesConfig(
         courses=filter_courses_for_instructor(courses, {_normalize_email(instructor.id)}),
     )
+
+
+def export_schedule_xlsx() -> tuple[bytes, str]:
+    config = schedule_config_repository.get_assembled()
+    return build_schedule_xlsx(config)
