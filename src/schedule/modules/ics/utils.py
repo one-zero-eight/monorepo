@@ -355,6 +355,7 @@ async def get_personal_sport_ics(user: ViewUser) -> bytes:
 
         vevent = icalendar.Event()
         vevent.add("uid", uid)
+        vevent.add("dtstamp", icalendar.vDatetime(_now))
 
         vevent.add("summary", training.title)
         if training.all_day:
@@ -585,6 +586,7 @@ async def get_personal_room_bookings(user: ViewUser) -> bytes:
 
         vevent = icalendar.Event()
         vevent.add("uid", uid)
+        vevent.add("dtstamp", icalendar.vDatetime(now_utc))
 
         vevent.add("summary", booking["title"])
         if booking.get("room_id"):
