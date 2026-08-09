@@ -41,7 +41,9 @@ def validate_vevent(event: icalendar.Event):
     if not vddd_dtstart:
         raise ValueError("Event has no DTSTART", event)
 
-    if not vddd_dtend and not vddd_duration and vddd_dtstart.params.get("VALUE") != "DATE":
+    # icalendar.vDate often omits VALUE=DATE; treat pure date DTSTART as all-day.
+    is_date_only = type(vddd_dtstart.dt) is dtm.date
+    if not vddd_dtend and not vddd_duration and vddd_dtstart.params.get("VALUE") != "DATE" and not is_date_only:
         raise ValueError("Event has no DTEND or DURATION", event)
 
     if vddd_dtend and vddd_duration:
