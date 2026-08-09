@@ -1,7 +1,7 @@
 from typing import Annotated
 
 import yaml
-from fastapi import APIRouter, Body, File, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, Body, File, HTTPException, Query, Response, UploadFile, status
 from pydantic import ValidationError
 
 from src.schedule_assistant.dependencies import ModeratorDep, VerifyTokenDep, is_moderator_email
@@ -11,7 +11,7 @@ from src.schedule_assistant.modules.schedule_config.repository import schedule_c
 from src.schedule_assistant.modules.schedule_config.schemas import (
     CourseConfig,
     InstructorConfig,
-    InstructorListItem,
+    InstructorMeetingsCountsResponse,
     RoomConfig,
     ScheduleConfig,
     ScheduleConfigUpdate,
@@ -213,22 +213,31 @@ async def delete_course(response: Response, moderator: ModeratorDep, course_name
 
 
 @router.get("/instructors")
-async def list_instructors(_user_and_token: VerifyTokenDep) -> list[InstructorListItem]:
+async def list_instructors(_user_and_token: VerifyTokenDep) -> list[InstructorConfig.Instructor]:
+    return schedule_config_repository.list_instructors()
+
+
+@router.get("/instructors/meetings-counts")
+async def instructor_meetings_counts(
+    _user_and_token: VerifyTokenDep,
+    instructor_id: Annotated[list[str] | None, Query()] = None,
+) -> InstructorMeetingsCountsResponse:
+    """Count placed term meetings for instructors.
+
+    Omit `instructor_id` to count all instructors; pass one or more ids to count selectively.
+    """
     instructors = schedule_config_repository.list_instructors()
-    term = schedule_config_repository.get_term()
-    courses = schedule_config_repository.list_courses()
+    if instructor_id is None:
+        instructor_ids = [instructor.id for instructor in instructors]
+    else:
+        known = {instructor.id for instructor in instructors}
+        instructor_ids = [item for item in instructor_id if item in known]
     counts = count_meetings_by_instructor(
-        courses,
-        term,
-        [instructor.id for instructor in instructors],
+        schedule_config_repository.list_courses(),
+        schedule_config_repository.get_term(),
+        instructor_ids,
     )
-    return [
-        InstructorListItem(
-            **instructor.model_dump(),
-            meetings_count=counts.get(instructor.id, 0),
-        )
-        for instructor in instructors
-    ]
+    return InstructorMeetingsCountsResponse(counts=counts)
 
 
 @router.post("/instructors", status_code=status.HTTP_201_CREATED)

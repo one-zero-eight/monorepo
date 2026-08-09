@@ -131,3 +131,30 @@ def test_weekly_edit_can_reassign_instructor() -> None:
     counts = count_meetings_by_instructor(courses, _term(), ["a@iu.ru", "b@iu.ru"])
     assert counts["a@iu.ru"] == 3
     assert counts["b@iu.ru"] == 1
+
+
+def test_weekly_pattern_without_edits_counts_all_weeks() -> None:
+    courses = [
+        CourseConfig(
+            name="Course",
+            components=[
+                CourseConfig.Component(
+                    tag="lab",
+                    sessions=[
+                        ComponentSessionSeries(
+                            audience=["G1"],
+                            weekly_pattern=[
+                                WeeklyPatternSlot(
+                                    weekday=Weekday.MONDAY,
+                                    start_time=dtm.time(9, 0),
+                                    end_time=dtm.time(10, 30),
+                                    instructor="a@iu.ru",
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ]
+    assert count_instructor_meetings_in_term("a@iu.ru", courses, _term()) == 4

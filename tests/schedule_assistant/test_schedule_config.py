@@ -14,7 +14,9 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     SessionOccurrence,
     StudentsGroups,
     TermConfig,
+    WeeklyPatternSlot,
 )
+from src.schedule_assistant.weekday import Weekday
 
 
 def _minimal_term() -> TermConfig:
@@ -440,3 +442,83 @@ async def test_put_schedule_config_requires_moderator(
         json={"term": _minimal_term_settings().model_dump(mode="json")},
     )
     assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_instructor_meetings_counts_endpoint(
+    authenticated_client: AsyncClient,
+    schedule_config_repo: ScheduleConfigRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "src.schedule_assistant.dependencies.settings.moderator_emails", ["moderator@innopolis.university"]
+    )
+    term = _minimal_term().model_copy(
+        update={
+            "semester": TermConfig.DateRange(
+                start_date=dtm.date(2026, 9, 1),
+                end_date=dtm.date(2026, 9, 28),
+            ),
+            "days": [
+                Weekday.MONDAY,
+                Weekday.TUESDAY,
+                Weekday.WEDNESDAY,
+                Weekday.THURSDAY,
+                Weekday.FRIDAY,
+            ],
+        }
+    )
+    schedule_config_repo.set_term(term, saved_by="mod@test.com")
+    schedule_config_repo.set_sections(
+        SectionsConfig(students_groups=[StudentsGroups(code="G1", kind="core")]),
+        saved_by="mod@test.com",
+    )
+    schedule_config_repo.create_instructor(
+        InstructorConfig.Instructor(id="a@iu.ru"),
+        saved_by="mod@test.com",
+    )
+    schedule_config_repo.create_instructor(
+        InstructorConfig.Instructor(id="b@iu.ru"),
+        saved_by="mod@test.com",
+    )
+    schedule_config_repo.create_course(
+        CourseConfig(
+            name="Course",
+            components=[
+                CourseConfig.Component(
+                    tag="lab",
+                    student_groups=["G1"],
+                    sessions=[
+                        ComponentSessionSeries(
+                            audience=["G1"],
+                            weekly_pattern=[
+                                WeeklyPatternSlot(
+                                    weekday=Weekday.MONDAY,
+                                    start_time=dtm.time(9, 0),
+                                    end_time=dtm.time(10, 30),
+                                    instructor="a@iu.ru",
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        saved_by="mod@test.com",
+    )
+
+    list_response = await authenticated_client.get("/schedule-config/instructors")
+    assert list_response.status_code == 200
+    listed = list_response.json()
+    assert all("meetings_count" not in instructor for instructor in listed)
+
+    all_counts = await authenticated_client.get("/schedule-config/instructors/meetings-counts")
+    assert all_counts.status_code == 200
+    assert all_counts.json()["counts"] == {"a@iu.ru": 4, "b@iu.ru": 0}
+
+    selective = await authenticated_client.get(
+        "/schedule-config/instructors/meetings-counts",
+        params=[("instructor_id", "a@iu.ru")],
+    )
+    assert selective.status_code == 200
+    assert selective.json()["counts"] == {"a@iu.ru": 4}

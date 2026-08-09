@@ -145,9 +145,9 @@ class InstructorConfig(SettingBaseModel):
     "Available instructors"
 
 
-class InstructorListItem(InstructorConfig.Instructor):
-    meetings_count: int = 0
-    "Placed meetings in the current term; weekly patterns expand by +1 per week"
+class InstructorMeetingsCountsResponse(SettingBaseModel):
+    counts: dict[str, int]
+    "Map of instructor id → placed meetings in the current term"
 
 
 class SectionConfig(SettingBaseModel):
