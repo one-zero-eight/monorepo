@@ -19,6 +19,7 @@ from src.schedule_assistant.modules.issues.booking_slots import (
     _weekly_meeting_dates_in_term,
 )
 from src.schedule_assistant.modules.schedule_config.schemas import (
+    CourseConfig,
     ScheduleConfig,
     SectionConfig,
     SectionsConfig,
@@ -36,6 +37,7 @@ WEEKDAY_FILL = PatternFill("solid", fgColor="00B0F0")
 WEEK_HEADER_FILL = PatternFill("solid", fgColor="FCE5CD")
 WHITE_FILL = PatternFill("solid", fgColor="FFFFFF")
 THIN = Side(style="thin", color="000000")
+THICK = Side(style="thick", color="000000")
 THIN_BORDER = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
 HEADER_FONT = Font(bold=True, color="000000")
 WEEKDAY_FONT = Font(bold=True, color="000000")
@@ -51,6 +53,12 @@ GROUPS_LINE_HEIGHT = 15
 DISTRIBUTIONS_SHEET_NAME = "Distributions"
 DISTRIBUTIONS_HEADERS = ("E-mail", "Group", "Section")
 DISTRIBUTIONS_COL_WIDTHS = (36, 28, 18)
+INSTRUCTORS_SHEET_NAME = "Instructors"
+INSTRUCTORS_HEADERS = ("Name EN", "Name RU", "Email", "Alias", "Position", "Courses", "ID")
+INSTRUCTORS_COL_WIDTHS = (28, 28, 32, 16, 22, 48, 18)
+SUBJECTS_SHEET_NAME = "Subjects"
+SUBJECTS_HEADERS = ("Section", "Short name", "Name", "Name RU", "Groups", "Instructors")
+SUBJECTS_COL_WIDTHS = (18, 14, 36, 36, 42, 48)
 
 _INVALID_SHEET_CHARS = re.compile(r"[\[\]\*\/\\?:]")
 
@@ -386,6 +394,16 @@ def _triple_block_border(*, row_offset: int, col: int, start_col: int, end_col: 
         right=THIN if col == end_col else None,
         top=THIN if row_offset == 0 else None,
         bottom=THIN if row_offset == 2 else None,
+    )
+
+
+def _section_block_border(*, row: int, col: int, start_row: int, end_row: int, start_col: int, end_col: int) -> Border:
+    """Thick outer border for a section block; thin internal cell grid."""
+    return Border(
+        left=THICK if col == start_col else THIN,
+        right=THICK if col == end_col else THIN,
+        top=THICK if row == start_row else THIN,
+        bottom=THICK if row == end_row else THIN,
     )
 
 
@@ -732,16 +750,122 @@ def _write_calendar_sheet(
     ws.freeze_panes = "B2"
 
 
+def _write_table_sheet(
+    ws: Worksheet,
+    *,
+    headers: tuple[str, ...],
+    col_widths: tuple[int, ...],
+    rows: list[tuple[object, ...]],
+) -> None:
+    for col, header in enumerate(headers, start=1):
+        cell = ws.cell(1, col, header)
+        _apply_fill(cell, HEADER_FILL, HEADER_FONT, CENTER)
+        ws.column_dimensions[get_column_letter(col)].width = col_widths[col - 1]
+
+    for row_index, values in enumerate(rows, start=2):
+        for col, value in enumerate(values, start=1):
+            cell = ws.cell(row_index, col, value)
+            _apply_fill(cell, WHITE_FILL, NORMAL_FONT, LEFT)
+
+    ws.freeze_panes = "A2"
+    last_row = max(1, 1 + len(rows))
+    ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}{last_row}"
+
+
+def _track_group_maps(sections: list[SectionConfig]) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
+    """Return ``group→tracks`` and ``track→groups`` maps (``Program/Track`` labels)."""
+    group_to_tracks: dict[str, set[str]] = defaultdict(set)
+    track_to_groups: dict[str, set[str]] = {}
+    for section in sections:
+        for program in section.programs:
+            for track in program.tracks:
+                if not track.groups:
+                    continue
+                label = f"{program.code}/{track.name}"
+                groups = set(track.groups)
+                track_to_groups[label] = groups
+                for group_code in groups:
+                    group_to_tracks[group_code].add(label)
+    return group_to_tracks, track_to_groups
+
+
+def _course_student_group_tokens(course: CourseConfig) -> list[str]:
+    tokens: list[str] = []
+    seen: set[str] = set()
+    for component in course.components:
+        for token in component.student_groups:
+            if token in seen:
+                continue
+            seen.add(token)
+            tokens.append(token)
+    return tokens
+
+
+def _format_course_groups_by_track(
+    course: CourseConfig,
+    *,
+    selector_map: dict[str, set[str]],
+    group_to_tracks: dict[str, set[str]],
+    track_to_groups: dict[str, set[str]],
+    section_groups: set[str] | None = None,
+) -> str:
+    """Groups column: track-grouped only when every group of that track is present."""
+    tokens = _course_student_group_tokens(course)
+    groups = expand_group_tokens(tokens, selector_map)
+    if section_groups is not None:
+        groups &= section_groups
+    if not groups:
+        return ""
+
+    candidate_tracks: set[str] = set()
+    for group_code in groups:
+        candidate_tracks.update(group_to_tracks.get(group_code, ()))
+
+    remaining = set(groups)
+    lines: list[str] = []
+    for track in sorted(candidate_tracks, key=str.casefold):
+        track_groups = track_to_groups.get(track, set())
+        if not track_groups or not track_groups <= groups:
+            continue
+        lines.append(f"{track}: {', '.join(sorted(track_groups, key=str.casefold))}")
+        remaining -= track_groups
+
+    if remaining:
+        lines.append(", ".join(sorted(remaining, key=str.casefold)))
+    return "\n".join(lines)
+
+
+def _course_instructor_role_labels(
+    course: CourseConfig,
+    instructor_labels: dict[str, str],
+) -> str:
+    parts: list[str] = []
+    for assignment in course.instructors:
+        name = instructor_labels.get(assignment.id, assignment.id)
+        role = (assignment.role or "").strip()
+        parts.append(f"{name} ({role})" if role else name)
+    return "\n".join(parts)
+
+
+def _instructor_courses_column(
+    instructor_id: str,
+    courses: list[CourseConfig],
+) -> str:
+    parts: list[str] = []
+    for course in courses:
+        for assignment in course.instructors:
+            if assignment.id != instructor_id:
+                continue
+            role = (assignment.role or "").strip()
+            label = f"{course.name} ({role})" if role else course.name
+            parts.append(label)
+    return "\n".join(parts)
+
+
 def _write_distributions_sheet(ws: Worksheet, config: ScheduleConfig) -> None:
     """One row per student–group membership (import-friendly roster)."""
     by_code = {group.code: group for group in config.students_groups}
-
-    for col, header in enumerate(DISTRIBUTIONS_HEADERS, start=1):
-        cell = ws.cell(1, col, header)
-        _apply_fill(cell, HEADER_FILL, HEADER_FONT, CENTER)
-        ws.column_dimensions[get_column_letter(col)].width = DISTRIBUTIONS_COL_WIDTHS[col - 1]
-
-    row = 2
+    rows: list[tuple[object, ...]] = []
     for section in config.term.sections:
         section_label = (section.name or section.code).strip() or section.code
         for code in iter_section_group_codes(section):
@@ -750,14 +874,162 @@ def _write_distributions_sheet(ws: Worksheet, config: ScheduleConfig) -> None:
                 continue
             group_label = (group.name or group.code).strip() or group.code
             for email in sorted(group.students, key=str.casefold):
-                values = (email, group_label, section_label)
-                for col, value in enumerate(values, start=1):
-                    cell = ws.cell(row, col, value)
-                    _apply_fill(cell, WHITE_FILL, NORMAL_FONT, LEFT)
-                row += 1
+                rows.append((email, group_label, section_label))
+    _write_table_sheet(
+        ws,
+        headers=DISTRIBUTIONS_HEADERS,
+        col_widths=DISTRIBUTIONS_COL_WIDTHS,
+        rows=rows,
+    )
+
+
+def _write_instructors_sheet(ws: Worksheet, config: ScheduleConfig) -> None:
+    rows: list[tuple[object, ...]] = []
+    for instructor in config.instructors:
+        rows.append(
+            (
+                instructor.name_en or "",
+                instructor.name_ru or "",
+                instructor.email or "",
+                instructor.alias or "",
+                instructor.position or "",
+                _instructor_courses_column(instructor.id, config.courses),
+                instructor.id,
+            )
+        )
+    _write_table_sheet(
+        ws,
+        headers=INSTRUCTORS_HEADERS,
+        col_widths=INSTRUCTORS_COL_WIDTHS,
+        rows=rows,
+    )
+
+
+def _write_subjects_sheet(
+    ws: Worksheet,
+    config: ScheduleConfig,
+    instructor_labels: dict[str, str],
+) -> None:
+    selector_map = build_selector_map(
+        SectionsConfig(sections=config.term.sections, students_groups=config.students_groups)
+    )
+    rows: list[tuple[object, ...]] = []
+    matched_course_names: set[str] = set()
+
+    for section in config.term.sections:
+        section_label = (section.name or section.code).strip() or section.code
+        section_groups = section_group_set(section)
+        group_to_tracks, track_to_groups = _track_group_maps([section])
+        for course in config.courses:
+            groups = _format_course_groups_by_track(
+                course,
+                selector_map=selector_map,
+                group_to_tracks=group_to_tracks,
+                track_to_groups=track_to_groups,
+                section_groups=section_groups,
+            )
+            if not groups:
+                continue
+            matched_course_names.add(course.name)
+            rows.append(
+                (
+                    section_label,
+                    course.short_name or "",
+                    course.name,
+                    course.name_ru or "",
+                    groups,
+                    _course_instructor_role_labels(course, instructor_labels),
+                )
+            )
+
+    group_to_tracks, track_to_groups = _track_group_maps(config.term.sections)
+    for course in config.courses:
+        if course.name in matched_course_names:
+            continue
+        groups = _format_course_groups_by_track(
+            course,
+            selector_map=selector_map,
+            group_to_tracks=group_to_tracks,
+            track_to_groups=track_to_groups,
+        )
+        rows.append(
+            (
+                "",
+                course.short_name or "",
+                course.name,
+                course.name_ru or "",
+                groups,
+                _course_instructor_role_labels(course, instructor_labels),
+            )
+        )
+
+    col_count = len(SUBJECTS_HEADERS)
+    for col, header in enumerate(SUBJECTS_HEADERS, start=1):
+        cell = ws.cell(1, col, header)
+        _apply_fill(cell, HEADER_FILL, HEADER_FONT, CENTER)
+        ws.column_dimensions[get_column_letter(col)].width = SUBJECTS_COL_WIDTHS[col - 1]
+
+    # Contiguous rows sharing the Section value get one outer border.
+    block_ranges: list[tuple[int, int]] = []
+    index = 0
+    while index < len(rows):
+        section_key = rows[index][0]
+        end = index + 1
+        while end < len(rows) and rows[end][0] == section_key:
+            end += 1
+        block_ranges.append((index, end - 1))
+        index = end
+
+    for block_start, block_end in block_ranges:
+        start_row = block_start + 2
+        end_row = block_end + 2
+        for row_offset in range(block_start, block_end + 1):
+            excel_row = row_offset + 2
+            values = rows[row_offset]
+            for col, value in enumerate(values, start=1):
+                cell = ws.cell(excel_row, col, value)
+                _apply_fill(
+                    cell,
+                    WHITE_FILL,
+                    NORMAL_FONT,
+                    LEFT,
+                    border=_section_block_border(
+                        row=excel_row,
+                        col=col,
+                        start_row=start_row,
+                        end_row=end_row,
+                        start_col=1,
+                        end_col=col_count,
+                    ),
+                )
 
     ws.freeze_panes = "A2"
-    ws.auto_filter.ref = f"A1:{get_column_letter(len(DISTRIBUTIONS_HEADERS))}{max(1, row - 1)}"
+    ws.sheet_view.showGridLines = False
+    last_row = max(1, 1 + len(rows))
+    ws.auto_filter.ref = f"A1:{get_column_letter(col_count)}{last_row}"
+
+
+def _append_summary_sheets(
+    wb: Workbook,
+    config: ScheduleConfig,
+    *,
+    used_names: set[str],
+    instructor_labels: dict[str, str],
+) -> None:
+    distributions_title = _unique_sheet_name(DISTRIBUTIONS_SHEET_NAME, used_names)
+    used_names.add(distributions_title)
+    distributions = wb.create_sheet(distributions_title)
+    _write_distributions_sheet(distributions, config)
+
+    instructors_title = _unique_sheet_name(INSTRUCTORS_SHEET_NAME, used_names)
+    used_names.add(instructors_title)
+    instructors = wb.create_sheet(instructors_title)
+    _write_instructors_sheet(instructors, config)
+
+    subjects_title = _unique_sheet_name(SUBJECTS_SHEET_NAME, used_names)
+    used_names.add(subjects_title)
+    subjects = wb.create_sheet(subjects_title)
+    _write_subjects_sheet(subjects, config, instructor_labels)
 
 
 def _write_section_sheet(
@@ -798,8 +1070,8 @@ def build_export_workbook(config: ScheduleConfig) -> Workbook:
         ws = wb.active
         assert ws is not None
         ws.title = "Schedule"
-        distributions = wb.create_sheet(_unique_sheet_name(DISTRIBUTIONS_SHEET_NAME, {"Schedule"}))
-        _write_distributions_sheet(distributions, config)
+        used_names.add("Schedule")
+        _append_summary_sheets(wb, config, used_names=used_names, instructor_labels=instructor_labels)
         return wb
 
     for index, section in enumerate(sections):
@@ -820,10 +1092,7 @@ def build_export_workbook(config: ScheduleConfig) -> Workbook:
             group_sizes=group_sizes,
         )
 
-    distributions_title = _unique_sheet_name(DISTRIBUTIONS_SHEET_NAME, used_names)
-    used_names.add(distributions_title)
-    distributions = wb.create_sheet(distributions_title)
-    _write_distributions_sheet(distributions, config)
+    _append_summary_sheets(wb, config, used_names=used_names, instructor_labels=instructor_labels)
     return wb
 
 

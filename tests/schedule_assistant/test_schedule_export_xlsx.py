@@ -39,7 +39,13 @@ def _sample_config() -> ScheduleConfig:
                         SectionConfig.SectionProgram(
                             code="BS_Y1",
                             name="BS Y1",
-                            groups=["B25-CSE-01", "B25-CSE-02"],
+                            tracks=[
+                                SectionConfig.SectionProgram.ProgramTrack(
+                                    code="CSE",
+                                    name="Software Engineering",
+                                    groups=["B25-CSE-01", "B25-CSE-02"],
+                                )
+                            ],
                         )
                     ],
                 ),
@@ -59,7 +65,20 @@ def _sample_config() -> ScheduleConfig:
             ],
         ),
         instructors=[
-            InstructorConfig.Instructor(id="t1", name_en="Alice Teacher", email="t1@x.ru"),
+            InstructorConfig.Instructor(
+                id="t1",
+                name_en="Alice Teacher",
+                name_ru="Алиса",
+                email="t1@x.ru",
+                alias="alice",
+                position="Professor",
+            ),
+            InstructorConfig.Instructor(
+                id="t2",
+                name_en="Bob Assistant",
+                email="t2@x.ru",
+                position="Teaching Assistant",
+            ),
         ],
         students_groups=[
             StudentsGroups(
@@ -87,13 +106,18 @@ def _sample_config() -> ScheduleConfig:
             CourseConfig(
                 name="Math I",
                 short_name="MATH",
+                name_ru="Математика I",
+                instructors=[
+                    CourseConfig.CourseInstructor(id="t1", role="Primary"),
+                    CourseConfig.CourseInstructor(id="t2", role="Teaching Assistant"),
+                ],
                 components=[
                     CourseConfig.Component(
                         tag="lec",
-                        student_groups=["@BS_Y1"],
+                        student_groups=["@BS_Y1/Software Engineering"],
                         sessions=[
                             ComponentSessionSeries(
-                                audience=["@BS_Y1"],
+                                audience=["@BS_Y1/Software Engineering"],
                                 weekly_pattern=[
                                     WeeklyPatternSlot(
                                         weekday=Weekday.MONDAY,
@@ -111,6 +135,9 @@ def _sample_config() -> ScheduleConfig:
             CourseConfig(
                 name="SRE Course",
                 short_name="SRE",
+                instructors=[
+                    CourseConfig.CourseInstructor(id="t1", role="Primary"),
+                ],
                 components=[
                     CourseConfig.Component(
                         tag="lab",
@@ -140,7 +167,7 @@ def test_export_has_sheet_per_section_with_default_layouts() -> None:
     data, filename = export_schedule_xlsx(_sample_config())
     assert filename == "Fall 2026.xlsx"
     wb = load_workbook(io.BytesIO(data))
-    assert wb.sheetnames == ["Core", "Electives", "Distributions"]
+    assert wb.sheetnames == ["Core", "Electives", "Distributions", "Instructors", "Subjects"]
 
     core = wb["Core"]
     assert core["B1"].value == "BS Y1"
@@ -175,6 +202,48 @@ def test_export_has_sheet_per_section_with_default_layouts() -> None:
                 break
     assert found
 
+    instructors = wb["Instructors"]
+    assert [instructors.cell(1, col).value for col in range(1, 8)] == [
+        "Name EN",
+        "Name RU",
+        "Email",
+        "Alias",
+        "Position",
+        "Courses",
+        "ID",
+    ]
+    assert instructors["A2"].value == "Alice Teacher"
+    assert instructors["B2"].value == "Алиса"
+    assert instructors["C2"].value == "t1@x.ru"
+    assert instructors["D2"].value == "alice"
+    assert instructors["E2"].value == "Professor"
+    assert instructors["F2"].value == "Math I (Primary)\nSRE Course (Primary)"
+    assert instructors["G2"].value == "t1"
+    assert instructors["A3"].value == "Bob Assistant"
+    assert instructors["F3"].value == "Math I (Teaching Assistant)"
+    assert instructors["G3"].value == "t2"
+
+    subjects = wb["Subjects"]
+    assert [subjects.cell(1, col).value for col in range(1, 7)] == [
+        "Section",
+        "Short name",
+        "Name",
+        "Name RU",
+        "Groups",
+        "Instructors",
+    ]
+    assert subjects["A2"].value == "Core"
+    assert subjects["B2"].value == "MATH"
+    assert subjects["C2"].value == "Math I"
+    assert subjects["D2"].value == "Математика I"
+    assert subjects["E2"].value == "BS_Y1/Software Engineering: B25-CSE-01, B25-CSE-02"
+    assert subjects["F2"].value == "Alice Teacher (Primary)\nBob Assistant (Teaching Assistant)"
+    assert subjects["A3"].value == "Electives"
+    assert subjects["B3"].value == "SRE"
+    assert subjects["C3"].value == "SRE Course"
+    assert subjects["E3"].value == "ELEC-01"
+    assert subjects["F3"].value == "Alice Teacher (Primary)"
+
     distributions = wb["Distributions"]
     assert distributions["A1"].value == "E-mail"
     assert distributions["B1"].value == "Group"
@@ -189,6 +258,67 @@ def test_export_has_sheet_per_section_with_default_layouts() -> None:
     assert distributions["B5"].value == "SRE Course"
     assert distributions["C5"].value == "Electives"
     assert distributions["A6"].value == "e.student@innopolis.university"
+
+
+def test_subjects_groups_track_only_when_complete() -> None:
+    config = _sample_config()
+    config.courses[0].components[0].student_groups = ["B25-CSE-01"]
+    session = config.courses[0].components[0].sessions
+    assert session is not None
+    session[0].audience = ["B25-CSE-01"]
+    data, _ = export_schedule_xlsx(config)
+    subjects = load_workbook(io.BytesIO(data))["Subjects"]
+    assert subjects["C2"].value == "Math I"
+    assert subjects["E2"].value == "B25-CSE-01"
+
+
+def test_subjects_section_block_has_outer_border() -> None:
+    config = _sample_config()
+    config.courses.append(
+        CourseConfig(
+            name="Physics I",
+            short_name="PHYS",
+            instructors=[CourseConfig.CourseInstructor(id="t1", role="Primary")],
+            components=[
+                CourseConfig.Component(
+                    tag="lec",
+                    student_groups=["@BS_Y1/Software Engineering"],
+                    sessions=[
+                        ComponentSessionSeries(
+                            audience=["@BS_Y1/Software Engineering"],
+                            weekly_pattern=[
+                                WeeklyPatternSlot(
+                                    weekday=Weekday.TUESDAY,
+                                    start_time=dtm.time(9, 0),
+                                    end_time=dtm.time(10, 30),
+                                    room="108",
+                                    instructor="t1",
+                                )
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+    )
+    data, _ = export_schedule_xlsx(config)
+    subjects = load_workbook(io.BytesIO(data))["Subjects"]
+    assert subjects["A2"].value == "Core"
+    assert subjects["A3"].value == "Core"
+    assert subjects["C2"].value == "Math I"
+    assert subjects["C3"].value == "Physics I"
+    # Outer box around Core rows 2–3 is thick; internal edges are thin.
+    assert subjects["A2"].border.top is not None and subjects["A2"].border.top.style == "thick"
+    assert subjects["A2"].border.bottom is not None and subjects["A2"].border.bottom.style == "thin"
+    assert subjects["A3"].border.top is not None and subjects["A3"].border.top.style == "thin"
+    assert subjects["A3"].border.bottom is not None and subjects["A3"].border.bottom.style == "thick"
+    assert subjects["A2"].border.left is not None and subjects["A2"].border.left.style == "thick"
+    assert subjects["B2"].border.left is not None and subjects["B2"].border.left.style == "thin"
+    assert subjects["F2"].border.right is not None and subjects["F2"].border.right.style == "thick"
+    assert subjects["A4"].value == "Electives"
+    assert subjects["A4"].border.top is not None and subjects["A4"].border.top.style == "thick"
+    assert subjects["A4"].border.bottom is not None and subjects["A4"].border.bottom.style == "thick"
+    assert subjects.sheet_view.showGridLines is False
 
 
 def test_groups_export_grows_row_height_for_long_wrapped_text() -> None:
@@ -303,8 +433,13 @@ async def test_export_xlsx_api(
     disposition = response.headers["content-disposition"]
     assert "Fall 2026.xlsx" in disposition or "Fall%202026.xlsx" in disposition
     wb = load_workbook(io.BytesIO(response.content))
-    assert wb.sheetnames == ["Core", "Electives", "Distributions"]
+    assert wb.sheetnames == ["Core", "Electives", "Distributions", "Instructors", "Subjects"]
     assert wb["Core"]["B4"].value == "Math I (lec)"
     assert wb["Electives"]["B1"].value == "Monday"
+    assert wb["Instructors"]["G2"].value == "t1"
+    assert wb["Subjects"]["A2"].value == "Core"
+    assert wb["Subjects"]["C2"].value == "Math I"
+    assert wb["Subjects"]["E2"].value == "BS_Y1/Software Engineering: B25-CSE-01, B25-CSE-02"
+    assert wb["Subjects"]["F2"].value == "Alice Teacher (Primary)\nBob Assistant (Teaching Assistant)"
     assert wb["Distributions"]["A1"].value == "E-mail"
     assert wb["Distributions"]["A2"].value == "a.student@innopolis.university"
