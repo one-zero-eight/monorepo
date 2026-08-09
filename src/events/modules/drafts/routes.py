@@ -142,9 +142,11 @@ async def upload_image(id: PydanticObjectId, image_file: UploadFile, auth: INH_T
 
 
 @router.get("/{id}/image")
-async def get_draft_image(id: PydanticObjectId, auth: INH_TOKEN_AUTH) -> RedirectResponse:
-    """Redirect to the draft image in MinIO."""
-    event = await get_own_draft(id, auth.innohassle_id)
+async def get_draft_image(id: PydanticObjectId) -> RedirectResponse:
+    """Redirect to the draft image in MinIO (public; for <img src>)."""
+    event = await events_repo.get(id)
+    if event is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
     image_id = event.draft.data.image_id
     if not image_id:
         raise HTTPException(status_code=404, detail="No image available")

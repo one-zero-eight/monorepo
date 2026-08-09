@@ -109,7 +109,7 @@ async def unpublish_event(id: PydanticObjectId, _: MODERATOR_AUTH) -> None:
 
 @router.get("/{id}/image")
 async def get_event_image(id: PydanticObjectId) -> RedirectResponse:
-    """Redirect to the event image in MinIO."""
+    """Redirect to the event image in MinIO (public; for <img src>)."""
     _, public = await _get_published_or_404(id)
     image_id = public.data.image_id
     if not image_id:

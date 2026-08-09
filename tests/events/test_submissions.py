@@ -174,12 +174,12 @@ def test_get_submission_visibility(events_client: TestClient, user_headers, plai
     assert events_client.get(f"/submissions/{created['id']}", headers=plain_user_headers).status_code == 404
 
 
-def test_submission_image_redirect(events_client: TestClient, user_headers, plain_user_headers, superadmin_headers):
+def test_submission_image_redirect(events_client: TestClient, user_headers: dict[str, str]):
     created = create_draft(events_client, user_headers)
     fill_locales(events_client, created["id"], user_headers)
     submit(events_client, created["id"], user_headers)
 
-    no_image = events_client.get(f"/submissions/{created['id']}/image", headers=user_headers, follow_redirects=False)
+    no_image = events_client.get(f"/submissions/{created['id']}/image", follow_redirects=False)
     assert no_image.status_code == 404
 
     events_client.delete(f"/submissions/{created['id']}", headers=user_headers)
@@ -192,17 +192,6 @@ def test_submission_image_redirect(events_client: TestClient, user_headers, plai
     image_id = upload.json()["image_id"]
     submit(events_client, created["id"], user_headers)
 
-    response = events_client.get(f"/submissions/{created['id']}/image", headers=user_headers, follow_redirects=False)
+    response = events_client.get(f"/submissions/{created['id']}/image", follow_redirects=False)
     assert response.status_code == 307
     assert image_id in response.headers["location"]
-
-    moderator = events_client.get(
-        f"/submissions/{created['id']}/image", headers=superadmin_headers, follow_redirects=False
-    )
-    assert moderator.status_code == 307
-    assert image_id in moderator.headers["location"]
-
-    forbidden = events_client.get(
-        f"/submissions/{created['id']}/image", headers=plain_user_headers, follow_redirects=False
-    )
-    assert forbidden.status_code == 404

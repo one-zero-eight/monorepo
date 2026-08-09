@@ -78,11 +78,9 @@ async def get_submission(id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLE
 
 
 @router.get("/{id}/image")
-async def get_submission_image(id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLES) -> RedirectResponse:
-    """Redirect to the submission image in MinIO."""
-    event, submission = await _get_submission_or_404(id)
-    if not roles.is_moderator and event.creator_id != auth.innohassle_id:
-        raise HTTPException(status_code=404, detail="Submission not found")
+async def get_submission_image(id: PydanticObjectId) -> RedirectResponse:
+    """Redirect to the submission image in MinIO (public; for <img src>)."""
+    _event, submission = await _get_submission_or_404(id)
     image_id = submission.data.image_id
     if not image_id:
         raise HTTPException(status_code=404, detail="No image available")

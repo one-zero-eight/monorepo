@@ -237,7 +237,7 @@ def test_upload_image(events_client: TestClient, user_headers: dict[str, str]):
 
 def test_draft_image_redirect(events_client: TestClient, user_headers: dict[str, str]):
     created = create_draft(events_client, user_headers)
-    missing = events_client.get(f"/drafts/{created['id']}/image", headers=user_headers, follow_redirects=False)
+    missing = events_client.get(f"/drafts/{created['id']}/image", follow_redirects=False)
     assert missing.status_code == 404
 
     upload = events_client.post(
@@ -248,7 +248,7 @@ def test_draft_image_redirect(events_client: TestClient, user_headers: dict[str,
     assert upload.status_code == 200
     image_id = upload.json()["image_id"]
 
-    response = events_client.get(f"/drafts/{created['id']}/image", headers=user_headers, follow_redirects=False)
+    response = events_client.get(f"/drafts/{created['id']}/image", follow_redirects=False)
     assert response.status_code == 307
     assert image_id in response.headers["location"]
 
