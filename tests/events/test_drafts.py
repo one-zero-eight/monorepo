@@ -165,13 +165,10 @@ def test_delete_locale(events_client: TestClient, user_headers: dict[str, str]):
     assert "ru" not in response.json()["data"]["locales"]
 
 
-def test_eligible_reports_guardrail_violations(events_client: TestClient, user_headers: dict[str, str]):
+def test_can_submit_reports_guardrail_violations(events_client: TestClient, user_headers: dict[str, str]):
     created = create_draft(events_client, user_headers)  # locales empty, host set
-    response = events_client.get(f"/drafts/{created['id']}/eligible", headers=user_headers)
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["eligible"] is False
-    assert "Event start time" not in "".join(payload["why"])  # starts_at is set and in the future
+    assert created["can_submit"] is False
+    assert "Event start time" not in "".join(created["cannot_submit_reasons"])  # starts_at is set and in the future
 
     fill_locales(events_client, created["id"], user_headers)
     cleared_location = events_client.patch(
@@ -180,8 +177,7 @@ def test_eligible_reports_guardrail_violations(events_client: TestClient, user_h
         headers=user_headers,
     )
     assert cleared_location.status_code == 200
-    response = events_client.get(f"/drafts/{created['id']}/eligible", headers=user_headers)
-    assert "Location is empty" in response.json()["why"]
+    assert "Location is empty" in cleared_location.json()["cannot_submit_reasons"]
 
     restored_location = events_client.patch(
         f"/drafts/{created['id']}",
@@ -189,18 +185,19 @@ def test_eligible_reports_guardrail_violations(events_client: TestClient, user_h
         headers=user_headers,
     )
     assert restored_location.status_code == 200
-    response = events_client.get(f"/drafts/{created['id']}/eligible", headers=user_headers)
-    payload = response.json()
-    assert payload["eligible"] is False
-    assert "Event start time in the past" in payload["why"]
+    payload = restored_location.json()
+    assert payload["can_submit"] is False
+    assert "Event start time in the past" in payload["cannot_submit_reasons"]
 
 
-def test_eligible_true_for_complete_draft(events_client: TestClient, user_headers: dict[str, str]):
+def test_can_submit_true_for_complete_draft(events_client: TestClient, user_headers: dict[str, str]):
     created = create_draft(events_client, user_headers)
     fill_locales(events_client, created["id"], user_headers)
-    response = events_client.get(f"/drafts/{created['id']}/eligible", headers=user_headers)
+    response = events_client.get(f"/drafts/{created['id']}", headers=user_headers)
     assert response.status_code == 200
-    assert response.json() == {"eligible": True, "why": []}
+    draft = response.json()
+    assert draft["can_submit"] is True
+    assert draft["cannot_submit_reasons"] == []
 
 
 def test_upload_image(events_client: TestClient, user_headers: dict[str, str]):

@@ -13,8 +13,9 @@ from src.events.schemas import (
     SubmissionListItem,
     SubmissionOut,
     SubmissionSummary,
+    UserRoles,
 )
-from src.events.service import draft_status
+from src.events.service import draft_status, eligibility_reasons
 from src.inh_accounts_sdk import UserTokenData
 
 
@@ -42,13 +43,16 @@ def _summarize_submission_data(data: SubmissionData) -> SubmissionDataSummary:
     )
 
 
-def build_draft_out(event: Event) -> DraftOut:
+def build_draft_out(event: Event, roles: UserRoles) -> DraftOut:
+    reasons = eligibility_reasons(event, roles)
     return DraftOut(
         id=event.id,
         creator_id=event.creator_id,
         status=draft_status(event),
         revision=event.draft.revision,
         data=event.draft.data,
+        can_submit=not reasons,
+        cannot_submit_reasons=reasons,
     )
 
 

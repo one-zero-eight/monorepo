@@ -4,7 +4,6 @@ __all__ = [
     "DraftListItem",
     "DraftOut",
     "DraftStatus",
-    "Eligibility",
     "EventDataSummary",
     "EventListItem",
     "EventOut",
@@ -95,12 +94,6 @@ class ImageUploadResponse(BaseSchema):
     "File ID of the uploaded event image"
 
 
-class Eligibility(BaseSchema):
-    eligible: bool
-    why: list[str]
-    "Human-readable reasons why the draft cannot be submitted"
-
-
 class DraftStatus(StrEnum):
     PUBLISHED = "published"
     UNPUBLISHED = "unpublished"
@@ -114,6 +107,10 @@ class DraftOut(BaseSchema):
     status: DraftStatus | None
     revision: dtm.datetime
     data: EventData
+    can_submit: bool
+    "Whether the draft can be submitted"
+    cannot_submit_reasons: list[str]
+    "Human-readable reasons why the draft cannot be submitted"
 
 
 class LocaleSummary(BaseSchema):

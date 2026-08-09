@@ -17,13 +17,12 @@ from src.events.schemas import (
     CreateDraft,
     DraftListItem,
     DraftOut,
-    Eligibility,
     ImageUploadResponse,
     PatchDraft,
     PatchLocale,
     RestoreBody,
 )
-from src.events.service import assert_host_allowed, eligibility_reasons, get_own_draft, utcnow
+from src.events.service import assert_host_allowed, get_own_draft, utcnow
 from src.events.views import build_draft_list_item, build_draft_out
 
 router = APIRouter(
@@ -56,7 +55,7 @@ async def create_draft(body: CreateDraft, auth: INH_TOKEN_AUTH, roles: ROLES) ->
         host=body.host,
     )
     event = await events_repo.create(auth.innohassle_id, data)
-    return build_draft_out(event)
+    return build_draft_out(event, roles)
 
 
 @router.get("/")
@@ -67,10 +66,10 @@ async def list_drafts(auth: INH_TOKEN_AUTH) -> list[DraftListItem]:
 
 
 @router.get("/{id}")
-async def get_draft(id: PydanticObjectId, auth: INH_TOKEN_AUTH) -> DraftOut:
+async def get_draft(id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
     """Get the current user's draft."""
     event = await get_own_draft(id, auth.innohassle_id)
-    return build_draft_out(event)
+    return build_draft_out(event, roles)
 
 
 @router.patch("/{id}")
@@ -87,11 +86,13 @@ async def patch_draft(id: PydanticObjectId, body: PatchDraft, auth: INH_TOKEN_AU
         event.draft.data.host = body.host
     event.draft.revision = utcnow()
     await event.save()
-    return build_draft_out(event)
+    return build_draft_out(event, roles)
 
 
 @router.patch("/{id}/locales/{locale}")
-async def patch_locale(id: PydanticObjectId, locale: str, body: PatchLocale, auth: INH_TOKEN_AUTH) -> DraftOut:
+async def patch_locale(
+    id: PydanticObjectId, locale: str, body: PatchLocale, auth: INH_TOKEN_AUTH, roles: ROLES
+) -> DraftOut:
     """Patch name or description in a locale; auto-creates the locale if missing."""
     event = await get_own_draft(id, auth.innohassle_id)
     _validate_locale_codes([locale])
@@ -105,18 +106,18 @@ async def patch_locale(id: PydanticObjectId, locale: str, body: PatchLocale, aut
         current.description = body.description
     event.draft.revision = utcnow()
     await event.save()
-    return build_draft_out(event)
+    return build_draft_out(event, roles)
 
 
 @router.delete("/{id}/locales/{locale}")
-async def delete_locale(id: PydanticObjectId, locale: str, auth: INH_TOKEN_AUTH) -> DraftOut:
+async def delete_locale(id: PydanticObjectId, locale: str, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
     """Delete a locale from the draft."""
     event = await get_own_draft(id, auth.innohassle_id)
     _validate_locale_codes([locale])
     event.draft.data.locales.pop(locale, None)
     event.draft.revision = utcnow()
     await event.save()
-    return build_draft_out(event)
+    return build_draft_out(event, roles)
 
 
 @router.post("/{id}/image")
@@ -157,16 +158,8 @@ async def get_draft_image(id: PydanticObjectId, auth: INH_TOKEN_AUTH) -> Redirec
     return RedirectResponse(url=images_repo.get_url(image_id))
 
 
-@router.get("/{id}/eligible")
-async def check_eligible(id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLES) -> Eligibility:
-    """Check submission guardrails and report which of them are violated."""
-    event = await get_own_draft(id, auth.innohassle_id)
-    reasons = eligibility_reasons(event, roles)
-    return Eligibility(eligible=not reasons, why=reasons)
-
-
 @router.post("/{id}/restore")
-async def restore_draft(id: PydanticObjectId, body: RestoreBody, auth: INH_TOKEN_AUTH) -> DraftOut:
+async def restore_draft(id: PydanticObjectId, body: RestoreBody, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
     """Copy the revision and data from submission or public back into the draft."""
     event = await get_own_draft(id, auth.innohassle_id)
     source = event.submission if body.source == "submission" else event.public
@@ -175,7 +168,7 @@ async def restore_draft(id: PydanticObjectId, body: RestoreBody, auth: INH_TOKEN
     event.draft.data = EventData(**source.data.model_dump())
     event.draft.revision = source.revision
     await event.save()
-    return build_draft_out(event)
+    return build_draft_out(event, roles)
 
 
 @router.delete("/{id}")
