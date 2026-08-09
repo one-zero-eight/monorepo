@@ -65,12 +65,12 @@ def test_events_ics_prefers_settings_locale_order(
     superadmin_headers: dict[str, str],
 ):
     draft = create_draft(events_client, user_headers, locales=["en", "ru"])
-    events_client.patch(
+    events_client.put(
         f"/drafts/{draft['id']}/locales/en",
         json={"name": "English name", "description": "English description"},
         headers=user_headers,
     )
-    events_client.patch(
+    events_client.put(
         f"/drafts/{draft['id']}/locales/ru",
         json={"name": "Русское имя", "description": "Русское описание"},
         headers=user_headers,
@@ -90,7 +90,7 @@ def test_events_ics_falls_back_to_available_locale(
     superadmin_headers: dict[str, str],
 ):
     draft = create_draft(events_client, user_headers, locales=["ru"])
-    events_client.patch(
+    events_client.put(
         f"/drafts/{draft['id']}/locales/ru",
         json={"name": "Только русский", "description": "Описание"},
         headers=user_headers,

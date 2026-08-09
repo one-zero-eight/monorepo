@@ -14,8 +14,8 @@ __all__ = [
     "MeOut",
     "OwnedClub",
     "PatchDraft",
-    "PatchLocale",
     "PublicHost",
+    "PutLocale",
     "RestoreBody",
     "SubmissionDataSummary",
     "SubmissionListItem",
@@ -72,9 +72,11 @@ class PatchDraft(BaseSchema):
     host: Host | None = None
 
 
-class PatchLocale(BaseSchema):
-    name: str | None = None
-    description: str | None = None
+class PutLocale(BaseSchema):
+    name: str | None
+    "Locale name; null or empty string allowed"
+    description: str | None
+    "Locale description; null or empty string allowed"
 
 
 class RestoreBody(BaseSchema):

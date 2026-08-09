@@ -140,19 +140,34 @@ def test_patch_host_to_external_forbidden_for_club_leader(
     assert response.status_code == 400
 
 
-def test_patch_locale_autocreates_and_validates(events_client: TestClient, user_headers: dict[str, str]):
+def test_put_locale_autocreates_and_validates(events_client: TestClient, user_headers: dict[str, str]):
     created = create_draft(events_client, user_headers, locales=["en"])
-    response = events_client.patch(
+    response = events_client.put(
         f"/drafts/{created['id']}/locales/ru",
-        json={"name": "Событие"},
+        json={"name": "Событие", "description": None},
         headers=user_headers,
     )
     assert response.status_code == 200
     assert response.json()["data"]["locales"]["ru"] == {"name": "Событие", "description": None}
 
-    invalid = events_client.patch(
-        f"/drafts/{created['id']}/locales/de",
+    empty_ok = events_client.put(
+        f"/drafts/{created['id']}/locales/ru",
+        json={"name": "", "description": ""},
+        headers=user_headers,
+    )
+    assert empty_ok.status_code == 200
+    assert empty_ok.json()["data"]["locales"]["ru"] == {"name": "", "description": ""}
+
+    missing_field = events_client.put(
+        f"/drafts/{created['id']}/locales/ru",
         json={"name": "x"},
+        headers=user_headers,
+    )
+    assert missing_field.status_code == 422
+
+    invalid = events_client.put(
+        f"/drafts/{created['id']}/locales/de",
+        json={"name": "x", "description": "y"},
         headers=user_headers,
     )
     assert invalid.status_code == 400

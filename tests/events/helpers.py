@@ -41,7 +41,7 @@ def create_draft(client: TestClient, headers: dict[str, str], **overrides) -> di
 
 def fill_locales(client: TestClient, draft_id: str, headers: dict[str, str]) -> None:
     for code in ("en", "ru"):
-        response = client.patch(
+        response = client.put(
             f"/drafts/{draft_id}/locales/{code}",
             json={"name": f"Event {code}", "description": f"Description {code}"},
             headers=headers,

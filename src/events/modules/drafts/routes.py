@@ -19,7 +19,7 @@ from src.events.schemas import (
     DraftOut,
     ImageUploadResponse,
     PatchDraft,
-    PatchLocale,
+    PutLocale,
     RestoreBody,
 )
 from src.events.service import assert_host_allowed, get_own_draft, utcnow
@@ -89,21 +89,14 @@ async def patch_draft(id: PydanticObjectId, body: PatchDraft, auth: INH_TOKEN_AU
     return build_draft_out(event, roles)
 
 
-@router.patch("/{id}/locales/{locale}")
-async def patch_locale(
-    id: PydanticObjectId, locale: str, body: PatchLocale, auth: INH_TOKEN_AUTH, roles: ROLES
+@router.put("/{id}/locales/{locale}")
+async def put_locale(
+    id: PydanticObjectId, locale: str, body: PutLocale, auth: INH_TOKEN_AUTH, roles: ROLES
 ) -> DraftOut:
-    """Patch name or description in a locale; auto-creates the locale if missing."""
+    """Replace name and description in a locale; auto-creates the locale if missing."""
     event = await get_own_draft(id, auth.innohassle_id)
     _validate_locale_codes([locale])
-    current = event.draft.data.locales.get(locale)
-    if current is None:
-        current = Locale()
-        event.draft.data.locales[locale] = current
-    if "name" in body.model_fields_set:
-        current.name = body.name
-    if "description" in body.model_fields_set:
-        current.description = body.description
+    event.draft.data.locales[locale] = Locale(name=body.name, description=body.description)
     event.draft.revision = utcnow()
     await event.save()
     return build_draft_out(event, roles)
