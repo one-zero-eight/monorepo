@@ -4,11 +4,12 @@ from typing import Annotated
 from beanie import PydanticObjectId
 from fastapi import APIRouter, HTTPException, Query
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, Response
 
 from src.dependencies import INH_TOKEN_AUTH, OPTIONAL_INH_TOKEN_AUTH
 from src.events import repo as events_repo
 from src.events.dependencies import MODERATOR_AUTH
+from src.events.ics import build_events_ics
 from src.events.images_repo import images_repo
 from src.events.mongo import Event, PublicEvent
 from src.events.schemas import EventListItem, EventOut
@@ -18,6 +19,11 @@ from src.events.views import build_event_list_item, build_event_out
 
 router = APIRouter(
     prefix="/events",
+    tags=["Events"],
+    route_class=AutoDeriveResponsesAPIRoute,
+)
+
+ics_router = APIRouter(
     tags=["Events"],
     route_class=AutoDeriveResponsesAPIRoute,
 )
@@ -49,6 +55,18 @@ async def list_events(
         build_event_list_item(event, public, auth, to_public_host(public.data.host, clubs))
         for event, public in published
     ]
+
+
+@ics_router.get("/events.ics")
+async def get_events_ics() -> Response:
+    """ICS feed of all published events (no event description, no enrollment filtering)."""
+    events = await events_repo.list_all_published()
+    published = [event for event in events if event.public is not None]
+    clubs = await load_clubs_for_hosts([event.public.data.host for event in published if event.public is not None])
+    hosts = {
+        str(event.id): to_public_host(event.public.data.host, clubs) for event in published if event.public is not None
+    }
+    return Response(content=build_events_ics(published, hosts), media_type="text/calendar")
 
 
 @router.get("/{id}")

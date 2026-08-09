@@ -45,6 +45,7 @@ schedule_assistant_service:
   db_url: postgresql+psycopg://postgres:postgres@127.0.0.1:5432/schedule_assistant
 events_service:
   innohassle_url: https://innohassle.ru
+  ics_default_duration_hours: 2
   event_manager_emails:
     - change-me@innopolis.university
   moderator_emails:

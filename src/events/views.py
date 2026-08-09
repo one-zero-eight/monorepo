@@ -10,7 +10,6 @@ from src.events.schemas import (
     EventListData,
     EventListItem,
     EventOut,
-    LocaleSummary,
     PublicHost,
     SubmissionDataSummary,
     SubmissionListItem,
@@ -18,12 +17,8 @@ from src.events.schemas import (
     SubmissionSummary,
     UserRoles,
 )
-from src.events.service import draft_status, eligibility_reasons
+from src.events.service import draft_status, eligibility_reasons, pick_event_name
 from src.inh_accounts_sdk import UserTokenData
-
-
-def _summarize_locales(locales: dict) -> dict[str, LocaleSummary]:
-    return {code: LocaleSummary(name=locale.name) for code, locale in locales.items()}
 
 
 def _summarize_draft_data(data: EventData) -> EventDataSummary:
@@ -31,7 +26,7 @@ def _summarize_draft_data(data: EventData) -> EventDataSummary:
         starts_at=data.starts_at,
         image_id=data.image_id,
         location=data.location,
-        locales=_summarize_locales(data.locales),
+        name=pick_event_name(data.locales),
         host=data.host,
     )
 
@@ -41,7 +36,7 @@ def _summarize_submission_data(data: SubmissionData) -> SubmissionDataSummary:
         starts_at=data.starts_at,
         image_id=data.image_id,
         location=data.location,
-        locales=_summarize_locales(data.locales),
+        name=pick_event_name(data.locales),
         host=data.host,
     )
 
@@ -61,7 +56,7 @@ def _event_list_data(data: SubmissionData, host: PublicHost) -> EventListData:
         starts_at=data.starts_at,
         image_id=data.image_id,
         location=data.location,
-        locales=_summarize_locales(data.locales),
+        name=pick_event_name(data.locales),
         host=host,
     )
 

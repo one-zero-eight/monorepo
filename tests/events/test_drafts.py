@@ -100,8 +100,8 @@ def test_list_drafts_shows_only_own(events_client: TestClient, club_leader_heade
     manager_drafts = events_client.get("/drafts", headers=user_headers).json()
     assert len(leader_drafts) == 1
     assert len(manager_drafts) == 1
-    # descriptions are omitted in list responses
-    assert all(locale.get("description") is None for d in manager_drafts for locale in d["data"]["locales"].values())
+    assert "locales" not in manager_drafts[0]["data"]
+    assert manager_drafts[0]["data"]["name"] is None  # locales not filled yet
 
 
 def test_patch_draft_data(events_client: TestClient, club_leader_headers: dict[str, str]):

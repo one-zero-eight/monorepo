@@ -11,7 +11,6 @@ __all__ = [
     "EventOut",
     "FeedbackBody",
     "ImageUploadResponse",
-    "LocaleSummary",
     "MeOut",
     "OwnedClub",
     "PatchDraft",
@@ -116,16 +115,12 @@ class DraftOut(BaseSchema):
     "Human-readable reasons why the draft cannot be submitted"
 
 
-class LocaleSummary(BaseSchema):
-    name: str | None = None
-    "Description is omitted in list responses"
-
-
 class EventDataSummary(BaseSchema):
     starts_at: dtm.datetime | None = None
     image_id: str | None = None
     location: str | None = None
-    locales: dict[str, LocaleSummary] = Field(default_factory=dict)
+    name: str | None = None
+    "Display name picked from locales by settings.locales priority"
     host: Host | None = None
 
 
@@ -133,7 +128,8 @@ class SubmissionDataSummary(BaseSchema):
     starts_at: dtm.datetime
     image_id: str | None = None
     location: str
-    locales: dict[str, LocaleSummary]
+    name: str | None = None
+    "Display name picked from locales by settings.locales priority"
     host: Host
 
 
@@ -156,7 +152,8 @@ class EventListData(BaseSchema):
     starts_at: dtm.datetime
     image_id: str | None = None
     location: str
-    locales: dict[str, LocaleSummary]
+    name: str | None = None
+    "Display name picked from locales by settings.locales priority"
     host: PublicHost
 
 

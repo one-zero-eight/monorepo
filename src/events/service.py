@@ -13,6 +13,7 @@ from src.events.mongo import (
     EventData,
     Host,
     HostType,
+    Locale,
     ModerationStatus,
     SubmissionData,
     SubmissionLocale,
@@ -22,6 +23,22 @@ from src.events.schemas import DraftStatus, PublicHost, UserRoles
 
 def utcnow() -> dtm.datetime:
     return dtm.datetime.now(dtm.UTC)
+
+
+def pick_event_name(locales: dict[str, Locale] | dict[str, SubmissionLocale]) -> str | None:
+    """Pick event name using settings.locales priority, then any present locale."""
+    for code in settings.locales:
+        locale = locales.get(code)
+        if locale is None:
+            continue
+        name = (locale.name or "").strip()
+        if name:
+            return name
+    for locale in locales.values():
+        name = (locale.name or "").strip()
+        if name:
+            return name
+    return None
 
 
 async def get_own_draft(id: PydanticObjectId, innohassle_id: str, detail: str = "Draft not found") -> Event:

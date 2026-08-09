@@ -24,8 +24,8 @@ def test_list_events_default_window(
     events = response.json()
     assert len(events) == 1
     item = events[0]
-    # list responses omit description
-    assert all(locale.get("description") is None for locale in item["data"]["locales"].values())
+    assert item["data"]["name"] == "Event en"
+    assert "locales" not in item["data"]
     assert item["enrolled_count"] == 0
     # revision and approved_* are not populated for anonymous users
     assert item["revision"] is None

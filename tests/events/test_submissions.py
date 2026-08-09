@@ -145,6 +145,8 @@ def test_list_submissions_filter_by_status(events_client: TestClient, user_heade
 
     all_submissions = events_client.get("/submissions", headers=superadmin_headers).json()
     assert len(all_submissions) == 2
+    assert all_submissions[0]["submission"]["data"]["name"] == "Event en"
+    assert "locales" not in all_submissions[0]["submission"]["data"]
     pending = events_client.get("/submissions", params={"status": "pending"}, headers=superadmin_headers).json()
     assert len(pending) == 1
     approved = events_client.get("/submissions", params={"status": "approved"}, headers=superadmin_headers).json()

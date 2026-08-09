@@ -30,3 +30,7 @@ async def list_published(from_dt: dtm.datetime, to_dt: dtm.datetime) -> list[Eve
     return await Event.find(
         {"public": {"$ne": None}, "public.data.starts_at": {"$gte": from_dt, "$lte": to_dt}}
     ).to_list()
+
+
+async def list_all_published() -> list[Event]:
+    return await Event.find({"public": {"$ne": None}}).to_list()
