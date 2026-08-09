@@ -5,10 +5,13 @@ from src.events.mongo import Event, EventData, PublicEvent, Submission, Submissi
 from src.events.schemas import (
     DraftListItem,
     DraftOut,
+    EventDataOut,
     EventDataSummary,
+    EventListData,
     EventListItem,
     EventOut,
     LocaleSummary,
+    PublicHost,
     SubmissionDataSummary,
     SubmissionListItem,
     SubmissionOut,
@@ -40,6 +43,26 @@ def _summarize_submission_data(data: SubmissionData) -> SubmissionDataSummary:
         location=data.location,
         locales=_summarize_locales(data.locales),
         host=data.host,
+    )
+
+
+def _event_data_out(data: SubmissionData, host: PublicHost) -> EventDataOut:
+    return EventDataOut(
+        starts_at=data.starts_at,
+        image_id=data.image_id,
+        location=data.location,
+        locales=data.locales,
+        host=host,
+    )
+
+
+def _event_list_data(data: SubmissionData, host: PublicHost) -> EventListData:
+    return EventListData(
+        starts_at=data.starts_at,
+        image_id=data.image_id,
+        location=data.location,
+        locales=_summarize_locales(data.locales),
+        host=host,
     )
 
 
@@ -95,11 +118,11 @@ def _is_author(event: Event, auth: UserTokenData | None) -> bool:
     return auth is not None and auth.innohassle_id == event.creator_id
 
 
-def build_event_out(event: Event, public: PublicEvent, auth: UserTokenData | None) -> EventOut:
+def build_event_out(event: Event, public: PublicEvent, auth: UserTokenData | None, host: PublicHost) -> EventOut:
     out = EventOut(
         id=event.id,
         creator_id=event.creator_id,
-        data=public.data,
+        data=_event_data_out(public.data, host),
         enrolled_count=len(public.enrolled_users),
     )
     if auth is not None:
@@ -113,11 +136,13 @@ def build_event_out(event: Event, public: PublicEvent, auth: UserTokenData | Non
     return out
 
 
-def build_event_list_item(event: Event, public: PublicEvent, auth: UserTokenData | None) -> EventListItem:
+def build_event_list_item(
+    event: Event, public: PublicEvent, auth: UserTokenData | None, host: PublicHost
+) -> EventListItem:
     item = EventListItem(
         id=event.id,
         creator_id=event.creator_id,
-        data=_summarize_submission_data(public.data),
+        data=_event_list_data(public.data, host),
         enrolled_count=len(public.enrolled_users),
     )
     if auth is not None:

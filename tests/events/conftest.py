@@ -13,6 +13,8 @@ from src.common_beanie import BeanieStore
 from src.common_minio import MinioStore
 
 CLUB_ID = "64b7de000000000000000001"
+CLUB_SLUG = "test-club"
+CLUB_TITLE = "Test Club"
 
 
 @pytest.fixture(scope="session")
@@ -22,17 +24,31 @@ def clubs_owned_by() -> dict[str, list[dict]]:
 
 
 @pytest.fixture(scope="session")
-def mock_clubs_service(clubs_owned_by: dict[str, list[dict]]):
-    def handler(request: httpx.Request) -> httpx.Response:
+def clubs_by_id() -> dict[str, dict]:
+    """Mapping club_id → club payload served by the mocked Clubs API."""
+    return {}
+
+
+@pytest.fixture(scope="session")
+def mock_clubs_service(clubs_owned_by: dict[str, list[dict]], clubs_by_id: dict[str, dict]):
+    def owned_by_handler(request: httpx.Request) -> httpx.Response:
         innohassle_id = request.url.path.rsplit("/", 1)[-1]
         return httpx.Response(200, json=clubs_owned_by.get(innohassle_id, []))
+
+    def by_id_handler(request: httpx.Request) -> httpx.Response:
+        club_id = request.url.path.rsplit("/", 1)[-1]
+        club = clubs_by_id.get(club_id)
+        if club is None:
+            return httpx.Response(404, json={"detail": "Club not found"})
+        return httpx.Response(200, json=club)
 
     from src.events.config import settings
 
     api_url = settings.clubs.api_url.rstrip("/")
 
     with respx.mock(assert_all_mocked=True, assert_all_called=False) as respx_mock:
-        respx_mock.get(url__regex=rf"{re.escape(api_url)}/clubs/owned-by/.+").mock(side_effect=handler)
+        respx_mock.get(url__regex=rf"{re.escape(api_url)}/clubs/owned-by/.+").mock(side_effect=owned_by_handler)
+        respx_mock.get(url__regex=rf"{re.escape(api_url)}/clubs/by-id/.+").mock(side_effect=by_id_handler)
         yield
 
 
@@ -68,8 +84,9 @@ def clean_up_stores_per_test(request: pytest.FixtureRequest):
 
 
 @pytest.fixture
-def club_leader_headers(auth_header_factory, clubs_owned_by: dict[str, list[dict]]):
-    clubs_owned_by["club-leader-1"] = [{"club_id": CLUB_ID, "title": "Test Club"}]
+def club_leader_headers(auth_header_factory, clubs_owned_by: dict[str, list[dict]], clubs_by_id: dict[str, dict]):
+    clubs_owned_by["club-leader-1"] = [{"club_id": CLUB_ID, "title": CLUB_TITLE}]
+    clubs_by_id[CLUB_ID] = {"id": CLUB_ID, "slug": CLUB_SLUG, "title": CLUB_TITLE}
     return auth_header_factory("club-leader-1", "club-leader@innopolis.university")
 
 

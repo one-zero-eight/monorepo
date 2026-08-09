@@ -12,7 +12,7 @@ from src.events.dependencies import MODERATOR_AUTH
 from src.events.images_repo import images_repo
 from src.events.mongo import Event, PublicEvent
 from src.events.schemas import EventListItem, EventOut
-from src.events.service import utcnow
+from src.events.service import load_clubs_for_hosts, resolve_public_host, to_public_host, utcnow
 from src.events.time_utils import TZAwareDateTime
 from src.events.views import build_event_list_item, build_event_out
 
@@ -43,19 +43,20 @@ async def list_events(
     if from_dt > to_dt:
         raise HTTPException(status_code=400, detail="from must not be later than to")
     events = await events_repo.list_published(from_dt, to_dt)
-    items: list[EventListItem] = []
-    for event in events:
-        if event.public is None:
-            continue
-        items.append(build_event_list_item(event, event.public, auth))
-    return items
+    published = [(event, event.public) for event in events if event.public is not None]
+    clubs = await load_clubs_for_hosts([public.data.host for _, public in published])
+    return [
+        build_event_list_item(event, public, auth, to_public_host(public.data.host, clubs))
+        for event, public in published
+    ]
 
 
 @router.get("/{id}")
 async def get_event(id: PydanticObjectId, auth: OPTIONAL_INH_TOKEN_AUTH) -> EventOut:
     """Get a published event."""
     event, public = await _get_published_or_404(id)
-    return build_event_out(event, public, auth)
+    host = await resolve_public_host(public.data.host)
+    return build_event_out(event, public, auth, host)
 
 
 @router.post("/{id}/enroll")
@@ -65,7 +66,8 @@ async def enroll(id: PydanticObjectId, auth: INH_TOKEN_AUTH) -> EventOut:
     if auth.innohassle_id not in public.enrolled_users:
         public.enrolled_users.append(auth.innohassle_id)
         await event.save()
-    return build_event_out(event, public, auth)
+    host = await resolve_public_host(public.data.host)
+    return build_event_out(event, public, auth, host)
 
 
 @router.post("/{id}/unenroll")
@@ -75,7 +77,8 @@ async def unenroll(id: PydanticObjectId, auth: INH_TOKEN_AUTH) -> EventOut:
     if auth.innohassle_id in public.enrolled_users:
         public.enrolled_users.remove(auth.innohassle_id)
         await event.save()
-    return build_event_out(event, public, auth)
+    host = await resolve_public_host(public.data.host)
+    return build_event_out(event, public, auth, host)
 
 
 @router.delete("/{id}")

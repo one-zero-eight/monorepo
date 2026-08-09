@@ -22,6 +22,8 @@ class EventsSettings(ServiceSettingsBase):
     "Configuration for S3 object storage"
     images_prefix: str = "events-images/"
     "Prefix for event images in MinIO"
+    innohassle_url: str = "https://innohassle.ru"
+    "Base URL of the InNoHassle frontend (used for club host links)"
     event_manager_emails: list[str] = Field(default_factory=list)
     "Innomails of users who can act as event managers (can use any external host)"
     moderator_emails: list[str] = Field(default_factory=list)

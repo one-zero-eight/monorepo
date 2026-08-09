@@ -6,6 +6,8 @@ from typing import cast
 from beanie import PydanticObjectId
 from fastapi import HTTPException
 
+from src.events.clubs_client import ClubInfo, clubs_client
+from src.events.config import settings
 from src.events.mongo import (
     Event,
     EventData,
@@ -15,7 +17,7 @@ from src.events.mongo import (
     SubmissionData,
     SubmissionLocale,
 )
-from src.events.schemas import DraftStatus, UserRoles
+from src.events.schemas import DraftStatus, PublicHost, UserRoles
 
 
 def utcnow() -> dtm.datetime:
@@ -97,3 +99,27 @@ def build_submission_data(data: EventData) -> SubmissionData:
         },
         host=cast(Host, data.host),
     )
+
+
+def to_public_host(host: Host, clubs: dict[str, ClubInfo]) -> PublicHost:
+    """Map stored Host to the public display shape."""
+    if host.type == HostType.EXTERNAL:
+        return PublicHost(display_name=cast(str, host.name), link=host.url)
+    club_id = cast(str, host.club_id)
+    club = clubs.get(club_id)
+    if club is None:
+        raise HTTPException(status_code=502, detail=f"Club {club_id} not found in clubs service")
+    return PublicHost(
+        display_name=club.title,
+        link=f"{settings.innohassle_url.rstrip('/')}/clubs/{club.slug}",
+    )
+
+
+async def load_clubs_for_hosts(hosts: list[Host]) -> dict[str, ClubInfo]:
+    club_ids = {host.club_id for host in hosts if host.type == HostType.CLUB and host.club_id}
+    return await clubs_client.get_clubs(club_ids)
+
+
+async def resolve_public_host(host: Host) -> PublicHost:
+    clubs = await load_clubs_for_hosts([host])
+    return to_public_host(host, clubs)

@@ -4,7 +4,9 @@ __all__ = [
     "DraftListItem",
     "DraftOut",
     "DraftStatus",
+    "EventDataOut",
     "EventDataSummary",
+    "EventListData",
     "EventListItem",
     "EventOut",
     "FeedbackBody",
@@ -14,6 +16,7 @@ __all__ = [
     "OwnedClub",
     "PatchDraft",
     "PatchLocale",
+    "PublicHost",
     "RestoreBody",
     "SubmissionDataSummary",
     "SubmissionListItem",
@@ -30,7 +33,7 @@ from beanie import PydanticObjectId
 from pydantic import Field
 
 from src.common_pydantic import BaseSchema
-from src.events.mongo import EventData, Host, Moderation, Submission, SubmissionData
+from src.events.mongo import EventData, Host, Moderation, Submission, SubmissionLocale
 from src.events.time_utils import TZAwareDateTime
 
 
@@ -134,6 +137,29 @@ class SubmissionDataSummary(BaseSchema):
     host: Host
 
 
+class PublicHost(BaseSchema):
+    """Host as shown on published events (resolved for display)."""
+
+    display_name: str
+    link: str | None = None
+
+
+class EventDataOut(BaseSchema):
+    starts_at: dtm.datetime
+    image_id: str | None = None
+    location: str
+    locales: dict[str, SubmissionLocale]
+    host: PublicHost
+
+
+class EventListData(BaseSchema):
+    starts_at: dtm.datetime
+    image_id: str | None = None
+    location: str
+    locales: dict[str, LocaleSummary]
+    host: PublicHost
+
+
 class DraftListItem(BaseSchema):
     id: PydanticObjectId
     creator_id: str
@@ -164,7 +190,7 @@ class SubmissionListItem(BaseSchema):
 class EventOut(BaseSchema):
     id: PydanticObjectId
     creator_id: str
-    data: SubmissionData
+    data: EventDataOut
     enrolled_count: int
     enrolled: bool | None = None
     "Visible to authenticated users only"
@@ -181,7 +207,7 @@ class EventOut(BaseSchema):
 class EventListItem(BaseSchema):
     id: PydanticObjectId
     creator_id: str
-    data: SubmissionDataSummary
+    data: EventListData
     enrolled_count: int
     enrolled: bool | None = None
     "Visible to authenticated users only"

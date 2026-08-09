@@ -3,6 +3,7 @@ from io import BytesIO
 from fastapi.testclient import TestClient
 from PIL import Image
 
+from tests.events.conftest import CLUB_ID, CLUB_SLUG, CLUB_TITLE
 from tests.events.helpers import create_and_publish, create_draft, fill_locales, future_iso, submit
 
 
@@ -75,6 +76,26 @@ def test_get_event_optional_auth(
     assert event.get("enrolled_users") is None
     assert event.get("revision") is None
     assert event.get("approved_by") is None
+    assert event["data"]["host"] == {"display_name": "One Zero Eight", "link": None}
+
+
+def test_events_host_resolves_club(
+    events_client: TestClient,
+    club_leader_headers: dict[str, str],
+    superadmin_headers: dict[str, str],
+):
+    draft = create_and_publish(
+        events_client, club_leader_headers, superadmin_headers, host={"type": "club", "club_id": CLUB_ID}
+    )
+    expected_host = {"display_name": CLUB_TITLE, "link": f"https://innohassle.ru/clubs/{CLUB_SLUG}"}
+
+    detail = events_client.get(f"/events/{draft['id']}")
+    assert detail.status_code == 200
+    assert detail.json()["data"]["host"] == expected_host
+
+    listed = events_client.get("/events")
+    assert listed.status_code == 200
+    assert listed.json()[0]["data"]["host"] == expected_host
 
 
 def test_enroll_and_unenroll(events_client: TestClient, user_headers: dict[str, str], superadmin_headers):
