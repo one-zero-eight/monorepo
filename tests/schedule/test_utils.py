@@ -37,6 +37,14 @@ def test_validate_vevent_accepts_minimal_event():
     validate_vevent(_minimal_vevent())
 
 
+def test_validate_vevent_accepts_all_day_vdate_without_value_param():
+    event = icalendar.Event()
+    event.add("uid", "all-day@example.com")
+    event.add("dtstart", icalendar.vDate(dtm.date(2025, 1, 1)))
+    assert event["DTSTART"].params.get("VALUE") != "DATE"
+    validate_vevent(event)
+
+
 def test_locate_ics_by_path_rejects_parent_traversal(tmp_path, monkeypatch: pytest.MonkeyPatch):
     from src.schedule.config import settings
 
