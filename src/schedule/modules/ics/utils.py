@@ -586,6 +586,7 @@ async def get_personal_room_bookings(user: ViewUser) -> bytes:
 
         vevent = icalendar.Event()
         vevent.add("uid", uid)
+        vevent.add("dtstamp", icalendar.vDatetime(now_utc))
 
         vevent.add("summary", booking["title"])
         if booking.get("room_id"):
