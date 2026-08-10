@@ -5,8 +5,8 @@ from typing import cast
 import icalendar
 from fastapi.testclient import TestClient
 
-from tests.events.conftest import CLUB_ID, CLUB_SLUG, CLUB_TITLE
-from tests.events.helpers import create_and_publish, create_draft, future_iso, submit
+from tests.events.conftest import CLUB_SLUG, CLUB_TITLE
+from tests.events.helpers import add_external_host, create_and_publish, create_draft, future_iso, submit
 
 
 def _parse_calendar(content: bytes) -> icalendar.Calendar:
@@ -22,7 +22,7 @@ def test_events_ics_includes_published_event_fields(
     user_headers: dict[str, str],
     superadmin_headers: dict[str, str],
 ):
-    draft = create_and_publish(events_client, user_headers, superadmin_headers, location="108")
+    draft = create_and_publish(events_client, user_headers, superadmin_headers, location="108", duration_hours=2.0)
     response = events_client.get("/events.ics")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/calendar")
@@ -50,9 +50,7 @@ def test_events_ics_includes_resolved_club_host(
     club_leader_headers: dict[str, str],
     superadmin_headers: dict[str, str],
 ):
-    create_and_publish(
-        events_client, club_leader_headers, superadmin_headers, host={"type": "club", "club_id": CLUB_ID}
-    )
+    create_and_publish(events_client, club_leader_headers, superadmin_headers, host="club")
     response = events_client.get("/events.ics")
     assert response.status_code == 200
     vevent = _vevents(_parse_calendar(response.content))[0]
@@ -65,6 +63,7 @@ def test_events_ics_prefers_settings_locale_order(
     superadmin_headers: dict[str, str],
 ):
     draft = create_draft(events_client, user_headers, locales=["en", "ru"])
+    add_external_host(events_client, draft["id"], user_headers)
     events_client.put(
         f"/drafts/{draft['id']}/locales/en",
         json={"name": "English name", "description": "English description"},
@@ -90,6 +89,7 @@ def test_events_ics_falls_back_to_available_locale(
     superadmin_headers: dict[str, str],
 ):
     draft = create_draft(events_client, user_headers, locales=["ru"])
+    add_external_host(events_client, draft["id"], user_headers)
     events_client.put(
         f"/drafts/{draft['id']}/locales/ru",
         json={"name": "Только русский", "description": "Описание"},
@@ -118,3 +118,20 @@ def test_events_ics_excludes_unpublished_drafts(
     assert len(events) == 1
     assert str(events[0]["uid"]) == f"event-{published['id']}@innohassle.ru"
     assert re.search(rf"URL:.*{re.escape(published['id'])}", response.text)
+
+
+def test_my_enrolled_events_ics(
+    events_client: TestClient,
+    user_headers: dict[str, str],
+    plain_user_headers: dict[str, str],
+    superadmin_headers: dict[str, str],
+):
+    enrolled = create_and_publish(events_client, user_headers, superadmin_headers, starts_at=future_iso(2))
+    create_and_publish(events_client, user_headers, superadmin_headers, starts_at=future_iso(3))
+    events_client.post(f"/events/{enrolled['id']}/enroll", headers=plain_user_headers)
+
+    response = events_client.get("/users/me/events.ics", headers=plain_user_headers)
+    assert response.status_code == 200
+    events = _vevents(_parse_calendar(response.content))
+    assert len(events) == 1
+    assert str(events[0]["uid"]) == f"event-{enrolled['id']}@innohassle.ru"

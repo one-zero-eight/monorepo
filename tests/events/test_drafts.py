@@ -3,9 +3,10 @@ from io import BytesIO
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from tests.events.conftest import CLUB_ID
+from tests.events.conftest import CLUB_ID, CLUB_ID_2
 from tests.events.helpers import (
-    club_host_payload,
+    add_club_host,
+    add_external_host,
     create_and_publish,
     create_draft,
     draft_payload,
@@ -33,49 +34,62 @@ def test_create_draft_forbidden_for_plain_user(events_client: TestClient, plain_
     assert "Only club leaders or event managers" in response.json()["detail"]
 
 
-def test_create_draft_as_club_leader_with_club_host(events_client: TestClient, club_leader_headers: dict[str, str]):
-    response = events_client.post("/drafts", json=club_host_payload(), headers=club_leader_headers)
+def test_create_draft_starts_without_hosts(events_client: TestClient, club_leader_headers: dict[str, str]):
+    response = events_client.post("/drafts", json=draft_payload(), headers=club_leader_headers)
     assert response.status_code == 200
     draft = response.json()
     assert draft["creator_id"] == "club-leader-1"
     assert draft["status"] is None
-    assert draft["data"]["host"] == {"type": "club", "club_id": CLUB_ID, "name": None, "url": None}
+    assert draft["data"]["hosts"] == []
+    assert draft["invitations"] == []
+    assert draft["can_edit"] is True
     assert set(draft["data"]["locales"]) == {"en", "ru"}
+    assert draft["data"]["duration_hours"] == 2.0
+    assert draft["data"]["enrollment"] == {"type": "internal", "url": None, "capacity": None}
 
 
-def test_create_draft_as_event_manager_with_external_host(events_client: TestClient, user_headers: dict[str, str]):
+def test_create_draft_as_event_manager(events_client: TestClient, user_headers: dict[str, str]):
     response = events_client.post("/drafts", json=draft_payload(), headers=user_headers)
     assert response.status_code == 200
-    assert response.json()["data"]["host"] == {
-        "type": "external",
-        "club_id": None,
-        "name": "One Zero Eight",
-        "url": None,
-    }
+    assert response.json()["data"]["hosts"] == []
 
 
-def test_club_host_requires_ownership(events_client: TestClient, user_headers: dict[str, str]):
-    # user_headers (test-user-1) is an event manager but owns no clubs.
-    response = events_client.post("/drafts", json=club_host_payload(), headers=user_headers)
-    assert response.status_code == 400
-    assert "Only club leaders can use a club as a host" in response.json()["detail"]
+def test_add_club_host(events_client: TestClient, club_leader_headers: dict[str, str]):
+    created = create_draft(events_client, club_leader_headers)
+    draft = add_club_host(events_client, created["id"], club_leader_headers)
+    assert len(draft["data"]["hosts"]) == 1
+    host = draft["data"]["hosts"][0]
+    assert host["type"] == "club"
+    assert host["club_id"] == CLUB_ID
+    assert host["id"]
 
 
-def test_club_host_must_be_owned_club(events_client: TestClient, club_leader_headers: dict[str, str]):
+def test_add_club_host_must_be_owned(events_client: TestClient, club_leader_headers: dict[str, str]):
+    created = create_draft(events_client, club_leader_headers)
     response = events_client.post(
-        "/drafts",
-        json=club_host_payload(host={"type": "club", "club_id": "64b7de000000000000000999"}),
+        f"/drafts/{created['id']}/hosts/clubs",
+        json={"club_id": "64b7de000000000000000999"},
         headers=club_leader_headers,
     )
     assert response.status_code == 400
     assert "not a leader" in response.json()["detail"]
 
 
-def test_external_host_forbidden_for_club_leader(events_client: TestClient, club_leader_headers: dict[str, str]):
-    # club-leader-1 is not an event manager (email not in the manager list).
-    response = events_client.post("/drafts", json=draft_payload(), headers=club_leader_headers)
-    assert response.status_code == 400
-    assert "Only event managers can use an external host" in response.json()["detail"]
+def test_add_external_host_event_manager_only(
+    events_client: TestClient, user_headers: dict[str, str], club_leader_headers: dict[str, str]
+):
+    created = create_draft(events_client, club_leader_headers)
+    forbidden = events_client.post(
+        f"/drafts/{created['id']}/hosts/external",
+        json={"name": "External"},
+        headers=club_leader_headers,
+    )
+    assert forbidden.status_code == 403
+
+    manager_draft = create_draft(events_client, user_headers)
+    draft = add_external_host(events_client, manager_draft["id"], user_headers)
+    assert draft["data"]["hosts"][0]["type"] == "external"
+    assert draft["data"]["hosts"][0]["name"] == "One Zero Eight"
 
 
 def test_create_draft_rejects_unknown_locale(events_client: TestClient, user_headers: dict[str, str]):
@@ -85,59 +99,108 @@ def test_create_draft_rejects_unknown_locale(events_client: TestClient, user_hea
 
 
 def test_drafts_are_private_to_author(events_client: TestClient, club_leader_headers, plain_user_headers):
-    created = events_client.post("/drafts", json=club_host_payload(), headers=club_leader_headers).json()
+    created = create_draft(events_client, club_leader_headers)
     missing = events_client.get(f"/drafts/{created['id']}", headers=plain_user_headers)
     assert missing.status_code == 404
     own = events_client.get(f"/drafts/{created['id']}", headers=club_leader_headers)
     assert own.status_code == 200
 
 
-def test_list_drafts_shows_only_own(events_client: TestClient, club_leader_headers, user_headers):
-    events_client.post("/drafts", json=club_host_payload(), headers=club_leader_headers)
-    events_client.post("/drafts", json=draft_payload(), headers=user_headers)
+def test_invite_accept_and_list_invited_by(
+    events_client: TestClient,
+    club_leader_headers: dict[str, str],
+    other_club_leader_headers: dict[str, str],
+):
+    created = create_draft(events_client, club_leader_headers)
+    add_club_host(events_client, created["id"], club_leader_headers)
+
+    invited = events_client.post(
+        f"/drafts/{created['id']}/hosts/invitations",
+        json={"club_id": CLUB_ID_2},
+        headers=club_leader_headers,
+    )
+    assert invited.status_code == 200
+    assert invited.json()["invitations"] == [CLUB_ID_2]
+
+    as_invitee = events_client.get(f"/drafts/{created['id']}", headers=other_club_leader_headers)
+    assert as_invitee.status_code == 200
+    assert as_invitee.json()["can_edit"] is False
+
+    listed = events_client.get("/drafts", headers=other_club_leader_headers).json()
+    assert len(listed) == 1
+    assert listed[0]["invited_by"] == "Club Leader One"
+
+    accepted = events_client.post(f"/drafts/{created['id']}/accept", headers=other_club_leader_headers)
+    assert accepted.status_code == 200
+    assert accepted.json()["invitations"] == []
+    assert accepted.json()["can_edit"] is True
+    assert any(h["club_id"] == CLUB_ID_2 for h in accepted.json()["data"]["hosts"])
+
+    listed_after = events_client.get("/drafts", headers=other_club_leader_headers).json()
+    assert listed_after[0].get("invited_by") is None
+
+
+def test_decline_invitation(
+    events_client: TestClient,
+    club_leader_headers: dict[str, str],
+    other_club_leader_headers: dict[str, str],
+):
+    created = create_draft(events_client, club_leader_headers)
+    events_client.post(
+        f"/drafts/{created['id']}/hosts/invitations",
+        json={"club_id": CLUB_ID_2},
+        headers=club_leader_headers,
+    )
+    declined = events_client.post(f"/drafts/{created['id']}/decline", headers=other_club_leader_headers)
+    assert declined.status_code == 200
+    assert declined.json()["invitations"] == []
+    assert events_client.get(f"/drafts/{created['id']}", headers=other_club_leader_headers).status_code == 404
+
+
+def test_list_drafts_shows_accessible(events_client: TestClient, club_leader_headers, user_headers):
+    create_draft(events_client, club_leader_headers)
+    create_draft(events_client, user_headers)
 
     leader_drafts = events_client.get("/drafts", headers=club_leader_headers).json()
     manager_drafts = events_client.get("/drafts", headers=user_headers).json()
     assert len(leader_drafts) == 1
     assert len(manager_drafts) == 1
     assert "locales" not in manager_drafts[0]["data"]
-    assert manager_drafts[0]["data"]["name"] is None  # locales not filled yet
+    assert manager_drafts[0]["data"]["name"] is None
 
 
 def test_patch_draft_data(events_client: TestClient, club_leader_headers: dict[str, str]):
-    created = create_draft(events_client, club_leader_headers, host={"type": "club", "club_id": CLUB_ID})
+    created = create_draft(events_client, club_leader_headers)
     response = events_client.patch(
         f"/drafts/{created['id']}",
-        json={"starts_at": future_iso(14), "location": "109"},
+        json={"starts_at": future_iso(14), "location": "109", "duration_hours": 3.5},
         headers=club_leader_headers,
     )
     assert response.status_code == 200
     draft = response.json()
     assert draft["data"]["location"] == "109"
+    assert draft["data"]["duration_hours"] == 3.5
     assert draft["revision"] != created["revision"]
 
 
-def test_patch_host_validated(events_client: TestClient, club_leader_headers: dict[str, str]):
-    created = create_draft(events_client, club_leader_headers, host={"type": "club", "club_id": CLUB_ID})
-    response = events_client.patch(
-        f"/drafts/{created['id']}",
-        json={"host": {"type": "club", "club_id": "64b7de000000000000000999"}},
-        headers=club_leader_headers,
-    )
-    assert response.status_code == 400
-    assert "not a leader" in response.json()["detail"]
+def test_host_order_and_delete(events_client: TestClient, user_headers: dict[str, str]):
+    created = create_draft(events_client, user_headers)
+    add_external_host(events_client, created["id"], user_headers, name="A")
+    draft = add_external_host(events_client, created["id"], user_headers, name="B")
+    ids = [h["id"] for h in draft["data"]["hosts"]]
+    assert len(ids) == 2
 
-
-def test_patch_host_to_external_forbidden_for_club_leader(
-    events_client: TestClient, club_leader_headers: dict[str, str]
-):
-    created = create_draft(events_client, club_leader_headers, host={"type": "club", "club_id": CLUB_ID})
-    response = events_client.patch(
-        f"/drafts/{created['id']}",
-        json={"host": {"type": "external", "name": "Other"}},
-        headers=club_leader_headers,
+    reordered = events_client.put(
+        f"/drafts/{created['id']}/hosts/order",
+        json={"host_ids": list(reversed(ids))},
+        headers=user_headers,
     )
-    assert response.status_code == 400
+    assert reordered.status_code == 200
+    assert [h["id"] for h in reordered.json()["data"]["hosts"]] == list(reversed(ids))
+
+    deleted = events_client.delete(f"/drafts/{created['id']}/hosts/{ids[0]}", headers=user_headers)
+    assert deleted.status_code == 200
+    assert len(deleted.json()["data"]["hosts"]) == 1
 
 
 def test_put_locale_autocreates_and_validates(events_client: TestClient, user_headers: dict[str, str]):
@@ -181,10 +244,11 @@ def test_delete_locale(events_client: TestClient, user_headers: dict[str, str]):
 
 
 def test_can_submit_reports_guardrail_violations(events_client: TestClient, user_headers: dict[str, str]):
-    created = create_draft(events_client, user_headers)  # locales empty, host set
+    created = create_draft(events_client, user_headers)
     assert created["can_submit"] is False
-    assert "Event start time" not in "".join(created["cannot_submit_reasons"])  # starts_at is set and in the future
+    assert "Hosts are not set" in created["cannot_submit_reasons"]
 
+    add_external_host(events_client, created["id"], user_headers)
     fill_locales(events_client, created["id"], user_headers)
     cleared_location = events_client.patch(
         f"/drafts/{created['id']}",
@@ -207,12 +271,22 @@ def test_can_submit_reports_guardrail_violations(events_client: TestClient, user
 
 def test_can_submit_true_for_complete_draft(events_client: TestClient, user_headers: dict[str, str]):
     created = create_draft(events_client, user_headers)
+    add_external_host(events_client, created["id"], user_headers)
     fill_locales(events_client, created["id"], user_headers)
     response = events_client.get(f"/drafts/{created['id']}", headers=user_headers)
     assert response.status_code == 200
     draft = response.json()
     assert draft["can_submit"] is True
     assert draft["cannot_submit_reasons"] == []
+
+
+def test_can_submit_requires_duration_and_enrollment(events_client: TestClient, user_headers: dict[str, str]):
+    created = create_draft(events_client, user_headers, duration_hours=None, enrollment=None)
+    add_external_host(events_client, created["id"], user_headers)
+    fill_locales(events_client, created["id"], user_headers)
+    draft = events_client.get(f"/drafts/{created['id']}", headers=user_headers).json()
+    assert "Event duration is not set" in draft["cannot_submit_reasons"]
+    assert "Enrollment is not set" in draft["cannot_submit_reasons"]
 
 
 def test_upload_image(events_client: TestClient, user_headers: dict[str, str]):
@@ -255,9 +329,9 @@ def test_draft_image_redirect(events_client: TestClient, user_headers: dict[str,
 
 def test_restore_from_submission(events_client: TestClient, user_headers: dict[str, str]):
     created = create_draft(events_client, user_headers)
+    add_external_host(events_client, created["id"], user_headers)
     fill_locales(events_client, created["id"], user_headers)
     submit(events_client, created["id"], user_headers)
-    # change the draft afterwards
     events_client.patch(f"/drafts/{created['id']}", json={"location": "changed"}, headers=user_headers)
 
     response = events_client.post(f"/drafts/{created['id']}/restore", json={"from": "submission"}, headers=user_headers)
@@ -268,7 +342,8 @@ def test_restore_from_submission(events_client: TestClient, user_headers: dict[s
 
 
 def test_restore_from_public(events_client: TestClient, club_leader_headers, superadmin_headers):
-    created = create_draft(events_client, club_leader_headers, host={"type": "club", "club_id": CLUB_ID})
+    created = create_draft(events_client, club_leader_headers)
+    add_club_host(events_client, created["id"], club_leader_headers)
     fill_locales(events_client, created["id"], club_leader_headers)
     submit(events_client, created["id"], club_leader_headers)
     events_client.post(f"/submissions/{created['id']}/approve", json={"feedback": ""}, headers=superadmin_headers)
@@ -282,9 +357,7 @@ def test_restore_from_public(events_client: TestClient, club_leader_headers, sup
 
 
 def test_delete_draft_blocked_when_published(events_client: TestClient, club_leader_headers, superadmin_headers):
-    draft = create_and_publish(
-        events_client, club_leader_headers, superadmin_headers, host={"type": "club", "club_id": CLUB_ID}
-    )
+    draft = create_and_publish(events_client, club_leader_headers, superadmin_headers, host="club")
     response = events_client.delete(f"/drafts/{draft['id']}", headers=club_leader_headers)
     assert response.status_code == 400
     assert "published" in response.json()["detail"]
@@ -292,6 +365,7 @@ def test_delete_draft_blocked_when_published(events_client: TestClient, club_lea
 
 def test_delete_draft_blocked_when_submission_pending(events_client: TestClient, user_headers: dict[str, str]):
     created = create_draft(events_client, user_headers)
+    add_external_host(events_client, created["id"], user_headers)
     fill_locales(events_client, created["id"], user_headers)
     submit(events_client, created["id"], user_headers)
     response = events_client.delete(f"/drafts/{created['id']}", headers=user_headers)
@@ -308,6 +382,7 @@ def test_delete_draft_ok_when_no_submission(events_client: TestClient, user_head
 
 def test_delete_draft_ok_after_decline(events_client: TestClient, user_headers, superadmin_headers):
     created = create_draft(events_client, user_headers)
+    add_external_host(events_client, created["id"], user_headers)
     fill_locales(events_client, created["id"], user_headers)
     submit(events_client, created["id"], user_headers)
     declined = events_client.post(
@@ -318,3 +393,24 @@ def test_delete_draft_ok_after_decline(events_client: TestClient, user_headers, 
     assert declined.status_code == 200
     response = events_client.delete(f"/drafts/{created['id']}", headers=user_headers)
     assert response.status_code == 200
+
+
+def test_draft_keeps_moderation_feedback_after_edit(events_client: TestClient, user_headers, superadmin_headers):
+    created = create_draft(events_client, user_headers)
+    add_external_host(events_client, created["id"], user_headers)
+    fill_locales(events_client, created["id"], user_headers)
+    submit(events_client, created["id"], user_headers)
+    events_client.post(
+        f"/submissions/{created['id']}/decline",
+        json={"feedback": "needs work"},
+        headers=superadmin_headers,
+    )
+
+    declined = events_client.get(f"/drafts/{created['id']}", headers=user_headers).json()
+    assert declined["status"] == "declined"
+    assert declined["feedback"] == "needs work"
+
+    events_client.patch(f"/drafts/{created['id']}", json={"location": "edited"}, headers=user_headers)
+    edited = events_client.get(f"/drafts/{created['id']}", headers=user_headers).json()
+    assert edited["status"] is None  # draft revision diverged from submission
+    assert edited["feedback"] == "needs work"

@@ -20,21 +20,42 @@ def draft_payload(**overrides) -> dict:
         "starts_at": future_iso(),
         "location": "108",
         "locales": ["en", "ru"],
-        "host": {"type": "external", "name": "One Zero Eight"},
+        "duration_hours": 2.0,
+        "enrollment": {"type": "internal"},
     }
-    payload.update(overrides)
-    return payload
-
-
-def club_host_payload(**overrides) -> dict:
-    payload = draft_payload()
-    payload["host"] = {"type": "club", "club_id": CLUB_ID}
     payload.update(overrides)
     return payload
 
 
 def create_draft(client: TestClient, headers: dict[str, str], **overrides) -> dict:
     response = client.post("/drafts", json=draft_payload(**overrides), headers=headers)
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def add_external_host(
+    client: TestClient,
+    draft_id: str,
+    headers: dict[str, str],
+    *,
+    name: str = "One Zero Eight",
+    url: str | None = None,
+) -> dict:
+    body: dict = {"name": name}
+    if url is not None:
+        body["url"] = url
+    response = client.post(f"/drafts/{draft_id}/hosts/external", json=body, headers=headers)
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def add_club_host(
+    client: TestClient,
+    draft_id: str,
+    headers: dict[str, str],
+    club_id: str = CLUB_ID,
+) -> dict:
+    response = client.post(f"/drafts/{draft_id}/hosts/clubs", json={"club_id": club_id}, headers=headers)
     assert response.status_code == 200, response.text
     return response.json()
 
@@ -65,9 +86,16 @@ def create_and_publish(
     client: TestClient,
     author_headers: dict[str, str],
     moderator_headers: dict[str, str],
+    *,
+    host: str = "external",
+    club_id: str = CLUB_ID,
     **overrides,
 ) -> dict:
     draft = create_draft(client, author_headers, **overrides)
+    if host == "external":
+        draft = add_external_host(client, draft["id"], author_headers)
+    elif host == "club":
+        draft = add_club_host(client, draft["id"], author_headers, club_id=club_id)
     fill_locales(client, draft["id"], author_headers)
     submit(client, draft["id"], author_headers)
     approve(client, draft["id"], moderator_headers)

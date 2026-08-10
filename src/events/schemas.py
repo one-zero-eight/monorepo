@@ -1,4 +1,6 @@
 __all__ = [
+    "AddClubHostBody",
+    "AddExternalHostBody",
     "CreateDraft",
     "DeclineBody",
     "DraftListItem",
@@ -11,9 +13,12 @@ __all__ = [
     "EventOut",
     "FeedbackBody",
     "ImageUploadResponse",
+    "InviteClubBody",
     "MeOut",
+    "OrderHostsBody",
     "OwnedClub",
     "PatchDraft",
+    "PatchExternalHostBody",
     "PublicHost",
     "PutLocale",
     "RestoreBody",
@@ -32,7 +37,7 @@ from beanie import PydanticObjectId
 from pydantic import Field
 
 from src.common_pydantic import BaseSchema
-from src.events.mongo import EventData, Host, Moderation, Submission, SubmissionLocale
+from src.events.mongo import Enrollment, EventData, EventLink, Host, Moderation, Submission, SubmissionLocale
 from src.events.time_utils import TZAwareDateTime
 
 
@@ -63,13 +68,17 @@ class CreateDraft(BaseSchema):
     location: str | None = None
     locales: list[str] | None = None
     "Locale codes to pre-create in the draft"
-    host: Host | None = None
+    duration_hours: float | None = None
+    enrollment: Enrollment | None = None
+    links: list[EventLink] | None = None
 
 
 class PatchDraft(BaseSchema):
     starts_at: TZAwareDateTime | None = None
     location: str | None = None
-    host: Host | None = None
+    duration_hours: float | None = None
+    enrollment: Enrollment | None = None
+    links: list[EventLink] | None = None
 
 
 class PutLocale(BaseSchema):
@@ -77,6 +86,28 @@ class PutLocale(BaseSchema):
     "Locale name; null or empty string allowed"
     description: str | None
     "Locale description; null or empty string allowed"
+
+
+class AddExternalHostBody(BaseSchema):
+    name: str
+    url: str | None = None
+
+
+class PatchExternalHostBody(BaseSchema):
+    name: str | None = None
+    url: str | None = None
+
+
+class AddClubHostBody(BaseSchema):
+    club_id: str
+
+
+class InviteClubBody(BaseSchema):
+    club_id: str
+
+
+class OrderHostsBody(BaseSchema):
+    host_ids: list[str]
 
 
 class RestoreBody(BaseSchema):
@@ -111,10 +142,16 @@ class DraftOut(BaseSchema):
     status: DraftStatus | None
     revision: dtm.datetime
     data: EventData
+    invitations: list[str]
+    "Club ids with pending host invitations"
+    can_edit: bool
+    "Whether the current user can edit this draft"
     can_submit: bool
     "Whether the draft can be submitted"
     cannot_submit_reasons: list[str]
     "Human-readable reasons why the draft cannot be submitted"
+    feedback: str | None = None
+    "Latest moderation feedback when set; kept after the draft diverges from the submission"
 
 
 class EventDataSummary(BaseSchema):
@@ -123,7 +160,9 @@ class EventDataSummary(BaseSchema):
     location: str | None = None
     name: str | None = None
     "Display name picked from locales by settings.locales priority"
-    host: Host | None = None
+    hosts: list[Host] = Field(default_factory=list)
+    duration_hours: float | None = None
+    enrollment: Enrollment | None = None
 
 
 class SubmissionDataSummary(BaseSchema):
@@ -132,12 +171,15 @@ class SubmissionDataSummary(BaseSchema):
     location: str
     name: str | None = None
     "Display name picked from locales by settings.locales priority"
-    host: Host
+    hosts: list[Host]
+    duration_hours: float
+    enrollment: Enrollment
 
 
 class PublicHost(BaseSchema):
     """Host as shown on published events (resolved for display)."""
 
+    id: str
     display_name: str
     link: str | None = None
 
@@ -147,7 +189,10 @@ class EventDataOut(BaseSchema):
     image_id: str | None = None
     location: str
     locales: dict[str, SubmissionLocale]
-    host: PublicHost
+    hosts: list[PublicHost]
+    duration_hours: float
+    enrollment: Enrollment
+    links: list[EventLink] = Field(default_factory=list)
 
 
 class EventListData(BaseSchema):
@@ -156,7 +201,9 @@ class EventListData(BaseSchema):
     location: str
     name: str | None = None
     "Display name picked from locales by settings.locales priority"
-    host: PublicHost
+    hosts: list[PublicHost]
+    duration_hours: float
+    enrollment: Enrollment
 
 
 class DraftListItem(BaseSchema):
@@ -165,6 +212,8 @@ class DraftListItem(BaseSchema):
     status: DraftStatus | None
     revision: dtm.datetime
     data: EventDataSummary
+    invited_by: str | None = None
+    "Present only while the current user's club has a pending invitation"
 
 
 class SubmissionOut(BaseSchema):
@@ -193,7 +242,7 @@ class EventOut(BaseSchema):
     enrolled_count: int
     enrolled: bool | None = None
     "Visible to authenticated users only"
-    enrolled_users: list[str] | None = None
+    enrolled_emails: list[str] | None = None
     "Visible to the author or a moderator only"
     revision: dtm.datetime | None = None
     "Visible to the author or a moderator only"

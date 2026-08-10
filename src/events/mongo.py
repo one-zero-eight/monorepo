@@ -1,7 +1,10 @@
 __all__ = [
     "Draft",
+    "Enrollment",
+    "EnrollmentType",
     "Event",
     "EventData",
+    "EventLink",
     "Host",
     "HostType",
     "Locale",
@@ -29,6 +32,8 @@ class HostType(StrEnum):
 
 
 class Host(BaseSchema):
+    id: str
+    "Stable host id within the event"
     type: HostType
     "Host type"
     club_id: str | None = None
@@ -45,6 +50,36 @@ class Host(BaseSchema):
         if self.type == HostType.EXTERNAL and not self.name:
             raise ValueError("name is required for an external host")
         return self
+
+
+class EnrollmentType(StrEnum):
+    EXTERNAL = "external"
+    INTERNAL = "internal"
+
+
+class Enrollment(BaseSchema):
+    type: EnrollmentType
+    url: str | None = None
+    "Enrollment URL (required for external)"
+    capacity: int | None = None
+    "Max enrollments for internal; null means unlimited"
+
+    @model_validator(mode="after")
+    def validate_fields(self) -> Enrollment:
+        if self.type == EnrollmentType.EXTERNAL and not (self.url or "").strip():
+            raise ValueError("url is required for external enrollment")
+        if self.type == EnrollmentType.INTERNAL and self.url is not None:
+            raise ValueError("url is only allowed for external enrollment")
+        if self.type == EnrollmentType.EXTERNAL and self.capacity is not None:
+            raise ValueError("capacity is only allowed for internal enrollment")
+        if self.capacity is not None and self.capacity < 1:
+            raise ValueError("capacity must be at least 1")
+        return self
+
+
+class EventLink(BaseSchema):
+    url: str
+    name: str | None = None
 
 
 class Locale(BaseSchema):
@@ -72,8 +107,14 @@ class EventData(BaseSchema):
     "Event location"
     locales: dict[str, Locale] = Field(default_factory=dict)
     "Localized title and description"
-    host: Host | None = None
-    "Event host"
+    hosts: list[Host] = Field(default_factory=list)
+    "Event hosts"
+    duration_hours: float | None = None
+    "Event duration in hours"
+    enrollment: Enrollment | None = None
+    "Enrollment configuration"
+    links: list[EventLink] = Field(default_factory=list)
+    "Related links"
 
 
 class SubmissionData(BaseSchema):
@@ -87,8 +128,14 @@ class SubmissionData(BaseSchema):
     "Event location"
     locales: dict[str, SubmissionLocale]
     "Localized title and description"
-    host: Host
-    "Event host"
+    hosts: list[Host]
+    "Event hosts"
+    duration_hours: float
+    "Event duration in hours"
+    enrollment: Enrollment
+    "Enrollment configuration"
+    links: list[EventLink] = Field(default_factory=list)
+    "Related links"
 
 
 class Draft(BaseSchema):
@@ -125,8 +172,8 @@ class PublicEvent(BaseSchema):
     approved_by: str
     "Email of the moderator who approved the event"
     approved_at: dtm.datetime
-    enrolled_users: list[str] = Field(default_factory=list)
-    "Users who checked in on the event"
+    enrolled_emails: list[str] = Field(default_factory=list)
+    "Emails of users enrolled in the event"
     data: SubmissionData
 
 
@@ -135,6 +182,8 @@ class Event(BeanieDocument):
 
     creator_id: str
     "InNoHassle Accounts id of the author"
+    invitations: list[str] = Field(default_factory=list)
+    "Club ids invited as hosts (pending)"
     draft: Draft
     submission: Submission | None = None
     public: PublicEvent | None = None

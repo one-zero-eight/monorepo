@@ -3,7 +3,7 @@ from io import BytesIO
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from tests.events.helpers import create_draft, fill_locales, submit
+from tests.events.helpers import add_external_host, create_draft, fill_locales, submit
 
 
 def _white_png() -> bytes:
@@ -12,19 +12,28 @@ def _white_png() -> bytes:
     return buf.getvalue()
 
 
+def _ready_draft(client: TestClient, headers: dict[str, str], **overrides) -> dict:
+    created = create_draft(client, headers, **overrides)
+    add_external_host(client, created["id"], headers)
+    fill_locales(client, created["id"], headers)
+    return created
+
+
 def test_submit_incomplete_draft_rejected(events_client: TestClient, user_headers: dict[str, str]):
     created = create_draft(events_client, user_headers)
     response = events_client.post(f"/submissions/{created['id']}", headers=user_headers)
     assert response.status_code == 400
     body = response.json()["detail"]
-    assert "locale" in body
+    assert "locale" in body or "Hosts" in body
 
 
 def test_submit_and_get_pending(events_client: TestClient, user_headers: dict[str, str]):
-    created = create_draft(events_client, user_headers)
-    fill_locales(events_client, created["id"], user_headers)
+    created = _ready_draft(events_client, user_headers)
     response = submit(events_client, created["id"], user_headers)
     assert response["submission"]["moderation"]["status"] == "pending"
+    assert len(response["submission"]["data"]["hosts"]) == 1
+    assert response["submission"]["data"]["duration_hours"] == 2.0
+    assert response["submission"]["data"]["enrollment"]["type"] == "internal"
 
     draft = events_client.get(f"/drafts/{created['id']}", headers=user_headers).json()
     assert response["submission"]["data"]["starts_at"] == draft["data"]["starts_at"]
@@ -32,8 +41,7 @@ def test_submit_and_get_pending(events_client: TestClient, user_headers: dict[st
 
 
 def test_resubmit_requires_changes(events_client: TestClient, user_headers: dict[str, str]):
-    created = create_draft(events_client, user_headers)
-    fill_locales(events_client, created["id"], user_headers)
+    created = _ready_draft(events_client, user_headers)
     submit(events_client, created["id"], user_headers)
     response = events_client.post(f"/submissions/{created['id']}", headers=user_headers)
     assert response.status_code == 400
@@ -46,8 +54,7 @@ def test_resubmit_requires_changes(events_client: TestClient, user_headers: dict
 
 
 def test_approve_publishes_event(events_client: TestClient, user_headers, superadmin_headers):
-    created = create_draft(events_client, user_headers)
-    fill_locales(events_client, created["id"], user_headers)
+    created = _ready_draft(events_client, user_headers)
     submit(events_client, created["id"], user_headers)
     response = events_client.post(
         f"/submissions/{created['id']}/approve",
@@ -66,16 +73,14 @@ def test_approve_publishes_event(events_client: TestClient, user_headers, supera
 
 
 def test_approve_requires_moderator(events_client: TestClient, user_headers: dict[str, str]):
-    created = create_draft(events_client, user_headers)
-    fill_locales(events_client, created["id"], user_headers)
+    created = _ready_draft(events_client, user_headers)
     submit(events_client, created["id"], user_headers)
     response = events_client.post(f"/submissions/{created['id']}/approve", json={"feedback": ""}, headers=user_headers)
     assert response.status_code == 403
 
 
 def test_decline_requires_feedback(events_client: TestClient, user_headers, superadmin_headers):
-    created = create_draft(events_client, user_headers)
-    fill_locales(events_client, created["id"], user_headers)
+    created = _ready_draft(events_client, user_headers)
     submit(events_client, created["id"], user_headers)
 
     missing = events_client.post(f"/submissions/{created['id']}/decline", json={}, headers=superadmin_headers)
@@ -96,8 +101,7 @@ def test_decline_requires_feedback(events_client: TestClient, user_headers, supe
 
 
 def test_approve_after_decline_overrides_public(events_client: TestClient, user_headers, superadmin_headers):
-    created = create_draft(events_client, user_headers)
-    fill_locales(events_client, created["id"], user_headers)
+    created = _ready_draft(events_client, user_headers)
     submit(events_client, created["id"], user_headers)
     events_client.post(
         f"/submissions/{created['id']}/decline",
@@ -115,8 +119,7 @@ def test_approve_after_decline_overrides_public(events_client: TestClient, user_
 
 
 def test_delete_pending_submission(events_client: TestClient, user_headers: dict[str, str]):
-    created = create_draft(events_client, user_headers)
-    fill_locales(events_client, created["id"], user_headers)
+    created = _ready_draft(events_client, user_headers)
     submit(events_client, created["id"], user_headers)
     response = events_client.delete(f"/submissions/{created['id']}", headers=user_headers)
     assert response.status_code == 200
@@ -125,8 +128,7 @@ def test_delete_pending_submission(events_client: TestClient, user_headers: dict
 
 
 def test_delete_non_pending_submission_forbidden(events_client: TestClient, user_headers, superadmin_headers):
-    created = create_draft(events_client, user_headers)
-    fill_locales(events_client, created["id"], user_headers)
+    created = _ready_draft(events_client, user_headers)
     submit(events_client, created["id"], user_headers)
     events_client.post(f"/submissions/{created['id']}/decline", json={"feedback": "no"}, headers=superadmin_headers)
     response = events_client.delete(f"/submissions/{created['id']}", headers=user_headers)
@@ -137,8 +139,7 @@ def test_delete_non_pending_submission_forbidden(events_client: TestClient, user
 def test_list_submissions_filter_by_status(events_client: TestClient, user_headers, superadmin_headers):
     draft_ids = []
     for _ in range(2):
-        created = create_draft(events_client, user_headers)
-        fill_locales(events_client, created["id"], user_headers)
+        created = _ready_draft(events_client, user_headers)
         submit(events_client, created["id"], user_headers)
         draft_ids.append(created["id"])
     events_client.post(f"/submissions/{draft_ids[0]}/approve", json={"feedback": ""}, headers=superadmin_headers)
@@ -154,8 +155,7 @@ def test_list_submissions_filter_by_status(events_client: TestClient, user_heade
 
 
 def test_list_submissions_own_only(events_client: TestClient, user_headers, club_leader_headers, superadmin_headers):
-    created = create_draft(events_client, user_headers)
-    fill_locales(events_client, created["id"], user_headers)
+    created = _ready_draft(events_client, user_headers)
     submit(events_client, created["id"], user_headers)
 
     own = events_client.get("/submissions", headers=user_headers).json()
@@ -165,8 +165,7 @@ def test_list_submissions_own_only(events_client: TestClient, user_headers, club
 
 
 def test_get_submission_visibility(events_client: TestClient, user_headers, plain_user_headers, superadmin_headers):
-    created = create_draft(events_client, user_headers)
-    fill_locales(events_client, created["id"], user_headers)
+    created = _ready_draft(events_client, user_headers)
     submit(events_client, created["id"], user_headers)
 
     assert events_client.get(f"/submissions/{created['id']}", headers=user_headers).status_code == 200
@@ -175,8 +174,7 @@ def test_get_submission_visibility(events_client: TestClient, user_headers, plai
 
 
 def test_submission_image_redirect(events_client: TestClient, user_headers: dict[str, str]):
-    created = create_draft(events_client, user_headers)
-    fill_locales(events_client, created["id"], user_headers)
+    created = _ready_draft(events_client, user_headers)
     submit(events_client, created["id"], user_headers)
 
     no_image = events_client.get(f"/submissions/{created['id']}/image", follow_redirects=False)

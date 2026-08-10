@@ -15,6 +15,9 @@ from src.common_minio import MinioStore
 CLUB_ID = "64b7de000000000000000001"
 CLUB_SLUG = "test-club"
 CLUB_TITLE = "Test Club"
+CLUB_ID_2 = "64b7de000000000000000002"
+CLUB_SLUG_2 = "other-club"
+CLUB_TITLE_2 = "Other Club"
 
 
 @pytest.fixture(scope="session")
@@ -83,11 +86,50 @@ def clean_up_stores_per_test(request: pytest.FixtureRequest):
     yield
 
 
+def _ensure_mock_user(inh_accounts_mock_users: dict, uid: str, email: str, name: str) -> None:
+    if uid in inh_accounts_mock_users:
+        return
+    import datetime as dtm
+
+    now = dtm.datetime.now(dtm.UTC).isoformat()
+    inh_accounts_mock_users[uid] = {
+        "id": uid,
+        "innopolis_info": {
+            "email": email,
+            "name": name,
+            "is_student": True,
+            "is_staff": False,
+            "is_college": False,
+            "updated_at": now,
+        },
+        "innohassle_admin": False,
+    }
+
+
 @pytest.fixture
-def club_leader_headers(auth_header_factory, clubs_owned_by: dict[str, list[dict]], clubs_by_id: dict[str, dict]):
+def club_leader_headers(
+    auth_header_factory,
+    clubs_owned_by: dict[str, list[dict]],
+    clubs_by_id: dict[str, dict],
+    inh_accounts_mock_users: dict,
+):
+    _ensure_mock_user(inh_accounts_mock_users, "club-leader-1", "club-leader@innopolis.university", "Club Leader One")
     clubs_owned_by["club-leader-1"] = [{"club_id": CLUB_ID, "title": CLUB_TITLE}]
     clubs_by_id[CLUB_ID] = {"id": CLUB_ID, "slug": CLUB_SLUG, "title": CLUB_TITLE}
     return auth_header_factory("club-leader-1", "club-leader@innopolis.university")
+
+
+@pytest.fixture
+def other_club_leader_headers(
+    auth_header_factory,
+    clubs_owned_by: dict[str, list[dict]],
+    clubs_by_id: dict[str, dict],
+    inh_accounts_mock_users: dict,
+):
+    _ensure_mock_user(inh_accounts_mock_users, "club-leader-2", "club-leader-2@innopolis.university", "Club Leader Two")
+    clubs_owned_by["club-leader-2"] = [{"club_id": CLUB_ID_2, "title": CLUB_TITLE_2}]
+    clubs_by_id[CLUB_ID_2] = {"id": CLUB_ID_2, "slug": CLUB_SLUG_2, "title": CLUB_TITLE_2}
+    return auth_header_factory("club-leader-2", "club-leader-2@innopolis.university")
 
 
 @pytest.fixture

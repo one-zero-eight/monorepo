@@ -24,8 +24,6 @@ class EventsSettings(ServiceSettingsBase):
     "Prefix for event images in MinIO"
     innohassle_url: str = "https://innohassle.ru"
     "Base URL of the InNoHassle frontend (used for club host links and ICS event URLs)"
-    ics_default_duration_hours: float = 2
-    "Default event duration in hours for ICS feeds (DTEND = DTSTART + duration)"
     event_manager_emails: list[str] = Field(default_factory=list)
     "Innomails of users who can act as event managers (can use any external host)"
     moderator_emails: list[str] = Field(default_factory=list)
