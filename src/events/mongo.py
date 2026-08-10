@@ -78,6 +78,8 @@ class Enrollment(BaseSchema):
 
 
 class EventLink(BaseSchema):
+    id: str
+    "Stable link id within the event"
     url: str
     name: str | None = None
 

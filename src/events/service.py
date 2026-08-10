@@ -28,8 +28,16 @@ def utcnow() -> dtm.datetime:
     return dtm.datetime.now(dtm.UTC)
 
 
-def new_host_id() -> str:
+def new_id() -> str:
     return str(PydanticObjectId())
+
+
+def new_host_id() -> str:
+    return new_id()
+
+
+def new_link_id() -> str:
+    return new_id()
 
 
 def owned_club_ids(roles: UserRoles) -> set[str]:

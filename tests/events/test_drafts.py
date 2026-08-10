@@ -183,6 +183,46 @@ def test_patch_draft_data(events_client: TestClient, club_leader_headers: dict[s
     assert draft["revision"] != created["revision"]
 
 
+def test_link_crud(events_client: TestClient, user_headers: dict[str, str]):
+    created = create_draft(events_client, user_headers)
+    assert created["data"]["links"] == []
+
+    added = events_client.post(
+        f"/drafts/{created['id']}/links",
+        json={"url": "https://t.me/example", "name": "Telegram"},
+        headers=user_headers,
+    )
+    assert added.status_code == 200
+    links = added.json()["data"]["links"]
+    assert len(links) == 1
+    assert links[0]["url"] == "https://t.me/example"
+    assert links[0]["name"] == "Telegram"
+    assert links[0]["id"]
+    link_id = links[0]["id"]
+
+    patched = events_client.patch(
+        f"/drafts/{created['id']}/links/{link_id}",
+        json={"name": "Chat", "url": "https://t.me/chat"},
+        headers=user_headers,
+    )
+    assert patched.status_code == 200
+    assert patched.json()["data"]["links"][0] == {"id": link_id, "url": "https://t.me/chat", "name": "Chat"}
+
+    empty_url = events_client.patch(
+        f"/drafts/{created['id']}/links/{link_id}",
+        json={"url": "  "},
+        headers=user_headers,
+    )
+    assert empty_url.status_code == 400
+
+    deleted = events_client.delete(f"/drafts/{created['id']}/links/{link_id}", headers=user_headers)
+    assert deleted.status_code == 200
+    assert deleted.json()["data"]["links"] == []
+
+    missing = events_client.delete(f"/drafts/{created['id']}/links/{link_id}", headers=user_headers)
+    assert missing.status_code == 404
+
+
 def test_host_order_and_delete(events_client: TestClient, user_headers: dict[str, str]):
     created = create_draft(events_client, user_headers)
     add_external_host(events_client, created["id"], user_headers, name="A")

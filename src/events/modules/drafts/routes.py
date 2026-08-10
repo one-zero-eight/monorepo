@@ -12,10 +12,11 @@ from src.events import repo as events_repo
 from src.events.config import settings
 from src.events.dependencies import ROLES
 from src.events.images_repo import images_repo
-from src.events.mongo import EventData, Host, HostType, Locale, ModerationStatus
+from src.events.mongo import EventData, EventLink, Host, HostType, Locale, ModerationStatus
 from src.events.schemas import (
     AddClubHostBody,
     AddExternalHostBody,
+    AddLinkBody,
     CreateDraft,
     DraftListItem,
     DraftOut,
@@ -24,6 +25,7 @@ from src.events.schemas import (
     OrderHostsBody,
     PatchDraft,
     PatchExternalHostBody,
+    PatchLinkBody,
     PutLocale,
     RestoreBody,
 )
@@ -32,6 +34,7 @@ from src.events.service import (
     get_viewable_draft,
     is_pending_invitee,
     new_host_id,
+    new_link_id,
     owned_club_ids,
     resolve_invited_by_name,
     utcnow,
@@ -73,7 +76,6 @@ async def create_draft(body: CreateDraft, auth: INH_TOKEN_AUTH, roles: ROLES) ->
         locales={code: Locale() for code in body.locales or []},
         duration_hours=body.duration_hours,
         enrollment=body.enrollment,
-        links=list(body.links or []),
     )
     event = await events_repo.create(auth.innohassle_id, data)
     return build_draft_out(event, roles)
@@ -102,7 +104,7 @@ async def get_draft(id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLES) ->
 
 @router.patch("/{id}")
 async def patch_draft(id: PydanticObjectId, body: PatchDraft, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
-    """Change draft data (starts_at / location / duration / enrollment / links)."""
+    """Change draft data (starts_at / location / duration / enrollment)."""
     event = await get_editable_draft(id, roles)
     if "starts_at" in body.model_fields_set:
         event.draft.data.starts_at = body.starts_at
@@ -112,8 +114,6 @@ async def patch_draft(id: PydanticObjectId, body: PatchDraft, auth: INH_TOKEN_AU
         event.draft.data.duration_hours = body.duration_hours
     if "enrollment" in body.model_fields_set:
         event.draft.data.enrollment = body.enrollment
-    if "links" in body.model_fields_set:
-        event.draft.data.links = list(body.links or [])
     event.draft.revision = utcnow()
     await event.save()
     return build_draft_out(event, roles)
@@ -241,6 +241,58 @@ async def order_hosts(id: PydanticObjectId, body: OrderHostsBody, auth: INH_TOKE
         raise HTTPException(status_code=400, detail="host_ids must be a permutation of current host ids")
     by_id = {host.id: host for host in event.draft.data.hosts}
     event.draft.data.hosts = [by_id[host_id] for host_id in body.host_ids]
+    event.draft.revision = utcnow()
+    await event.save()
+    return build_draft_out(event, roles)
+
+
+def _find_link(links: list[EventLink], link_id: str) -> EventLink | None:
+    for link in links:
+        if link.id == link_id:
+            return link
+    return None
+
+
+@router.post("/{id}/links")
+async def add_link(id: PydanticObjectId, body: AddLinkBody, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
+    """Add a related link to the draft."""
+    if not (body.url or "").strip():
+        raise HTTPException(status_code=400, detail="Link url is required")
+    event = await get_editable_draft(id, roles)
+    event.draft.data.links.append(EventLink(id=new_link_id(), url=body.url.strip(), name=body.name))
+    event.draft.revision = utcnow()
+    await event.save()
+    return build_draft_out(event, roles)
+
+
+@router.patch("/{id}/links/{link_id}")
+async def patch_link(
+    id: PydanticObjectId, link_id: str, body: PatchLinkBody, auth: INH_TOKEN_AUTH, roles: ROLES
+) -> DraftOut:
+    """Patch a related link."""
+    event = await get_editable_draft(id, roles)
+    link = _find_link(event.draft.data.links, link_id)
+    if link is None:
+        raise HTTPException(status_code=404, detail="Link not found")
+    if "url" in body.model_fields_set:
+        if body.url is None or not body.url.strip():
+            raise HTTPException(status_code=400, detail="Link url is required")
+        link.url = body.url.strip()
+    if "name" in body.model_fields_set:
+        link.name = body.name
+    event.draft.revision = utcnow()
+    await event.save()
+    return build_draft_out(event, roles)
+
+
+@router.delete("/{id}/links/{link_id}")
+async def delete_link(id: PydanticObjectId, link_id: str, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
+    """Remove a related link from the draft."""
+    event = await get_editable_draft(id, roles)
+    before = len(event.draft.data.links)
+    event.draft.data.links = [link for link in event.draft.data.links if link.id != link_id]
+    if len(event.draft.data.links) == before:
+        raise HTTPException(status_code=404, detail="Link not found")
     event.draft.revision = utcnow()
     await event.save()
     return build_draft_out(event, roles)

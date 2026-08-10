@@ -1,6 +1,7 @@
 __all__ = [
     "AddClubHostBody",
     "AddExternalHostBody",
+    "AddLinkBody",
     "CreateDraft",
     "DeclineBody",
     "DraftListItem",
@@ -19,6 +20,7 @@ __all__ = [
     "OwnedClub",
     "PatchDraft",
     "PatchExternalHostBody",
+    "PatchLinkBody",
     "PublicHost",
     "PutLocale",
     "RestoreBody",
@@ -70,7 +72,6 @@ class CreateDraft(BaseSchema):
     "Locale codes to pre-create in the draft"
     duration_hours: float | None = None
     enrollment: Enrollment | None = None
-    links: list[EventLink] | None = None
 
 
 class PatchDraft(BaseSchema):
@@ -78,7 +79,16 @@ class PatchDraft(BaseSchema):
     location: str | None = None
     duration_hours: float | None = None
     enrollment: Enrollment | None = None
-    links: list[EventLink] | None = None
+
+
+class AddLinkBody(BaseSchema):
+    url: str
+    name: str | None = None
+
+
+class PatchLinkBody(BaseSchema):
+    url: str | None = None
+    name: str | None = None
 
 
 class PutLocale(BaseSchema):
