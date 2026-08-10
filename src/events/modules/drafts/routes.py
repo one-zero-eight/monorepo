@@ -23,6 +23,7 @@ from src.events.schemas import (
     ImageUploadResponse,
     InviteClubBody,
     OrderHostsBody,
+    OrderLinksBody,
     PatchDraft,
     PatchExternalHostBody,
     PatchLinkBody,
@@ -293,6 +294,20 @@ async def delete_link(id: PydanticObjectId, link_id: str, auth: INH_TOKEN_AUTH, 
     event.draft.data.links = [link for link in event.draft.data.links if link.id != link_id]
     if len(event.draft.data.links) == before:
         raise HTTPException(status_code=404, detail="Link not found")
+    event.draft.revision = utcnow()
+    await event.save()
+    return build_draft_out(event, roles)
+
+
+@router.put("/{id}/links/order")
+async def order_links(id: PydanticObjectId, body: OrderLinksBody, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
+    """Reorder links; body must list every current link id exactly once."""
+    event = await get_editable_draft(id, roles)
+    current_ids = [link.id for link in event.draft.data.links]
+    if sorted(body.link_ids) != sorted(current_ids) or len(body.link_ids) != len(set(body.link_ids)):
+        raise HTTPException(status_code=400, detail="link_ids must be a permutation of current link ids")
+    by_id = {link.id: link for link in event.draft.data.links}
+    event.draft.data.links = [by_id[link_id] for link_id in body.link_ids]
     event.draft.revision = utcnow()
     await event.save()
     return build_draft_out(event, roles)

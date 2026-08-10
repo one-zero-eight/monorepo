@@ -215,9 +215,33 @@ def test_link_crud(events_client: TestClient, user_headers: dict[str, str]):
     )
     assert empty_url.status_code == 400
 
+    second = events_client.post(
+        f"/drafts/{created['id']}/links",
+        json={"url": "https://example.com", "name": "Site"},
+        headers=user_headers,
+    )
+    assert second.status_code == 200
+    ids = [link["id"] for link in second.json()["data"]["links"]]
+    assert len(ids) == 2
+
+    reordered = events_client.put(
+        f"/drafts/{created['id']}/links/order",
+        json={"link_ids": list(reversed(ids))},
+        headers=user_headers,
+    )
+    assert reordered.status_code == 200
+    assert [link["id"] for link in reordered.json()["data"]["links"]] == list(reversed(ids))
+
+    bad_order = events_client.put(
+        f"/drafts/{created['id']}/links/order",
+        json={"link_ids": [ids[0]]},
+        headers=user_headers,
+    )
+    assert bad_order.status_code == 400
+
     deleted = events_client.delete(f"/drafts/{created['id']}/links/{link_id}", headers=user_headers)
     assert deleted.status_code == 200
-    assert deleted.json()["data"]["links"] == []
+    assert len(deleted.json()["data"]["links"]) == 1
 
     missing = events_client.delete(f"/drafts/{created['id']}/links/{link_id}", headers=user_headers)
     assert missing.status_code == 404

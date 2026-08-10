@@ -17,6 +17,7 @@ __all__ = [
     "InviteClubBody",
     "MeOut",
     "OrderHostsBody",
+    "OrderLinksBody",
     "OwnedClub",
     "PatchDraft",
     "PatchExternalHostBody",
@@ -118,6 +119,10 @@ class InviteClubBody(BaseSchema):
 
 class OrderHostsBody(BaseSchema):
     host_ids: list[str]
+
+
+class OrderLinksBody(BaseSchema):
+    link_ids: list[str]
 
 
 class RestoreBody(BaseSchema):
