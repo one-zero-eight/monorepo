@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException
 
-from src.dependencies import INH_TOKEN_AUTH
+from src.dependencies import INH_TOKEN_AUTH, OPTIONAL_INH_TOKEN_AUTH
 from src.events.clubs_client import clubs_client
 from src.events.config import settings
 from src.events.schemas import UserRoles
@@ -14,7 +14,7 @@ def _email_in_list(email: str, emails: list[str]) -> bool:
     return any(entry.casefold() == normalized for entry in emails)
 
 
-async def get_user_roles(auth: INH_TOKEN_AUTH) -> UserRoles:
+async def resolve_user_roles(auth: UserTokenData) -> UserRoles:
     clubs = await clubs_client.list_owned_clubs(auth.innohassle_id)
     return UserRoles(
         innohassle_id=auth.innohassle_id,
@@ -25,8 +25,21 @@ async def get_user_roles(auth: INH_TOKEN_AUTH) -> UserRoles:
     )
 
 
+async def get_user_roles(auth: INH_TOKEN_AUTH) -> UserRoles:
+    return await resolve_user_roles(auth)
+
+
+async def get_optional_user_roles(auth: OPTIONAL_INH_TOKEN_AUTH) -> UserRoles | None:
+    if auth is None:
+        return None
+    return await resolve_user_roles(auth)
+
+
 ROLES = Annotated[UserRoles, Depends(get_user_roles)]
 "Roles of the current user: club leader / event manager / moderator (roles sum up)"
+
+OPTIONAL_ROLES = Annotated[UserRoles | None, Depends(get_optional_user_roles)]
+"Roles when authenticated; None for anonymous requests"
 
 
 async def ensure_moderator(auth: INH_TOKEN_AUTH) -> UserTokenData:

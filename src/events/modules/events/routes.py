@@ -8,7 +8,7 @@ from starlette.responses import RedirectResponse, Response
 
 from src.dependencies import INH_TOKEN_AUTH, OPTIONAL_INH_TOKEN_AUTH
 from src.events import repo as events_repo
-from src.events.dependencies import MODERATOR_AUTH
+from src.events.dependencies import MODERATOR_AUTH, OPTIONAL_ROLES, ROLES
 from src.events.ics import build_events_ics
 from src.events.images_repo import images_repo
 from src.events.mongo import EnrollmentType, Event, PublicEvent
@@ -77,15 +77,15 @@ async def get_events_ics() -> Response:
 
 
 @router.get("/{id}")
-async def get_event(id: PydanticObjectId, auth: OPTIONAL_INH_TOKEN_AUTH) -> EventOut:
+async def get_event(id: PydanticObjectId, auth: OPTIONAL_INH_TOKEN_AUTH, roles: OPTIONAL_ROLES) -> EventOut:
     """Get a published event."""
     event, public = await _get_published_or_404(id)
     hosts = await resolve_public_hosts(public.data.hosts)
-    return build_event_out(event, public, auth, hosts)
+    return build_event_out(event, public, auth, hosts, roles=roles)
 
 
 @router.post("/{id}/enroll")
-async def enroll(id: PydanticObjectId, auth: INH_TOKEN_AUTH) -> EventOut:
+async def enroll(id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLES) -> EventOut:
     """Enroll the current user in the event (stores email)."""
     event, public = await _get_published_or_404(id)
     enrollment = public.data.enrollment
@@ -100,18 +100,18 @@ async def enroll(id: PydanticObjectId, auth: INH_TOKEN_AUTH) -> EventOut:
         public.enrolled_emails.append(auth.email)
         await event.save()
     hosts = await resolve_public_hosts(public.data.hosts)
-    return build_event_out(event, public, auth, hosts)
+    return build_event_out(event, public, auth, hosts, roles=roles)
 
 
 @router.post("/{id}/unenroll")
-async def unenroll(id: PydanticObjectId, auth: INH_TOKEN_AUTH) -> EventOut:
+async def unenroll(id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLES) -> EventOut:
     """Unenroll the current user from the event."""
     event, public = await _get_published_or_404(id)
     if auth.email in public.enrolled_emails:
         public.enrolled_emails.remove(auth.email)
         await event.save()
     hosts = await resolve_public_hosts(public.data.hosts)
-    return build_event_out(event, public, auth, hosts)
+    return build_event_out(event, public, auth, hosts, roles=roles)
 
 
 @router.delete("/{id}")

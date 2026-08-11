@@ -265,6 +265,8 @@ class EventOut(BaseSchema):
     "Visible to the author or a moderator only"
     approved_by: str | None = None
     "Visible to a moderator only"
+    can_edit_draft: bool = False
+    "Whether the current user can edit the underlying draft (same rules as draft can_edit)"
 
 
 class EventListItem(BaseSchema):

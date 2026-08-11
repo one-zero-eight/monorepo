@@ -75,11 +75,30 @@ def test_get_event_optional_auth(
     assert event.get("enrolled_emails") is None
     assert event.get("revision") is None
     assert event.get("approved_by") is None
+    assert event["can_edit_draft"] is False
     hosts = event["data"]["hosts"]
     assert len(hosts) == 1
     assert hosts[0]["display_name"] == "One Zero Eight"
     assert hosts[0]["link"] is None
     assert hosts[0]["id"]
+
+
+def test_get_event_can_edit_draft(
+    events_client: TestClient,
+    user_headers: dict[str, str],
+    plain_user_headers: dict[str, str],
+    superadmin_headers: dict[str, str],
+):
+    draft = create_and_publish(events_client, user_headers, superadmin_headers)
+
+    as_author = events_client.get(f"/events/{draft['id']}", headers=user_headers).json()
+    assert as_author["can_edit_draft"] is True
+
+    as_other = events_client.get(f"/events/{draft['id']}", headers=plain_user_headers).json()
+    assert as_other["can_edit_draft"] is False
+
+    as_moderator = events_client.get(f"/events/{draft['id']}", headers=superadmin_headers).json()
+    assert as_moderator["can_edit_draft"] is False
 
 
 def test_events_host_resolves_club(

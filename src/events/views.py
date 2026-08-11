@@ -129,12 +129,19 @@ def _is_author(event: Event, auth: UserTokenData | None) -> bool:
     return auth is not None and auth.innohassle_id == event.creator_id
 
 
-def build_event_out(event: Event, public: PublicEvent, auth: UserTokenData | None, hosts: list[PublicHost]) -> EventOut:
+def build_event_out(
+    event: Event,
+    public: PublicEvent,
+    auth: UserTokenData | None,
+    hosts: list[PublicHost],
+    roles: UserRoles | None = None,
+) -> EventOut:
     out = EventOut(
         id=event.id,
         creator_id=event.creator_id,
         data=_event_data_out(public.data, hosts),
         enrolled_count=len(public.enrolled_emails),
+        can_edit_draft=can_edit_draft(event, roles) if roles is not None else False,
     )
     if auth is not None:
         out.enrolled = auth.email in public.enrolled_emails
