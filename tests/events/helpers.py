@@ -60,11 +60,28 @@ def add_club_host(
     return response.json()
 
 
+def description_json(text: str) -> str:
+    """Minimal TipTap doc JSON with a single paragraph of text."""
+    import json
+
+    return json.dumps(
+        {
+            "type": "doc",
+            "content": [
+                {
+                    "type": "paragraph",
+                    "content": [{"type": "text", "text": text}],
+                }
+            ],
+        }
+    )
+
+
 def fill_locales(client: TestClient, draft_id: str, headers: dict[str, str]) -> None:
     for code in ("en", "ru"):
         response = client.put(
             f"/drafts/{draft_id}/locales/{code}",
-            json={"name": f"Event {code}", "description": f"Description {code}"},
+            json={"name": f"Event {code}", "description": description_json(f"Description {code}")},
             headers=headers,
         )
         assert response.status_code == 200, response.text

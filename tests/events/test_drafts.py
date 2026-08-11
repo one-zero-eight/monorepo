@@ -353,6 +353,25 @@ def test_can_submit_requires_duration_and_enrollment(events_client: TestClient, 
     assert "Enrollment is not set" in draft["cannot_submit_reasons"]
 
 
+def test_empty_tiptap_description_blocks_submit(events_client: TestClient, user_headers: dict[str, str]):
+    created = create_draft(events_client, user_headers)
+    add_external_host(events_client, created["id"], user_headers)
+    empty_doc = '{"type":"doc","content":[{"type":"paragraph"}]}'
+    events_client.put(
+        f"/drafts/{created['id']}/locales/en",
+        json={"name": "Event en", "description": empty_doc},
+        headers=user_headers,
+    )
+    events_client.put(
+        f"/drafts/{created['id']}/locales/ru",
+        json={"name": "Event ru", "description": empty_doc},
+        headers=user_headers,
+    )
+    draft = events_client.get(f"/drafts/{created['id']}", headers=user_headers).json()
+    assert draft["can_submit"] is False
+    assert any("Description" in reason for reason in draft["cannot_submit_reasons"])
+
+
 def test_upload_image(events_client: TestClient, user_headers: dict[str, str]):
     created = create_draft(events_client, user_headers)
     response = events_client.post(

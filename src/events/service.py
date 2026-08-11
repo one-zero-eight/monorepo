@@ -1,6 +1,7 @@
 """Shared business logic: draft access, status, submission guardrails, conversions."""
 
 import datetime as dtm
+import json
 from typing import cast
 
 from beanie import PydanticObjectId
@@ -38,6 +39,31 @@ def new_host_id() -> str:
 
 def new_link_id() -> str:
     return new_id()
+
+
+def _tiptap_node_has_text(node: object) -> bool:
+    if isinstance(node, dict):
+        text = node.get("text")
+        if node.get("type") == "text" and isinstance(text, str) and text.strip():
+            return True
+        content = node.get("content")
+        if isinstance(content, list):
+            return any(_tiptap_node_has_text(child) for child in content)
+        return False
+    if isinstance(node, list):
+        return any(_tiptap_node_has_text(child) for child in node)
+    return False
+
+
+def is_empty_description(description: str | None) -> bool:
+    """True if description is missing or TipTap JSON has no non-empty text."""
+    if description is None or not description.strip():
+        return True
+    try:
+        doc = json.loads(description)
+    except json.JSONDecodeError:
+        return True
+    return not _tiptap_node_has_text(doc)
 
 
 def owned_club_ids(roles: UserRoles) -> set[str]:
@@ -119,7 +145,7 @@ def eligibility_reasons(event: Event, roles: UserRoles) -> list[str]:
     reasons: list[str] = []
     for code, locale in event.draft.data.locales.items():
         name_empty = not (locale.name or "").strip()
-        description_empty = not (locale.description or "").strip()
+        description_empty = is_empty_description(locale.description)
         if name_empty and description_empty:
             reasons.append(f"Description and name in {code} locale are empty")
         elif name_empty:

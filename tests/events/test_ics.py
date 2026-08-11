@@ -6,7 +6,14 @@ import icalendar
 from fastapi.testclient import TestClient
 
 from tests.events.conftest import CLUB_SLUG, CLUB_TITLE
-from tests.events.helpers import add_external_host, create_and_publish, create_draft, future_iso, submit
+from tests.events.helpers import (
+    add_external_host,
+    create_and_publish,
+    create_draft,
+    description_json,
+    future_iso,
+    submit,
+)
 
 
 def _parse_calendar(content: bytes) -> icalendar.Calendar:
@@ -66,12 +73,12 @@ def test_events_ics_prefers_settings_locale_order(
     add_external_host(events_client, draft["id"], user_headers)
     events_client.put(
         f"/drafts/{draft['id']}/locales/en",
-        json={"name": "English name", "description": "English description"},
+        json={"name": "English name", "description": description_json("English description")},
         headers=user_headers,
     )
     events_client.put(
         f"/drafts/{draft['id']}/locales/ru",
-        json={"name": "Русское имя", "description": "Русское описание"},
+        json={"name": "Русское имя", "description": description_json("Русское описание")},
         headers=user_headers,
     )
     submit(events_client, draft["id"], user_headers)
@@ -92,7 +99,7 @@ def test_events_ics_falls_back_to_available_locale(
     add_external_host(events_client, draft["id"], user_headers)
     events_client.put(
         f"/drafts/{draft['id']}/locales/ru",
-        json={"name": "Только русский", "description": "Описание"},
+        json={"name": "Только русский", "description": description_json("Описание")},
         headers=user_headers,
     )
     submit(events_client, draft["id"], user_headers)
