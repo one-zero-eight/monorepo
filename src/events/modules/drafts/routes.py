@@ -363,7 +363,7 @@ async def upload_image(
 
     # Convert to webp and downscale (same pattern as clubs logos)
     image = Image.open(BytesIO(bytes_))
-    image.thumbnail((512, 512), Image.Resampling.LANCZOS)
+    image.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
     buf = BytesIO()
     image.save(buf, format="WEBP", quality=95, method=6)
     image_bytes = buf.getvalue()
