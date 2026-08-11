@@ -361,9 +361,11 @@ async def upload_image(
     if content_type not in ("image/jpeg", "image/png", "image/webp"):
         raise HTTPException(status_code=400, detail=f"Invalid content type ({content_type})")
 
+    # Convert to webp and downscale (same pattern as clubs logos)
     image = Image.open(BytesIO(bytes_))
+    image.thumbnail((512, 512), Image.Resampling.LANCZOS)
     buf = BytesIO()
-    image.save(buf, format="WEBP", quality=90)
+    image.save(buf, format="WEBP", quality=95, method=6)
     image_bytes = buf.getvalue()
 
     image_id = str(PydanticObjectId())
