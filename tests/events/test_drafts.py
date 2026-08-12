@@ -7,6 +7,7 @@ from tests.events.conftest import CLUB_ID, CLUB_ID_2
 from tests.events.helpers import (
     add_club_host,
     add_external_host,
+    assert_resolved_location,
     create_and_publish,
     create_draft,
     draft_payload,
@@ -180,9 +181,24 @@ def test_patch_draft_data(events_client: TestClient, club_leader_headers: dict[s
     )
     assert response.status_code == 200
     draft = response.json()
-    assert draft["data"]["location"] == "109"
+    assert_resolved_location(draft["data"]["location"], "109", on_map=True)
     assert draft["data"]["duration_hours"] == 3.5
     assert draft["revision"] != created["revision"]
+
+
+def test_location_resolves_to_maps_url(events_client: TestClient, club_leader_headers: dict[str, str]):
+    created = create_draft(events_client, club_leader_headers, location="Main Hall")
+    assert_resolved_location(created["data"]["location"], "Main Hall", on_map=True)
+
+    listed = events_client.get("/drafts", headers=club_leader_headers).json()
+    assert_resolved_location(listed[0]["data"]["location"], "Main Hall", on_map=True)
+
+    unknown = events_client.patch(
+        f"/drafts/{created['id']}",
+        json={"location": "TBA"},
+        headers=club_leader_headers,
+    ).json()
+    assert_resolved_location(unknown["data"]["location"], "TBA", on_map=False)
 
 
 def test_link_crud(events_client: TestClient, user_headers: dict[str, str]):
@@ -427,7 +443,7 @@ def test_restore_from_submission(events_client: TestClient, user_headers: dict[s
     response = events_client.post(f"/drafts/{created['id']}/restore", json={"from": "submission"}, headers=user_headers)
     assert response.status_code == 200
     restored = response.json()
-    assert restored["data"]["location"] == "108"
+    assert_resolved_location(restored["data"]["location"], "108", on_map=True)
     assert restored["status"] == "pending"
     assert restored["can_be_restored_from"] == []
     assert restored["revision"] == submission_revision

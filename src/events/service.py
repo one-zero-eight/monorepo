@@ -2,7 +2,9 @@
 
 import datetime as dtm
 import json
+from functools import lru_cache
 from typing import cast
+from urllib.parse import quote_plus
 
 from beanie import PydanticObjectId
 from fastapi import HTTPException
@@ -21,8 +23,9 @@ from src.events.mongo import (
     SubmissionData,
     SubmissionLocale,
 )
-from src.events.schemas import DraftStatus, PublicHost, RestoreSource, RestoreSourceItem, UserRoles
+from src.events.schemas import DraftStatus, PublicHost, ResolvedLocation, RestoreSource, RestoreSourceItem, UserRoles
 from src.inh_accounts_sdk import inh_accounts
+from src.maps.maps_repo import get_all_scenes
 
 
 def utcnow() -> dtm.datetime:
@@ -149,6 +152,25 @@ def submission_status(event: Event) -> DraftStatus | None:
     if event.submission.moderation.status == ModerationStatus.APPROVED:
         return DraftStatus.UNPUBLISHED
     return DraftStatus(event.submission.moderation.status.value)
+
+
+@lru_cache
+def _map_area_titles() -> frozenset[str]:
+    return frozenset(area.title for scene in get_all_scenes() for area in scene.areas if area.title)
+
+
+def resolve_location(location: str) -> ResolvedLocation:
+    """Resolve a stored location string against maps area titles for API responses."""
+    url = ""
+    if location in _map_area_titles():
+        url = f"{settings.innohassle_url.rstrip('/')}/maps?q={quote_plus(location)}"
+    return ResolvedLocation(display_name=location, url=url)
+
+
+def resolve_optional_location(location: str | None) -> ResolvedLocation | None:
+    if location is None:
+        return None
+    return resolve_location(location)
 
 
 def can_be_restored_from(event: Event) -> list[RestoreSourceItem]:

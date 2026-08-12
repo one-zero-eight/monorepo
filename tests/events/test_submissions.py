@@ -3,7 +3,7 @@ from io import BytesIO
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from tests.events.helpers import add_external_host, create_draft, fill_locales, submit
+from tests.events.helpers import add_external_host, assert_resolved_location, create_draft, fill_locales, submit
 
 
 def _white_png() -> bytes:
@@ -54,7 +54,7 @@ def test_resubmit_requires_changes(events_client: TestClient, user_headers: dict
     events_client.patch(f"/drafts/{created['id']}", json={"location": "changed"}, headers=user_headers)
     resubmit = events_client.post(f"/submissions/{created['id']}", headers=user_headers)
     assert resubmit.status_code == 200
-    assert resubmit.json()["submission"]["data"]["location"] == "changed"
+    assert_resolved_location(resubmit.json()["submission"]["data"]["location"], "changed", on_map=False)
 
 
 def test_approve_publishes_event(events_client: TestClient, user_headers, superadmin_headers):
@@ -123,7 +123,7 @@ def test_approve_after_decline_overrides_public(events_client: TestClient, user_
     )
     assert response.status_code == 200
     event = events_client.get(f"/events/{created['id']}").json()
-    assert event["data"]["location"] == "fixed"
+    assert_resolved_location(event["data"]["location"], "fixed", on_map=False)
 
 
 def test_submission_status_unpublished_after_unpublish(events_client: TestClient, user_headers, superadmin_headers):

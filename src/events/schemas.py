@@ -4,6 +4,7 @@ __all__ = [
     "AddLinkBody",
     "CreateDraft",
     "DeclineBody",
+    "DraftDataOut",
     "DraftListItem",
     "DraftOut",
     "DraftStatus",
@@ -24,10 +25,13 @@ __all__ = [
     "PatchLinkBody",
     "PublicHost",
     "PutLocale",
+    "ResolvedLocation",
     "RestoreBody",
     "RestoreSource",
     "RestoreSourceItem",
+    "SubmissionDataOut",
     "SubmissionDataSummary",
+    "SubmissionDetail",
     "SubmissionListItem",
     "SubmissionOut",
     "SubmissionSummary",
@@ -42,7 +46,14 @@ from beanie import PydanticObjectId
 from pydantic import Field
 
 from src.common_pydantic import BaseSchema
-from src.events.mongo import Enrollment, EventData, EventLink, Host, Moderation, Submission, SubmissionLocale
+from src.events.mongo import (
+    Enrollment,
+    EventLink,
+    Host,
+    Locale,
+    Moderation,
+    SubmissionLocale,
+)
 from src.events.time_utils import TZAwareDateTime
 
 
@@ -163,6 +174,25 @@ class DraftStatus(StrEnum):
     DECLINED = "declined"
 
 
+class ResolvedLocation(BaseSchema):
+    """Location as returned by the API (stored as a flat string in Mongo)."""
+
+    display_name: str
+    url: str
+    "Maps search URL when display_name matches an area title; otherwise empty"
+
+
+class DraftDataOut(BaseSchema):
+    starts_at: dtm.datetime | None = None
+    image_id: str | None = None
+    location: ResolvedLocation | None = None
+    locales: dict[str, Locale] = Field(default_factory=dict)
+    hosts: list[Host] = Field(default_factory=list)
+    duration_hours: float | None = None
+    enrollment: Enrollment | None = None
+    links: list[EventLink] = Field(default_factory=list)
+
+
 class DraftOut(BaseSchema):
     id: PydanticObjectId
     creator_id: str
@@ -172,7 +202,7 @@ class DraftOut(BaseSchema):
     can_be_restored_from: list[RestoreSourceItem]
     "Sources whose revision differs from the draft; entities match POST /drafts/:id/restore `from`"
     revision: dtm.datetime
-    data: EventData
+    data: DraftDataOut
     invitations: list[str]
     "Club ids with pending host invitations"
     can_edit: bool
@@ -188,7 +218,7 @@ class DraftOut(BaseSchema):
 class EventDataSummary(BaseSchema):
     starts_at: dtm.datetime | None = None
     image_id: str | None = None
-    location: str | None = None
+    location: ResolvedLocation | None = None
     name: str | None = None
     "Display name picked from locales by settings.locales priority"
     hosts: list[Host] = Field(default_factory=list)
@@ -199,7 +229,7 @@ class EventDataSummary(BaseSchema):
 class SubmissionDataSummary(BaseSchema):
     starts_at: dtm.datetime
     image_id: str | None = None
-    location: str
+    location: ResolvedLocation
     name: str | None = None
     "Display name picked from locales by settings.locales priority"
     hosts: list[Host]
@@ -218,7 +248,7 @@ class PublicHost(BaseSchema):
 class EventDataOut(BaseSchema):
     starts_at: dtm.datetime
     image_id: str | None = None
-    location: str
+    location: ResolvedLocation
     locales: dict[str, SubmissionLocale]
     hosts: list[PublicHost]
     duration_hours: float
@@ -229,7 +259,7 @@ class EventDataOut(BaseSchema):
 class EventListData(BaseSchema):
     starts_at: dtm.datetime
     image_id: str | None = None
-    location: str
+    location: ResolvedLocation
     name: str | None = None
     "Display name picked from locales by settings.locales priority"
     hosts: list[PublicHost]
@@ -247,12 +277,30 @@ class DraftListItem(BaseSchema):
     "Present only while the current user's club has a pending invitation"
 
 
+class SubmissionDataOut(BaseSchema):
+    starts_at: dtm.datetime
+    image_id: str | None = None
+    location: ResolvedLocation
+    locales: dict[str, SubmissionLocale]
+    hosts: list[Host]
+    duration_hours: float
+    enrollment: Enrollment
+    links: list[EventLink] = Field(default_factory=list)
+
+
+class SubmissionDetail(BaseSchema):
+    revision: dtm.datetime
+    submitted_at: dtm.datetime
+    moderation: Moderation
+    data: SubmissionDataOut
+
+
 class SubmissionOut(BaseSchema):
     id: PydanticObjectId
     creator_id: str
     status: DraftStatus | None
     "Same lifecycle statuses as drafts; `unpublished` when approved but public was removed"
-    submission: Submission
+    submission: SubmissionDetail
 
 
 class SubmissionSummary(BaseSchema):

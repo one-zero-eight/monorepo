@@ -4,7 +4,15 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from tests.events.conftest import CLUB_SLUG, CLUB_TITLE
-from tests.events.helpers import add_external_host, create_and_publish, create_draft, fill_locales, future_iso, submit
+from tests.events.helpers import (
+    add_external_host,
+    assert_resolved_location,
+    create_and_publish,
+    create_draft,
+    fill_locales,
+    future_iso,
+    submit,
+)
 
 
 def _white_png() -> bytes:
@@ -26,10 +34,21 @@ def test_list_events_default_window(
     item = events[0]
     assert item["data"]["name"] == "Event en"
     assert "locales" not in item["data"]
+    assert_resolved_location(item["data"]["location"], "108", on_map=True)
     assert item["enrolled_count"] == 0
     assert item["revision"] is None
     assert item["approved_by"] is None
     assert item["approved_at"] is None
+
+
+def test_event_location_maps_url_for_known_title(
+    events_client: TestClient,
+    user_headers: dict[str, str],
+    superadmin_headers: dict[str, str],
+):
+    draft = create_and_publish(events_client, user_headers, superadmin_headers, location="Main Hall")
+    event = events_client.get(f"/events/{draft['id']}").json()
+    assert_resolved_location(event["data"]["location"], "Main Hall", on_map=True)
 
 
 def test_list_events_from_to_filters(

@@ -3,6 +3,7 @@
 from src.events.config import settings
 from src.events.mongo import Event, EventData, PublicEvent, Submission, SubmissionData
 from src.events.schemas import (
+    DraftDataOut,
     DraftListItem,
     DraftOut,
     EventDataOut,
@@ -11,7 +12,9 @@ from src.events.schemas import (
     EventListItem,
     EventOut,
     PublicHost,
+    SubmissionDataOut,
     SubmissionDataSummary,
+    SubmissionDetail,
     SubmissionListItem,
     SubmissionOut,
     SubmissionSummary,
@@ -23,16 +26,31 @@ from src.events.service import (
     draft_status,
     eligibility_reasons,
     pick_event_name,
+    resolve_location,
+    resolve_optional_location,
     submission_status,
 )
 from src.inh_accounts_sdk import UserTokenData
+
+
+def _draft_data_out(data: EventData) -> DraftDataOut:
+    return DraftDataOut(
+        starts_at=data.starts_at,
+        image_id=data.image_id,
+        location=resolve_optional_location(data.location),
+        locales=data.locales,
+        hosts=list(data.hosts),
+        duration_hours=data.duration_hours,
+        enrollment=data.enrollment,
+        links=list(data.links),
+    )
 
 
 def _summarize_draft_data(data: EventData) -> EventDataSummary:
     return EventDataSummary(
         starts_at=data.starts_at,
         image_id=data.image_id,
-        location=data.location,
+        location=resolve_optional_location(data.location),
         name=pick_event_name(data.locales),
         hosts=list(data.hosts),
         duration_hours=data.duration_hours,
@@ -40,11 +58,24 @@ def _summarize_draft_data(data: EventData) -> EventDataSummary:
     )
 
 
+def _submission_data_out(data: SubmissionData) -> SubmissionDataOut:
+    return SubmissionDataOut(
+        starts_at=data.starts_at,
+        image_id=data.image_id,
+        location=resolve_location(data.location),
+        locales=data.locales,
+        hosts=list(data.hosts),
+        duration_hours=data.duration_hours,
+        enrollment=data.enrollment,
+        links=list(data.links),
+    )
+
+
 def _summarize_submission_data(data: SubmissionData) -> SubmissionDataSummary:
     return SubmissionDataSummary(
         starts_at=data.starts_at,
         image_id=data.image_id,
-        location=data.location,
+        location=resolve_location(data.location),
         name=pick_event_name(data.locales),
         hosts=list(data.hosts),
         duration_hours=data.duration_hours,
@@ -56,7 +87,7 @@ def _event_data_out(data: SubmissionData, hosts: list[PublicHost]) -> EventDataO
     return EventDataOut(
         starts_at=data.starts_at,
         image_id=data.image_id,
-        location=data.location,
+        location=resolve_location(data.location),
         locales=data.locales,
         hosts=hosts,
         duration_hours=data.duration_hours,
@@ -69,7 +100,7 @@ def _event_list_data(data: SubmissionData, hosts: list[PublicHost]) -> EventList
     return EventListData(
         starts_at=data.starts_at,
         image_id=data.image_id,
-        location=data.location,
+        location=resolve_location(data.location),
         name=pick_event_name(data.locales),
         hosts=hosts,
         duration_hours=data.duration_hours,
@@ -89,7 +120,7 @@ def build_draft_out(event: Event, roles: UserRoles) -> DraftOut:
         has_public=event.public is not None,
         can_be_restored_from=can_be_restored_from(event),
         revision=event.draft.revision,
-        data=event.draft.data,
+        data=_draft_data_out(event.draft.data),
         invitations=list(event.invitations),
         can_edit=can_edit_draft(event, roles),
         can_submit=not reasons,
@@ -114,7 +145,12 @@ def build_submission_out(event: Event, submission: Submission) -> SubmissionOut:
         id=event.id,
         creator_id=event.creator_id,
         status=submission_status(event),
-        submission=submission,
+        submission=SubmissionDetail(
+            revision=submission.revision,
+            submitted_at=submission.submitted_at,
+            moderation=submission.moderation,
+            data=_submission_data_out(submission.data),
+        ),
     )
 
 

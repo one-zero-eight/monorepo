@@ -1,6 +1,7 @@
 """Test helpers for the Events service."""
 
 import datetime as dtm
+from urllib.parse import quote_plus
 
 from fastapi.testclient import TestClient
 
@@ -13,6 +14,16 @@ def future_iso(days: int = 7) -> str:
 
 def past_iso() -> str:
     return (dtm.datetime.now(dtm.UTC) - dtm.timedelta(days=1)).isoformat()
+
+
+def maps_location_url(display_name: str) -> str:
+    return f"https://innohassle.ru/maps?q={quote_plus(display_name)}"
+
+
+def assert_resolved_location(location: dict | None, display_name: str, *, on_map: bool) -> None:
+    assert location is not None
+    assert location["display_name"] == display_name
+    assert location["url"] == (maps_location_url(display_name) if on_map else "")
 
 
 def draft_payload(**overrides) -> dict:
