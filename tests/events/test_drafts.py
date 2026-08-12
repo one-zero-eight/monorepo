@@ -40,6 +40,8 @@ def test_create_draft_starts_without_hosts(events_client: TestClient, club_leade
     draft = response.json()
     assert draft["creator_id"] == "club-leader-1"
     assert draft["status"] is None
+    assert draft["has_public"] is False
+    assert draft["can_be_restored_from"] == []
     assert draft["data"]["hosts"] == []
     assert draft["invitations"] == []
     assert draft["can_edit"] is True
@@ -417,11 +419,18 @@ def test_restore_from_submission(events_client: TestClient, user_headers: dict[s
     submit(events_client, created["id"], user_headers)
     events_client.patch(f"/drafts/{created['id']}", json={"location": "changed"}, headers=user_headers)
 
+    before = events_client.get(f"/drafts/{created['id']}", headers=user_headers).json()
+    assert [item["entity"] for item in before["can_be_restored_from"]] == ["submission"]
+    submission_revision = before["can_be_restored_from"][0]["revision"]
+    assert submission_revision != before["revision"]
+
     response = events_client.post(f"/drafts/{created['id']}/restore", json={"from": "submission"}, headers=user_headers)
     assert response.status_code == 200
     restored = response.json()
     assert restored["data"]["location"] == "108"
     assert restored["status"] == "pending"
+    assert restored["can_be_restored_from"] == []
+    assert restored["revision"] == submission_revision
 
 
 def test_restore_from_public(events_client: TestClient, club_leader_headers, superadmin_headers):
@@ -432,18 +441,36 @@ def test_restore_from_public(events_client: TestClient, club_leader_headers, sup
     events_client.post(f"/submissions/{created['id']}/approve", json={"feedback": ""}, headers=superadmin_headers)
     events_client.patch(f"/drafts/{created['id']}", json={"location": "changed"}, headers=club_leader_headers)
 
+    before = events_client.get(f"/drafts/{created['id']}", headers=club_leader_headers).json()
+    assert {item["entity"] for item in before["can_be_restored_from"]} == {"submission", "public"}
+    assert [item["entity"] for item in before["can_be_restored_from"]] == ["submission", "public"]
+
     response = events_client.post(
         f"/drafts/{created['id']}/restore", json={"from": "public"}, headers=club_leader_headers
     )
     assert response.status_code == 200
-    assert response.json()["status"] == "published"
+    restored = response.json()
+    assert restored["status"] == "published"
+    assert restored["can_be_restored_from"] == []
 
 
 def test_delete_draft_blocked_when_published(events_client: TestClient, club_leader_headers, superadmin_headers):
     draft = create_and_publish(events_client, club_leader_headers, superadmin_headers, host="club")
+    published = events_client.get(f"/drafts/{draft['id']}", headers=club_leader_headers).json()
+    assert published["has_public"] is True
+    assert published["status"] == "published"
     response = events_client.delete(f"/drafts/{draft['id']}", headers=club_leader_headers)
     assert response.status_code == 400
     assert "published" in response.json()["detail"]
+
+
+def test_has_public_false_after_unpublish(events_client: TestClient, user_headers, superadmin_headers):
+    draft = create_and_publish(events_client, user_headers, superadmin_headers)
+    assert events_client.get(f"/drafts/{draft['id']}", headers=user_headers).json()["has_public"] is True
+    events_client.delete(f"/events/{draft['id']}", headers=superadmin_headers)
+    unpublished = events_client.get(f"/drafts/{draft['id']}", headers=user_headers).json()
+    assert unpublished["has_public"] is False
+    assert unpublished["status"] == "unpublished"
 
 
 def test_delete_draft_blocked_when_submission_pending(events_client: TestClient, user_headers: dict[str, str]):

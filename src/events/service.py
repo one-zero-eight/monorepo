@@ -21,7 +21,7 @@ from src.events.mongo import (
     SubmissionData,
     SubmissionLocale,
 )
-from src.events.schemas import DraftStatus, PublicHost, UserRoles
+from src.events.schemas import DraftStatus, PublicHost, RestoreSource, RestoreSourceItem, UserRoles
 from src.inh_accounts_sdk import inh_accounts
 
 
@@ -149,6 +149,17 @@ def submission_status(event: Event) -> DraftStatus | None:
     if event.submission.moderation.status == ModerationStatus.APPROVED:
         return DraftStatus.UNPUBLISHED
     return DraftStatus(event.submission.moderation.status.value)
+
+
+def can_be_restored_from(event: Event) -> list[RestoreSourceItem]:
+    """Sources usable with POST /drafts/:id/restore whose revision differs from the draft."""
+    draft_revision = event.draft.revision
+    items: list[RestoreSourceItem] = []
+    if event.submission is not None and event.submission.revision != draft_revision:
+        items.append(RestoreSourceItem(entity=RestoreSource.SUBMISSION, revision=event.submission.revision))
+    if event.public is not None and event.public.revision != draft_revision:
+        items.append(RestoreSourceItem(entity=RestoreSource.PUBLIC, revision=event.public.revision))
+    return items
 
 
 def eligibility_reasons(event: Event, roles: UserRoles) -> list[str]:

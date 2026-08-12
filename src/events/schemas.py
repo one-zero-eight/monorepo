@@ -25,6 +25,8 @@ __all__ = [
     "PublicHost",
     "PutLocale",
     "RestoreBody",
+    "RestoreSource",
+    "RestoreSourceItem",
     "SubmissionDataSummary",
     "SubmissionListItem",
     "SubmissionOut",
@@ -129,6 +131,16 @@ class RestoreBody(BaseSchema):
     source: Literal["submission", "public"] = Field(alias="from")
 
 
+class RestoreSource(StrEnum):
+    SUBMISSION = "submission"
+    PUBLIC = "public"
+
+
+class RestoreSourceItem(BaseSchema):
+    entity: RestoreSource
+    revision: dtm.datetime
+
+
 class FeedbackBody(BaseSchema):
     feedback: str = ""
     "Moderation feedback (may be empty)"
@@ -155,6 +167,10 @@ class DraftOut(BaseSchema):
     id: PydanticObjectId
     creator_id: str
     status: DraftStatus | None
+    has_public: bool
+    "Whether a published copy exists (blocks draft deletion until unpublished)"
+    can_be_restored_from: list[RestoreSourceItem]
+    "Sources whose revision differs from the draft; entities match POST /drafts/:id/restore `from`"
     revision: dtm.datetime
     data: EventData
     invitations: list[str]

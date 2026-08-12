@@ -17,7 +17,14 @@ from src.events.schemas import (
     SubmissionSummary,
     UserRoles,
 )
-from src.events.service import can_edit_draft, draft_status, eligibility_reasons, pick_event_name, submission_status
+from src.events.service import (
+    can_be_restored_from,
+    can_edit_draft,
+    draft_status,
+    eligibility_reasons,
+    pick_event_name,
+    submission_status,
+)
 from src.inh_accounts_sdk import UserTokenData
 
 
@@ -79,6 +86,8 @@ def build_draft_out(event: Event, roles: UserRoles) -> DraftOut:
         id=event.id,
         creator_id=event.creator_id,
         status=draft_status(event),
+        has_public=event.public is not None,
+        can_be_restored_from=can_be_restored_from(event),
         revision=event.draft.revision,
         data=event.draft.data,
         invitations=list(event.invitations),
