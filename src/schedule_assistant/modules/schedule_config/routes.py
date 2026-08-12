@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from src.schedule_assistant.dependencies import ModeratorDep, VerifyTokenDep, is_moderator_email
 from src.schedule_assistant.modules.schedule_config.event_log import ConfigChangeEvent, ConfigChangeEventSummary
+from src.schedule_assistant.modules.schedule_config.helpers import sanitize_legacy_schedule_config_payload
 from src.schedule_assistant.modules.schedule_config.instructor_meetings import count_meetings_by_instructor
 from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
 from src.schedule_assistant.modules.schedule_config.schemas import (
@@ -57,7 +58,7 @@ def _parse_yaml_schedule_config_update(text: str) -> ScheduleConfigUpdate:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid YAML",
         ) from exc
-    payload = _normalize_schedule_config_payload(payload)
+    payload = sanitize_legacy_schedule_config_payload(_normalize_schedule_config_payload(payload))
     try:
         return _schedule_config_to_update(ScheduleConfig.model_validate(payload))
     except ValidationError:
