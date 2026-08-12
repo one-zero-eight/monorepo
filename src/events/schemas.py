@@ -249,6 +249,8 @@ class SubmissionSummary(BaseSchema):
 class SubmissionListItem(BaseSchema):
     id: PydanticObjectId
     creator_id: str
+    status: DraftStatus | None
+    "Same lifecycle statuses as submission detail"
     submission: SubmissionSummary
 
 

@@ -113,6 +113,7 @@ def build_submission_list_item(event: Event, submission: Submission) -> Submissi
     return SubmissionListItem(
         id=event.id,
         creator_id=event.creator_id,
+        status=submission_status(event),
         submission=SubmissionSummary(
             revision=submission.revision,
             submitted_at=submission.submitted_at,

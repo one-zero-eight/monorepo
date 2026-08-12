@@ -142,6 +142,9 @@ def test_submission_status_unpublished_after_unpublish(events_client: TestClient
     assert events_client.get(f"/drafts/{created['id']}", headers=user_headers).json()["status"] is None
     assert events_client.get(f"/submissions/{created['id']}", headers=user_headers).json()["status"] == "unpublished"
 
+    listed = events_client.get("/submissions", headers=user_headers).json()
+    assert any(item["id"] == created["id"] and item["status"] == "unpublished" for item in listed)
+
 
 def test_delete_pending_submission(events_client: TestClient, user_headers: dict[str, str]):
     created = _ready_draft(events_client, user_headers)
@@ -173,10 +176,15 @@ def test_list_submissions_filter_by_status(events_client: TestClient, user_heade
     assert len(all_submissions) == 2
     assert all_submissions[0]["submission"]["data"]["name"] == "Event en"
     assert "locales" not in all_submissions[0]["submission"]["data"]
+    by_id = {item["id"]: item for item in all_submissions}
+    assert by_id[draft_ids[0]]["status"] == "published"
+    assert by_id[draft_ids[1]]["status"] == "pending"
     pending = events_client.get("/submissions", params={"status": "pending"}, headers=superadmin_headers).json()
     assert len(pending) == 1
+    assert pending[0]["status"] == "pending"
     approved = events_client.get("/submissions", params={"status": "approved"}, headers=superadmin_headers).json()
     assert len(approved) == 1
+    assert approved[0]["status"] == "published"
 
 
 def test_list_submissions_own_only(events_client: TestClient, user_headers, club_leader_headers, superadmin_headers):
