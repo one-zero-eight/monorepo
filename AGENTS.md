@@ -35,6 +35,7 @@ When finishing a task with code changes:
   - service/area scope when the change is local (e.g. `feat(maps): …`, `fix(schedule): …`)
   - comma-separated scopes when a few services are touched (e.g. `chore(schedule, maps): …`)
   - `general` for repo-wide / all-services changes (e.g. `chore(general): …`, `docs(general): …`)
+- **Base the message on the full staged diff** (`git diff --cached` / all files being committed), not only the last edit in the chat. One commit = one message that covers the whole staged set.
 - if the change is tied to a GitHub issue, put a trailer in the commit body: `Closes one-zero-eight/monorepo#123` when the commit closes the issue, or `Relates one-zero-eight/monorepo#123` when it only relates to it
 - propose that message to the IDE Source Control input by writing it to `.scm-commit-msg` at the repo root (gitignored — do not stage it). Requires the SCM Commit Message extension in `tools/scm-commit-msg-from-file` (install once per machine into `~/.cursor/extensions/local.scm-commit-msg-from-file-<version>/`, then Reload Window). After an IDE commit the extension clears the SCM input only when it still matches `.scm-commit-msg`, then deletes the file. After a CLI commit, always `rm -f .scm-commit-msg` (the extension then clears the matching SCM input).
 - do **not** run `git commit` unless the user explicitly asks
