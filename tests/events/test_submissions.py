@@ -30,6 +30,7 @@ def test_submit_incomplete_draft_rejected(events_client: TestClient, user_header
 def test_submit_and_get_pending(events_client: TestClient, user_headers: dict[str, str]):
     created = _ready_draft(events_client, user_headers)
     response = submit(events_client, created["id"], user_headers)
+    assert response["status"] == "pending"
     assert response["submission"]["moderation"]["status"] == "pending"
     assert len(response["submission"]["data"]["hosts"]) == 1
     assert response["submission"]["data"]["duration_hours"] == 2.0
@@ -38,6 +39,9 @@ def test_submit_and_get_pending(events_client: TestClient, user_headers: dict[st
     draft = events_client.get(f"/drafts/{created['id']}", headers=user_headers).json()
     assert response["submission"]["data"]["starts_at"] == draft["data"]["starts_at"]
     assert draft["status"] == "pending"
+
+    got = events_client.get(f"/submissions/{created['id']}", headers=user_headers).json()
+    assert got["status"] == "pending"
 
 
 def test_resubmit_requires_changes(events_client: TestClient, user_headers: dict[str, str]):
@@ -62,7 +66,9 @@ def test_approve_publishes_event(events_client: TestClient, user_headers, supera
         headers=superadmin_headers,
     )
     assert response.status_code == 200
-    submission = response.json()["submission"]
+    body = response.json()
+    assert body["status"] == "published"
+    submission = body["submission"]
     assert submission["moderation"]["status"] == "approved"
 
     event = events_client.get(f"/events/{created['id']}").json()
@@ -92,7 +98,9 @@ def test_decline_requires_feedback(events_client: TestClient, user_headers, supe
         headers=superadmin_headers,
     )
     assert declined.status_code == 200
-    moderation = declined.json()["submission"]["moderation"]
+    body = declined.json()
+    assert body["status"] == "declined"
+    moderation = body["submission"]["moderation"]
     assert moderation["status"] == "declined"
     assert moderation["feedback"] == "needs work"
 
@@ -116,6 +124,23 @@ def test_approve_after_decline_overrides_public(events_client: TestClient, user_
     assert response.status_code == 200
     event = events_client.get(f"/events/{created['id']}").json()
     assert event["data"]["location"] == "fixed"
+
+
+def test_submission_status_unpublished_after_unpublish(events_client: TestClient, user_headers, superadmin_headers):
+    created = _ready_draft(events_client, user_headers)
+    submit(events_client, created["id"], user_headers)
+    events_client.post(f"/submissions/{created['id']}/approve", json={"feedback": ""}, headers=superadmin_headers)
+
+    events_client.delete(f"/events/{created['id']}", headers=superadmin_headers)
+
+    submission = events_client.get(f"/submissions/{created['id']}", headers=user_headers).json()
+    assert submission["submission"]["moderation"]["status"] == "approved"
+    assert submission["status"] == "unpublished"
+
+    # Draft edits must not hide unpublished on the submission view
+    events_client.patch(f"/drafts/{created['id']}", json={"location": "edited after unpublish"}, headers=user_headers)
+    assert events_client.get(f"/drafts/{created['id']}", headers=user_headers).json()["status"] is None
+    assert events_client.get(f"/submissions/{created['id']}", headers=user_headers).json()["status"] == "unpublished"
 
 
 def test_delete_pending_submission(events_client: TestClient, user_headers: dict[str, str]):

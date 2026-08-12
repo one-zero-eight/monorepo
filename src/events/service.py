@@ -140,6 +140,17 @@ def draft_status(event: Event) -> DraftStatus | None:
     return None
 
 
+def submission_status(event: Event) -> DraftStatus | None:
+    """Lifecycle status for a submission view (handles unpublished after public is cleared)."""
+    if event.submission is None:
+        return None
+    if event.public is not None and event.public.revision == event.submission.revision:
+        return DraftStatus.PUBLISHED
+    if event.submission.moderation.status == ModerationStatus.APPROVED:
+        return DraftStatus.UNPUBLISHED
+    return DraftStatus(event.submission.moderation.status.value)
+
+
 def eligibility_reasons(event: Event, roles: UserRoles) -> list[str]:
     del roles  # roles no longer gate host ownership at submit time
     reasons: list[str] = []

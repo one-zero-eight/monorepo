@@ -234,6 +234,8 @@ class DraftListItem(BaseSchema):
 class SubmissionOut(BaseSchema):
     id: PydanticObjectId
     creator_id: str
+    status: DraftStatus | None
+    "Same lifecycle statuses as drafts; `unpublished` when approved but public was removed"
     submission: Submission
 
 

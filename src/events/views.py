@@ -17,7 +17,7 @@ from src.events.schemas import (
     SubmissionSummary,
     UserRoles,
 )
-from src.events.service import can_edit_draft, draft_status, eligibility_reasons, pick_event_name
+from src.events.service import can_edit_draft, draft_status, eligibility_reasons, pick_event_name, submission_status
 from src.inh_accounts_sdk import UserTokenData
 
 
@@ -104,6 +104,7 @@ def build_submission_out(event: Event, submission: Submission) -> SubmissionOut:
     return SubmissionOut(
         id=event.id,
         creator_id=event.creator_id,
+        status=submission_status(event),
         submission=submission,
     )
 
