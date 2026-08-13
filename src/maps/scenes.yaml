@@ -17,6 +17,7 @@ scenes:
       orientation: horizontal
     areas:
       - title: "Dorms 1-5"
+        ru_title: "Общежития 1-5"
         svg_polygon_id: dorms-1
         scene_pointer: campus
       - title: "1.1"
@@ -97,6 +98,7 @@ scenes:
           Working hours: 8:00 — 20:00 (every day)
           Telegram channel: https://t.me/matrixfood
       - title: Cava
+        ru_title: Кава
         svg_polygon_id: cava
         description: |
           Working hours:
@@ -104,10 +106,13 @@ scenes:
             Sat-Sun: 10:30 — 16:00
           Telegram channel: https://t.me/coffeecava
       - title: "Neuro coffee"
+        ru_title: Нейрокофе
         svg_polygon_id: neuro-coffee
       - title: "In Joy"
+        ru_title: Ин Джой
         svg_polygon_id: injoy
       - title: Happiness
+        ru_title: Хэппинесс
         svg_polygon_id: happiness
         description: |
           Working hours:
@@ -123,12 +128,16 @@ scenes:
         svg_polygon_id: reading-hall-1
         prioritized: true
       - title: "Main Hall"
+        ru_title: "Главный холл"
         svg_polygon_id: main-hall
       - title: Atrium
+        ru_title: Атриум
         svg_polygon_id: atrium
       - title: Reception
+        ru_title: Ресепшен
         svg_polygon_id: reception
       - title: "Merch Shop"
+        ru_title: "Магазин мерча"
         svg_polygon_id: merch
   - scene_id: "university-floor-2"
     svg_file: "university-floor-2.svg"
@@ -137,6 +146,7 @@ scenes:
       orientation: horizontal
     areas:
       - title: "Dorms 6-7"
+        ru_title: "Общежития 6-7"
         svg_polygon_id: dorms-6
         scene_pointer: campus
       - title: "105"
@@ -194,6 +204,7 @@ scenes:
           Books list: https://portal.university.innopolis.ru/reading_hall
           Telegram channel: https://t.me/+H0MsiY00PoI4Yzcy
       - title: Library
+        ru_title: Библиотека
         svg_polygon_id: library-mark
         description: |
           Schedule: Tue, Wed 14:00-18:00; Fri 13:00-16:45
@@ -304,6 +315,7 @@ scenes:
         description: |
           College Innopolis
       - title: "College Innopolis"
+        ru_title: "Колледж Иннополис"
         svg_polygon_id: college
         description: |
           College Innopolis
@@ -329,7 +341,7 @@ scenes:
         svg_polygon_id: "314"
         room_booking_id: "314"
       - title: "315"
-      - ru_title: Практики
+        ru_title: Практики
         svg_polygon_id: "315"
         description: |
           Practices
@@ -349,6 +361,7 @@ scenes:
           Working hours: 9:00 — 18:00 (weekdays)
           Telegram bot: https://t.me/StudentAffairs_bot
       - title: "319 Printer"
+        ru_title: "Принтер 319"
         svg_polygon_id: printer-319
       - title: "320"
         svg_polygon_id: "320"
@@ -542,6 +555,7 @@ scenes:
         svg_polygon_id: "451"
         description: "IT department"
       - title: Coffice
+        ru_title: Кофис
         svg_polygon_id: coffice
         description: Кофис
       - title: "452"
@@ -694,6 +708,7 @@ scenes:
         svg_polygon_id: vk
         description: Coworking
       - title: "Fifth floor printer"
+        ru_title: "Принтер 5 этажа"
         svg_polygon_id: printer-5f
   - scene_id: "university-floor-0"
     svg_file: "university-floor-0.svg"
@@ -872,7 +887,7 @@ scenes:
         svg_polygon_id: parking-d-1
         description: "The parking near the first dormitory."
       - title: "Sport Complex"
-        ru_title: Спорткомлекс
+        ru_title: Спорткомплекс
         svg_polygon_id: sc
       - title: Roundabout
         ru_title: "Перекресток с круговым движением"
