@@ -1,41 +1,28 @@
-import datetime as dtm
-
 from fastapi import APIRouter
-from fastapi.security import HTTPBearer
 
-from src.schedule_assistant.dependencies import VerifyTokenDep
-from src.schedule_assistant.modules.bookings.client import BookingDTO, RoomDTO, booking_client
-from src.schedule_assistant.utcnow import utcnow
+from src.schedule_assistant.dependencies import ModeratorDep
+from src.schedule_assistant.modules.bookings import service
+from src.schedule_assistant.modules.bookings.schemas import (
+    BatchBookRequest,
+    BatchBookResponse,
+    BookingReview,
+    CancelExtraRequest,
+    CancelExtraResponse,
+)
 
-security = HTTPBearer()
-
-router = APIRouter(tags=["Bookings"])
-
-
-@router.get("/dev/bookings")
-async def get_all_bookings(
-    _user_and_token: VerifyTokenDep,
-) -> list[BookingDTO]:
-    _now = utcnow()
-    return await booking_client.get_all_bookings(
-        _now,
-        _now + dtm.timedelta(days=30),
-    )
+router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
 
-@router.get("/dev/bookings/{room_id}")
-async def get_bookings(
-    room_id: str,
-    _user_and_token: VerifyTokenDep,
-) -> list[BookingDTO]:
-    _now = utcnow()
-    return await booking_client.get_room_bookings(
-        room_id,
-        _now,
-        _now + dtm.timedelta(days=30),
-    )
+@router.get("/review")
+async def get_booking_review(_moderator: ModeratorDep) -> BookingReview:
+    return await service.get_booking_review()
 
 
-@router.get("/dev/rooms")
-async def get_rooms(_user_and_token: VerifyTokenDep) -> list[RoomDTO]:
-    return await booking_client.get_rooms()
+@router.post("/batch")
+async def batch_book_slots(_moderator: ModeratorDep, request: BatchBookRequest) -> BatchBookResponse:
+    return await service.batch_book_slots(request)
+
+
+@router.post("/cancel-extra")
+async def cancel_extra_bookings(_moderator: ModeratorDep, request: CancelExtraRequest) -> CancelExtraResponse:
+    return await service.cancel_extra_bookings(request)

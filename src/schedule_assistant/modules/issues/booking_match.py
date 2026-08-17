@@ -30,6 +30,8 @@ def booking_as_dict(booking: BookingDTO) -> dict[str, Any]:
         "end": booking.end_time.isoformat(),
         "categories": booking.categories,
         "recurrence": booking.recurrence,
+        "outlook_booking_id": booking.outlook_booking_id,
+        "outlook_entry_id": booking.outlook_entry_id,
     }
 
 

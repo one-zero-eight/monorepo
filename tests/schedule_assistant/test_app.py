@@ -27,34 +27,12 @@ async def test_auth_success(
 
 
 @pytest.mark.asyncio
-async def test_get_rooms_with_mock(
+async def test_booking_review_requires_term(
     authenticated_client: AsyncClient,
+    bookings_repo,
     mock_booking_client,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Test the rooms endpoint using the mocked booking client."""
-    response = await authenticated_client.get("/dev/rooms")
-    assert response.status_code == 200
-
-    data = response.json()
-    assert len(data) == 2
-    assert data[0]["id"] == "test_room_1"
-    assert data[0]["title"] == "Test Room 1"
-
-    mock_booking_client.get_rooms.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_get_bookings_with_mock(
-    authenticated_client: AsyncClient,
-    mock_booking_client,
-) -> None:
-    """Test the bookings endpoint using the mocked booking client."""
-    response = await authenticated_client.get("/dev/bookings")
-    assert response.status_code == 200
-
-    data = response.json()
-    assert len(data) == 2
-    assert data[0]["room_id"] == "test_room_1"
-    assert data[0]["title"] == "Test Booking 1"
-
-    mock_booking_client.get_all_bookings.assert_called_once()
+    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    response = await authenticated_client.get("/bookings/review")
+    assert response.status_code == 404

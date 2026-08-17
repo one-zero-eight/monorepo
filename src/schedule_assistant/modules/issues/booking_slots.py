@@ -61,6 +61,10 @@ class BookableSlot:
     payload: dict[str, Any]
     bookable: bool
     disabled_reason: str | None = None
+    audiences: tuple[str, ...] = ()
+    program_name: str = ""
+    component_id: str = ""
+    slot_id: str = ""
 
 
 def _normalize_room(room: str | None) -> str | None:
@@ -82,6 +86,42 @@ def _slot_bookable(room: str | None, known_room_ids: set[str]) -> tuple[bool, st
     if room not in known_room_ids:
         return False, "unknown room"
     return True, None
+
+
+def _audiences_key(audiences: list[str]) -> str:
+    return ",".join(sorted(audiences))
+
+
+def resolve_program_name(
+    audience: str,
+    *,
+    group_to_program: dict[str, str],
+    selector_to_program: dict[str, str],
+) -> str:
+    if audience in group_to_program:
+        return group_to_program[audience]
+    if audience in selector_to_program:
+        return selector_to_program[audience]
+    if audience.startswith("@"):
+        return selector_to_program.get(audience, audience.removeprefix("@"))
+    return "Unknown program"
+
+
+def resolve_program_for_audiences(
+    audiences: list[str],
+    *,
+    group_to_program: dict[str, str],
+    selector_to_program: dict[str, str],
+) -> str:
+    program_names = {
+        resolve_program_name(audience, group_to_program=group_to_program, selector_to_program=selector_to_program)
+        for audience in audiences
+    }
+    if len(program_names) == 1:
+        return program_names.pop()
+    return resolve_program_name(
+        audiences[0], group_to_program=group_to_program, selector_to_program=selector_to_program
+    )
 
 
 def _program_code_from_audiences(audiences: list[str]) -> str:
@@ -301,6 +341,9 @@ def _slots_from_weekly_pattern(
     term: TermConfig,
     known_room_ids: set[str],
     instructor: str | list[str] | None,
+    program_name: str,
+    component_id: str,
+    pattern_index: int,
 ) -> list[BookableSlot]:
     edits = list(pattern.edits or [])
     day_label = pattern.weekday
@@ -337,9 +380,22 @@ def _slots_from_weekly_pattern(
             end_time=resolved_end,
             placement=OccurrencePlacement(date=resolved_date),
         )
-        slots.append(BookableSlot(meeting=meeting, payload=payload, bookable=bookable, disabled_reason=reason))
+        slots.append(
+            BookableSlot(
+                meeting=meeting,
+                payload=payload,
+                bookable=bookable,
+                disabled_reason=reason,
+                audiences=tuple(audiences),
+                program_name=program_name,
+                component_id=component_id,
+                slot_id=f"{component_id}#w{pattern_index}#e{resolved_date.isoformat()}",
+            )
+        )
 
-    for segment_start, segment_end in _recurrence_segments_excluding_edit_weeks(term, day_label, excluded_week_starts):
+    for segment_index, (segment_start, segment_end) in enumerate(
+        _recurrence_segments_excluding_edit_weeks(term, day_label, excluded_week_starts)
+    ):
         recurrence = _weekly_recurrence_for_segment(term, day_label, segment_start, segment_end)
         bookable, reason = _slot_bookable(base_room, known_room_ids)
         meeting, payload = _build_payload(
@@ -357,7 +413,18 @@ def _slots_from_weekly_pattern(
             placement=WeeklyPatternPlacement(weekday=pattern.weekday, edits=edits),
             recurrence=recurrence,
         )
-        slots.append(BookableSlot(meeting=meeting, payload=payload, bookable=bookable, disabled_reason=reason))
+        slots.append(
+            BookableSlot(
+                meeting=meeting,
+                payload=payload,
+                bookable=bookable,
+                disabled_reason=reason,
+                audiences=tuple(audiences),
+                program_name=program_name,
+                component_id=component_id,
+                slot_id=f"{component_id}#w{pattern_index}#s{segment_index}",
+            )
+        )
 
     return slots
 
@@ -378,25 +445,34 @@ def build_bookable_slots(
 
     selector_map = build_selector_map(sections)
     token_to_kind = build_token_to_section_kind(sections)
+    group_to_program, selector_to_program = build_section_program_maps(sections)
     slots: list[BookableSlot] = []
 
     for course in courses.courses:
         for component in course.components:
             if not component.sessions:
                 continue
-            for session in component.sessions:
+            for session_index, session in enumerate(component.sessions):
                 audiences = _session_audiences(component, session)
                 if not audiences:
                     continue
                 source_kind = source_kind_from_audiences(audiences, token_to_kind)
                 group_codes = tuple(sorted(expand_group_tokens(audiences, selector_map)))
+                program_name = resolve_program_for_audiences(
+                    audiences,
+                    group_to_program=group_to_program,
+                    selector_to_program=selector_to_program,
+                )
+                component_id = (
+                    f"{program_name}|{course.name}|{component.tag}|{_audiences_key(audiences)}|s{session_index}"
+                )
                 instructor = None
                 if session.occurrences:
                     instructor = session.occurrences[0].instructor
                 elif session.weekly_pattern:
                     instructor = session.weekly_pattern[0].instructor
 
-                for occurrence in session.occurrences or []:
+                for occurrence_index, occurrence in enumerate(session.occurrences or []):
                     start_time = occurrence.start_time.strftime("%H:%M:%S")
                     end_time = occurrence.end_time.strftime("%H:%M:%S")
                     room = _normalize_room(occurrence.room)
@@ -416,10 +492,19 @@ def build_bookable_slots(
                         placement=OccurrencePlacement(date=occurrence.date),
                     )
                     slots.append(
-                        BookableSlot(meeting=meeting, payload=payload, bookable=bookable, disabled_reason=reason)
+                        BookableSlot(
+                            meeting=meeting,
+                            payload=payload,
+                            bookable=bookable,
+                            disabled_reason=reason,
+                            audiences=tuple(audiences),
+                            program_name=program_name,
+                            component_id=component_id,
+                            slot_id=f"{component_id}#d{occurrence_index}",
+                        )
                     )
 
-                for pattern in session.weekly_pattern or []:
+                for pattern_index, pattern in enumerate(session.weekly_pattern or []):
                     pattern_instructor = pattern.instructor if pattern.instructor is not None else instructor
                     slots.extend(
                         _slots_from_weekly_pattern(
@@ -433,6 +518,9 @@ def build_bookable_slots(
                             term=term,
                             known_room_ids=known_room_ids,
                             instructor=pattern_instructor,
+                            program_name=program_name,
+                            component_id=component_id,
+                            pattern_index=pattern_index,
                         ),
                     )
 

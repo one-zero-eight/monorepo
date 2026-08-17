@@ -1,5 +1,5 @@
 import datetime as dtm
-from typing import Literal
+from typing import Any, Literal
 from urllib.parse import quote, urljoin
 
 import httpx
@@ -7,6 +7,8 @@ from pydantic import Field
 
 from src.schedule_assistant.config import settings
 from src.schedule_assistant.schema_base import ScheduleAssistantSchema
+
+HTTP_TIMEOUT_SECONDS = 300.0
 
 
 class BookingDTO(ScheduleAssistantSchema):
@@ -28,6 +30,8 @@ class BookingDTO(ScheduleAssistantSchema):
     "EWS recurrence XML for recurring masters"
     outlook_booking_id: str | None = None
     "ID of outlook booking in service account calendar. Only set if we can manage the booking."
+    outlook_entry_id: str | None = None
+    "Hex Entry Id from Outlook free/busy. Set when we cannot manage the booking."
 
 
 class RoomDTO(ScheduleAssistantSchema):
@@ -47,6 +51,18 @@ class RoomDTO(ScheduleAssistantSchema):
     "Access level to the room. Yellow = for students. Red = for employees. Special = special rules apply."
     restrict_daytime: bool = False
     "Prohibit to book during working hours. True = this room is available only at night 19:00-8:00, or full day on weekends."
+
+
+class BmpBatchItemResult(ScheduleAssistantSchema):
+    status: Literal["ok", "error"]
+    booking: BookingDTO | None = None
+    error: str | None = None
+    message_body: str | None = None
+
+
+class CancelAutoBookingsResult(ScheduleAssistantSchema):
+    cancelled: list[str]
+    failed: dict[str, str]
 
 
 class BookingClient:
@@ -80,7 +96,7 @@ class BookingClient:
             response = await client.get(
                 urljoin(self.url, "bookings/"),
                 params={"start": start.isoformat(), "end": end.isoformat(), "include_red": True},
-                timeout=60,
+                timeout=HTTP_TIMEOUT_SECONDS,
             )
             response.raise_for_status()
             data = response.json()
@@ -101,11 +117,63 @@ class BookingClient:
             response = await client.get(
                 urljoin(self.url, "bmp/auto-bookings/"),
                 params={"start": start.isoformat(), "end": end.isoformat()},
-                timeout=60,
+                timeout=HTTP_TIMEOUT_SECONDS,
             )
             response.raise_for_status()
             data = response.json()
             return [BookingDTO.model_validate(entry) for entry in data]
+
+    async def create_auto_bookings_batch(self, bookings: list[dict[str, Any]]) -> dict[str, BmpBatchItemResult]:
+        async with httpx.AsyncClient(headers=self._headers) as client:
+            response = await client.post(
+                urljoin(self.url, "bmp/auto-bookings/batch"),
+                json={"bookings": bookings},
+                timeout=HTTP_TIMEOUT_SECONDS,
+            )
+            response.raise_for_status()
+            data = response.json()
+        if not isinstance(data, dict):
+            return {}
+        return {str(key): BmpBatchItemResult.model_validate(value) for key, value in data.items()}
+
+    async def cancel_auto_bookings_batch(self, outlook_booking_ids: list[str]) -> CancelAutoBookingsResult:
+        async with httpx.AsyncClient(headers=self._headers) as client:
+            response = await client.request(
+                "DELETE",
+                urljoin(self.url, "bmp/auto-bookings/batch"),
+                json={"outlook_booking_ids": outlook_booking_ids},
+                timeout=HTTP_TIMEOUT_SECONDS,
+            )
+            response.raise_for_status()
+            return CancelAutoBookingsResult.model_validate(response.json())
+
+    async def cancel_extra_booking(
+        self,
+        *,
+        room_id: str,
+        start: str,
+        end: str,
+        title: str,
+        outlook_booking_id: str | None = None,
+        outlook_entry_id: str | None = None,
+    ) -> None:
+        body: dict[str, Any] = {
+            "room_id": room_id,
+            "start": start,
+            "end": end,
+            "title": title,
+        }
+        if outlook_booking_id:
+            body["outlook_booking_id"] = outlook_booking_id
+        if outlook_entry_id:
+            body["outlook_entry_id"] = outlook_entry_id
+        async with httpx.AsyncClient(headers=self._headers) as client:
+            response = await client.post(
+                urljoin(self.url, "bookings/cancel-extra"),
+                json=body,
+                timeout=HTTP_TIMEOUT_SECONDS,
+            )
+            response.raise_for_status()
 
 
 booking_client: BookingClient = BookingClient(

@@ -137,6 +137,15 @@ def issues_repo(schedule_assistant_repo, monkeypatch: pytest.MonkeyPatch):
     return schedule_assistant_repo
 
 
+@pytest.fixture
+def bookings_repo(schedule_assistant_repo, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "src.schedule_assistant.modules.bookings.service.schedule_config_repository",
+        schedule_assistant_repo,
+    )
+    return schedule_assistant_repo
+
+
 @pytest.fixture(scope="session")
 def schedule_assistant_client(request: pytest.FixtureRequest) -> Iterator[TestClient]:
     request.getfixturevalue("mock_inh_accounts_http")
@@ -181,7 +190,7 @@ async def authenticated_client(fastapi_app: FastAPI) -> AsyncGenerator[AsyncClie
 
 @pytest.fixture(scope="function")
 def mock_booking_client():
-    from src.schedule_assistant.modules.bookings.client import BookingDTO, RoomDTO
+    from src.schedule_assistant.modules.bookings.client import BookingDTO, CancelAutoBookingsResult, RoomDTO
 
     mock_client = AsyncMock()
 
@@ -225,9 +234,13 @@ def mock_booking_client():
             restrict_daytime=True,
         ),
     ]
+    mock_client.get_auto_bookings.return_value = []
+    mock_client.create_auto_bookings_batch.return_value = {}
+    mock_client.cancel_auto_bookings_batch.return_value = CancelAutoBookingsResult(cancelled=[], failed={})
+    mock_client.cancel_extra_booking.return_value = None
 
     with (
         patch("src.schedule_assistant.modules.bookings.client.booking_client", mock_client),
-        patch("src.schedule_assistant.modules.bookings.routes.booking_client", mock_client),
+        patch("src.schedule_assistant.modules.bookings.service.booking_client", mock_client),
     ):
         yield mock_client
