@@ -41,6 +41,7 @@ class BuddyGroup(BaseModel):
     number: str
     name: str
     tg: str
+    location: str
 
 
 class BootcampParserConfig(BaseModel):
@@ -258,7 +259,7 @@ class BootcampParser:
                         dtstart=dtstart,
                         dtend=dtend,
                         rrule=rrule,
-                        location=location or buddy_group.tg,
+                        location=location or buddy_group.location,
                         description=f"{buddy_group.name} {buddy_group.tg}",
                         buddy=True,
                         sequence=1,
