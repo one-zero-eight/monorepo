@@ -150,6 +150,8 @@ class BootcampParser:
         events = []
 
         for entry in self.config.general_events:
+            if entry.buddy:
+                continue
             if ru and (entry.subject_ru is None and entry.location_ru is None):
                 continue
 
