@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 
-from src.schedule.dependencies import VERIFY_PARSER_DEPENDENCY
-from src.schedule.exceptions import IncorrectCredentialsException
+from src.schedule.dependencies import VERIFY_PARSER_OR_ADMIN_DEPENDENCY
+from src.schedule.exceptions import ForbiddenException, IncorrectCredentialsException
 from src.schedule.modules.event_groups.repository import event_group_repository
 from src.schedule.modules.predefined.repository import predefined_repository
 from src.schedule.modules.predefined.storage import JsonPredefinedUsers
@@ -12,9 +12,13 @@ router = APIRouter(prefix="", tags=["Predefined"], route_class=AutoDeriveRespons
 
 @router.get(
     "/get-predefined-data",
-    responses={200: {"description": "Predefined data"}, **IncorrectCredentialsException.responses},
+    responses={
+        200: {"description": "Predefined data"},
+        **IncorrectCredentialsException.responses,
+        **ForbiddenException.responses,
+    },
 )
-async def get_predefined_data(_: VERIFY_PARSER_DEPENDENCY) -> JsonPredefinedUsers:
+async def get_predefined_data(_: VERIFY_PARSER_OR_ADMIN_DEPENDENCY) -> JsonPredefinedUsers:
     return predefined_repository.storage
 
 
@@ -25,9 +29,10 @@ async def get_predefined_data(_: VERIFY_PARSER_DEPENDENCY) -> JsonPredefinedUser
             "description": "Predefined data updated successfully",
         },
         **IncorrectCredentialsException.responses,
+        **ForbiddenException.responses,
     },
 )
-async def update_predefined_data(_: VERIFY_PARSER_DEPENDENCY, user_storage: JsonPredefinedUsers) -> list[str]:
+async def update_predefined_data(_: VERIFY_PARSER_OR_ADMIN_DEPENDENCY, user_storage: JsonPredefinedUsers) -> list[str]:
     from src.schedule.modules.predefined.utils import setup_predefined_data_from_object
 
     setup_predefined_data_from_object(user_storage)

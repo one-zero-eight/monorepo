@@ -1,4 +1,11 @@
-__all__ = ["CURRENT_USER_ID_DEPENDENCY", "VERIFY_PARSER_DEPENDENCY", "get_current_user_id", "verify_parser"]
+__all__ = [
+    "CURRENT_USER_ID_DEPENDENCY",
+    "VERIFY_PARSER_DEPENDENCY",
+    "VERIFY_PARSER_OR_ADMIN_DEPENDENCY",
+    "get_current_user_id",
+    "verify_parser",
+    "verify_parser_or_admin",
+]
 
 from typing import Annotated
 
@@ -7,7 +14,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from joserfc.errors import JoseError
 
 from src.inh_accounts_sdk import inh_accounts
-from src.schedule.exceptions import IncorrectCredentialsException
+from src.schedule.exceptions import ForbiddenException, IncorrectCredentialsException
 from src.schedule.modules.users.repository import user_repository
 
 bearer_scheme = HTTPBearer(
@@ -52,5 +59,29 @@ def verify_parser(
         raise IncorrectCredentialsException()
 
 
+async def verify_parser_or_admin(
+    bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> bool:
+    if bearer is None:
+        raise IncorrectCredentialsException(no_credentials=True)
+    token = bearer.credentials
+    if not token:
+        raise IncorrectCredentialsException(no_credentials=True)
+    try:
+        payload = inh_accounts._get_jwt_claims(token)
+        if payload.get("sub") == "parser":
+            return True
+    except JoseError:
+        raise IncorrectCredentialsException()
+    token_data = inh_accounts.decode_user_token(token)
+    if token_data is None:
+        raise IncorrectCredentialsException()
+    innohassle_user = await inh_accounts.get_user(innohassle_id=token_data.innohassle_id)
+    if innohassle_user is None or not innohassle_user.innohassle_admin:
+        raise ForbiddenException()
+    return True
+
+
 CURRENT_USER_ID_DEPENDENCY = Annotated[int, Depends(get_current_user_id)]
 VERIFY_PARSER_DEPENDENCY = Annotated[bool, Depends(verify_parser)]
+VERIFY_PARSER_OR_ADMIN_DEPENDENCY = Annotated[bool, Depends(verify_parser_or_admin)]
