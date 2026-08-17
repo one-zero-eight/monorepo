@@ -11,7 +11,7 @@ from src.schedule.dependencies import VERIFY_PARSER_DEPENDENCY
 from src.schedule.exceptions import IncorrectCredentialsException
 from src.schedule.modules.event_groups.repository import event_group_repository
 from src.schedule.modules.event_groups.schemas import CreateEventGroup
-from src.schedule.modules.parse.bootcamp import BootcampParser, BootcampParserConfig, BuddyGroup
+from src.schedule.modules.parse.bootcamp import AcademicGroup, BootcampParser, BootcampParserConfig, BuddyGroup
 from src.schedule.modules.parse.cleaning import CleaningParser, CleaningParserConfig
 from src.schedule.modules.parse.utils import get_base_calendar, locate_ics_by_path, sluggify
 from src.schedule.modules.tags.schemas import CreateTag
@@ -112,7 +112,7 @@ async def parse_cleaning_schedule(_: VERIFY_PARSER_DEPENDENCY, config: CleaningP
 )
 async def parse_bootcamp_schedule(_: VERIFY_PARSER_DEPENDENCY, config: BootcampParserConfig) -> None:
     bootcamp_tag = CreateTag(alias="bootcamp2026", name="Bootcamp", type="category")
-    # academic_tag = CreateTag(alias="academic", name="Academic", type="bootcamp2026")
+    academic_tag = CreateTag(alias="academic", name="Academic", type="bootcamp2026")
     buddy_tag = CreateTag(alias="buddy", name="Buddy", type="bootcamp2026")
 
     parser = BootcampParser(config)
@@ -124,20 +124,19 @@ async def parse_bootcamp_schedule(_: VERIFY_PARSER_DEPENDENCY, config: BootcampP
             vevent = event.get_vevent()
             calendar.add_component(vevent)
 
-        # if isinstance(group, AcademicGroup):
-        #     calendar["x-wr-calname"] = f"Bootcamp: {group.name}"
-        #     group_alias = f"bootcamp-academic-{sluggify(group.name)}"
-        #     path = f"bootcamp/{group_alias}.ics"
-        #
-        #     event_group = CreateEventGroup(
-        #         alias=group_alias,
-        #         name=f"{group.name}",
-        #         description=f"Bootcamp schedule for {group.name}",
-        #         tags=[bootcamp_tag, academic_tag],
-        #         path=path,
-        #     )
-        # elif isinstance(group, BuddyGroup):
-        if isinstance(group, BuddyGroup):
+        if isinstance(group, AcademicGroup):
+            calendar["x-wr-calname"] = f"Bootcamp: {group.name}"
+            group_alias = f"bootcamp-academic-{sluggify(group.name)}"
+            path = f"bootcamp/{group_alias}.ics"
+
+            event_group = CreateEventGroup(
+                alias=group_alias,
+                name=f"{group.name}",
+                description=f"Bootcamp schedule for {group.name}",
+                tags=[bootcamp_tag, academic_tag],
+                path=path,
+            )
+        elif isinstance(group, BuddyGroup):
             calendar["x-wr-calname"] = f"Bootcamp: Buddy group {group.number}"
             group_alias = f"bootcamp-buddy-group-{group.number}"
             path = f"bootcamp/{group_alias}.ics"

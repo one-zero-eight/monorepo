@@ -1,4 +1,5 @@
 import datetime as dtm
+import re
 from collections.abc import Generator
 from zlib import crc32
 
@@ -25,33 +26,27 @@ class Entry(BaseModel):
         return v
 
 
-# class AcademicGroup(BaseModel):
-#     name: str
-#     ru: bool = False
-#     english: Entry | None = None
-#     labs: Entry | None = None
-#
-#     math: Entry | None = None
-#     programming: Entry | None = None
-#     physics: Entry | None = None
+class AcademicGroup(BaseModel):
+    name: str
+    ru: bool = False
+    english: Entry | None = None
+    labs: Entry | None = None
+
+    math: Entry | None = None
+    programming: Entry | None = None
+    physics: Entry | None = None
 
 
 class BuddyGroup(BaseModel):
     number: str
     name: str
     tg: str
-    ru: bool = False
-    english: Entry | None = None
-    labs: Entry | None = None
-    math: Entry | None = None
-    programming: Entry | None = None
-    physics: Entry | None = None
 
 
 class BootcampParserConfig(BaseModel):
     when: str = Field(examples=["2024.08"])
     general_events: list[Entry]
-    # academic_groups: list[AcademicGroup]
+    academic_groups: list[AcademicGroup]
     buddy_groups: list[BuddyGroup]
 
 
@@ -189,64 +184,12 @@ class BootcampParser:
         dtend = start_day.replace(hour=end_hour, minute=end_minute)
         return dtstart, dtend, rrule
 
-    # def parse_academic_group(
-    #     self, academic_group: AcademicGroup, general_events: list[BootcampEvent], ru_general_events: list[BootcampEvent]
-    # ) -> list[BootcampEvent]:
-    #     events = []
-    #
-    #     if academic_group.ru:
-    #         events.extend(ru_general_events)
-    #     else:
-    #         events.extend(general_events)
-    #
-    #     ru_subjects = {
-    #         "programming": "Программирование",
-    #         "physics": "Физика",
-    #         "math": "Математический анализ",
-    #     }
-    #
-    #     subjects = {
-    #         "english": "English Practice",
-    #         "labs": "Labs with TA",
-    #     }
-    #
-    #     for key, entry in [
-    #         ("english", academic_group.english),
-    #         ("labs", academic_group.labs),
-    #         ("programming", academic_group.programming),
-    #         ("math", academic_group.math),
-    #         ("physics", academic_group.physics),
-    #     ]:
-    #         if entry is None:
-    #             continue
-    #
-    #         if academic_group.ru:
-    #             subject = entry.subject_ru or ru_subjects[key]
-    #             location = entry.location_ru or entry.location
-    #         else:
-    #             subject = entry.subject or subjects[key]
-    #             location = entry.location
-    #
-    #         for when in entry.when:
-    #             dtstart, dtend, rrule = self.when_str_to_datetimes(when)
-    #             event = BootcampEvent(
-    #                 summary=subject,
-    #                 dtstart=dtstart,
-    #                 dtend=dtend,
-    #                 rrule=rrule,
-    #                 description=entry.instructor,
-    #                 location=location,
-    #             )
-    #             events.append(event)
-    #
-    #     return events
-
-    def parse_buddy_group(
-        self, buddy_group: BuddyGroup, general_events: list[BootcampEvent], ru_general_events: list[BootcampEvent]
+    def parse_academic_group(
+        self, academic_group: AcademicGroup, general_events: list[BootcampEvent], ru_general_events: list[BootcampEvent]
     ) -> list[BootcampEvent]:
         events = []
 
-        if buddy_group.ru:
+        if academic_group.ru:
             events.extend(ru_general_events)
         else:
             events.extend(general_events)
@@ -263,16 +206,16 @@ class BootcampParser:
         }
 
         for key, entry in [
-            ("english", buddy_group.english),
-            ("labs", buddy_group.labs),
-            ("programming", buddy_group.programming),
-            ("math", buddy_group.math),
-            ("physics", buddy_group.physics),
+            ("english", academic_group.english),
+            ("labs", academic_group.labs),
+            ("programming", academic_group.programming),
+            ("math", academic_group.math),
+            ("physics", academic_group.physics),
         ]:
             if entry is None:
                 continue
 
-            if buddy_group.ru:
+            if academic_group.ru:
                 subject = entry.subject_ru or ru_subjects[key]
                 location = entry.location_ru or entry.location
             else:
@@ -291,8 +234,16 @@ class BootcampParser:
                 )
                 events.append(event)
 
+        return events
+
+    def parse_buddy_group(self, buddy_group: BuddyGroup) -> list[BootcampEvent]:
+        events = []
+
         for entry in self.config.general_events:
-            if buddy_group.ru:
+            # if buddy name is cyrillic, then it's a ru buddy group
+            is_ru = re.match(r"[\u0400-\u04FF]", buddy_group.name)
+
+            if is_ru:
                 subject = entry.subject_ru or entry.subject
                 location = entry.location_ru or entry.location
             else:
@@ -316,10 +267,14 @@ class BootcampParser:
 
         return events
 
-    def parse(self) -> Generator[tuple[BuddyGroup, list[BootcampEvent]]]:
+    def parse(self) -> Generator[tuple[AcademicGroup | BuddyGroup, list[BootcampEvent]]]:
         general_events = self.parse_general_events()
         ru_general_events = self.parse_general_events(ru=True)
 
+        for academic_group in self.config.academic_groups:
+            events = self.parse_academic_group(academic_group, general_events, ru_general_events)
+            yield academic_group, events
+
         for buddy_group in self.config.buddy_groups:
-            events = self.parse_buddy_group(buddy_group, general_events, ru_general_events)
+            events = self.parse_buddy_group(buddy_group)
             yield buddy_group, events
