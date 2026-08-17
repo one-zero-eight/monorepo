@@ -10,6 +10,7 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     ComponentSessionSeries,
     CourseConfig,
     CoursesConfig,
+    SectionConfig,
     SectionsConfig,
     SessionOccurrence,
     StudentsGroups,
@@ -20,7 +21,16 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
 def _checker(courses: CoursesConfig) -> IssueChecker:
     return IssueChecker(
         courses=courses,
-        sections=SectionsConfig(students_groups=[StudentsGroups(code="G1", kind="core", estimated_size=10)]),
+        sections=SectionsConfig(
+            sections=[
+                SectionConfig(
+                    code="core",
+                    name="Core",
+                    programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])],
+                )
+            ],
+            students_groups=[StudentsGroups(code="G1", kind="core", estimated_size=10)],
+        ),
         term=TermConfig(
             name="Summer 2026",
             semester=TermConfig.DateRange(
@@ -38,6 +48,7 @@ async def test_unbooked_issue_when_no_matching_booking() -> None:
         courses=[
             CourseConfig(
                 name="Algorithms",
+                section_code="core",
                 components=[
                     CourseConfig.Component(
                         tag="lec",
@@ -86,6 +97,7 @@ async def test_no_unbooked_issue_when_booking_matches() -> None:
         courses=[
             CourseConfig(
                 name="Algorithms",
+                section_code="core",
                 components=[
                     CourseConfig.Component(
                         tag="lec",

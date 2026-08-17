@@ -88,7 +88,7 @@ class TermConfig(SettingBaseModel):
     course_component_tags: list[str] = Field(default_factory=list)
     "Allowed course.components[].tag values; empty means unrestricted"
     room_attributes: list[RoomAttributeDef] = Field(default_factory=list)
-    "Allowed room.features keys with types; empty means unrestricted legacy keys"
+    "Allowed room.features keys with types; empty means any key is allowed"
 
 
 class TermPartialUpdate(SettingBaseModel):
@@ -305,6 +305,8 @@ class CourseConfig(SettingBaseModel):
 
     name: str
     "Course name"
+    section_code: str
+    "Exactly one timetable section this course belongs to (term.sections[].code)"
     short_name: str | None = None
     "Short English display name"
     name_ru: str | None = None

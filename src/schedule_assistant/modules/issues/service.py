@@ -8,10 +8,11 @@ from src.schedule_assistant.modules.issues.instructor_preferences import instruc
 from src.schedule_assistant.modules.issues.meetings import (
     build_group_to_studying_teachers,
     meetings_from_schedule_config,
+    missing_assignment_issues_from_meetings,
     unplaced_issues_from_schedule_config,
 )
 from src.schedule_assistant.modules.issues.per_week import per_week_issues_from_schedule_config
-from src.schedule_assistant.modules.issues.schemas import CheckParameters, CheckResults, Issue
+from src.schedule_assistant.modules.issues.schemas import CheckParameters, CheckResults, Issue, IssueTypeEnum
 from src.schedule_assistant.modules.issues.student_emails import student_email_issues_from_sections
 from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
 from src.schedule_assistant.modules.schedule_config.schemas import RoomConfig, TermConfig
@@ -74,6 +75,16 @@ async def check_schedule_issues(params: CheckParameters) -> CheckResults:
         unplaced_issues = unplaced_issues_from_schedule_config(courses, sections)
         logger.info(f"Found {len(unplaced_issues)} unplaced issues")
         issues.extend(unplaced_issues)
+    if params.check_missing_room or params.check_missing_instructor:
+        assignment_issues = missing_assignment_issues_from_meetings(meetings)
+        if not params.check_missing_room:
+            assignment_issues = [issue for issue in assignment_issues if issue.issue_type != IssueTypeEnum.MISSING_ROOM]
+        if not params.check_missing_instructor:
+            assignment_issues = [
+                issue for issue in assignment_issues if issue.issue_type != IssueTypeEnum.MISSING_INSTRUCTOR
+            ]
+        logger.info(f"Found {len(assignment_issues)} missing assignment issues")
+        issues.extend(assignment_issues)
     if params.check_per_week:
         per_week_issues = per_week_issues_from_schedule_config(courses, sections)
         logger.info(f"Found {len(per_week_issues)} per_week issues")

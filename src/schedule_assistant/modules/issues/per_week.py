@@ -15,11 +15,16 @@ def _weekly_slot_count_for_audience(
     component_groups: list[str],
     audience: tuple[str, ...],
     selector_map: dict[str, set[str]],
+    per_group: bool,
 ) -> int:
+    audience_set = set(audience)
     count = 0
     for session in sessions:
-        session_audience = _group_codes_for_session(component_groups, session, selector_map)
-        if session_audience != audience:
+        session_audience = set(_group_codes_for_session(component_groups, session, selector_map))
+        if per_group:
+            if not audience_set or not audience_set <= session_audience:
+                continue
+        elif session_audience != audience_set:
             continue
         if session.weekly_pattern:
             count += len(session.weekly_pattern)
@@ -53,6 +58,7 @@ def per_week_issues_from_schedule_config(courses: CoursesConfig, sections: Secti
                     component_groups=component.student_groups,
                     audience=audience,
                     selector_map=selector_map,
+                    per_group=component.per_group,
                 )
                 if actual == component.per_week:
                     continue

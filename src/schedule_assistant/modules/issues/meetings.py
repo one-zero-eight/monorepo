@@ -5,6 +5,8 @@ from typing import Literal
 from src.schedule_assistant.modules.issues.issue_text import attach_issue_text
 from src.schedule_assistant.modules.issues.schemas import (
     IssueTypeEnum,
+    MissingInstructorIssue,
+    MissingRoomIssue,
     OccurrencePlacement,
     ScheduledMeeting,
     UnplacedIssue,
@@ -124,8 +126,9 @@ def meeting_instructor_ids(instructor: str | list[str] | None) -> list[str]:
     if instructor is None:
         return []
     if isinstance(instructor, list):
-        return [value for value in instructor if value]
-    return [instructor]
+        return [value.strip() for value in instructor if value and value.strip()]
+    stripped = instructor.strip()
+    return [stripped] if stripped else []
 
 
 def _base_meeting(
@@ -310,4 +313,30 @@ def unplaced_issues_from_schedule_config(courses: CoursesConfig, sections: Secti
                 attach_issue_text(issue)
                 issues.append(issue)
 
+    return issues
+
+
+def _blank_room(room: str | None) -> bool:
+    return not (room or "").strip()
+
+
+def missing_assignment_issues_from_meetings(
+    meetings: list[ScheduledMeeting],
+) -> list[MissingRoomIssue | MissingInstructorIssue]:
+    issues: list[MissingRoomIssue | MissingInstructorIssue] = []
+    for meeting in meetings:
+        if _blank_room(meeting.room):
+            issue = MissingRoomIssue(
+                issue_type=IssueTypeEnum.MISSING_ROOM,
+                meeting=meeting,
+            )
+            attach_issue_text(issue)
+            issues.append(issue)
+        if not meeting_instructor_ids(meeting.instructor):
+            issue = MissingInstructorIssue(
+                issue_type=IssueTypeEnum.MISSING_INSTRUCTOR,
+                meeting=meeting,
+            )
+            attach_issue_text(issue)
+            issues.append(issue)
     return issues

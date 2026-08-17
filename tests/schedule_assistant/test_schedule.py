@@ -9,6 +9,7 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     CourseConfig,
     CoursesConfig,
     InstructorConfig,
+    SectionConfig,
     SectionsConfig,
     SessionOccurrence,
     StudentsGroups,
@@ -31,6 +32,19 @@ def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@t
     )
     repo.set_sections(
         SectionsConfig(
+            sections=[
+                SectionConfig(
+                    code="core",
+                    name="Core",
+                    programs=[
+                        SectionConfig.SectionProgram(
+                            code="BS",
+                            name="BS",
+                            groups=["B25-CSE-01", "SUM26-AAI"],
+                        ),
+                    ],
+                ),
+            ],
             students_groups=[
                 StudentsGroups(
                     code="B25-CSE-01",
@@ -70,6 +84,7 @@ def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@t
             courses=[
                 CourseConfig(
                     name="Agentic AI",
+                    section_code="core",
                     components=[
                         CourseConfig.Component(
                             tag="class",
@@ -100,6 +115,7 @@ def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@t
                 ),
                 CourseConfig(
                     name="Algorithms",
+                    section_code="core",
                     components=[
                         CourseConfig.Component(
                             tag="lec",

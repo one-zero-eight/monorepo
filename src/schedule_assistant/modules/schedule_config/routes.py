@@ -6,7 +6,6 @@ from pydantic import ValidationError
 
 from src.schedule_assistant.dependencies import ModeratorDep, VerifyTokenDep, is_moderator_email
 from src.schedule_assistant.modules.schedule_config.event_log import ConfigChangeEvent, ConfigChangeEventSummary
-from src.schedule_assistant.modules.schedule_config.helpers import sanitize_legacy_schedule_config_payload
 from src.schedule_assistant.modules.schedule_config.instructor_meetings import count_meetings_by_instructor
 from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
 from src.schedule_assistant.modules.schedule_config.schemas import (
@@ -37,19 +36,6 @@ def _schedule_config_to_update(config: ScheduleConfig) -> ScheduleConfigUpdate:
     )
 
 
-def _normalize_schedule_config_payload(payload: dict) -> dict:
-    if not isinstance(payload, dict):
-        return payload
-    if "sections" not in payload:
-        return payload
-    term = dict(payload.get("term") or {})
-    if "sections" not in term:
-        term["sections"] = payload["sections"]
-    normalized = {key: value for key, value in payload.items() if key != "sections"}
-    normalized["term"] = term
-    return normalized
-
-
 def _parse_yaml_schedule_config_update(text: str) -> ScheduleConfigUpdate:
     try:
         payload = yaml.safe_load(text) or {}
@@ -58,7 +44,6 @@ def _parse_yaml_schedule_config_update(text: str) -> ScheduleConfigUpdate:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid YAML",
         ) from exc
-    payload = sanitize_legacy_schedule_config_payload(_normalize_schedule_config_payload(payload))
     try:
         return _schedule_config_to_update(ScheduleConfig.model_validate(payload))
     except ValidationError:

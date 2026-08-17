@@ -5,6 +5,7 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     CoursesConfig,
     InstructorConfig,
     RoomConfig,
+    SectionConfig,
     SectionsConfig,
     TermConfig,
 )
@@ -71,13 +72,14 @@ def test_validate_course_instructors_rejects_unknown_role() -> None:
         courses=[
             CourseConfig(
                 name="Math",
+                section_code="core",
                 instructors=[CourseConfig.CourseInstructor(id="a", role="Teaching Assistant")],
                 components=[],
             )
         ]
     )
     ctx = ValidationContext(
-        sections=SectionsConfig(),
+        sections=SectionsConfig(sections=[SectionConfig(code="core", name="Core", programs=[])]),
         rooms=RoomConfig(),
         instructors=instructors,
         courses=courses,
@@ -94,13 +96,14 @@ def test_validate_course_instructors_allows_listed_role() -> None:
         courses=[
             CourseConfig(
                 name="Math",
+                section_code="core",
                 instructors=[CourseConfig.CourseInstructor(id="a", role="Primary Instructor")],
                 components=[],
             )
         ]
     )
     ctx = ValidationContext(
-        sections=SectionsConfig(),
+        sections=SectionsConfig(sections=[SectionConfig(code="core", name="Core", programs=[])]),
         rooms=RoomConfig(),
         instructors=instructors,
         courses=courses,
@@ -116,6 +119,7 @@ def test_validate_course_components_rejects_unknown_tag() -> None:
         courses=[
             CourseConfig(
                 name="Math",
+                section_code="core",
                 components=[
                     CourseConfig.Component(tag="seminar", student_groups=[], sessions=[]),
                 ],
@@ -123,7 +127,7 @@ def test_validate_course_components_rejects_unknown_tag() -> None:
         ]
     )
     ctx = ValidationContext(
-        sections=SectionsConfig(),
+        sections=SectionsConfig(sections=[SectionConfig(code="core", name="Core", programs=[])]),
         rooms=RoomConfig(),
         instructors=instructors,
         courses=courses,
@@ -140,6 +144,7 @@ def test_validate_course_components_allows_listed_tag() -> None:
         courses=[
             CourseConfig(
                 name="Math",
+                section_code="core",
                 components=[
                     CourseConfig.Component(tag="lec", student_groups=[], sessions=[]),
                 ],
@@ -147,7 +152,7 @@ def test_validate_course_components_allows_listed_tag() -> None:
         ]
     )
     ctx = ValidationContext(
-        sections=SectionsConfig(),
+        sections=SectionsConfig(sections=[SectionConfig(code="core", name="Core", programs=[])]),
         rooms=RoomConfig(),
         instructors=instructors,
         courses=courses,
@@ -163,6 +168,7 @@ def test_validate_course_components_skips_tag_check_when_enum_empty() -> None:
         courses=[
             CourseConfig(
                 name="Math",
+                section_code="core",
                 components=[
                     CourseConfig.Component(tag="anything", student_groups=[], sessions=[]),
                 ],
@@ -170,7 +176,7 @@ def test_validate_course_components_skips_tag_check_when_enum_empty() -> None:
         ]
     )
     ctx = ValidationContext(
-        sections=SectionsConfig(),
+        sections=SectionsConfig(sections=[SectionConfig(code="core", name="Core", programs=[])]),
         rooms=RoomConfig(),
         instructors=instructors,
         courses=courses,

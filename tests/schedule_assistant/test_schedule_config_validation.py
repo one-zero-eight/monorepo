@@ -10,6 +10,7 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     CoursesConfig,
     InstructorConfig,
     RoomConfig,
+    SectionConfig,
     SectionsConfig,
     SessionOccurrence,
     StudentsGroups,
@@ -39,6 +40,7 @@ def _minimal_term() -> TermConfig:
 
 def test_validate_sections_rejects_duplicate_group_codes() -> None:
     config = SectionsConfig(
+        sections=[SectionConfig(code="core", name="Core", programs=[])],
         students_groups=[
             StudentsGroups(code="G1", kind="core"),
             StudentsGroups(code="g1", kind="core"),
@@ -50,15 +52,15 @@ def test_validate_sections_rejects_duplicate_group_codes() -> None:
 
 def test_validate_courses_rejects_duplicate_names() -> None:
     ctx = ValidationContext(
-        sections=SectionsConfig(),
+        sections=SectionsConfig(sections=[SectionConfig(code="core", name="Core", programs=[])]),
         rooms=RoomConfig(),
         instructors=InstructorConfig(),
         courses=CoursesConfig(),
     )
     courses = CoursesConfig(
         courses=[
-            CourseConfig(name="Algorithms", components=[]),
-            CourseConfig(name="algorithms", components=[]),
+            CourseConfig(name="Algorithms", section_code="core", components=[]),
+            CourseConfig(name="algorithms", section_code="core", components=[]),
         ],
     )
     errors = validate_courses(courses, ctx)
@@ -68,6 +70,13 @@ def test_validate_courses_rejects_duplicate_names() -> None:
 def test_validate_courses_rejects_unknown_student_group() -> None:
     ctx = ValidationContext(
         sections=SectionsConfig(
+            sections=[
+                SectionConfig(
+                    code="core",
+                    name="Core",
+                    programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["SUM26-AAI"])],
+                )
+            ],
             students_groups=[StudentsGroups(code="SUM26-AAI", kind="elective")],
         ),
         rooms=RoomConfig(),
@@ -80,6 +89,7 @@ def test_validate_courses_rejects_unknown_student_group() -> None:
         courses=[
             CourseConfig(
                 name="Elective",
+                section_code="core",
                 components=[
                     CourseConfig.Component(
                         tag="class",
@@ -96,6 +106,13 @@ def test_validate_courses_rejects_unknown_student_group() -> None:
 def test_validate_courses_accepts_online_room() -> None:
     ctx = ValidationContext(
         sections=SectionsConfig(
+            sections=[
+                SectionConfig(
+                    code="core",
+                    name="Core",
+                    programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["SUM26-AAI"])],
+                )
+            ],
             students_groups=[StudentsGroups(code="SUM26-AAI", kind="elective")],
         ),
         rooms=RoomConfig(),
@@ -108,6 +125,7 @@ def test_validate_courses_accepts_online_room() -> None:
         courses=[
             CourseConfig(
                 name="Online elective",
+                section_code="core",
                 components=[
                     CourseConfig.Component(
                         tag="class",
@@ -131,6 +149,7 @@ def test_validate_courses_accepts_online_room() -> None:
             ),
             CourseConfig(
                 name="Online core",
+                section_code="core",
                 components=[
                     CourseConfig.Component(
                         tag="lec",
@@ -163,6 +182,7 @@ def test_validate_rooms_update_ignores_online_references() -> None:
         courses=[
             CourseConfig(
                 name="Online elective",
+                section_code="core",
                 components=[
                     CourseConfig.Component(
                         tag="class",
@@ -190,7 +210,7 @@ def test_validate_rooms_update_ignores_online_references() -> None:
 @pytest.mark.parametrize("invalid_room", ["Online", "Онлайн", "ОНЛАЙН", "online"])
 def test_validate_courses_rejects_non_canonical_online_rooms(invalid_room: str) -> None:
     ctx = ValidationContext(
-        sections=SectionsConfig(),
+        sections=SectionsConfig(sections=[SectionConfig(code="core", name="Core", programs=[])]),
         rooms=RoomConfig(),
         instructors=InstructorConfig(),
         courses=CoursesConfig(),
@@ -199,6 +219,7 @@ def test_validate_courses_rejects_non_canonical_online_rooms(invalid_room: str) 
         courses=[
             CourseConfig(
                 name="Elective",
+                section_code="core",
                 components=[
                     CourseConfig.Component(
                         tag="class",
@@ -226,6 +247,13 @@ def test_validate_courses_rejects_non_canonical_online_rooms(invalid_room: str) 
 def test_validate_courses_rejects_unknown_instructor() -> None:
     ctx = ValidationContext(
         sections=SectionsConfig(
+            sections=[
+                SectionConfig(
+                    code="core",
+                    name="Core",
+                    programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["SUM26-AAI"])],
+                )
+            ],
             students_groups=[StudentsGroups(code="SUM26-AAI", kind="elective")],
         ),
         rooms=RoomConfig(rooms=[RoomConfig.Room(id="108", name="Room 108", capacity=100)]),
@@ -236,6 +264,7 @@ def test_validate_courses_rejects_unknown_instructor() -> None:
         courses=[
             CourseConfig(
                 name="Elective",
+                section_code="core",
                 components=[
                     CourseConfig.Component(
                         tag="class",
@@ -262,6 +291,51 @@ def test_validate_courses_rejects_unknown_instructor() -> None:
     assert any("unknown instructor" in error for error in errors)
 
 
+def test_validate_courses_allows_missing_room_and_instructor() -> None:
+    ctx = ValidationContext(
+        sections=SectionsConfig(
+            sections=[
+                SectionConfig(
+                    code="core",
+                    name="Core",
+                    programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])],
+                )
+            ],
+            students_groups=[StudentsGroups(code="G1", kind="core")],
+        ),
+        rooms=RoomConfig(rooms=[RoomConfig.Room(id="108", name="Room 108", capacity=100)]),
+        instructors=InstructorConfig(instructors=[InstructorConfig.Instructor(id="t@innopolis.ru")]),
+        courses=CoursesConfig(),
+    )
+    courses = CoursesConfig(
+        courses=[
+            CourseConfig(
+                name="Draft",
+                section_code="core",
+                components=[
+                    CourseConfig.Component(
+                        tag="lec",
+                        student_groups=["G1"],
+                        sessions=[
+                            ComponentSessionSeries(
+                                audience=["G1"],
+                                weekly_pattern=[
+                                    WeeklyPatternSlot(
+                                        weekday=Weekday.MONDAY,
+                                        start_time=dtm.time(9, 0),
+                                        end_time=dtm.time(10, 30),
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        ],
+    )
+    assert validate_courses(courses, ctx) == []
+
+
 def test_validate_instructors_rejects_duplicate_ids() -> None:
     config = InstructorConfig(
         instructors=[
@@ -282,6 +356,7 @@ def test_validate_resource_update_blocks_removing_referenced_instructor() -> Non
         courses=[
             CourseConfig(
                 name="Elective",
+                section_code="core",
                 components=[
                     CourseConfig.Component(
                         tag="class",
@@ -292,7 +367,7 @@ def test_validate_resource_update_blocks_removing_referenced_instructor() -> Non
         ],
     )
     ctx = ValidationContext(
-        sections=SectionsConfig(),
+        sections=SectionsConfig(sections=[SectionConfig(code="core", name="Core", programs=[])]),
         rooms=RoomConfig(),
         instructors=new,
         courses=courses,
@@ -310,7 +385,16 @@ async def test_put_courses_returns_422_for_invalid_references(
     monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
     schedule_config_repo.set_term(_minimal_term(), saved_by="test@test.com")
     schedule_config_repo.set_sections(
-        SectionsConfig(students_groups=[StudentsGroups(code="SUM26-AAI", kind="elective")]),
+        SectionsConfig(
+            sections=[
+                SectionConfig(
+                    code="core",
+                    name="Core",
+                    programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["SUM26-AAI"])],
+                )
+            ],
+            students_groups=[StudentsGroups(code="SUM26-AAI", kind="elective")],
+        ),
         saved_by="test@test.com",
     )
 
@@ -318,6 +402,7 @@ async def test_put_courses_returns_422_for_invalid_references(
         "/schedule-config/courses",
         json=CourseConfig(
             name="Elective",
+            section_code="core",
             components=[
                 CourseConfig.Component(
                     tag="class",
@@ -328,3 +413,65 @@ async def test_put_courses_returns_422_for_invalid_references(
     )
     assert response.status_code == 422
     assert "unknown group or selector" in response.json()["detail"]["errors"][0]
+
+
+def test_validate_courses_rejects_unknown_section_code() -> None:
+    ctx = ValidationContext(
+        sections=SectionsConfig(sections=[SectionConfig(code="core", name="Core", programs=[])]),
+        rooms=RoomConfig(),
+        instructors=InstructorConfig(),
+        courses=CoursesConfig(),
+    )
+    courses = CoursesConfig(
+        courses=[
+            CourseConfig(name="Algorithms", section_code="missing", components=[]),
+        ],
+    )
+    errors = validate_courses(courses, ctx)
+    assert any("unknown section" in error for error in errors)
+
+
+def test_validate_courses_rejects_audience_outside_section() -> None:
+    ctx = ValidationContext(
+        sections=SectionsConfig(
+            sections=[
+                SectionConfig(
+                    code="core",
+                    name="Core",
+                    programs=[
+                        SectionConfig.SectionProgram(code="BS", name="BS", groups=["CORE-01"]),
+                    ],
+                ),
+                SectionConfig(
+                    code="electives",
+                    name="Electives",
+                    programs=[
+                        SectionConfig.SectionProgram(code="ELEC", name="Electives", groups=["ELEC-01"]),
+                    ],
+                ),
+            ],
+            students_groups=[
+                StudentsGroups(code="CORE-01", kind="core"),
+                StudentsGroups(code="ELEC-01", kind="elective"),
+            ],
+        ),
+        rooms=RoomConfig(),
+        instructors=InstructorConfig(),
+        courses=CoursesConfig(),
+    )
+    courses = CoursesConfig(
+        courses=[
+            CourseConfig(
+                name="Algorithms",
+                section_code="core",
+                components=[
+                    CourseConfig.Component(
+                        tag="lec",
+                        student_groups=["ELEC-01"],
+                    ),
+                ],
+            ),
+        ],
+    )
+    errors = validate_courses(courses, ctx)
+    assert any("outside section" in error for error in errors)

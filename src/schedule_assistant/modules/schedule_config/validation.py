@@ -75,6 +75,23 @@ def collect_student_group_codes(sections: SectionsConfig) -> set[str]:
     return {group.code for group in sections.students_groups}
 
 
+def collect_section_codes(sections: SectionsConfig) -> set[str]:
+    return {str(section.code or "").strip() for section in sections.sections if str(section.code or "").strip()}
+
+
+def groups_in_section(sections: SectionsConfig, section_code: str) -> set[str]:
+    target = section_code.strip()
+    groups: set[str] = set()
+    for section in sections.sections:
+        if str(section.code or "").strip() != target:
+            continue
+        for program in section.programs:
+            groups.update(str(group or "").strip() for group in program.groups if str(group or "").strip())
+            for track in program.tracks:
+                groups.update(str(group or "").strip() for group in track.groups if str(group or "").strip())
+    return groups
+
+
 def collect_instructor_ids(instructors: InstructorConfig) -> set[str]:
     return {instructor.id for instructor in instructors.instructors}
 
@@ -97,8 +114,9 @@ def _collect_meeting_instructor_ids(instructor: str | list[str] | None) -> set[s
     if instructor is None:
         return set()
     if isinstance(instructor, list):
-        return set(instructor)
-    return {instructor}
+        return {value.strip() for value in instructor if value and value.strip()}
+    stripped = instructor.strip()
+    return {stripped} if stripped else set()
 
 
 def _collect_session_instructor_ids(session: ComponentSessionSeries) -> set[str]:
@@ -444,6 +462,18 @@ def validate_courses(config: CoursesConfig, ctx: ValidationContext) -> list[str]
 
     for course_index, course in enumerate(config.courses):
         course_path = f"courses[{course_index}]"
+        section_code = course.section_code.strip()
+        if not section_code:
+            errors.append(f"{course_path}.section_code must not be empty")
+            section_groups: set[str] = set()
+        else:
+            section_codes = collect_section_codes(ctx.sections)
+            if section_code not in section_codes:
+                errors.append(
+                    f"{course_path}.section_code references unknown section {section_code!r}",
+                )
+            section_groups = groups_in_section(ctx.sections, section_code)
+
         assignment_ids = [item.id for item in course.instructors]
         errors.extend(
             f"{course_path}.instructors duplicate instructor id: {item_id!r}"
@@ -474,6 +504,12 @@ def validate_courses(config: CoursesConfig, ctx: ValidationContext) -> list[str]
             for token in component.student_groups:
                 if not _is_known_group_token(token, group_codes, selector_map):
                     errors.append(f"{path}.student_groups references unknown group or selector {token!r}")
+                    continue
+                expanded = expand_group_tokens([token], selector_map)
+                if not expanded.issubset(section_groups):
+                    errors.append(
+                        f"{path}.student_groups token {token!r} is outside section {section_code!r}",
+                    )
 
             component_groups = expand_group_tokens(component.student_groups, selector_map)
 
@@ -502,6 +538,12 @@ def validate_courses(config: CoursesConfig, ctx: ValidationContext) -> list[str]
                     if not _is_known_group_token(audience_token, group_codes, selector_map):
                         errors.append(
                             f"{session_path}.audience references unknown group or selector {audience_token!r}",
+                        )
+                        continue
+                    expanded = expand_group_tokens([audience_token], selector_map)
+                    if not expanded.issubset(section_groups):
+                        errors.append(
+                            f"{session_path}.audience token {audience_token!r} is outside section {section_code!r}",
                         )
 
                 if session.occurrences:

@@ -33,6 +33,7 @@ def test_occurrence_counts_once() -> None:
     courses = [
         CourseConfig(
             name="Course",
+            section_code="core",
             components=[
                 CourseConfig.Component(
                     tag="lec",
@@ -69,6 +70,7 @@ def test_weekly_pattern_expands_per_week_and_respects_cancel() -> None:
     courses = [
         CourseConfig(
             name="Course",
+            section_code="core",
             components=[
                 CourseConfig.Component(
                     tag="lab",
@@ -102,6 +104,7 @@ def test_weekly_edit_can_reassign_instructor() -> None:
     courses = [
         CourseConfig(
             name="Course",
+            section_code="core",
             components=[
                 CourseConfig.Component(
                     tag="lab",
@@ -137,6 +140,7 @@ def test_weekly_pattern_without_edits_counts_all_weeks() -> None:
     courses = [
         CourseConfig(
             name="Course",
+            section_code="core",
             components=[
                 CourseConfig.Component(
                     tag="lab",

@@ -25,6 +25,7 @@ def test_filter_matches_instructor_by_display_name() -> None:
     courses = [
         CourseConfig(
             name="Elective",
+            section_code="core",
             components=[
                 CourseConfig.Component(
                     tag="class",
@@ -59,6 +60,7 @@ def test_filter_includes_weekly_pattern_instructors() -> None:
     courses = [
         CourseConfig(
             name="Core",
+            section_code="core",
             components=[
                 CourseConfig.Component(
                     tag="lec",
@@ -93,6 +95,7 @@ def test_filter_courses_keeps_only_matching_occurrences() -> None:
     courses = [
         CourseConfig(
             name="Elective",
+            section_code="core",
             components=[
                 CourseConfig.Component(
                     tag="class",

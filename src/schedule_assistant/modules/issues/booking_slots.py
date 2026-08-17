@@ -75,7 +75,7 @@ def _normalize_room(room: str | None) -> str | None:
 
 
 def _slot_bookable(room: str | None, known_room_ids: set[str]) -> tuple[bool, str | None]:
-    if room is None:
+    if not (room or "").strip():
         return False, "no room"
     if room == VIRTUAL_ROOM_ID:
         return False, "online"

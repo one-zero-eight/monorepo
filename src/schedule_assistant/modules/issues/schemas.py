@@ -52,6 +52,8 @@ class IssueTypeEnum(StrEnum):
     CAPACITY = "capacity"
     OUTLOOK = "outlook"
     UNPLACED = "unplaced"
+    MISSING_ROOM = "missing_room"
+    MISSING_INSTRUCTOR = "missing_instructor"
     INSTRUCTOR_ID = "instructor_id"
     UNBOOKED = "unbooked"
     GROUP = "group"
@@ -117,6 +119,24 @@ class UnplacedIssue(ScheduleAssistantSchema):
     component_tag: str
     source_kind: Literal["core_course", "elective"]
     student_groups: tuple[str, ...] = ()
+
+
+class MissingRoomIssue(ScheduleAssistantSchema):
+    """Занятие стоит в сетке, но локация ещё не назначена."""
+
+    issue_type: Literal[IssueTypeEnum.MISSING_ROOM]
+
+    text: str = ""
+    meeting: ScheduledMeeting
+
+
+class MissingInstructorIssue(ScheduleAssistantSchema):
+    """Занятие стоит в сетке, но преподаватель ещё не назначен."""
+
+    issue_type: Literal[IssueTypeEnum.MISSING_INSTRUCTOR]
+
+    text: str = ""
+    meeting: ScheduledMeeting
 
 
 class InstructorIdIssue(ScheduleAssistantSchema):
@@ -212,6 +232,8 @@ type Issue = Annotated[
     | OutlookIssue
     | TeacherIssue
     | UnplacedIssue
+    | MissingRoomIssue
+    | MissingInstructorIssue
     | InstructorIdIssue
     | StudentEmailIssue
     | UnbookedIssue
@@ -233,6 +255,8 @@ class CheckParameters(ScheduleAssistantSchema):
     check_outlook: bool = False
     check_unbooked: bool = True
     check_unplaced: bool = True
+    check_missing_room: bool = True
+    check_missing_instructor: bool = True
     check_per_week: bool = True
     check_instructor_id: bool = True
     check_student_email: bool = True

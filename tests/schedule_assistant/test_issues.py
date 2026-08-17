@@ -12,6 +12,7 @@ from src.schedule_assistant.modules.issues.instructor_ids import (
 )
 from src.schedule_assistant.modules.issues.meetings import (
     meetings_from_schedule_config,
+    missing_assignment_issues_from_meetings,
     unplaced_issues_from_schedule_config,
 )
 from src.schedule_assistant.modules.issues.schemas import (
@@ -35,6 +36,7 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     CoursesConfig,
     InstructorConfig,
     RoomConfig,
+    SectionConfig,
     SectionsConfig,
     SessionOccurrence,
     StudentsGroups,
@@ -177,11 +179,21 @@ def test_touching_room_slots_ignored_by_default(issue_checker: IssueChecker) -> 
 
 
 def test_meetings_from_schedule_config() -> None:
-    sections = SectionsConfig(students_groups=[StudentsGroups(code="SUM26-AAI", kind="elective", estimated_size=25)])
+    sections = SectionsConfig(
+        sections=[
+            SectionConfig(
+                code="core",
+                name="Core",
+                programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["SUM26-AAI"])],
+            )
+        ],
+        students_groups=[StudentsGroups(code="SUM26-AAI", kind="elective", estimated_size=25)],
+    )
     courses = CoursesConfig(
         courses=[
             CourseConfig(
                 name="Agentic AI",
+                section_code="core",
                 components=[
                     CourseConfig.Component(
                         tag="class",
@@ -205,6 +217,7 @@ def test_meetings_from_schedule_config() -> None:
             ),
             CourseConfig(
                 name="Algorithms",
+                section_code="core",
                 components=[
                     CourseConfig.Component(
                         tag="lec",
@@ -266,6 +279,7 @@ def test_instructor_id_issues_from_schedule_config() -> None:
         courses=[
             CourseConfig(
                 name="Course",
+                section_code="core",
                 components=[
                     CourseConfig.Component(
                         tag="lec",
@@ -297,6 +311,7 @@ def test_is_valid_student_email(email: str, expected: bool) -> None:
 
 def test_student_email_issues_from_sections() -> None:
     sections = SectionsConfig(
+        sections=[SectionConfig(code="core", name="Core", programs=[])],
         students_groups=[
             StudentsGroups(
                 code="G1",
@@ -321,11 +336,19 @@ def test_student_email_issues_from_sections() -> None:
 
 
 def test_co_teaching_produces_single_meeting() -> None:
-    sections = SectionsConfig(students_groups=[StudentsGroups(code="G1", kind="core", estimated_size=10)])
+    sections = SectionsConfig(
+        sections=[
+            SectionConfig(
+                code="core", name="Core", programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])]
+            )
+        ],
+        students_groups=[StudentsGroups(code="G1", kind="core", estimated_size=10)],
+    )
     courses = CoursesConfig(
         courses=[
             CourseConfig(
                 name="Co-taught Course",
+                section_code="core",
                 components=[
                     CourseConfig.Component(
                         tag="lec",
@@ -356,12 +379,20 @@ def test_co_teaching_produces_single_meeting() -> None:
 
 
 def test_unplaced_issues_from_schedule_config() -> None:
-    sections = SectionsConfig(students_groups=[StudentsGroups(code="G1", kind="core", estimated_size=10)])
+    sections = SectionsConfig(
+        sections=[
+            SectionConfig(
+                code="core", name="Core", programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])]
+            )
+        ],
+        students_groups=[StudentsGroups(code="G1", kind="core", estimated_size=10)],
+    )
 
     courses_no_sessions = CoursesConfig(
         courses=[
             CourseConfig(
                 name="Unplaced Course",
+                section_code="core",
                 components=[
                     CourseConfig.Component(tag="lec", student_groups=["G1"]),
                 ],
@@ -379,6 +410,7 @@ def test_unplaced_issues_from_schedule_config() -> None:
         courses=[
             CourseConfig(
                 name="Partial Course",
+                section_code="core",
                 components=[
                     CourseConfig.Component(
                         tag="lab",
@@ -407,6 +439,116 @@ def test_unplaced_issues_from_schedule_config() -> None:
     assert issues[0].component_tag == "lab"
 
 
+def test_missing_assignment_issues_from_meetings() -> None:
+    assigned = _weekly_meeting(
+        course_name="Assigned",
+        start_time=dtm.time(9, 0),
+        end_time=dtm.time(10, 30),
+        room="108",
+        instructor="t@innopolis.ru",
+        groups=("G1",),
+    )
+    no_room = assigned.model_copy(update={"course_name": "No room", "room": None})
+    no_instructor = assigned.model_copy(update={"course_name": "No instructor", "instructor": None})
+    blank_instructor = assigned.model_copy(
+        update={"course_name": "Blank instructor", "instructor": "  "},
+    )
+    blank_both = assigned.model_copy(
+        update={"course_name": "Blank", "room": "  ", "instructor": []},
+    )
+    online = assigned.model_copy(update={"course_name": "Online", "room": "ONLINE", "instructor": None})
+
+    issues = missing_assignment_issues_from_meetings(
+        [assigned, no_room, no_instructor, blank_instructor, blank_both, online],
+    )
+    types = {(issue.issue_type, issue.meeting.course_name) for issue in issues}
+    assert types == {
+        (IssueTypeEnum.MISSING_ROOM, "No room"),
+        (IssueTypeEnum.MISSING_INSTRUCTOR, "No instructor"),
+        (IssueTypeEnum.MISSING_INSTRUCTOR, "Blank instructor"),
+        (IssueTypeEnum.MISSING_ROOM, "Blank"),
+        (IssueTypeEnum.MISSING_INSTRUCTOR, "Blank"),
+        (IssueTypeEnum.MISSING_INSTRUCTOR, "Online"),
+    }
+    room_issue = next(issue for issue in issues if issue.meeting.course_name == "No room")
+    assert "не назначена локация" in room_issue.text
+
+
+@pytest.mark.asyncio
+async def test_issues_check_endpoint_missing_room_and_instructor(
+    authenticated_client: AsyncClient,
+    issues_repo: ScheduleConfigRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    issues_repo.set_term(
+        TermConfig(
+            name="Summer 2026",
+            semester=TermConfig.DateRange(
+                start_date=dtm.date(2026, 6, 1),
+                end_date=dtm.date(2026, 8, 2),
+            ),
+        ),
+        saved_by="test@test.com",
+    )
+    issues_repo.set_sections(
+        SectionsConfig(
+            sections=[
+                SectionConfig(
+                    code="core",
+                    name="Core",
+                    programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])],
+                )
+            ],
+            students_groups=[StudentsGroups(code="G1", kind="core", estimated_size=10)],
+        ),
+        saved_by="test@test.com",
+    )
+    issues_repo.set_rooms(
+        RoomConfig(rooms=[RoomConfig.Room(id="107", name="Room 107", capacity=20)]),
+        saved_by="test@test.com",
+    )
+    issues_repo.set_instructors(InstructorConfig(), saved_by="test@test.com")
+    issues_repo.set_courses(
+        CoursesConfig(
+            courses=[
+                CourseConfig(
+                    name="Draft Course",
+                    section_code="core",
+                    components=[
+                        CourseConfig.Component(
+                            tag="lec",
+                            student_groups=["G1"],
+                            sessions=[
+                                ComponentSessionSeries(
+                                    audience=["G1"],
+                                    weekly_pattern=[
+                                        WeeklyPatternSlot(
+                                            weekday=Weekday.MONDAY,
+                                            start_time=dtm.time(9, 0),
+                                            end_time=dtm.time(10, 30),
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        saved_by="test@test.com",
+    )
+
+    response = await authenticated_client.post(
+        "/issues/check",
+        json={"check_unbooked": False, "check_outlook": False},
+    )
+    assert response.status_code == 200
+    issue_types = {issue["issue_type"] for issue in response.json()["issues"]}
+    assert "missing_room" in issue_types
+    assert "missing_instructor" in issue_types
+
+
 @pytest.mark.asyncio
 async def test_issues_check_endpoint(
     authenticated_client: AsyncClient,
@@ -425,7 +567,16 @@ async def test_issues_check_endpoint(
         saved_by="test@test.com",
     )
     issues_repo.set_sections(
-        SectionsConfig(students_groups=[StudentsGroups(code="G1", kind="core", estimated_size=10)]),
+        SectionsConfig(
+            sections=[
+                SectionConfig(
+                    code="core",
+                    name="Core",
+                    programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])],
+                )
+            ],
+            students_groups=[StudentsGroups(code="G1", kind="core", estimated_size=10)],
+        ),
         saved_by="test@test.com",
     )
     issues_repo.set_rooms(
@@ -446,6 +597,7 @@ async def test_issues_check_endpoint(
             courses=[
                 CourseConfig(
                     name="Course A",
+                    section_code="core",
                     components=[
                         CourseConfig.Component(
                             tag="lec",
@@ -469,6 +621,7 @@ async def test_issues_check_endpoint(
                 ),
                 CourseConfig(
                     name="Course B",
+                    section_code="core",
                     components=[
                         CourseConfig.Component(
                             tag="lec",

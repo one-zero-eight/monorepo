@@ -6,6 +6,8 @@ from src.schedule_assistant.modules.issues.schemas import (
     InstructorBannedSlotIssue,
     InstructorIdIssue,
     InstructorPreferenceIssue,
+    MissingInstructorIssue,
+    MissingRoomIssue,
     OccurrencePlacement,
     OutlookIssue,
     PerWeekIssue,
@@ -196,12 +198,26 @@ def format_unplaced_issue_text(issue: UnplacedIssue) -> str:
     return f"Для компонента «{issue.component_tag}» курса «{issue.course_name}»{groups_part} не задано расписание"
 
 
+def format_missing_room_issue_text(issue: MissingRoomIssue) -> str:
+    meeting = issue.meeting
+    when = format_meeting_when(meeting)
+    return f"Для занятия «{meeting.course_name}» ({meeting.component_tag}) {when} не назначена локация"
+
+
+def format_missing_instructor_issue_text(issue: MissingInstructorIssue) -> str:
+    meeting = issue.meeting
+    when = format_meeting_when(meeting)
+    return f"Для занятия «{meeting.course_name}» ({meeting.component_tag}) {when} не назначен преподаватель"
+
+
 def attach_issue_text(
     issue: CapacityIssue
     | RoomIssue
     | OutlookIssue
     | TeacherIssue
     | UnplacedIssue
+    | MissingRoomIssue
+    | MissingInstructorIssue
     | InstructorIdIssue
     | StudentEmailIssue
     | UnbookedIssue
@@ -219,6 +235,10 @@ def attach_issue_text(
         issue.text = format_teacher_issue_text(issue)
     elif isinstance(issue, UnplacedIssue):
         issue.text = format_unplaced_issue_text(issue)
+    elif isinstance(issue, MissingRoomIssue):
+        issue.text = format_missing_room_issue_text(issue)
+    elif isinstance(issue, MissingInstructorIssue):
+        issue.text = format_missing_instructor_issue_text(issue)
     elif isinstance(issue, InstructorIdIssue):
         issue.text = format_instructor_id_issue_text(issue)
     elif isinstance(issue, StudentEmailIssue):

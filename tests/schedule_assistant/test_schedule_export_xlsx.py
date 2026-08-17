@@ -105,6 +105,7 @@ def _sample_config() -> ScheduleConfig:
         courses=[
             CourseConfig(
                 name="Math I",
+                section_code="core",
                 short_name="MATH",
                 name_ru="Математика I",
                 instructors=[
@@ -134,6 +135,7 @@ def _sample_config() -> ScheduleConfig:
             ),
             CourseConfig(
                 name="SRE Course",
+                section_code="electives",
                 short_name="SRE",
                 instructors=[
                     CourseConfig.CourseInstructor(id="t1", role="Primary"),
@@ -277,6 +279,7 @@ def test_subjects_section_block_has_outer_border() -> None:
     config.courses.append(
         CourseConfig(
             name="Physics I",
+            section_code="core",
             short_name="PHYS",
             instructors=[CourseConfig.CourseInstructor(id="t1", role="Primary")],
             components=[
@@ -361,6 +364,7 @@ def test_groups_export_repeats_time_column_per_program() -> None:
     config.courses.append(
         CourseConfig(
             name="Math II",
+            section_code="core",
             short_name="MATH2",
             components=[
                 CourseConfig.Component(

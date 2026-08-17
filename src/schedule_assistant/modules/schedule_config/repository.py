@@ -23,11 +23,6 @@ from src.schedule_assistant.modules.schedule_config.event_log import (
     ConfigChangeEventSummary,
     ConfigResource,
 )
-from src.schedule_assistant.modules.schedule_config.helpers import (
-    sanitize_legacy_schedule_config_payload,
-    sanitize_legacy_section,
-    sanitize_legacy_term_payload,
-)
 from src.schedule_assistant.modules.schedule_config.schemas import (
     CourseConfig,
     CoursesConfig,
@@ -69,6 +64,7 @@ META_SINGLETON_ID = 1
 def _course_row_payload(row: CourseRow) -> dict[str, Any]:
     return {
         "name": row.name,
+        "section_code": row.section_code,
         "short_name": row.short_name,
         "name_ru": row.name_ru,
         "short_name_ru": row.short_name_ru,
@@ -80,6 +76,7 @@ def _course_row_payload(row: CourseRow) -> dict[str, Any]:
 def _course_to_row(course: CourseConfig) -> CourseRow:
     return CourseRow(
         name=course.name,
+        section_code=course.section_code,
         short_name=course.short_name,
         name_ru=course.name_ru,
         short_name_ru=course.short_name_ru,
@@ -248,20 +245,18 @@ class ScheduleConfigRepository:
 
     def _term_row_to_term(self, row: TermRow) -> TermConfig:
         return TermConfig.model_validate(
-            sanitize_legacy_term_payload(
-                {
-                    "name": row.name,
-                    "semester": {"start_date": row.semester_start, "end_date": row.semester_end},
-                    "days": row.days,
-                    "starting_day": row.starting_day,
-                    "time_slots": row.time_slots,
-                    "sections": row.sections,
-                    "instructor_positions": row.instructor_positions or [],
-                    "course_instructor_roles": row.course_instructor_roles or [],
-                    "course_component_tags": row.course_component_tags or [],
-                    "room_attributes": row.room_attributes or [],
-                }
-            )
+            {
+                "name": row.name,
+                "semester": {"start_date": row.semester_start, "end_date": row.semester_end},
+                "days": row.days,
+                "starting_day": row.starting_day,
+                "time_slots": row.time_slots,
+                "sections": row.sections,
+                "instructor_positions": row.instructor_positions or [],
+                "course_instructor_roles": row.course_instructor_roles or [],
+                "course_component_tags": row.course_component_tags or [],
+                "room_attributes": row.room_attributes or [],
+            }
         )
 
     def _term_to_row(self, term: TermConfig, row: TermRow | None = None) -> TermRow:
@@ -299,8 +294,7 @@ class ScheduleConfigRepository:
     def _load_sections_config(self, session: Session) -> SectionsConfig:
         term_row = session.get(TermRow, TERM_SINGLETON_ID)
         sections = [
-            SectionConfig.model_validate(sanitize_legacy_section(section))
-            for section in (term_row.sections if term_row is not None else [])
+            SectionConfig.model_validate(section) for section in (term_row.sections if term_row is not None else [])
         ]
         student_groups = [
             StudentsGroups(
@@ -459,6 +453,7 @@ class ScheduleConfigRepository:
                 session.flush()
                 session.add(_course_to_row(course))
             else:
+                row.section_code = course.section_code
                 row.short_name = course.short_name
                 row.name_ru = course.name_ru
                 row.short_name_ru = course.short_name_ru
@@ -510,13 +505,7 @@ class ScheduleConfigRepository:
             self._raise_validation_errors(validate_courses(config, ctx))
             session.execute(delete(CourseRow))
             for course in config.courses:
-                session.add(
-                    CourseRow(
-                        name=course.name,
-                        instructors=[item.model_dump(mode="json") for item in course.instructors],
-                        components=[component.model_dump(mode="json") for component in course.components],
-                    )
-                )
+                session.add(_course_to_row(course))
             session.flush()
             revision = self._append_history(
                 session,
@@ -943,7 +932,7 @@ class ScheduleConfigRepository:
             if row is None:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="History event not found")
             snapshot = row.snapshot if isinstance(row.snapshot, dict) else {}
-            return ScheduleConfig.model_validate(sanitize_legacy_schedule_config_payload(snapshot))
+            return ScheduleConfig.model_validate(snapshot)
 
     def _resources_to_update(self, update: ScheduleConfigUpdate) -> set[ConfigResource]:
         resources: set[ConfigResource] = set()

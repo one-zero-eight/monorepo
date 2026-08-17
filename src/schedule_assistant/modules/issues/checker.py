@@ -120,9 +120,10 @@ class IssueChecker:
         room_to_slots: dict[str, list[tuple[int, ScheduledMeeting]]] = defaultdict(list)
 
         for index, meeting in enumerate(meetings):
-            if self.is_online_room(meeting.room) or meeting.room is None:
+            room = (meeting.room or "").strip()
+            if self.is_online_room(room) or not room:
                 continue
-            room_to_slots[meeting.room].append((index, meeting))
+            room_to_slots[room].append((index, meeting))
 
         return self._overlap_issues_for_slots(
             meetings,
@@ -388,11 +389,12 @@ class IssueChecker:
     def check_for_capacity_issue(self, meetings: list[ScheduledMeeting]) -> list[CapacityIssue]:
         result = []
         for meeting in meetings:
-            if self.is_online_room(meeting.room) or meeting.room is None:
+            room = (meeting.room or "").strip()
+            if self.is_online_room(room) or not room:
                 continue
-            capacity = self.room_to_capacity.get(meeting.room)
+            capacity = self.room_to_capacity.get(room)
             if capacity is None:
-                logger.warning(f"Room {meeting.room} has no capacity")
+                logger.warning(f"Room {room} has no capacity")
                 continue
             if meeting.students_number is None:
                 logger.info(f"Meeting {meeting.course_name} has no students number")
@@ -401,7 +403,7 @@ class IssueChecker:
             if capacity < meeting.students_number:
                 capacity_issue = CapacityIssue(
                     issue_type=IssueTypeEnum.CAPACITY,
-                    room=meeting.room,
+                    room=room,
                     room_capacity=capacity,
                     needed_capacity=meeting.students_number,
                     meeting=meeting,

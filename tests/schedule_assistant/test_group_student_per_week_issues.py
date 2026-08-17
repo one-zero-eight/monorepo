@@ -17,6 +17,7 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     ComponentSessionSeries,
     CourseConfig,
     CoursesConfig,
+    SectionConfig,
     SectionsConfig,
     StudentsGroups,
     TermConfig,
@@ -118,6 +119,7 @@ def test_no_group_issue_when_times_differ(issue_checker: IssueChecker) -> None:
 
 def test_student_issue_when_shared_student_overlaps() -> None:
     sections = SectionsConfig(
+        sections=[SectionConfig(code="core", name="Core", programs=[])],
         students_groups=[
             StudentsGroups(code="G1", kind="core", students=["student@innopolis.ru"]),
             StudentsGroups(code="G2", kind="core", students=["student@innopolis.ru"]),
@@ -179,6 +181,7 @@ def test_per_week_issue_when_slot_count_mismatch() -> None:
         courses=[
             CourseConfig(
                 name="Algorithms",
+                section_code="core",
                 components=[
                     CourseConfig.Component(
                         tag="lec",
@@ -202,7 +205,14 @@ def test_per_week_issue_when_slot_count_mismatch() -> None:
             ),
         ],
     )
-    sections = SectionsConfig(students_groups=[StudentsGroups(code="G1", kind="core")])
+    sections = SectionsConfig(
+        sections=[
+            SectionConfig(
+                code="core", name="Core", programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])]
+            )
+        ],
+        students_groups=[StudentsGroups(code="G1", kind="core")],
+    )
 
     issues = per_week_issues_from_schedule_config(courses, sections)
 
@@ -218,6 +228,7 @@ def test_no_per_week_issue_when_count_matches() -> None:
         courses=[
             CourseConfig(
                 name="Algorithms",
+                section_code="core",
                 components=[
                     CourseConfig.Component(
                         tag="lec",
@@ -241,9 +252,117 @@ def test_no_per_week_issue_when_count_matches() -> None:
             ),
         ],
     )
-    sections = SectionsConfig(students_groups=[StudentsGroups(code="G1", kind="core")])
+    sections = SectionsConfig(
+        sections=[
+            SectionConfig(
+                code="core", name="Core", programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])]
+            )
+        ],
+        students_groups=[StudentsGroups(code="G1", kind="core")],
+    )
 
     assert per_week_issues_from_schedule_config(courses, sections) == []
+
+
+def test_per_group_shared_series_counts_for_each_group() -> None:
+    courses = CoursesConfig(
+        courses=[
+            CourseConfig(
+                name="General Physics",
+                section_code="core",
+                components=[
+                    CourseConfig.Component(
+                        tag="lab",
+                        per_week=1,
+                        per_group=True,
+                        student_groups=["G1", "G2"],
+                        sessions=[
+                            ComponentSessionSeries(
+                                audience=["G1", "G2"],
+                                weekly_pattern=[
+                                    WeeklyPatternSlot(
+                                        weekday=Weekday.MONDAY,
+                                        start_time=dtm.time(9, 0),
+                                        end_time=dtm.time(10, 30),
+                                        room="106",
+                                    ),
+                                ],
+                            ),
+                            ComponentSessionSeries(
+                                audience=["G1"],
+                                weekly_pattern=[],
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        ],
+    )
+    sections = SectionsConfig(
+        sections=[
+            SectionConfig(
+                code="core",
+                name="Core",
+                programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1", "G2"])],
+            )
+        ],
+        students_groups=[
+            StudentsGroups(code="G1", kind="core"),
+            StudentsGroups(code="G2", kind="core"),
+        ],
+    )
+
+    assert per_week_issues_from_schedule_config(courses, sections) == []
+
+
+def test_per_group_shared_series_still_flags_short_count() -> None:
+    courses = CoursesConfig(
+        courses=[
+            CourseConfig(
+                name="Computer Vision",
+                section_code="core",
+                components=[
+                    CourseConfig.Component(
+                        tag="lab",
+                        per_week=2,
+                        per_group=True,
+                        student_groups=["G1", "G2"],
+                        sessions=[
+                            ComponentSessionSeries(
+                                audience=["G1", "G2"],
+                                weekly_pattern=[
+                                    WeeklyPatternSlot(
+                                        weekday=Weekday.MONDAY,
+                                        start_time=dtm.time(9, 0),
+                                        end_time=dtm.time(10, 30),
+                                        room="107",
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        ],
+    )
+    sections = SectionsConfig(
+        sections=[
+            SectionConfig(
+                code="core",
+                name="Core",
+                programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1", "G2"])],
+            )
+        ],
+        students_groups=[
+            StudentsGroups(code="G1", kind="core"),
+            StudentsGroups(code="G2", kind="core"),
+        ],
+    )
+
+    issues = per_week_issues_from_schedule_config(courses, sections)
+    assert len(issues) == 2
+    assert {issue.actual_per_week for issue in issues} == {1}
+    assert {tuple(issue.student_groups) for issue in issues} == {("G1",), ("G2",)}
 
 
 @pytest.mark.asyncio

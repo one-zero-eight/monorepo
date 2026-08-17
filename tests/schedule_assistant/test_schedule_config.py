@@ -10,6 +10,7 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     InstructorConfig,
     RoomConfig,
     ScheduleConfig,
+    SectionConfig,
     SectionsConfig,
     SessionOccurrence,
     StudentsGroups,
@@ -31,6 +32,14 @@ def _minimal_term() -> TermConfig:
 
 def _minimal_term_settings() -> TermConfig:
     return _minimal_term()
+
+
+def _core_sections(*, group_codes: list[str] | None = None) -> SectionsConfig:
+    students_groups = [StudentsGroups(code=code, kind="core") for code in (group_codes or [])]
+    return SectionsConfig(
+        sections=[SectionConfig(code="core", name="Core", programs=[])],
+        students_groups=students_groups,
+    )
 
 
 def _revision(etag_header: str) -> int:
@@ -86,6 +95,7 @@ async def test_entity_crud_and_assembled_get(
             json=_minimal_term_settings().model_dump(mode="json"),
         )
     ).status_code == 200
+    schedule_config_repo.set_sections(_core_sections(), saved_by="test@test.com")
     assert (
         await authenticated_client.post(
             "/schedule-config/rooms",
@@ -93,7 +103,10 @@ async def test_entity_crud_and_assembled_get(
         )
     ).status_code == 201
     assert (
-        await authenticated_client.post("/schedule-config/courses", json={"name": "Empty", "components": []})
+        await authenticated_client.post(
+            "/schedule-config/courses",
+            json={"name": "Empty", "section_code": "core", "components": []},
+        )
     ).status_code == 201
     assert (
         await authenticated_client.post("/schedule-config/instructors", json={"id": "teacher@innopolis.ru"})
@@ -104,7 +117,7 @@ async def test_entity_crud_and_assembled_get(
     assembled = ScheduleConfig.model_validate(assembled_response.json())
     assert assembled.term.name == "Spring 2026"
     assert assembled.rooms == [RoomConfig.Room(id="108", name="Lecture Room 108", capacity=312)]
-    assert _revision(assembled_response.headers["etag"]) == 4
+    assert _revision(assembled_response.headers["etag"]) == 5
 
 
 @pytest.mark.asyncio
@@ -176,15 +189,18 @@ async def test_update_course_leaves_other_resources_unchanged(
 ) -> None:
     monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
     schedule_config_repo.set_term(_minimal_term_settings(), saved_by="test@test.com")
+    schedule_config_repo.set_sections(_core_sections(), saved_by="test@test.com")
     schedule_config_repo.create_room(
         RoomConfig.Room(id="108", name="Lecture Room 108", capacity=312),
         saved_by="test@test.com",
     )
-    schedule_config_repo.create_course(CourseConfig(name="Algorithms", components=[]), saved_by="test@test.com")
+    schedule_config_repo.create_course(
+        CourseConfig(name="Algorithms", section_code="core", components=[]), saved_by="test@test.com"
+    )
 
     response = await authenticated_client.put(
         "/schedule-config/courses/Algorithms",
-        json=CourseConfig(name="Algorithms", components=[]).model_dump(mode="json"),
+        json=CourseConfig(name="Algorithms", section_code="core", components=[]).model_dump(mode="json"),
     )
     assert response.status_code == 200
 
@@ -203,7 +219,16 @@ async def test_non_moderator_sees_only_scheduled_instructors(
     )
     schedule_config_repo.set_term(_minimal_term_settings(), saved_by="mod@test.com")
     schedule_config_repo.set_sections(
-        SectionsConfig(students_groups=[StudentsGroups(code="SUM26-AAI", kind="elective")]),
+        SectionsConfig(
+            sections=[
+                SectionConfig(
+                    code="core",
+                    name="Core",
+                    programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["SUM26-AAI"])],
+                )
+            ],
+            students_groups=[StudentsGroups(code="SUM26-AAI", kind="elective")],
+        ),
         saved_by="mod@test.com",
     )
     schedule_config_repo.create_instructor(
@@ -217,6 +242,7 @@ async def test_non_moderator_sees_only_scheduled_instructors(
     schedule_config_repo.create_course(
         CourseConfig(
             name="Agentic AI",
+            section_code="core",
             components=[
                 CourseConfig.Component(
                     tag="class",
@@ -255,7 +281,10 @@ async def test_delete_course(
 ) -> None:
     monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
     schedule_config_repo.set_term(_minimal_term_settings(), saved_by="test@test.com")
-    schedule_config_repo.create_course(CourseConfig(name="Algorithms", components=[]), saved_by="test@test.com")
+    schedule_config_repo.set_sections(_core_sections(), saved_by="test@test.com")
+    schedule_config_repo.create_course(
+        CourseConfig(name="Algorithms", section_code="core", components=[]), saved_by="test@test.com"
+    )
 
     response = await authenticated_client.delete("/schedule-config/courses/Algorithms")
     assert response.status_code == 204
@@ -271,7 +300,16 @@ async def test_moderator_sees_all_instructors(
     monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
     schedule_config_repo.set_term(_minimal_term_settings(), saved_by="test@test.com")
     schedule_config_repo.set_sections(
-        SectionsConfig(students_groups=[StudentsGroups(code="SUM26-AAI", kind="elective")]),
+        SectionsConfig(
+            sections=[
+                SectionConfig(
+                    code="core",
+                    name="Core",
+                    programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["SUM26-AAI"])],
+                )
+            ],
+            students_groups=[StudentsGroups(code="SUM26-AAI", kind="elective")],
+        ),
         saved_by="test@test.com",
     )
     schedule_config_repo.create_instructor(
@@ -285,6 +323,7 @@ async def test_moderator_sees_all_instructors(
     schedule_config_repo.create_course(
         CourseConfig(
             name="Agentic AI",
+            section_code="core",
             components=[
                 CourseConfig.Component(
                     tag="class",
@@ -470,7 +509,16 @@ async def test_instructor_meetings_counts_endpoint(
     )
     schedule_config_repo.set_term(term, saved_by="mod@test.com")
     schedule_config_repo.set_sections(
-        SectionsConfig(students_groups=[StudentsGroups(code="G1", kind="core")]),
+        SectionsConfig(
+            sections=[
+                SectionConfig(
+                    code="core",
+                    name="Core",
+                    programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])],
+                )
+            ],
+            students_groups=[StudentsGroups(code="G1", kind="core")],
+        ),
         saved_by="mod@test.com",
     )
     schedule_config_repo.create_instructor(
@@ -484,6 +532,7 @@ async def test_instructor_meetings_counts_endpoint(
     schedule_config_repo.create_course(
         CourseConfig(
             name="Course",
+            section_code="core",
             components=[
                 CourseConfig.Component(
                     tag="lab",
