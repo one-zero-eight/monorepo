@@ -1,13 +1,13 @@
 import asyncio
 import datetime as dtm
 from collections.abc import Coroutine
-from typing import Any, Literal
+from typing import Any
 
 import httpx
 from fastapi import HTTPException, status
 
 from src.logging_ import logger
-from src.schedule_assistant.modules.bookings.client import booking_client
+from src.schedule_assistant.modules.bookings.client import BmpStreamEventKind, booking_client
 from src.schedule_assistant.modules.bookings.review import (
     ReviewIndex,
     build_review_index,
@@ -15,9 +15,13 @@ from src.schedule_assistant.modules.bookings.review import (
 )
 from src.schedule_assistant.modules.bookings.schemas import (
     BatchBookRequest,
+    BookingItemResultStatus,
     BookingReview,
     BookingTask,
     BookingTaskItem,
+    BookingTaskItemStatus,
+    BookingTaskKind,
+    BookingTaskStatus,
     CancelExtraRequest,
 )
 from src.schedule_assistant.modules.bookings.tasks import (
@@ -103,13 +107,13 @@ def get_booking_task(task_id: str) -> BookingTask:
 
 
 def start_batch_book(request: BatchBookRequest) -> BookingTask:
-    task = create_task(kind="book", items=[], current="Готовим слоты…")
+    task = create_task(kind=BookingTaskKind.BOOK, items=[], current="Готовим слоты…")
     _spawn(_run_book_task(task.task_id, request))
     return task
 
 
 def start_cancel_extra(request: CancelExtraRequest) -> BookingTask:
-    task = create_task(kind="cancel", items=[], current="Готовим отмену…")
+    task = create_task(kind=BookingTaskKind.CANCEL, items=[], current="Готовим отмену…")
     _spawn(_run_cancel_task(task.task_id, request))
     return task
 
@@ -118,12 +122,15 @@ def _items_by_index(task: BookingTask) -> dict[str, BookingTaskItem]:
     return {item.index: item for item in task.items}
 
 
+_FINISHED_ITEM = {BookingTaskItemStatus.OK, BookingTaskItemStatus.ERROR}
+
+
 def _finish_item(
-    task: BookingTask, item: BookingTaskItem, *, status: Literal["ok", "error"], error: str | None
+    task: BookingTask, item: BookingTaskItem, *, status: BookingItemResultStatus, error: str | None
 ) -> None:
-    if item.status not in {"ok", "error"}:
+    if item.status not in _FINISHED_ITEM:
         task.done += 1
-    item.status = status
+    item.status = BookingTaskItemStatus(status)
     item.error = error
     task.current = item.title
 
@@ -132,7 +139,7 @@ async def _run_book_task(task_id: str, request: BatchBookRequest) -> None:
     task = get_task(task_id)
     if task is None:
         return
-    task.status = "running"
+    task.status = BookingTaskStatus.RUNNING
     save_task(task)
     try:
         await asyncio.wait_for(_book_task_body(task_id, request), timeout=TASK_TIMEOUT_SECONDS)
@@ -140,15 +147,15 @@ async def _run_book_task(task_id: str, request: BatchBookRequest) -> None:
         task = get_task(task_id)
         if task is None:
             return
-        task.status = "error"
+        task.status = BookingTaskStatus.ERROR
         task.error = str(error.detail)
         task.book = book_result_from_items(task.items)
         save_task(task)
     except TimeoutError:
         task = get_task(task_id)
-        if task is None or task.status in {"done", "error"}:
+        if task is None or task.status in {BookingTaskStatus.DONE, BookingTaskStatus.ERROR}:
             return
-        task.status = "error"
+        task.status = BookingTaskStatus.ERROR
         task.error = "Booking task timed out"
         task.book = book_result_from_items(task.items)
         save_task(task)
@@ -157,7 +164,7 @@ async def _run_book_task(task_id: str, request: BatchBookRequest) -> None:
         task = get_task(task_id)
         if task is None:
             return
-        task.status = "error"
+        task.status = BookingTaskStatus.ERROR
         task.error = str(error)
         task.book = book_result_from_items(task.items)
         save_task(task)
@@ -168,7 +175,7 @@ async def _book_task_body(task_id: str, request: BatchBookRequest) -> None:
     if task is None:
         return
     if not request.slot_ids:
-        task.status = "done"
+        task.status = BookingTaskStatus.DONE
         task.book = book_result_from_items([])
         save_task(task)
         return
@@ -179,14 +186,18 @@ async def _book_task_body(task_id: str, request: BatchBookRequest) -> None:
     if task is None:
         return
     task.items = [
-        BookingTaskItem(index=str(i), title=str(payload.get("title") or None), status="pending")
+        BookingTaskItem(
+            index=str(i),
+            title=str(payload.get("title") or None),
+            status=BookingTaskItemStatus.PENDING,
+        )
         for i, payload in enumerate(payloads)
     ]
     task.total = len(task.items)
     task.current = "Отправляем в Outlook…" if task.items else "Нет слотов для бронирования"
     save_task(task)
     if not payloads:
-        task.status = "done"
+        task.status = BookingTaskStatus.DONE
         task.book = book_result_from_items([])
         save_task(task)
         return
@@ -194,15 +205,15 @@ async def _book_task_body(task_id: str, request: BatchBookRequest) -> None:
     sent_ids: set[str] = set()
     by_index = _items_by_index(task)
     async for event in booking_client.stream_auto_bookings_batch(payloads):
-        if event.event == "sent":
+        if event.event == BmpStreamEventKind.SENT:
             for event_index in event.indexes or []:
                 sent_ids.add(event_index)
                 item = by_index.get(event_index)
-                if item is not None and item.status == "pending":
-                    item.status = "sent"
+                if item is not None and item.status == BookingTaskItemStatus.PENDING:
+                    item.status = BookingTaskItemStatus.SENT
                     task.current = item.title
             task.sent = len(sent_ids)
-        elif event.event == "item" and event.index is not None:
+        elif event.event == BmpStreamEventKind.ITEM and event.index is not None:
             item = by_index.get(event.index)
             if item is not None:
                 if event.title:
@@ -210,17 +221,17 @@ async def _book_task_body(task_id: str, request: BatchBookRequest) -> None:
                 _finish_item(
                     task,
                     item,
-                    status=event.status or "error",
+                    status=event.status or BookingItemResultStatus.ERROR,
                     error=event.error,
                 )
-        elif event.event == "done":
+        elif event.event == BmpStreamEventKind.DONE:
             break
         save_task(task)
 
     for item in task.items:
-        if item.status not in {"ok", "error"}:
-            _finish_item(task, item, status="error", error="missing batch result")
-    task.status = "done"
+        if item.status not in _FINISHED_ITEM:
+            _finish_item(task, item, status=BookingItemResultStatus.ERROR, error="missing batch result")
+    task.status = BookingTaskStatus.DONE
     task.book = book_result_from_items(task.items)
     save_task(task)
 
@@ -229,15 +240,15 @@ async def _run_cancel_task(task_id: str, request: CancelExtraRequest) -> None:
     task = get_task(task_id)
     if task is None:
         return
-    task.status = "running"
+    task.status = BookingTaskStatus.RUNNING
     save_task(task)
     try:
         await asyncio.wait_for(_cancel_task_body(task_id, request), timeout=TASK_TIMEOUT_SECONDS)
     except TimeoutError:
         task = get_task(task_id)
-        if task is None or task.status in {"done", "error"}:
+        if task is None or task.status in {BookingTaskStatus.DONE, BookingTaskStatus.ERROR}:
             return
-        task.status = "error"
+        task.status = BookingTaskStatus.ERROR
         task.error = "Cancel task timed out"
         task.cancel = cancel_result_from_items(task.items)
         save_task(task)
@@ -246,7 +257,7 @@ async def _run_cancel_task(task_id: str, request: CancelExtraRequest) -> None:
         task = get_task(task_id)
         if task is None:
             return
-        task.status = "error"
+        task.status = BookingTaskStatus.ERROR
         task.error = str(error)
         task.cancel = cancel_result_from_items(task.items)
         save_task(task)
@@ -257,7 +268,7 @@ async def _cancel_task_body(task_id: str, request: CancelExtraRequest) -> None:
     if task is None:
         return
     if not request.extra_ids:
-        task.status = "done"
+        task.status = BookingTaskStatus.DONE
         task.cancel = cancel_result_from_items([])
         save_task(task)
         return
@@ -274,7 +285,7 @@ async def _cancel_task_body(task_id: str, request: CancelExtraRequest) -> None:
                 BookingTaskItem(
                     index=extra_id,
                     title=extra_id,
-                    status="error",
+                    status=BookingTaskItemStatus.ERROR,
                     error="unknown extra booking",
                 )
             )
@@ -283,18 +294,18 @@ async def _cancel_task_body(task_id: str, request: CancelExtraRequest) -> None:
             BookingTaskItem(
                 index=extra_id,
                 title=str(booking.get("title") or extra_id),
-                status="pending",
+                status=BookingTaskItemStatus.PENDING,
             )
         )
     task.items = items
     task.total = len(task.items)
-    task.done = sum(1 for item in task.items if item.status == "error")
+    task.done = sum(1 for item in task.items if item.status == BookingTaskItemStatus.ERROR)
     save_task(task)
 
     by_index = _items_by_index(task)
     for extra_id in request.extra_ids:
         item = by_index[extra_id]
-        if item.status == "error":
+        if item.status == BookingTaskItemStatus.ERROR:
             continue
         booking = index.extras[extra_id]
         try:
@@ -310,11 +321,11 @@ async def _cancel_task_body(task_id: str, request: CancelExtraRequest) -> None:
                     outlook_booking_id=booking.get("outlook_booking_id"),
                     outlook_entry_id=booking.get("outlook_entry_id"),
                 )
-            _finish_item(task, item, status="ok", error=None)
+            _finish_item(task, item, status=BookingItemResultStatus.OK, error=None)
         except httpx.HTTPError as error:
-            _finish_item(task, item, status="error", error=str(error))
+            _finish_item(task, item, status=BookingItemResultStatus.ERROR, error=str(error))
         save_task(task)
 
-    task.status = "done"
+    task.status = BookingTaskStatus.DONE
     task.cancel = cancel_result_from_items(task.items)
     save_task(task)

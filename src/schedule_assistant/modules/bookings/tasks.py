@@ -8,8 +8,12 @@ from src.schedule_assistant.db.session import get_engine
 from src.schedule_assistant.modules.bookings.schemas import (
     BatchBookItemResult,
     BatchBookResponse,
+    BookingItemResultStatus,
     BookingTask,
     BookingTaskItem,
+    BookingTaskItemStatus,
+    BookingTaskKind,
+    BookingTaskStatus,
     CancelExtraResponse,
 )
 from src.schedule_assistant.utcnow import utcnow
@@ -23,9 +27,9 @@ def _row_to_task(row: BookingTaskRow) -> BookingTask:
     items = [BookingTaskItem.model_validate(item) for item in (row.items or [])]
     book = None
     cancel = None
-    if row.kind == "book" and row.result:
+    if row.kind == BookingTaskKind.BOOK and row.result:
         book = BatchBookResponse.model_validate(row.result)
-    if row.kind == "cancel" and row.result:
+    if row.kind == BookingTaskKind.CANCEL and row.result:
         cancel = CancelExtraResponse.model_validate(row.result)
     return BookingTask.model_validate(
         {
@@ -44,12 +48,12 @@ def _row_to_task(row: BookingTaskRow) -> BookingTask:
     )
 
 
-def create_task(*, kind: str, items: list[BookingTaskItem], current: str | None = None) -> BookingTask:
+def create_task(*, kind: BookingTaskKind, items: list[BookingTaskItem], current: str | None = None) -> BookingTask:
     now = utcnow()
     row = BookingTaskRow(
         id=str(uuid.uuid4()),
         kind=kind,
-        status="queued",
+        status=BookingTaskStatus.QUEUED,
         sent=0,
         done=0,
         total=len(items),
@@ -89,9 +93,9 @@ def save_task(task: BookingTask) -> BookingTask:
         row.items = [item.model_dump() for item in task.items]
         row.error = task.error
         result: dict[str, Any] | None = None
-        if task.kind == "book" and task.book is not None:
+        if task.kind == BookingTaskKind.BOOK and task.book is not None:
             result = task.book.model_dump()
-        if task.kind == "cancel" and task.cancel is not None:
+        if task.kind == BookingTaskKind.CANCEL and task.cancel is not None:
             result = task.cancel.model_dump()
         row.result = result
         row.updated_at = utcnow()
@@ -103,9 +107,12 @@ def save_task(task: BookingTask) -> BookingTask:
 def book_result_from_items(items: list[BookingTaskItem]) -> BatchBookResponse:
     results: list[BatchBookItemResult] = []
     for item in items:
-        status = "ok" if item.status == "ok" else "error"
+        status = (
+            BookingItemResultStatus.OK if item.status == BookingTaskItemStatus.OK else BookingItemResultStatus.ERROR
+        )
         error = item.error
-        if item.status not in {"ok", "error"}:
+        if item.status not in {BookingTaskItemStatus.OK, BookingTaskItemStatus.ERROR}:
+            error = error or "unfinished"
             error = error or "unfinished"
         results.append(
             BatchBookItemResult(
@@ -122,7 +129,7 @@ def cancel_result_from_items(items: list[BookingTaskItem]) -> CancelExtraRespons
     cancelled: list[str] = []
     failed: dict[str, str] = {}
     for item in items:
-        if item.status == "ok":
+        if item.status == BookingTaskItemStatus.OK:
             cancelled.append(item.index)
         else:
             failed[item.index] = item.error or "unfinished"

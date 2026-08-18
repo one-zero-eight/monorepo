@@ -1,6 +1,5 @@
 import datetime as dtm
 from enum import StrEnum
-from typing import Literal
 
 from pydantic import Field
 
@@ -17,6 +16,30 @@ class ReviewKind(StrEnum):
     READY = "ready"
     BOOKED = "booked"
     CONFLICT = "conflict"
+
+
+class BookingItemResultStatus(StrEnum):
+    OK = "ok"
+    ERROR = "error"
+
+
+class BookingTaskKind(StrEnum):
+    BOOK = "book"
+    CANCEL = "cancel"
+
+
+class BookingTaskStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    DONE = "done"
+    ERROR = "error"
+
+
+class BookingTaskItemStatus(StrEnum):
+    PENDING = "pending"
+    SENT = "sent"
+    OK = "ok"
+    ERROR = "error"
 
 
 class ConflictHit(ScheduleAssistantSchema):
@@ -117,7 +140,7 @@ class BatchBookRequest(ScheduleAssistantSchema):
 class BatchBookItemResult(ScheduleAssistantSchema):
     index: str
     "Index in the submitted batch"
-    status: Literal["ok", "error"]
+    status: BookingItemResultStatus
     title: str | None = None
     "Booking title that was submitted"
     error: str | None = None
@@ -147,7 +170,7 @@ class BookingTaskItem(ScheduleAssistantSchema):
     "Index in the submitted batch, or extra_id for cancel"
     title: str | None = None
     "Human-readable slot or extra label"
-    status: Literal["pending", "sent", "ok", "error"]
+    status: BookingTaskItemStatus
     "pending → sent (invite left) → ok (Accept) / error"
     error: str | None = None
     "Error message when status is error"
@@ -155,8 +178,8 @@ class BookingTaskItem(ScheduleAssistantSchema):
 
 class BookingTask(ScheduleAssistantSchema):
     task_id: str
-    kind: Literal["book", "cancel"]
-    status: Literal["queued", "running", "done", "error"]
+    kind: BookingTaskKind
+    status: BookingTaskStatus
     sent: int = 0
     "Invites sent, waiting for room Accept"
     done: int = 0

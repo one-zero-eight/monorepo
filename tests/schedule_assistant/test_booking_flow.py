@@ -5,14 +5,14 @@ from unittest.mock import AsyncMock
 import pytest
 from httpx import AsyncClient
 
-from src.schedule_assistant.modules.bookings.client import BmpStreamEvent, BookingDTO
+from src.schedule_assistant.modules.bookings.client import BmpStreamEvent, BmpStreamEventKind, BookingDTO
 from src.schedule_assistant.modules.bookings.review import (
     build_review_index,
     collect_booking_payloads,
     slot_label,
     split_payloads_around_conflicts,
 )
-from src.schedule_assistant.modules.bookings.schemas import ConflictMode
+from src.schedule_assistant.modules.bookings.schemas import BookingItemResultStatus, ConflictMode
 from src.schedule_assistant.modules.issues.booking_slots import build_bookable_slots
 from src.schedule_assistant.modules.issues.booking_window import (
     BOOKING_FETCH_MAX_DAYS,
@@ -344,10 +344,15 @@ async def test_batch_and_cancel_proxy_room_booking(
     async def fake_stream(payloads):
         submitted.append(payloads)
         title = str(payloads[0].get("title") or "")
-        yield BmpStreamEvent(event="started", total=1)
-        yield BmpStreamEvent(event="sent", indexes=["0"])
-        yield BmpStreamEvent(event="item", index="0", status="ok", title=title)
-        yield BmpStreamEvent(event="done")
+        yield BmpStreamEvent(event=BmpStreamEventKind.STARTED, total=1)
+        yield BmpStreamEvent(event=BmpStreamEventKind.SENT, indexes=["0"])
+        yield BmpStreamEvent(
+            event=BmpStreamEventKind.ITEM,
+            index="0",
+            status=BookingItemResultStatus.OK,
+            title=title,
+        )
+        yield BmpStreamEvent(event=BmpStreamEventKind.DONE)
 
     mock_booking_client.stream_auto_bookings_batch = fake_stream
 

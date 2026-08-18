@@ -1,5 +1,6 @@
 import datetime as dtm
 from collections.abc import AsyncIterator
+from enum import StrEnum
 from typing import Any, Literal
 from urllib.parse import quote, urljoin
 
@@ -7,6 +8,7 @@ import httpx
 from pydantic import Field
 
 from src.schedule_assistant.config import settings
+from src.schedule_assistant.modules.bookings.schemas import BookingItemResultStatus
 from src.schedule_assistant.schema_base import ScheduleAssistantSchema
 
 HTTP_TIMEOUT_SECONDS = 300.0
@@ -55,12 +57,19 @@ class RoomDTO(ScheduleAssistantSchema):
     "Prohibit to book during working hours. True = this room is available only at night 19:00-8:00, or full day on weekends."
 
 
+class BmpStreamEventKind(StrEnum):
+    STARTED = "started"
+    SENT = "sent"
+    ITEM = "item"
+    DONE = "done"
+
+
 class BmpStreamEvent(ScheduleAssistantSchema):
-    event: Literal["started", "sent", "item", "done"]
+    event: BmpStreamEventKind
     total: int | None = None
     indexes: list[str] | None = None
     index: str | None = None
-    status: Literal["ok", "error"] | None = None
+    status: BookingItemResultStatus | None = None
     title: str | None = None
     error: str | None = None
     message_body: str | None = None
