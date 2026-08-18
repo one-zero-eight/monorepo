@@ -26,6 +26,12 @@ class ClubsClient:
             response.raise_for_status()
             return [OwnedClub.model_validate(item) for item in response.json()]
 
+    async def list_all_clubs(self) -> list[OwnedClub]:
+        async with httpx.AsyncClient(headers=self._headers) as client:
+            response = await client.get(f"{self._api_url}/clubs/")
+            response.raise_for_status()
+            return [OwnedClub(club_id=str(item["id"]), title=item["title"]) for item in response.json()]
+
     async def get_clubs(self, club_ids: set[str]) -> dict[str, ClubInfo]:
         """Fetch clubs by id; omitted ids were not found (404)."""
         if not club_ids:

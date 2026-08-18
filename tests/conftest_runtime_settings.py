@@ -105,6 +105,7 @@ def load_root_settings() -> Settings:
             ),
             event_manager_emails=["test-user-1@innopolis.university"],
             moderator_emails=["admin@innopolis.university"],
+            club_moderator_emails=["club-moderator@innopolis.university"],
             clubs=ClubsIntegrationSettings(
                 api_url="https://clubs.test/api/v0",
                 api_key=SecretStr("test-clubs-api-key"),

@@ -26,6 +26,8 @@ async def get_me(auth: INH_TOKEN_AUTH, roles: ROLES) -> MeOut:
         role_names.append("event-manager")
     if roles.is_moderator:
         role_names.append("moderator")
+    if roles.is_club_moderator:
+        role_names.append("club-moderator")
     return MeOut(roles=role_names, clubs=roles.clubs)
 
 

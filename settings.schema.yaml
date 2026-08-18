@@ -221,6 +221,12 @@ $defs:
           type: string
         title: Moderator Emails
         type: array
+      club_moderator_emails:
+        description: Innomails of users who can act on behalf of any club
+        items:
+          type: string
+        title: Club Moderator Emails
+        type: array
       locales:
         description: Allowed event locales
         items:

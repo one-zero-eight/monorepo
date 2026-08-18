@@ -69,13 +69,14 @@ class UserRoles(BaseSchema):
     is_club_leader: bool
     is_event_manager: bool
     is_moderator: bool
+    is_club_moderator: bool
     clubs: list[OwnedClub]
     "Clubs owned by the user"
 
 
 class MeOut(BaseSchema):
     roles: list[str]
-    'List of roles: "club-leader", "event-manager", "moderator"'
+    'List of roles: "club-leader", "event-manager", "moderator", "club-moderator"'
     clubs: list[OwnedClub]
 
 

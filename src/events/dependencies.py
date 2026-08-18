@@ -15,12 +15,17 @@ def _email_in_list(email: str, emails: list[str]) -> bool:
 
 
 async def resolve_user_roles(auth: UserTokenData) -> UserRoles:
-    clubs = await clubs_client.list_owned_clubs(auth.innohassle_id)
+    is_club_moderator = _email_in_list(auth.email, settings.club_moderator_emails)
+    if is_club_moderator:
+        clubs = await clubs_client.list_all_clubs()
+    else:
+        clubs = await clubs_client.list_owned_clubs(auth.innohassle_id)
     return UserRoles(
         innohassle_id=auth.innohassle_id,
         is_club_leader=bool(clubs),
         is_event_manager=_email_in_list(auth.email, settings.event_manager_emails),
         is_moderator=_email_in_list(auth.email, settings.moderator_emails),
+        is_club_moderator=is_club_moderator,
         clubs=clubs,
     )
 

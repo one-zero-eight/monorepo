@@ -45,6 +45,9 @@ def mock_clubs_service(clubs_owned_by: dict[str, list[dict]], clubs_by_id: dict[
             return httpx.Response(404, json={"detail": "Club not found"})
         return httpx.Response(200, json=club)
 
+    def all_clubs_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=list(clubs_by_id.values()))
+
     from src.events.config import settings
 
     api_url = settings.clubs.api_url.rstrip("/")
@@ -52,6 +55,7 @@ def mock_clubs_service(clubs_owned_by: dict[str, list[dict]], clubs_by_id: dict[
     with respx.mock(assert_all_mocked=True, assert_all_called=False) as respx_mock:
         respx_mock.get(url__regex=rf"{re.escape(api_url)}/clubs/owned-by/.+").mock(side_effect=owned_by_handler)
         respx_mock.get(url__regex=rf"{re.escape(api_url)}/clubs/by-id/.+").mock(side_effect=by_id_handler)
+        respx_mock.get(f"{api_url}/clubs/").mock(side_effect=all_clubs_handler)
         yield
 
 
@@ -130,6 +134,20 @@ def other_club_leader_headers(
     clubs_owned_by["club-leader-2"] = [{"club_id": CLUB_ID_2, "title": CLUB_TITLE_2}]
     clubs_by_id[CLUB_ID_2] = {"id": CLUB_ID_2, "slug": CLUB_SLUG_2, "title": CLUB_TITLE_2}
     return auth_header_factory("club-leader-2", "club-leader-2@innopolis.university")
+
+
+@pytest.fixture
+def club_moderator_headers(
+    auth_header_factory,
+    clubs_by_id: dict[str, dict],
+    inh_accounts_mock_users: dict,
+):
+    _ensure_mock_user(
+        inh_accounts_mock_users, "club-moderator-1", "club-moderator@innopolis.university", "Club Moderator One"
+    )
+    clubs_by_id[CLUB_ID] = {"id": CLUB_ID, "slug": CLUB_SLUG, "title": CLUB_TITLE}
+    clubs_by_id[CLUB_ID_2] = {"id": CLUB_ID_2, "slug": CLUB_SLUG_2, "title": CLUB_TITLE_2}
+    return auth_header_factory("club-moderator-1", "club-moderator@innopolis.university")
 
 
 @pytest.fixture

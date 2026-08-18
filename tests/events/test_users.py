@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from tests.events.conftest import CLUB_ID
+from tests.events.conftest import CLUB_ID, CLUB_ID_2
 
 
 def test_locales_returns_allowed_list(events_client: TestClient):
@@ -34,6 +34,17 @@ def test_users_me_moderator(events_client: TestClient, superadmin_headers: dict[
     response = events_client.get("/users/me", headers=superadmin_headers)
     assert response.status_code == 200
     assert response.json()["roles"] == ["moderator"]
+
+
+def test_users_me_club_moderator(events_client: TestClient, club_moderator_headers: dict[str, str]):
+    response = events_client.get("/users/me", headers=club_moderator_headers)
+    assert response.status_code == 200
+    payload = response.json()
+    assert set(payload["roles"]) == {"club-leader", "club-moderator"}
+    assert {(club["club_id"], club["title"]) for club in payload["clubs"]} == {
+        (CLUB_ID, "Test Club"),
+        (CLUB_ID_2, "Other Club"),
+    }
 
 
 def test_users_me_combined_roles(events_client: TestClient, make_user_token, clubs_owned_by):

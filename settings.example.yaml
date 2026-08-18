@@ -49,6 +49,8 @@ events_service:
     - change-me@innopolis.university
   moderator_emails:
     - change-me@innopolis.university
+  club_moderator_emails:
+    - change-me@innopolis.university
   locales:
     - en
     - ru
