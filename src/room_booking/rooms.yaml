@@ -265,6 +265,13 @@ rooms:
     resource_email: "iu.resource.lectureroom321@innopolis.ru"
     access_level: "red"
     capacity: 48
+
+  - id: "421"
+    short_name: "421"
+    title: "Lecture Room 421"
+    resource_email: "iu.resource.lectureroom421@innopolis.ru"
+    access_level: "red"
+    capacity: 26
   # Red Access Rooms (lecture rooms) ^
 
   # Red Access Rooms (meeting rooms) >
