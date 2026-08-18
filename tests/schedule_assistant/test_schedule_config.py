@@ -3,6 +3,7 @@ import datetime as dtm
 import pytest
 from httpx import AsyncClient
 
+from src.schedule_assistant.db.models import TermRow
 from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
 from src.schedule_assistant.modules.schedule_config.schemas import (
     ComponentSessionSeries,
@@ -443,6 +444,57 @@ students_groups: []
     assert response.json()["term"]["name"] == "Spring 2026"
     assert response.json()["rooms"][0]["id"] == "108"
     assert _revision(response.headers["etag"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_put_yaml_file_strips_legacy_section_kind(
+    authenticated_client: AsyncClient,
+    schedule_config_repo: ScheduleConfigRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    schedule_config_repo.set_term(_minimal_term_settings(), saved_by="test@test.com")
+    with schedule_config_repo._session() as session:
+        row = session.get(TermRow, 1)
+        assert row is not None
+        row.sections = [
+            {"code": "core", "name": "Core", "kind": "core", "programs": []},
+            {"code": "english", "name": "English", "kind": "english", "programs": []},
+            {"code": "electives", "name": "Electives", "kind": "electives", "programs": []},
+        ]
+        session.add(row)
+        session.commit()
+
+    assembled = schedule_config_repo.get_assembled()
+    assert [section.model_dump(exclude_none=True) for section in assembled.term.sections] == [
+        {"code": "core", "name": "Core", "programs": []},
+        {"code": "english", "name": "English", "programs": []},
+        {"code": "electives", "name": "Electives", "programs": []},
+    ]
+
+    response = await authenticated_client.put(
+        "/schedule-config/yaml-file",
+        files={
+            "file": (
+                "config.yaml",
+                b"""
+term:
+  name: Fall 2026
+  semester:
+    start_date: 2026-08-25
+    end_date: 2026-12-24
+rooms: []
+courses: []
+instructors: []
+students_groups: []
+""",
+                "application/x-yaml",
+            )
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["term"]["name"] == "Fall 2026"
+    assert all("kind" not in section for section in response.json()["term"]["sections"])
 
 
 @pytest.mark.asyncio

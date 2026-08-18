@@ -61,6 +61,19 @@ TERM_SINGLETON_ID = 1
 META_SINGLETON_ID = 1
 
 
+def _section_payloads_from_stored(sections: object) -> list[Any]:
+    if not isinstance(sections, list):
+        return []
+    allowed = set(SectionConfig.model_fields)
+    payloads: list[Any] = []
+    for section in sections:
+        if isinstance(section, dict):
+            payloads.append({key: value for key, value in section.items() if key in allowed})
+            continue
+        payloads.append(section)
+    return payloads
+
+
 def _course_row_payload(row: CourseRow) -> dict[str, Any]:
     return {
         "name": row.name,
@@ -251,7 +264,7 @@ class ScheduleConfigRepository:
                 "days": row.days,
                 "starting_day": row.starting_day,
                 "time_slots": row.time_slots,
-                "sections": row.sections,
+                "sections": _section_payloads_from_stored(row.sections),
                 "instructor_positions": row.instructor_positions or [],
                 "course_instructor_roles": row.course_instructor_roles or [],
                 "course_component_tags": row.course_component_tags or [],
@@ -294,7 +307,8 @@ class ScheduleConfigRepository:
     def _load_sections_config(self, session: Session) -> SectionsConfig:
         term_row = session.get(TermRow, TERM_SINGLETON_ID)
         sections = [
-            SectionConfig.model_validate(section) for section in (term_row.sections if term_row is not None else [])
+            SectionConfig.model_validate(section)
+            for section in _section_payloads_from_stored(term_row.sections if term_row is not None else [])
         ]
         student_groups = [
             StudentsGroups(
