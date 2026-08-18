@@ -235,8 +235,8 @@ def mock_booking_client():
         ),
     ]
     mock_client.get_auto_bookings.return_value = []
-    mock_client.create_auto_bookings_batch.return_value = {}
     mock_client.cancel_auto_bookings_batch.return_value = CancelAutoBookingsResult(cancelled=[], failed={})
+    mock_client.cancel_auto_booking.return_value = None
     mock_client.cancel_extra_booking.return_value = None
 
     with (

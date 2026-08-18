@@ -1,3 +1,4 @@
+import json
 from unittest.mock import AsyncMock
 
 import pytest
@@ -6,6 +7,10 @@ from fastapi.testclient import TestClient
 from src.room_booking.modules.bmp.repository import BmpBatchItemResult
 from src.room_booking.modules.bookings.schemas import Booking
 from tests.room_booking.datetime_helpers import dt_params, msk
+
+
+def _ndjson_events(response) -> list[dict]:
+    return [json.loads(line) for line in response.text.splitlines() if line.strip()]
 
 
 @pytest.fixture
@@ -58,9 +63,14 @@ def test_bmp_batch_invalid_dates(room_booking_client: TestClient, api_key_header
         },
     )
     assert response.status_code == 200
-    result = response.json()["0"]
-    assert result["status"] == "error"
-    assert result["error"] == "Start must be before end"
+    events = _ndjson_events(response)
+    assert events[0] == {"event": "started", "total": 1}
+    assert events[1]["event"] == "item"
+    assert events[1]["index"] == "0"
+    assert events[1]["status"] == "error"
+    assert events[1]["title"] == "Bad"
+    assert events[1]["error"] == "Start must be before end"
+    assert events[-1] == {"event": "done"}
 
 
 def test_bmp_batch_unknown_room(room_booking_client: TestClient, api_key_headers: dict[str, str]):
@@ -80,9 +90,11 @@ def test_bmp_batch_unknown_room(room_booking_client: TestClient, api_key_headers
         },
     )
     assert response.status_code == 200
-    result = response.json()["0"]
-    assert result["status"] == "error"
-    assert result["error"] == "Room not found"
+    events = _ndjson_events(response)
+    item = next(event for event in events if event["event"] == "item")
+    assert item["status"] == "error"
+    assert item["error"] == "Room not found"
+    assert item["title"] == "Missing room"
 
 
 def test_bmp_create_auto_booking(
@@ -106,7 +118,7 @@ def test_bmp_create_auto_booking(
     mock_bmp_create_booking.assert_awaited_once()
 
 
-def test_bmp_batch_valid_entry_calls_repository(
+def test_bmp_batch_valid_entry_streams_sent_then_item(
     room_booking_client: TestClient,
     api_key_headers: dict[str, str],
     monkeypatch: pytest.MonkeyPatch,
@@ -122,8 +134,12 @@ def test_bmp_batch_valid_entry_calls_repository(
         outlook_entry_id=None,
         attendees=None,
     )
-    create_batch = AsyncMock(return_value=[BmpBatchItemResult(status="ok", booking=booking, error=None)])
-    monkeypatch.setattr(bmp_routes.bmp_repository, "create_bookings_batch", create_batch)
+
+    async def fake_iter(_entries):
+        yield (None, None, [0])
+        yield (0, BmpBatchItemResult(status="ok", booking=booking, error=None), None)
+
+    monkeypatch.setattr(bmp_routes.bmp_repository, "iter_create_bookings_batch", fake_iter)
 
     response = room_booking_client.post(
         "/bmp/auto-bookings/batch",
@@ -141,5 +157,11 @@ def test_bmp_batch_valid_entry_calls_repository(
         },
     )
     assert response.status_code == 200
-    assert response.json()["0"]["status"] == "ok"
-    create_batch.assert_awaited_once()
+    events = _ndjson_events(response)
+    assert events[0] == {"event": "started", "total": 1}
+    assert events[1] == {"event": "sent", "indexes": ["0"]}
+    assert events[2]["event"] == "item"
+    assert events[2]["index"] == "0"
+    assert events[2]["status"] == "ok"
+    assert events[2]["title"] == "Auto"
+    assert events[3] == {"event": "done"}

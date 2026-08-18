@@ -1,4 +1,5 @@
 import datetime as dtm
+from collections.abc import AsyncIterator
 from typing import Any, Literal
 from urllib.parse import quote, urljoin
 
@@ -9,6 +10,7 @@ from src.schedule_assistant.config import settings
 from src.schedule_assistant.schema_base import ScheduleAssistantSchema
 
 HTTP_TIMEOUT_SECONDS = 300.0
+STREAM_TIMEOUT_SECONDS = 600.0
 
 
 class BookingDTO(ScheduleAssistantSchema):
@@ -53,9 +55,13 @@ class RoomDTO(ScheduleAssistantSchema):
     "Prohibit to book during working hours. True = this room is available only at night 19:00-8:00, or full day on weekends."
 
 
-class BmpBatchItemResult(ScheduleAssistantSchema):
-    status: Literal["ok", "error"]
-    booking: BookingDTO | None = None
+class BmpStreamEvent(ScheduleAssistantSchema):
+    event: Literal["started", "sent", "item", "done"]
+    total: int | None = None
+    indexes: list[str] | None = None
+    index: str | None = None
+    status: Literal["ok", "error"] | None = None
+    title: str | None = None
     error: str | None = None
     message_body: str | None = None
 
@@ -123,18 +129,29 @@ class BookingClient:
             data = response.json()
             return [BookingDTO.model_validate(entry) for entry in data]
 
-    async def create_auto_bookings_batch(self, bookings: list[dict[str, Any]]) -> dict[str, BmpBatchItemResult]:
-        async with httpx.AsyncClient(headers=self._headers) as client:
-            response = await client.post(
+    async def stream_auto_bookings_batch(self, bookings: list[dict[str, Any]]) -> AsyncIterator[BmpStreamEvent]:
+        async with (
+            httpx.AsyncClient(headers=self._headers) as client,
+            client.stream(
+                "POST",
                 urljoin(self.url, "bmp/auto-bookings/batch"),
                 json={"bookings": bookings},
+                timeout=STREAM_TIMEOUT_SECONDS,
+            ) as response,
+        ):
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if not line.strip():
+                    continue
+                yield BmpStreamEvent.model_validate_json(line)
+
+    async def cancel_auto_booking(self, outlook_booking_id: str) -> None:
+        async with httpx.AsyncClient(headers=self._headers) as client:
+            response = await client.delete(
+                urljoin(self.url, f"bmp/auto-bookings/{quote(outlook_booking_id, safe='')}"),
                 timeout=HTTP_TIMEOUT_SECONDS,
             )
             response.raise_for_status()
-            data = response.json()
-        if not isinstance(data, dict):
-            return {}
-        return {str(key): BmpBatchItemResult.model_validate(value) for key, value in data.items()}
 
     async def cancel_auto_bookings_batch(self, outlook_booking_ids: list[str]) -> CancelAutoBookingsResult:
         async with httpx.AsyncClient(headers=self._headers) as client:

@@ -1,10 +1,12 @@
 # ruff: noqa: BLE001, B008
 import datetime as dtm
+import json
 import time as tm
+from collections.abc import AsyncIterator
 
 from exchangelib.recurrence import Recurrence
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel
 
 from src.logging_ import logger
@@ -191,53 +193,107 @@ async def create_auto_booking(
     return await _create_bmp_booking(request)
 
 
+def _http_error_fields(exc: HTTPException) -> tuple[str | None, str | None]:
+    if isinstance(exc.detail, dict):
+        error = exc.detail.get("message")
+        message_body = exc.detail.get("message_body")
+        return (
+            str(error) if error is not None else None,
+            str(message_body) if message_body is not None else None,
+        )
+    if isinstance(exc.detail, str):
+        return exc.detail, None
+    return str(exc.detail), None
+
+
+def _ndjson_line(payload: dict) -> str:
+    return json.dumps(payload, ensure_ascii=False) + "\n"
+
+
+def _item_event(*, index: str, title: str, result: BmpBatchItemResult) -> dict:
+    event: dict = {
+        "event": "item",
+        "index": index,
+        "status": result.status,
+        "title": title,
+    }
+    if result.error:
+        event["error"] = result.error
+    if result.message_body:
+        event["message_body"] = result.message_body
+    return event
+
+
 @router.post("/auto-bookings/batch")
-async def batch_auto_bookings(
-    _: ApiKeyDep,
-    request: BmpBatchRequest,
-) -> dict[str, BmpBatchItemResult]:
+async def batch_auto_bookings(_: ApiKeyDep, request: BmpBatchRequest) -> StreamingResponse:
     actor_email = bmp_repository.account_email
     t_route = tm.monotonic()
     logger.info(f"BMP batch auto bookings started: user={actor_email} count={len(request.bookings)}")
-    result: dict[str, BmpBatchItemResult] = {}
-    pending_keys: list[str] = []
-    pending_entries: list[BmpBatchCreateEntry] = []
 
-    for i, req in enumerate(request.bookings):
-        key = str(i)
-        try:
-            pending_entries.append(_parse_bmp_batch_entry(req))
-            pending_keys.append(key)
-        except HTTPException as e:
-            error: str | None
-            message_body: str | None = None
-            if isinstance(e.detail, dict):
-                error = e.detail.get("message")
-                if error is not None:
-                    error = str(error)
-                message_body = e.detail.get("message_body")
-                if message_body is not None:
-                    message_body = str(message_body)
-            else:
-                error = e.detail if isinstance(e.detail, str) else str(e.detail)
-            result[key] = BmpBatchItemResult(
-                status="error",
-                booking=None,
-                error=error,
-                message_body=message_body,
-            )
-        except Exception as e:
-            logger.exception(f"Error creating BMP booking: {e}")
-            result[key] = BmpBatchItemResult(status="error", booking=None, error=str(e))
+    async def events() -> AsyncIterator[str]:
+        yield _ndjson_line({"event": "started", "total": len(request.bookings)})
+        pending_keys: list[str] = []
+        pending_entries: list[BmpBatchCreateEntry] = []
+        pending_titles: list[str] = []
+        item_count = 0
+        ok = 0
 
-    if pending_entries:
-        outcomes = await bmp_repository.create_bookings_batch(pending_entries)
-        for key, outcome in zip(pending_keys, outcomes, strict=True):
-            result[key] = outcome
+        for i, req in enumerate(request.bookings):
+            key = str(i)
+            title = req.title
+            try:
+                pending_entries.append(_parse_bmp_batch_entry(req))
+                pending_keys.append(key)
+                pending_titles.append(title)
+            except HTTPException as e:
+                error, _message_body = _http_error_fields(e)
+                item_count += 1
+                yield _ndjson_line(
+                    _item_event(
+                        index=key,
+                        title=title,
+                        result=BmpBatchItemResult(status="error", error=error),
+                    )
+                )
+            except Exception as e:
+                logger.exception(f"Error creating BMP booking: {e}")
+                item_count += 1
+                yield _ndjson_line(
+                    _item_event(
+                        index=key,
+                        title=title,
+                        result=BmpBatchItemResult(status="error", error=str(e)),
+                    )
+                )
 
-    ok = sum(1 for o in result.values() if o.status == "ok")
-    err = len(result) - ok
-    logger.info(
-        f"BMP batch auto bookings finished: user={actor_email} ok={ok} error={err} took {tm.monotonic() - t_route:.3f}s"
-    )
-    return result
+        if pending_entries:
+            async for entry_index, result, sent_indexes in bmp_repository.iter_create_bookings_batch(pending_entries):
+                if sent_indexes is not None:
+                    yield _ndjson_line(
+                        {
+                            "event": "sent",
+                            "indexes": [pending_keys[index] for index in sent_indexes],
+                        }
+                    )
+                    continue
+                if entry_index is None or result is None:
+                    continue
+                item_count += 1
+                if result.status == "ok":
+                    ok += 1
+                yield _ndjson_line(
+                    _item_event(
+                        index=pending_keys[entry_index],
+                        title=pending_titles[entry_index],
+                        result=result,
+                    )
+                )
+
+        yield _ndjson_line({"event": "done"})
+        err = item_count - ok
+        logger.info(
+            f"BMP batch auto bookings finished: user={actor_email} ok={ok} error={err} "
+            f"took {tm.monotonic() - t_route:.3f}s"
+        )
+
+    return StreamingResponse(events(), media_type="application/x-ndjson")

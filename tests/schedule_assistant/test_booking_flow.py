@@ -1,10 +1,11 @@
+import asyncio
 import datetime as dtm
 from unittest.mock import AsyncMock
 
 import pytest
 from httpx import AsyncClient
 
-from src.schedule_assistant.modules.bookings.client import BmpBatchItemResult, BookingDTO, CancelAutoBookingsResult
+from src.schedule_assistant.modules.bookings.client import BmpStreamEvent, BookingDTO
 from src.schedule_assistant.modules.bookings.review import (
     build_review_index,
     collect_booking_payloads,
@@ -314,6 +315,18 @@ def test_split_weekly_slot_omits_conflict_dates() -> None:
         assert not (start <= dtm.date(2026, 6, 15) <= until)
 
 
+async def _wait_task(client: AsyncClient, task_id: str) -> dict:
+    body: dict = {}
+    for _ in range(100):
+        poll = await client.get(f"/bookings/tasks/{task_id}")
+        assert poll.status_code == 200
+        body = poll.json()
+        if body["status"] in {"done", "error"}:
+            return body
+        await asyncio.sleep(0.05)
+    raise AssertionError(f"task {task_id} did not finish: {body}")
+
+
 @pytest.mark.asyncio
 async def test_batch_and_cancel_proxy_room_booking(
     authenticated_client: AsyncClient,
@@ -325,21 +338,34 @@ async def test_batch_and_cancel_proxy_room_booking(
     _seed(bookings_repo, courses=_occurrence_courses())
     mock_booking_client.get_all_bookings.return_value = []
     mock_booking_client.get_auto_bookings.return_value = []
-    mock_booking_client.create_auto_bookings_batch.return_value = {
-        "0": BmpBatchItemResult(status="ok", booking=None, error=None),
-    }
+
+    submitted: list = []
+
+    async def fake_stream(payloads):
+        submitted.append(payloads)
+        title = str(payloads[0].get("title") or "")
+        yield BmpStreamEvent(event="started", total=1)
+        yield BmpStreamEvent(event="sent", indexes=["0"])
+        yield BmpStreamEvent(event="item", index="0", status="ok", title=title)
+        yield BmpStreamEvent(event="done")
+
+    mock_booking_client.stream_auto_bookings_batch = fake_stream
 
     review = (await authenticated_client.get("/bookings/review")).json()
     slot_id = review["programs"][0]["courses"][0]["components"][0]["slots"][0]["slot_id"]
     response = await authenticated_client.post("/bookings/batch", json={"slot_ids": [slot_id], "conflict_modes": {}})
     assert response.status_code == 200
-    body = response.json()
-    assert body["submitted"] == 1
-    assert body["results"][0]["status"] == "ok"
-    mock_booking_client.create_auto_bookings_batch.assert_awaited_once()
-    submitted = mock_booking_client.create_auto_bookings_batch.await_args.args[0]
-    assert submitted[0]["title"] == "Algorithms (lec)"
-    assert submitted[0]["room_id"] == "107"
+    started = response.json()
+    assert started["kind"] == "book"
+    body = await _wait_task(authenticated_client, started["task_id"])
+    assert body["status"] == "done"
+    assert body["sent"] == 1
+    assert body["done"] == 1
+    assert body["items"][0]["status"] == "ok"
+    assert body["items"][0]["title"] == "Algorithms (lec)"
+    assert len(submitted) == 1
+    assert submitted[0][0]["title"] == "Algorithms (lec)"
+    assert submitted[0][0]["room_id"] == "107"
 
     mock_booking_client.get_auto_bookings.return_value = [
         _booking(
@@ -350,16 +376,14 @@ async def test_batch_and_cancel_proxy_room_booking(
             outlook_booking_id="extra-1",
         )
     ]
-    mock_booking_client.cancel_auto_bookings_batch.return_value = CancelAutoBookingsResult(
-        cancelled=["extra-1"],
-        failed={},
-    )
     extra_review = (await authenticated_client.get("/bookings/review")).json()
     extra_id = extra_review["extra_auto_bookings"][0]["extra_id"]
     cancel_response = await authenticated_client.post("/bookings/cancel-extra", json={"extra_ids": [extra_id]})
     assert cancel_response.status_code == 200
-    assert extra_id in cancel_response.json()["cancelled"]
-    mock_booking_client.cancel_auto_bookings_batch.assert_awaited_once_with(["extra-1"])
+    cancel_body = await _wait_task(authenticated_client, cancel_response.json()["task_id"])
+    assert cancel_body["status"] == "done"
+    assert extra_id in cancel_body["cancel"]["cancelled"]
+    mock_booking_client.cancel_auto_booking.assert_awaited_once_with("extra-1")
 
 
 def test_collect_payloads_skips_conflicts_by_default() -> None:

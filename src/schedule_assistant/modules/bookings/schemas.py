@@ -140,3 +140,32 @@ class CancelExtraResponse(ScheduleAssistantSchema):
     "Successfully cancelled extra ids or outlook ids"
     failed: dict[str, str]
     "Map of extra id → error"
+
+
+class BookingTaskItem(ScheduleAssistantSchema):
+    index: str
+    "Index in the submitted batch, or extra_id for cancel"
+    title: str | None = None
+    "Human-readable slot or extra label"
+    status: Literal["pending", "sent", "ok", "error"]
+    "pending → sent (invite left) → ok (Accept) / error"
+    error: str | None = None
+    "Error message when status is error"
+
+
+class BookingTask(ScheduleAssistantSchema):
+    task_id: str
+    kind: Literal["book", "cancel"]
+    status: Literal["queued", "running", "done", "error"]
+    sent: int = 0
+    "Invites sent, waiting for room Accept"
+    done: int = 0
+    "Items that already finished (ok or error)"
+    total: int = 0
+    current: str | None = None
+    "Title of the last updated item"
+    items: list[BookingTaskItem] = Field(default_factory=list)
+    error: str | None = None
+    "Task-level failure"
+    book: BatchBookResponse | None = None
+    cancel: CancelExtraResponse | None = None

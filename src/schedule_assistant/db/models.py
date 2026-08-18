@@ -114,3 +114,20 @@ class DistributionUploadRow(Base):
     updated_groups: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
     skipped_labels: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class BookingTaskRow(Base):
+    __tablename__ = "booking_tasks"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    kind: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False)
+    sent: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    done: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    current: Mapped[str | None] = mapped_column(String, nullable=True)
+    items: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    error: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

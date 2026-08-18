@@ -4,7 +4,7 @@
 import asyncio
 import datetime as dtm
 import time as tm
-from collections.abc import Iterable
+from collections.abc import AsyncIterator, Iterable
 from typing import Literal, cast
 
 import exchangelib
@@ -240,10 +240,12 @@ class BmpCalendarRepository(ExchangeBookingRepository):
             return True
         return False
 
-    async def create_bookings_batch(self, entries: list[BmpBatchCreateEntry]) -> list[BmpBatchItemResult]:
+    async def iter_create_bookings_batch(
+        self, entries: list[BmpBatchCreateEntry]
+    ) -> AsyncIterator[tuple[int | None, BmpBatchItemResult | None, list[int] | None]]:
         t_batch = tm.monotonic()
         if not entries:
-            return []
+            return
 
         items = [
             self._build_calendar_item(
@@ -269,17 +271,28 @@ class BmpCalendarRepository(ExchangeBookingRepository):
         create_results = await asyncio.to_thread(_bulk_create)
         logger.info(f"create_bookings_batch: bulk_create {len(entries)} items took {tm.monotonic() - t_create:.3f}s")
 
+        sent_indexes: list[int] = []
+        confirm_jobs: list[tuple[int, exchangelib.items.BulkCreateResult]] = []
+        for index, (entry, create_result) in enumerate(zip(entries, create_results, strict=True)):
+            if isinstance(create_result, Exception):
+                logger.info(f"create_bookings_batch: confirm room={entry.room.id} failed at create: {create_result}")
+                yield (
+                    index,
+                    BmpBatchItemResult(status="error", error=str(create_result)),
+                    None,
+                )
+                continue
+            sent_indexes.append(index)
+            confirm_jobs.append((index, create_result))
+
+        if sent_indexes:
+            yield (None, None, sent_indexes)
+
         async def _confirm_entry(
             entry: BmpBatchCreateEntry,
-            create_result: exchangelib.items.BulkCreateResult | Exception,
+            create_result: exchangelib.items.BulkCreateResult,
         ) -> BmpBatchItemResult:
             t_entry = tm.monotonic()
-            if isinstance(create_result, Exception):
-                logger.info(
-                    f"create_bookings_batch: confirm room={entry.room.id} failed at create: {create_result} "
-                    f"({tm.monotonic() - t_entry:.3f}s)"
-                )
-                return BmpBatchItemResult(status="error", error=str(create_result))
             item_id = str(create_result.id)
             try:
                 booking, message_body = await self._confirm_booking(
@@ -321,16 +334,19 @@ class BmpCalendarRepository(ExchangeBookingRepository):
                 )
                 return BmpBatchItemResult(status="error", error=str(e))
 
-        outcomes = list(
-            await asyncio.gather(
-                *[
-                    _confirm_entry(entry, create_result)
-                    for entry, create_result in zip(entries, create_results, strict=True)
-                ]
-            )
-        )
+        async def _confirm_indexed(
+            index: int,
+            create_result: exchangelib.items.BulkCreateResult,
+        ) -> tuple[int, BmpBatchItemResult]:
+            return index, await _confirm_entry(entries[index], create_result)
+
+        for finished in asyncio.as_completed(
+            [_confirm_indexed(index, create_result) for index, create_result in confirm_jobs]
+        ):
+            index, result = await finished
+            yield (index, result, None)
+
         logger.info(f"create_bookings_batch: finished {len(entries)} entries in {tm.monotonic() - t_batch:.3f}s")
-        return outcomes
 
 
 bmp_repository = BmpCalendarRepository(
