@@ -192,8 +192,8 @@ def build_event_out(
     )
     if auth is not None:
         out.enrolled = auth.email in public.enrolled_emails
-    if _is_author(event, auth) or _is_moderator(auth):
         out.enrolled_emails = list(public.enrolled_emails)
+    if _is_author(event, auth) or _is_moderator(auth):
         out.revision = public.revision
         out.approved_at = public.approved_at
     if _is_moderator(auth):

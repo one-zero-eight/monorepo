@@ -327,7 +327,7 @@ class EventOut(BaseSchema):
     enrolled: bool | None = None
     "Visible to authenticated users only"
     enrolled_emails: list[str] | None = None
-    "Visible to the author or a moderator only"
+    "Visible to authenticated users only"
     revision: dtm.datetime | None = None
     "Visible to the author or a moderator only"
     approved_at: dtm.datetime | None = None

@@ -191,6 +191,7 @@ def test_event_visibility_for_author_and_moderator(
     events_client: TestClient,
     user_headers: dict[str, str],
     superadmin_headers: dict[str, str],
+    plain_user_headers: dict[str, str],
 ):
     draft = create_and_publish(events_client, user_headers, superadmin_headers)
     events_client.post(f"/events/{draft['id']}/enroll", headers=user_headers)
@@ -204,6 +205,12 @@ def test_event_visibility_for_author_and_moderator(
     as_moderator = events_client.get(f"/events/{draft['id']}", headers=superadmin_headers).json()
     assert as_moderator["approved_by"] == "admin@innopolis.university"
     assert as_moderator["enrolled_emails"] == ["test-user-1@innopolis.university"]
+
+    as_plain_user = events_client.get(f"/events/{draft['id']}", headers=plain_user_headers).json()
+    assert as_plain_user["enrolled_emails"] == ["test-user-1@innopolis.university"]
+    assert as_plain_user["revision"] is None
+    assert as_plain_user["approved_at"] is None
+    assert as_plain_user["approved_by"] is None
 
 
 def test_unpublish_by_moderator(
