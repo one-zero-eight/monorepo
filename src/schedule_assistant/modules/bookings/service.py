@@ -19,10 +19,9 @@ from src.schedule_assistant.modules.bookings.schemas import (
     CancelExtraResponse,
 )
 from src.schedule_assistant.modules.issues.booking_slots import build_bookable_slots
+from src.schedule_assistant.modules.issues.booking_window import resolve_booking_fetch_window
 from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
 from src.schedule_assistant.modules.schedule_config.schemas import TermConfig
-
-MSK = dtm.timezone(dtm.timedelta(hours=3))
 
 
 def _require_term() -> TermConfig:
@@ -35,11 +34,8 @@ def _require_term() -> TermConfig:
     return term
 
 
-def _booking_window(term: TermConfig) -> tuple[dtm.datetime, dtm.datetime]:
-    return (
-        dtm.datetime.combine(term.semester.start_date, dtm.time.min, tzinfo=MSK),
-        dtm.datetime.combine(term.semester.end_date, dtm.time.max, tzinfo=MSK),
-    )
+def _booking_window(term: TermConfig) -> tuple[dtm.datetime, dtm.datetime] | None:
+    return resolve_booking_fetch_window(term.semester.start_date, term.semester.end_date)
 
 
 async def _load_review_index() -> ReviewIndex:
@@ -55,7 +51,11 @@ async def _load_review_index() -> ReviewIndex:
         logger.warning(f"Failed to load booking rooms: {error}")
 
     slots = build_bookable_slots(courses, sections, term, known_room_ids)
-    start, end = _booking_window(term)
+    window = _booking_window(term)
+    if window is None:
+        return build_review_index(slots, auto_bookings=[], existing_bookings=[])
+
+    start, end = window
     try:
         existing_bookings = await booking_client.get_all_bookings(start, end)
     except httpx.HTTPError as error:

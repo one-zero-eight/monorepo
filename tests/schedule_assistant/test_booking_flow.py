@@ -8,10 +8,15 @@ from src.schedule_assistant.modules.bookings.client import BmpBatchItemResult, B
 from src.schedule_assistant.modules.bookings.review import (
     build_review_index,
     collect_booking_payloads,
+    slot_label,
     split_payloads_around_conflicts,
 )
 from src.schedule_assistant.modules.bookings.schemas import ConflictMode
 from src.schedule_assistant.modules.issues.booking_slots import build_bookable_slots
+from src.schedule_assistant.modules.issues.booking_window import (
+    BOOKING_FETCH_MAX_DAYS,
+    resolve_booking_fetch_window,
+)
 from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
 from src.schedule_assistant.modules.schedule_config.schemas import (
     ComponentSessionSeries,
@@ -28,6 +33,26 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
 from src.schedule_assistant.weekday import Weekday
 
 MSK = dtm.timezone(dtm.timedelta(hours=3))
+
+
+def _freeze_booking_now(monkeypatch: pytest.MonkeyPatch, instant: dtm.datetime) -> None:
+    def fake_resolve(
+        start_date: dtm.date,
+        end_date: dtm.date,
+        *,
+        now: dtm.datetime | None = None,
+    ) -> tuple[dtm.datetime, dtm.datetime] | None:
+        return resolve_booking_fetch_window(start_date, end_date, now=instant)
+
+    monkeypatch.setattr(
+        "src.schedule_assistant.modules.bookings.service.resolve_booking_fetch_window",
+        fake_resolve,
+    )
+
+
+@pytest.fixture(autouse=True)
+def freeze_booking_window_now(monkeypatch: pytest.MonkeyPatch) -> None:
+    _freeze_booking_now(monkeypatch, dtm.datetime(2026, 6, 1, 12, 0, tzinfo=MSK))
 
 
 def _term() -> TermConfig:
@@ -205,6 +230,39 @@ async def test_review_classifies_ready_booked_conflict_and_unbookable(
     assert online_slot["disabled_reason"] == "online"
 
 
+@pytest.mark.asyncio
+async def test_review_caps_booking_fetch_to_ews_limit(
+    authenticated_client: AsyncClient,
+    bookings_repo: ScheduleConfigRepository,
+    mock_booking_client: AsyncMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    _freeze_booking_now(monkeypatch, dtm.datetime(2026, 8, 18, 7, 48, tzinfo=MSK))
+
+    _seed(bookings_repo, courses=_occurrence_courses())
+    bookings_repo.set_term(
+        TermConfig(
+            name="Fall 2026",
+            semester=TermConfig.DateRange(
+                start_date=dtm.date(2026, 8, 24),
+                end_date=dtm.date(2026, 12, 24),
+            ),
+        ),
+        saved_by="test@test.com",
+    )
+    mock_booking_client.get_all_bookings.return_value = []
+    mock_booking_client.get_auto_bookings.return_value = []
+
+    response = await authenticated_client.get("/bookings/review")
+    assert response.status_code == 200
+    mock_booking_client.get_all_bookings.assert_awaited_once()
+    start, end = mock_booking_client.get_all_bookings.await_args.args
+    assert start == dtm.datetime(2026, 8, 24, 0, 0, tzinfo=MSK)
+    assert end - start <= dtm.timedelta(days=BOOKING_FETCH_MAX_DAYS)
+    assert mock_booking_client.get_auto_bookings.await_args.args == (start, end)
+
+
 def test_unknown_room_is_not_bookable() -> None:
     slots = build_bookable_slots(_occurrence_courses(room="999"), _sections(), _term(), {"107"})
     assert slots[0].bookable is False
@@ -319,3 +377,47 @@ def test_collect_payloads_skips_conflicts_by_default() -> None:
     booked = collect_booking_payloads(index, [slot_id], {slot_id: ConflictMode.BOOK})
     assert len(booked) == 1
     assert booked[0]["room_id"] == "107"
+
+
+def test_weekly_slot_label_is_russian() -> None:
+    assert (
+        slot_label(
+            {
+                "start": "2026-08-24T09:00:00+03:00",
+                "end": "2026-08-24T10:30:00+03:00",
+                "recurrence": {"weekday": "monday"},
+            },
+            room="108",
+            disabled_reason=None,
+        )
+        == "Каждый понедельник 09:00–10:30 (108)"
+    )
+
+
+def test_occurrence_slot_label_is_russian() -> None:
+    assert (
+        slot_label(
+            {
+                "start": "2026-06-08T14:20:00+03:00",
+                "end": "2026-06-08T15:50:00+03:00",
+            },
+            room="107",
+            disabled_reason=None,
+        )
+        == "Понедельник 08.06.2026 14:20–15:50 (107)"
+    )
+
+
+def test_review_tree_uses_russian_weekly_labels() -> None:
+    slots = build_bookable_slots(_weekly_courses(), _sections(), _term(), {"107"})
+    index = build_review_index(slots, auto_bookings=[], existing_bookings=[])
+    labels = [
+        slot.label
+        for program in index.tree.programs
+        for course in program.courses
+        for component in course.components
+        for slot in component.slots
+    ]
+    assert labels
+    assert all("Каждый понедельник" in label for label in labels)
+    assert all("Weekly" not in label and "MONDAY" not in label for label in labels)

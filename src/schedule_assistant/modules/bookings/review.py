@@ -39,6 +39,26 @@ _API_WEEKDAY_TO_PYTHON = {
     "sunday": 6,
 }
 
+_WEEKDAY_NAME_RU = (
+    "Понедельник",
+    "Вторник",
+    "Среда",
+    "Четверг",
+    "Пятница",
+    "Суббота",
+    "Воскресенье",
+)
+
+_EVERY_WEEKDAY_RU = {
+    "monday": "Каждый понедельник",
+    "tuesday": "Каждый вторник",
+    "wednesday": "Каждую среду",
+    "thursday": "Каждый четверг",
+    "friday": "Каждую пятницу",
+    "saturday": "Каждую субботу",
+    "sunday": "Каждое воскресенье",
+}
+
 
 @dataclass
 class ReviewedSlot:
@@ -61,6 +81,27 @@ def _format_clock(clock: str) -> str:
     return clock
 
 
+def _room_suffix(room: str | None) -> str:
+    if not room:
+        return ""
+    return f" ({room})"
+
+
+def _weekly_when(weekday: str, start_time: str, end_time: str, room: str | None) -> str:
+    key = weekday.strip().lower()
+    phrase = _EVERY_WEEKDAY_RU.get(key, f"Каждый {weekday.strip().lower() or 'день'}")
+    return f"{phrase} {_format_clock(start_time)}–{_format_clock(end_time)}{_room_suffix(room)}"
+
+
+def _occurrence_when(start: dtm.datetime, end: dtm.datetime, room: str | None) -> str:
+    date = f"{start.day:02d}.{start.month:02d}.{start.year}"
+    weekday = _WEEKDAY_NAME_RU[start.weekday()]
+    return (
+        f"{weekday} {date} {_format_clock(start.strftime('%H:%M:%S'))}–{_format_clock(end.strftime('%H:%M:%S'))}"
+        f"{_room_suffix(room)}"
+    )
+
+
 def _slot_date_label(payload: dict[str, Any]) -> str:
     recurrence = payload.get("recurrence")
     if isinstance(recurrence, dict):
@@ -76,13 +117,17 @@ def _slot_times(payload: dict[str, Any]) -> tuple[str, str]:
 
 
 def slot_label(payload: dict[str, Any], *, room: str | None, disabled_reason: str | None) -> str:
-    start_time, end_time = _slot_times(payload)
-    room_text = room if room else "—"
-    suffix = f" ({disabled_reason})" if disabled_reason else ""
-    schedule = f"{_slot_date_label(payload)}  {start_time}–{end_time}"
-    if isinstance(payload.get("recurrence"), dict):
-        schedule = f"Weekly {schedule}"
-    return f"{schedule}  @ {room_text}{suffix}"
+    recurrence = payload.get("recurrence")
+    if isinstance(recurrence, dict):
+        start_time, end_time = _slot_times(payload)
+        label = _weekly_when(str(recurrence.get("weekday") or ""), start_time, end_time, room)
+    else:
+        start = parse_booking_datetime(str(payload["start"]))
+        end = parse_booking_datetime(str(payload["end"]))
+        label = _occurrence_when(start, end, room)
+    if disabled_reason:
+        return f"{label} ({disabled_reason})"
+    return label
 
 
 def _component_label(component_tag: str, audiences: tuple[str, ...]) -> str:
@@ -174,15 +219,20 @@ def _to_review_slot(reviewed: ReviewedSlot) -> ReviewSlot:
 
 def _extra_label(booking: dict[str, Any]) -> str:
     title = strip_auto_booking_title_prefix(str(booking.get("title") or "booking"))
-    room = str(booking.get("room_id") or "—")
+    room = str(booking.get("room_id") or "") or None
     start = parse_booking_datetime(str(booking["start"]))
     end = parse_booking_datetime(str(booking["end"]))
     recurrence = auto_recurrence_fields(booking.get("recurrence"))
-    clock = f"{_format_clock(start.strftime('%H:%M:%S'))}–{_format_clock(end.strftime('%H:%M:%S'))}"
     if recurrence:
-        weekday = recurrence["weekday"].capitalize()
-        return f"{title}  Weekly {weekday}  {clock}  @ {room}"
-    return f"{title}  {start.date().isoformat()}  {clock}  @ {room}"
+        when = _weekly_when(
+            recurrence["weekday"],
+            start.strftime("%H:%M:%S"),
+            end.strftime("%H:%M:%S"),
+            room,
+        )
+    else:
+        when = _occurrence_when(start, end, room)
+    return f"{title} · {when}"
 
 
 def _extra_id(booking: dict[str, Any], index: int) -> str:
