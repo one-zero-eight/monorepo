@@ -76,7 +76,6 @@ def _weekly_meeting(
     return ScheduledMeeting(
         course_name=course_name,
         component_tag="lec",
-        source_kind="core_course",
         placement=WeeklyPatternPlacement(weekday=Weekday.MONDAY),
         start_time=start_time,
         end_time=end_time,

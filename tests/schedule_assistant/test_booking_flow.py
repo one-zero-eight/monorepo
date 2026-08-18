@@ -72,7 +72,6 @@ def _sections() -> SectionsConfig:
             SectionConfig(
                 code="core",
                 name="Core",
-                kind="core",
                 programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])],
             )
         ],

@@ -34,7 +34,6 @@ def _sample_config() -> ScheduleConfig:
                 SectionConfig(
                     code="core",
                     name="Core",
-                    kind="core",
                     programs=[
                         SectionConfig.SectionProgram(
                             code="BS_Y1",
@@ -52,7 +51,6 @@ def _sample_config() -> ScheduleConfig:
                 SectionConfig(
                     code="electives",
                     name="Electives",
-                    kind="electives",
                     default_layout="calendar",
                     programs=[
                         SectionConfig.SectionProgram(

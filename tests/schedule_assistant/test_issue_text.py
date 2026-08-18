@@ -26,7 +26,6 @@ def test_format_meeting_when_weekly() -> None:
     meeting = ScheduledMeeting(
         course_name="Deep Learning for Search",
         component_tag="lec",
-        source_kind="core_course",
         placement=WeeklyPatternPlacement(weekday=Weekday.THURSDAY),
         start_time=dtm.time(14, 20),
         end_time=dtm.time(15, 50),
@@ -38,7 +37,6 @@ def test_format_capacity_issue_text() -> None:
     meeting = ScheduledMeeting(
         course_name="Deep Learning for Search",
         component_tag="lec",
-        source_kind="core_course",
         placement=WeeklyPatternPlacement(weekday=Weekday.THURSDAY),
         start_time=dtm.time(14, 20),
         end_time=dtm.time(15, 50),
@@ -62,7 +60,6 @@ def test_format_room_issue_text() -> None:
     meeting_a = ScheduledMeeting(
         course_name="Course A",
         component_tag="lec",
-        source_kind="core_course",
         placement=OccurrencePlacement(date=dtm.date(2026, 6, 8)),
         start_time=dtm.time(14, 20),
         end_time=dtm.time(15, 50),
@@ -71,7 +68,6 @@ def test_format_room_issue_text() -> None:
     meeting_b = ScheduledMeeting(
         course_name="Course B",
         component_tag="lec",
-        source_kind="core_course",
         placement=OccurrencePlacement(date=dtm.date(2026, 6, 8)),
         start_time=dtm.time(14, 20),
         end_time=dtm.time(15, 50),
@@ -116,7 +112,6 @@ def test_format_unplaced_issue_text() -> None:
         issue_type=IssueTypeEnum.UNPLACED,
         course_name="Algorithms",
         component_tag="lec",
-        source_kind="core_course",
         student_groups=("G1", "G2"),
     )
     assert (

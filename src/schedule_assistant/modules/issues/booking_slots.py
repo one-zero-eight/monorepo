@@ -1,13 +1,7 @@
 import datetime as dtm
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any
 
-from src.schedule_assistant.modules.issues.meetings import (
-    booking_section_category,
-    build_token_to_section_kind,
-    resolve_section_kind,
-    source_kind_from_audiences,
-)
 from src.schedule_assistant.modules.issues.schemas import (
     OccurrencePlacement,
     ScheduledMeeting,
@@ -236,15 +230,11 @@ def _recurrence_segments_excluding_edit_weeks(
     return segments
 
 
-def _booking_categories(
-    audiences: list[str],
-    course_name: str,
-    token_to_kind: dict[str, str],
-) -> list[str]:
+def _booking_categories(course: CourseConfig, audiences: list[str]) -> list[str]:
     return [
-        booking_section_category(resolve_section_kind(audiences, token_to_kind)),
+        course.section_code.strip() or "unknown",
         _program_code_from_audiences(audiences),
-        course_name,
+        course.name,
     ]
 
 
@@ -289,8 +279,6 @@ def _build_payload(
     component_tag: str,
     audiences: list[str],
     group_codes: tuple[str, ...],
-    source_kind: Literal["core_course", "elective"],
-    token_to_kind: dict[str, str],
     instructor: str | list[str] | None,
     room: str | None,
     meeting_date: dtm.date | str,
@@ -308,7 +296,6 @@ def _build_payload(
     meeting = ScheduledMeeting(
         course_name=course.name,
         component_tag=component_tag,
-        source_kind=source_kind,
         placement=placement,
         start_time=dtm.time.fromisoformat(start_time[:8]),
         end_time=dtm.time.fromisoformat(end_time[:8]),
@@ -322,7 +309,7 @@ def _build_payload(
         "start": start.isoformat(),
         "end": end.isoformat(),
         "participant_emails": [],
-        "categories": _booking_categories(audiences, course.name, token_to_kind),
+        "categories": _booking_categories(course, audiences),
     }
     if recurrence is not None:
         payload["recurrence"] = recurrence
@@ -335,8 +322,6 @@ def _slots_from_weekly_pattern(
     component_tag: str,
     audiences: list[str],
     group_codes: tuple[str, ...],
-    source_kind: Literal["core_course", "elective"],
-    token_to_kind: dict[str, str],
     pattern: WeeklyPatternSlot,
     term: TermConfig,
     known_room_ids: set[str],
@@ -371,8 +356,6 @@ def _slots_from_weekly_pattern(
             component_tag=component_tag,
             audiences=audiences,
             group_codes=group_codes,
-            source_kind=source_kind,
-            token_to_kind=token_to_kind,
             instructor=resolved_instructor,
             room=resolved_room,
             meeting_date=resolved_date,
@@ -403,8 +386,6 @@ def _slots_from_weekly_pattern(
             component_tag=component_tag,
             audiences=audiences,
             group_codes=group_codes,
-            source_kind=source_kind,
-            token_to_kind=token_to_kind,
             instructor=instructor,
             room=base_room,
             meeting_date=str(day_label),
@@ -444,7 +425,6 @@ def build_bookable_slots(
     from src.schedule_assistant.modules.schedule_config.validation import build_selector_map, expand_group_tokens
 
     selector_map = build_selector_map(sections)
-    token_to_kind = build_token_to_section_kind(sections)
     group_to_program, selector_to_program = build_section_program_maps(sections)
     slots: list[BookableSlot] = []
 
@@ -456,7 +436,6 @@ def build_bookable_slots(
                 audiences = _session_audiences(component, session)
                 if not audiences:
                     continue
-                source_kind = source_kind_from_audiences(audiences, token_to_kind)
                 group_codes = tuple(sorted(expand_group_tokens(audiences, selector_map)))
                 program_name = resolve_program_for_audiences(
                     audiences,
@@ -482,8 +461,6 @@ def build_bookable_slots(
                         component_tag=str(component.tag),
                         audiences=audiences,
                         group_codes=group_codes,
-                        source_kind=source_kind,
-                        token_to_kind=token_to_kind,
                         instructor=occurrence.instructor,
                         room=room,
                         meeting_date=occurrence.date,
@@ -512,8 +489,6 @@ def build_bookable_slots(
                             component_tag=str(component.tag),
                             audiences=audiences,
                             group_codes=group_codes,
-                            source_kind=source_kind,
-                            token_to_kind=token_to_kind,
                             pattern=pattern,
                             term=term,
                             known_room_ids=known_room_ids,

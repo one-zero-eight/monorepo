@@ -29,7 +29,6 @@ def _seed_config(repo: ScheduleConfigRepository) -> None:
             SectionConfig(
                 code="core",
                 name="Core",
-                kind="core",
                 programs=[
                     SectionConfig.SectionProgram(
                         code="BS_Y1",
@@ -41,7 +40,6 @@ def _seed_config(repo: ScheduleConfigRepository) -> None:
             SectionConfig(
                 code="english",
                 name="English",
-                kind="english",
                 programs=[
                     SectionConfig.SectionProgram(
                         code="EN",
@@ -53,7 +51,6 @@ def _seed_config(repo: ScheduleConfigRepository) -> None:
             SectionConfig(
                 code="electives",
                 name="Electives",
-                kind="electives",
                 programs=[
                     SectionConfig.SectionProgram(
                         code="EL",

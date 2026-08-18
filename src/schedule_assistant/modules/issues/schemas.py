@@ -30,7 +30,6 @@ MeetingPlacement = Annotated[
 class ScheduledMeeting(ScheduleAssistantSchema):
     course_name: str
     component_tag: str
-    source_kind: Literal["core_course", "elective"]
     placement: MeetingPlacement
     start_time: dtm.time
     end_time: dtm.time
@@ -117,7 +116,6 @@ class UnplacedIssue(ScheduleAssistantSchema):
     text: str = ""
     course_name: str
     component_tag: str
-    source_kind: Literal["core_course", "elective"]
     student_groups: tuple[str, ...] = ()
 
 
@@ -195,7 +193,6 @@ class PerWeekIssue(ScheduleAssistantSchema):
     text: str = ""
     course_name: str
     component_tag: str
-    source_kind: Literal["core_course", "elective"]
     student_groups: tuple[str, ...] = ()
     expected_per_week: int
     actual_per_week: int

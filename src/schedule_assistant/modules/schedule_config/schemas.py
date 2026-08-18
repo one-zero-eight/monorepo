@@ -175,8 +175,6 @@ class SectionConfig(SettingBaseModel):
     "Section identifier"
     name: str
     "Section display name"
-    kind: Literal["core", "english", "electives"] | str | None = None
-    "Section kind marker (for example, core/english/electives)"
     default_layout: Literal["groups", "calendar"] | None = None
     "Default timetable layout when opening this section (groups or calendar)"
     programs: list[SectionProgram] = []

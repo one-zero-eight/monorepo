@@ -1,9 +1,5 @@
 from src.schedule_assistant.modules.issues.issue_text import attach_issue_text
-from src.schedule_assistant.modules.issues.meetings import (
-    _group_codes_for_session,
-    build_token_to_section_kind,
-    source_kind_from_audiences,
-)
+from src.schedule_assistant.modules.issues.meetings import _group_codes_for_session
 from src.schedule_assistant.modules.issues.schemas import IssueTypeEnum, PerWeekIssue
 from src.schedule_assistant.modules.schedule_config.schemas import ComponentSessionSeries, CoursesConfig, SectionsConfig
 from src.schedule_assistant.modules.schedule_config.validation import build_selector_map, expand_group_tokens
@@ -33,7 +29,6 @@ def _weekly_slot_count_for_audience(
 
 def per_week_issues_from_schedule_config(courses: CoursesConfig, sections: SectionsConfig) -> list[PerWeekIssue]:
     selector_map = build_selector_map(sections)
-    token_to_kind = build_token_to_section_kind(sections)
     issues: list[PerWeekIssue] = []
 
     for course in courses.courses:
@@ -67,10 +62,6 @@ def per_week_issues_from_schedule_config(courses: CoursesConfig, sections: Secti
                     issue_type=IssueTypeEnum.PER_WEEK,
                     course_name=course.name,
                     component_tag=component.tag,
-                    source_kind=source_kind_from_audiences(
-                        list(audience) or component.student_groups,
-                        token_to_kind,
-                    ),
                     student_groups=audience,
                     expected_per_week=component.per_week,
                     actual_per_week=actual,

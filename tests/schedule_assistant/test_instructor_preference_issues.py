@@ -25,7 +25,6 @@ def _meeting(weekday: Weekday, start: dtm.time) -> ScheduledMeeting:
     return ScheduledMeeting(
         course_name="Algorithms",
         component_tag="lec",
-        source_kind="core_course",
         placement=WeeklyPatternPlacement(weekday=weekday),
         start_time=start,
         end_time=dtm.time(start.hour + 1, start.minute),

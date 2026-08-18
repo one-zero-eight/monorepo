@@ -127,16 +127,11 @@ sys.path.insert(0, str(ROOT))
 
 import itertools
 
-from src.schedule_assistant.modules.issues.meetings import (
-    build_token_to_section_kind,
-    source_kind_from_audiences,
-)
 from src.schedule_assistant.modules.schedule_config.helpers import expand_groups, resolve_selector_map
 from src.schedule_assistant.modules.schedule_config.schemas import (
     CourseConfig,
     CoursesConfig,
     ScheduleConfig,
-    SectionsConfig,
 )
 from src.schedule_assistant.modules.solver.helpers import teaching_days
 from src.schedule_assistant.modules.solver.instructor_preferences import (
@@ -713,14 +708,7 @@ def calculate_schedule_metrics(result: SolveResult, cfg: ScheduleConfig) -> Sche
             if is_oversize_here:
                 events_with_room_much_larger_than_students_count += 1
 
-    token_to_kind = build_token_to_section_kind(
-        SectionsConfig(sections=cfg.term.sections, students_groups=cfg.students_groups)
-    )
-    core_course_idx = {
-        i
-        for i, c in enumerate(cfg.courses)
-        if any(source_kind_from_audiences(comp.student_groups, token_to_kind) == "core_course" for comp in c.components)
-    }
+    core_course_idx = {i for i, c in enumerate(cfg.courses) if c.section_code.strip() == "core"}
     core_events_per_group_day: dict[tuple[str, str], int] = defaultdict(int)
     core_subjects_per_group_day: dict[tuple[str, str], set[str]] = defaultdict(set)
     for e in events:
