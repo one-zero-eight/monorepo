@@ -5,7 +5,6 @@ __all__ = [
     "get_color",
     "get_current_year",
     "locate_ics_by_path",
-    "nearest_weekday",
     "sluggify",
     "validate_calendar",
     "validate_vevent",
@@ -23,14 +22,6 @@ import icalendar
 from src.schedule.config import settings
 
 TIMEZONE = "Europe/Moscow"
-
-
-def nearest_weekday(date: dtm.date, day: int | str) -> dtm.date:
-    if isinstance(day, str):
-        day = ["mo", "tu", "we", "th", "fr", "sa", "su"].index(day[:2].lower())
-
-    days = (day - date.weekday() + 7) % 7
-    return date + dtm.timedelta(days=days)
 
 
 def get_current_year() -> int:

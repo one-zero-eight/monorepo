@@ -1,7 +1,5 @@
 __all__ = ["router"]
 
-from itertools import groupby
-
 import aiofiles
 import icalendar
 from fastapi import APIRouter
@@ -12,7 +10,6 @@ from src.schedule.exceptions import IncorrectCredentialsException
 from src.schedule.modules.event_groups.repository import event_group_repository
 from src.schedule.modules.event_groups.schemas import CreateEventGroup
 from src.schedule.modules.parse.bootcamp import AcademicGroup, BootcampParser, BootcampParserConfig, BuddyGroup
-from src.schedule.modules.parse.cleaning import CleaningParser, CleaningParserConfig
 from src.schedule.modules.tags.schemas import CreateTag
 from src.schedule.utils import get_base_calendar, locate_ics_by_path, sluggify, validate_calendar
 
@@ -38,70 +35,6 @@ async def save_ics(calendar: icalendar.Calendar, event_group_path: str, event_gr
         await f.write(content)
 
     await event_group_repository.update_timestamp(event_group_id)
-
-
-@router.post(
-    "/cleaning",
-    responses={**IncorrectCredentialsException.responses},
-)
-async def parse_cleaning_schedule(_: VERIFY_PARSER_DEPENDENCY, config: CleaningParserConfig) -> None:
-    cleaning_tag = CreateTag(alias="cleaning", name="Cleaning", type="category")
-    cleaning_cleaning_tag = CreateTag(alias="room-cleaning", name="Room Cleaning", type="cleaning")
-    linen_change_tag = CreateTag(alias="linen-change", name="Linen Change", type="cleaning")
-    parser = CleaningParser(config)
-
-    # ----- Cleaning schedule -----
-    cleaning_events = parser.get_cleaning_events()
-    cleaning_events = sorted(cleaning_events, key=lambda x: x.location)
-
-    for location, events_iter in groupby(cleaning_events, key=lambda x: x.location):
-        events = list(events_iter)
-        calendar = get_base_calendar()
-        calendar["x-wr-calname"] = f"Cleaning: {location}"
-
-        for event in events:
-            vevent = event.get_vevent()
-            calendar.add_component(vevent)
-
-        group_alias = f"cleaning-{sluggify(location)}"
-        path = f"cleaning/{group_alias}.ics"
-
-        event_group = CreateEventGroup(
-            alias=group_alias,
-            name=f"Cleaning: {location}",
-            description=f"Cleaning schedule for {location}",
-            tags=[cleaning_tag, cleaning_cleaning_tag],
-            path=path,
-        )
-        event_group_id = await event_group_repository.create_or_update(event_group)
-        await save_ics(calendar, path, event_group_id)
-
-    # --- Linen Change Schedule ---
-    linen_change_events = parser.get_linen_change_schedule()
-    linen_change_events = sorted(linen_change_events, key=lambda x: x.location)
-
-    for location, events_iter in groupby(linen_change_events, key=lambda x: x.location):
-        events = list(events_iter)
-
-        calendar = get_base_calendar()
-        calendar["x-wr-calname"] = f"Linen Change: {location}"
-
-        for event in events:
-            vevent = event.get_vevent()
-            calendar.add_component(vevent)
-
-        group_alias = f"linen-change-{sluggify(location)}"
-        path = f"cleaning/{group_alias}.ics"
-
-        event_group = CreateEventGroup(
-            alias=group_alias,
-            name=f"Linen Change: {location}",
-            description=f"Linen change schedule for {location}",
-            tags=[cleaning_tag, linen_change_tag],
-            path=path,
-        )
-        event_group_id = await event_group_repository.create_or_update(event_group)
-        await save_ics(calendar, path, event_group_id)
 
 
 @router.post(
