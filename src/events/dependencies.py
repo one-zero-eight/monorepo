@@ -20,6 +20,7 @@ async def resolve_user_roles(auth: UserTokenData) -> UserRoles:
         clubs = await clubs_client.list_all_clubs()
     else:
         clubs = await clubs_client.list_owned_clubs(auth.innohassle_id)
+    clubs.sort(key=lambda club: club.title.casefold())
     return UserRoles(
         innohassle_id=auth.innohassle_id,
         is_club_leader=bool(clubs),

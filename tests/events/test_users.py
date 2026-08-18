@@ -41,10 +41,26 @@ def test_users_me_club_moderator(events_client: TestClient, club_moderator_heade
     assert response.status_code == 200
     payload = response.json()
     assert set(payload["roles"]) == {"club-leader", "club-moderator"}
-    assert {(club["club_id"], club["title"]) for club in payload["clubs"]} == {
-        (CLUB_ID, "Test Club"),
-        (CLUB_ID_2, "Other Club"),
+    assert payload["clubs"] == [
+        {"club_id": CLUB_ID_2, "title": "Other Club"},
+        {"club_id": CLUB_ID, "title": "Test Club"},
+    ]
+
+
+def test_users_me_clubs_sorted_by_title(events_client: TestClient, make_user_token, clubs_owned_by):
+    clubs_owned_by["test-user-1"] = [
+        {"club_id": CLUB_ID, "title": "Test Club"},
+        {"club_id": CLUB_ID_2, "title": "Other Club"},
+    ]
+    headers = {
+        "Authorization": f"Bearer {make_user_token(uid='test-user-1', email='test-user-1@innopolis.university')}"
     }
+    response = events_client.get("/users/me", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["clubs"] == [
+        {"club_id": CLUB_ID_2, "title": "Other Club"},
+        {"club_id": CLUB_ID, "title": "Test Club"},
+    ]
 
 
 def test_users_me_combined_roles(events_client: TestClient, make_user_token, clubs_owned_by):
