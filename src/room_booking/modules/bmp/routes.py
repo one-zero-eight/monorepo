@@ -1,4 +1,5 @@
 # ruff: noqa: BLE001, B008
+import asyncio
 import datetime as dtm
 import json
 import time as tm
@@ -206,8 +207,39 @@ def _http_error_fields(exc: HTTPException) -> tuple[str | None, str | None]:
     return str(exc.detail), None
 
 
+STREAM_PING_INTERVAL_S = 15.0
+
+
 def _ndjson_line(payload: dict) -> str:
     return json.dumps(payload, ensure_ascii=False) + "\n"
+
+
+async def iter_with_idle_pings[T](source: AsyncIterator[T], interval_s: float) -> AsyncIterator[T | None]:
+    """Yield items from `source`, and `None` whenever it stays idle longer than `interval_s`."""
+    iterator = aiter(source)
+
+    async def take_next() -> T:
+        return await anext(iterator)
+
+    nxt = asyncio.create_task(take_next())
+    try:
+        while True:
+            done, _ = await asyncio.wait({nxt}, timeout=interval_s)
+            if not done:
+                yield None
+                continue
+            try:
+                yield nxt.result()
+            except StopAsyncIteration:
+                return
+            nxt = asyncio.create_task(take_next())
+    finally:
+        if not nxt.done():
+            nxt.cancel()
+            try:
+                await nxt
+            except asyncio.CancelledError, StopAsyncIteration:
+                pass
 
 
 def _item_event(*, index: str, title: str, result: BmpBatchItemResult) -> dict:
@@ -267,7 +299,14 @@ async def batch_auto_bookings(_: ApiKeyDep, request: BmpBatchRequest) -> Streami
                 )
 
         if pending_entries:
-            async for entry_index, result, sent_indexes in bmp_repository.iter_create_bookings_batch(pending_entries):
+            async for batch_event in iter_with_idle_pings(
+                bmp_repository.iter_create_bookings_batch(pending_entries),
+                STREAM_PING_INTERVAL_S,
+            ):
+                if batch_event is None:
+                    yield _ndjson_line({"event": "ping"})
+                    continue
+                entry_index, result, sent_indexes = batch_event
                 if sent_indexes is not None:
                     yield _ndjson_line(
                         {
@@ -296,4 +335,11 @@ async def batch_auto_bookings(_: ApiKeyDep, request: BmpBatchRequest) -> Streami
             f"took {tm.monotonic() - t_route:.3f}s"
         )
 
-    return StreamingResponse(events(), media_type="application/x-ndjson")
+    return StreamingResponse(
+        events(),
+        media_type="application/x-ndjson",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )

@@ -2,6 +2,7 @@ import asyncio
 import datetime as dtm
 from unittest.mock import AsyncMock
 
+import httpx
 import pytest
 from httpx import AsyncClient
 
@@ -388,6 +389,80 @@ async def test_batch_and_cancel_proxy_room_booking(
     assert cancel_body["status"] == "done"
     assert extra_id in cancel_body["cancel"]["cancelled"]
     mock_booking_client.cancel_auto_booking.assert_awaited_once_with("extra-1")
+
+
+@pytest.mark.asyncio
+async def test_batch_marks_ok_when_stream_drops_after_outlook_create(
+    authenticated_client: AsyncClient,
+    bookings_repo: ScheduleConfigRepository,
+    mock_booking_client: AsyncMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    _seed(bookings_repo, courses=_occurrence_courses())
+    mock_booking_client.get_all_bookings.return_value = []
+    captured: list[dict] = []
+
+    async def fake_stream(payloads):
+        captured.extend(payloads)
+        raise httpx.RemoteProtocolError(
+            "peer closed connection without sending complete message body (incomplete chunked read)"
+        )
+        yield
+
+    async def fake_auto_bookings(*_args, **_kwargs):
+        if not captured:
+            return []
+        payload = captured[0]
+        return [
+            _booking(
+                title=f"Auto: {payload['title']}",
+                start=str(payload["start"]),
+                end=str(payload["end"]),
+                room_id=str(payload["room_id"]),
+                categories=list(payload.get("categories") or []),
+            )
+        ]
+
+    mock_booking_client.stream_auto_bookings_batch = fake_stream
+    mock_booking_client.get_auto_bookings.side_effect = fake_auto_bookings
+
+    review = (await authenticated_client.get("/bookings/review")).json()
+    slot_id = review["programs"][0]["courses"][0]["components"][0]["slots"][0]["slot_id"]
+    response = await authenticated_client.post("/bookings/batch", json={"slot_ids": [slot_id], "conflict_modes": {}})
+    assert response.status_code == 200
+    body = await _wait_task(authenticated_client, response.json()["task_id"])
+    assert body["status"] == "done"
+    assert body["error"] is None
+    assert body["items"][0]["status"] == "ok"
+
+
+@pytest.mark.asyncio
+async def test_batch_does_not_leave_pending_when_stream_drops_unmatched(
+    authenticated_client: AsyncClient,
+    bookings_repo: ScheduleConfigRepository,
+    mock_booking_client: AsyncMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    _seed(bookings_repo, courses=_occurrence_courses())
+    mock_booking_client.get_all_bookings.return_value = []
+    mock_booking_client.get_auto_bookings.return_value = []
+
+    async def fake_stream(_payloads):
+        raise httpx.RemoteProtocolError("incomplete chunked read")
+        yield
+
+    mock_booking_client.stream_auto_bookings_batch = fake_stream
+
+    review = (await authenticated_client.get("/bookings/review")).json()
+    slot_id = review["programs"][0]["courses"][0]["components"][0]["slots"][0]["slot_id"]
+    response = await authenticated_client.post("/bookings/batch", json={"slot_ids": [slot_id], "conflict_modes": {}})
+    assert response.status_code == 200
+    body = await _wait_task(authenticated_client, response.json()["task_id"])
+    assert body["status"] == "done"
+    assert body["items"][0]["status"] == "error"
+    assert "incomplete chunked read" in (body["items"][0]["error"] or "")
 
 
 def test_collect_payloads_skips_conflicts_by_default() -> None:

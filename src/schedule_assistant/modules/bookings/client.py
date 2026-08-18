@@ -12,7 +12,9 @@ from src.schedule_assistant.modules.bookings.schemas import BookingItemResultSta
 from src.schedule_assistant.schema_base import ScheduleAssistantSchema
 
 HTTP_TIMEOUT_SECONDS = 300.0
-STREAM_TIMEOUT_SECONDS = 600.0
+# Read timeout is per-chunk of bytes. BMP sends `ping` while idle, but proxies
+# may swallow those; keep this aligned with the booking task wall clock.
+STREAM_TIMEOUT = httpx.Timeout(connect=30.0, read=3600.0, write=120.0, pool=30.0)
 
 
 class BookingDTO(ScheduleAssistantSchema):
@@ -62,6 +64,7 @@ class BmpStreamEventKind(StrEnum):
     SENT = "sent"
     ITEM = "item"
     DONE = "done"
+    PING = "ping"
 
 
 class BmpStreamEvent(ScheduleAssistantSchema):
@@ -145,7 +148,7 @@ class BookingClient:
                 "POST",
                 urljoin(self.url, "bmp/auto-bookings/batch"),
                 json={"bookings": bookings},
-                timeout=STREAM_TIMEOUT_SECONDS,
+                timeout=STREAM_TIMEOUT,
             ) as response,
         ):
             response.raise_for_status()

@@ -1,3 +1,4 @@
+import asyncio
 import json
 from unittest.mock import AsyncMock
 
@@ -165,3 +166,112 @@ def test_bmp_batch_valid_entry_streams_sent_then_item(
     assert events[2]["status"] == "ok"
     assert events[2]["title"] == "Auto"
     assert events[3] == {"event": "done"}
+
+
+def test_bmp_batch_emits_ping_while_create_is_idle(
+    room_booking_client: TestClient,
+    api_key_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from src.room_booking.modules.bmp import routes as bmp_routes
+
+    booking = Booking(
+        room_id="3.1",
+        title="Auto",
+        start=msk(2025, 6, 2, 10),
+        end=msk(2025, 6, 2, 11),
+        outlook_booking_id="auto-1",
+        outlook_entry_id=None,
+        attendees=None,
+    )
+
+    async def fake_iter(_entries):
+        await asyncio.sleep(0.05)
+        yield (None, None, [0])
+        yield (0, BmpBatchItemResult(status="ok", booking=booking, error=None), None)
+
+    monkeypatch.setattr(bmp_routes, "STREAM_PING_INTERVAL_S", 0.02)
+    monkeypatch.setattr(bmp_routes.bmp_repository, "iter_create_bookings_batch", fake_iter)
+
+    response = room_booking_client.post(
+        "/bmp/auto-bookings/batch",
+        headers=api_key_headers,
+        json={
+            "bookings": [
+                {
+                    "room_id": "3.1",
+                    "title": "Auto",
+                    "start": msk(2025, 6, 2, 10).isoformat(),
+                    "end": msk(2025, 6, 2, 11).isoformat(),
+                    "participant_emails": None,
+                }
+            ]
+        },
+    )
+    assert response.status_code == 200
+    events = _ndjson_events(response)
+    kinds = [event["event"] for event in events]
+    assert kinds[0] == "started"
+    assert "ping" in kinds
+    assert kinds[-1] == "done"
+    assert "sent" in kinds
+    assert "item" in kinds
+
+
+def test_bmp_batch_creates_in_chunks(
+    room_booking_client: TestClient,
+    api_key_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from src.room_booking.modules.bmp import repository as bmp_repository_module
+    from src.room_booking.modules.bmp import routes as bmp_routes
+
+    booking = Booking(
+        room_id="3.1",
+        title="Auto",
+        start=msk(2025, 6, 2, 10),
+        end=msk(2025, 6, 2, 11),
+        outlook_booking_id="auto-1",
+        outlook_entry_id=None,
+        attendees=None,
+    )
+    chunk_sizes: list[int] = []
+
+    async def fake_chunk(entries):
+        chunk_sizes.append(len(entries))
+        yield (None, None, list(range(len(entries))))
+        for index in range(len(entries)):
+            yield (index, BmpBatchItemResult(status="ok", booking=booking, error=None), None)
+
+    monkeypatch.setattr(bmp_repository_module, "BMP_CREATE_CHUNK_SIZE", 1)
+    monkeypatch.setattr(bmp_routes.bmp_repository, "_iter_create_bookings_chunk", fake_chunk)
+
+    response = room_booking_client.post(
+        "/bmp/auto-bookings/batch",
+        headers=api_key_headers,
+        json={
+            "bookings": [
+                {
+                    "room_id": "3.1",
+                    "title": "First",
+                    "start": msk(2025, 6, 2, 10).isoformat(),
+                    "end": msk(2025, 6, 2, 11).isoformat(),
+                    "participant_emails": None,
+                },
+                {
+                    "room_id": "3.1",
+                    "title": "Second",
+                    "start": msk(2025, 6, 2, 12).isoformat(),
+                    "end": msk(2025, 6, 2, 13).isoformat(),
+                    "participant_emails": None,
+                },
+            ]
+        },
+    )
+    assert response.status_code == 200
+    assert chunk_sizes == [1, 1]
+    events = _ndjson_events(response)
+    sent_indexes = [event["indexes"] for event in events if event["event"] == "sent"]
+    item_indexes = [event["index"] for event in events if event["event"] == "item"]
+    assert sent_indexes == [["0"], ["1"]]
+    assert item_indexes == ["0", "1"]

@@ -8,6 +8,7 @@ from fastapi import HTTPException, status
 
 from src.logging_ import logger
 from src.schedule_assistant.modules.bookings.client import BmpStreamEventKind, booking_client
+from src.schedule_assistant.modules.bookings.match import find_matching_auto_booking
 from src.schedule_assistant.modules.bookings.review import (
     ReviewIndex,
     build_review_index,
@@ -31,12 +32,13 @@ from src.schedule_assistant.modules.bookings.tasks import (
     get_task,
     save_task,
 )
+from src.schedule_assistant.modules.issues.booking_match import booking_as_dict
 from src.schedule_assistant.modules.issues.booking_slots import build_bookable_slots
 from src.schedule_assistant.modules.issues.booking_window import resolve_booking_fetch_window
 from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
 from src.schedule_assistant.modules.schedule_config.schemas import TermConfig
 
-TASK_TIMEOUT_SECONDS = 600
+TASK_TIMEOUT_SECONDS = 3600
 _background_tasks: set[asyncio.Task[None]] = set()
 
 
@@ -135,6 +137,55 @@ def _finish_item(
     task.current = item.title
 
 
+def _payload_for_item(item: BookingTaskItem, payloads: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not item.index.isdigit():
+        return None
+    index = int(item.index)
+    if index < 0 or index >= len(payloads):
+        return None
+    return payloads[index]
+
+
+async def _fetch_auto_booking_dicts() -> list[dict[str, Any]] | None:
+    term = schedule_config_repository.get_term()
+    if term is None:
+        return None
+    window = _booking_window(term)
+    if window is None:
+        return None
+    start, end = window
+    try:
+        bookings = await booking_client.get_auto_bookings(start, end)
+    except httpx.HTTPError as error:
+        logger.warning(f"Reconcile auto-bookings fetch failed: {error}")
+        return None
+    return [booking_as_dict(booking) for booking in bookings]
+
+
+async def _reconcile_unfinished_book_items(
+    task: BookingTask,
+    payloads: list[dict[str, Any]],
+    *,
+    stream_error: str,
+) -> None:
+    unfinished = [item for item in task.items if item.status not in _FINISHED_ITEM]
+    if not unfinished:
+        return
+
+    auto_dicts = await _fetch_auto_booking_dicts()
+    if auto_dicts is not None:
+        for item in unfinished:
+            payload = _payload_for_item(item, payloads)
+            if payload is None:
+                continue
+            if find_matching_auto_booking(payload, auto_dicts):
+                _finish_item(task, item, status=BookingItemResultStatus.OK, error=None)
+        unfinished = [item for item in unfinished if item.status not in _FINISHED_ITEM]
+
+    for item in unfinished:
+        _finish_item(task, item, status=BookingItemResultStatus.ERROR, error=stream_error)
+
+
 async def _run_book_task(task_id: str, request: BatchBookRequest) -> None:
     task = get_task(task_id)
     if task is None:
@@ -204,33 +255,44 @@ async def _book_task_body(task_id: str, request: BatchBookRequest) -> None:
 
     sent_ids: set[str] = set()
     by_index = _items_by_index(task)
-    async for event in booking_client.stream_auto_bookings_batch(payloads):
-        if event.event == BmpStreamEventKind.SENT:
-            for event_index in event.indexes or []:
-                sent_ids.add(event_index)
-                item = by_index.get(event_index)
-                if item is not None and item.status == BookingTaskItemStatus.PENDING:
-                    item.status = BookingTaskItemStatus.SENT
-                    task.current = item.title
-            task.sent = len(sent_ids)
-        elif event.event == BmpStreamEventKind.ITEM and event.index is not None:
-            item = by_index.get(event.index)
-            if item is not None:
-                if event.title:
-                    item.title = event.title
-                _finish_item(
-                    task,
-                    item,
-                    status=event.status or BookingItemResultStatus.ERROR,
-                    error=event.error,
-                )
-        elif event.event == BmpStreamEventKind.DONE:
-            break
+    stream_error: str | None = None
+    try:
+        async for event in booking_client.stream_auto_bookings_batch(payloads):
+            if event.event == BmpStreamEventKind.PING:
+                continue
+            if event.event == BmpStreamEventKind.SENT:
+                for event_index in event.indexes or []:
+                    sent_ids.add(event_index)
+                    item = by_index.get(event_index)
+                    if item is not None and item.status == BookingTaskItemStatus.PENDING:
+                        item.status = BookingTaskItemStatus.SENT
+                        task.current = item.title
+                task.sent = len(sent_ids)
+            elif event.event == BmpStreamEventKind.ITEM and event.index is not None:
+                item = by_index.get(event.index)
+                if item is not None:
+                    if event.title:
+                        item.title = event.title
+                    _finish_item(
+                        task,
+                        item,
+                        status=event.status or BookingItemResultStatus.ERROR,
+                        error=event.error,
+                    )
+            elif event.event == BmpStreamEventKind.DONE:
+                break
+            save_task(task)
+    except httpx.HTTPError as error:
+        stream_error = str(error)
+        logger.warning(f"BMP batch stream dropped: {error}")
         save_task(task)
 
-    for item in task.items:
-        if item.status not in _FINISHED_ITEM:
-            _finish_item(task, item, status=BookingItemResultStatus.ERROR, error="missing batch result")
+    if stream_error:
+        await _reconcile_unfinished_book_items(task, payloads, stream_error=stream_error)
+    else:
+        for item in task.items:
+            if item.status not in _FINISHED_ITEM:
+                _finish_item(task, item, status=BookingItemResultStatus.ERROR, error="missing batch result")
     task.status = BookingTaskStatus.DONE
     task.book = book_result_from_items(task.items)
     save_task(task)

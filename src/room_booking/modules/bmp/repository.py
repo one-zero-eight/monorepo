@@ -22,6 +22,7 @@ from src.room_booking.modules.bookings.tz_utils import to_msk
 
 AUTO_SUBJECT_PREFIX = "Auto: "
 AUTO_CATEGORY = "Auto"
+BMP_CREATE_CHUNK_SIZE = 16
 
 
 class BmpBatchCreateEntry(BaseModel):
@@ -246,7 +247,20 @@ class BmpCalendarRepository(ExchangeBookingRepository):
         t_batch = tm.monotonic()
         if not entries:
             return
+        for offset in range(0, len(entries), BMP_CREATE_CHUNK_SIZE):
+            chunk = entries[offset : offset + BMP_CREATE_CHUNK_SIZE]
+            async for local_index, result, sent_indexes in self._iter_create_bookings_chunk(chunk):
+                if sent_indexes is not None:
+                    yield (None, None, [offset + index for index in sent_indexes])
+                    continue
+                if local_index is None:
+                    continue
+                yield (offset + local_index, result, None)
+        logger.info(f"create_bookings_batch: finished {len(entries)} entries in {tm.monotonic() - t_batch:.3f}s")
 
+    async def _iter_create_bookings_chunk(
+        self, entries: list[BmpBatchCreateEntry]
+    ) -> AsyncIterator[tuple[int | None, BmpBatchItemResult | None, list[int] | None]]:
         items = [
             self._build_calendar_item(
                 room=entry.room,
@@ -345,8 +359,6 @@ class BmpCalendarRepository(ExchangeBookingRepository):
         ):
             index, result = await finished
             yield (index, result, None)
-
-        logger.info(f"create_bookings_batch: finished {len(entries)} entries in {tm.monotonic() - t_batch:.3f}s")
 
 
 bmp_repository = BmpCalendarRepository(
