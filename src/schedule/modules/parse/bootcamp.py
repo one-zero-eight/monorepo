@@ -6,7 +6,7 @@ from zlib import crc32
 import icalendar
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from src.schedule.modules.parse.utils import get_color
+from src.schedule.utils import get_color
 
 
 class Entry(BaseModel):

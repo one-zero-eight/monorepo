@@ -13,8 +13,8 @@ from src.schedule.modules.event_groups.repository import event_group_repository
 from src.schedule.modules.event_groups.schemas import CreateEventGroup
 from src.schedule.modules.parse.bootcamp import AcademicGroup, BootcampParser, BootcampParserConfig, BuddyGroup
 from src.schedule.modules.parse.cleaning import CleaningParser, CleaningParserConfig
-from src.schedule.modules.parse.utils import get_base_calendar, locate_ics_by_path, sluggify
 from src.schedule.modules.tags.schemas import CreateTag
+from src.schedule.utils import get_base_calendar, locate_ics_by_path, sluggify, validate_calendar
 
 router = APIRouter(prefix="/parse", tags=["Parse"], route_class=AutoDeriveResponsesAPIRoute)
 
@@ -23,8 +23,6 @@ async def save_ics(calendar: icalendar.Calendar, event_group_path: str, event_gr
     """
     Load .ics file to event group by event group id and save file to predefined path
     """
-    from src.schedule.modules.parse.utils import validate_calendar
-
     validate_calendar(calendar)
     content = calendar.to_ical()
     ics_path = locate_ics_by_path(event_group_path)

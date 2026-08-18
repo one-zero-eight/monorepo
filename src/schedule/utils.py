@@ -2,15 +2,20 @@ __all__ = [
     "TIMEZONE",
     "aware_utcnow",
     "get_base_calendar",
+    "get_color",
     "get_current_year",
     "locate_ics_by_path",
+    "nearest_weekday",
+    "sluggify",
     "validate_calendar",
     "validate_vevent",
 ]
 
 import datetime as dtm
+import re
 from pathlib import Path, PurePath
 from typing import Any, cast
+from zlib import crc32
 
 import dateutil.rrule
 import icalendar
@@ -20,9 +25,57 @@ from src.schedule.config import settings
 TIMEZONE = "Europe/Moscow"
 
 
+def nearest_weekday(date: dtm.date, day: int | str) -> dtm.date:
+    if isinstance(day, str):
+        day = ["mo", "tu", "we", "th", "fr", "sa", "su"].index(day[:2].lower())
+
+    days = (day - date.weekday() + 7) % 7
+    return date + dtm.timedelta(days=days)
+
+
 def get_current_year() -> int:
     """Returns current year."""
     return dtm.datetime.now(dtm.UTC).year
+
+
+_CSS3_COLORS = (
+    "brown",
+    "cadetblue",
+    "chocolate",
+    "darkcyan",
+    "darkgreen",
+    "darkmagenta",
+    "darkolivegreen",
+    "darkred",
+    "darkslateblue",
+    "darkslategray",
+    "dimgray",
+    "firebrick",
+    "forestgreen",
+    "gray",
+    "indianred",
+    "lightslategray",
+    "maroon",
+    "mediumvioletred",
+    "midnightblue",
+    "indigo",
+    "rebeccapurple",
+    "seagreen",
+    "teal",
+)
+
+
+def get_color(to_hash: str) -> str:
+    hash_ = crc32(to_hash.encode("utf-8"))
+    return _CSS3_COLORS[hash_ % len(_CSS3_COLORS)]
+
+
+def sluggify(s: str) -> str:
+    s = s.lower()
+    s = re.sub(r"[^a-z0-9а-я\s-]", " ", s)
+    s = re.sub(r"\s+", "-", s)
+    s = re.sub(r"-{2,}", "-", s)
+    return s
 
 
 def validate_calendar(calendar: icalendar.Calendar):
