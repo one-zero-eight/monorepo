@@ -5,9 +5,10 @@ import asyncio
 import datetime as dtm
 import time as tm
 from collections.abc import AsyncIterator, Iterable
-from typing import Literal, cast
+from typing import Any, Literal, Protocol, cast
 
 import exchangelib
+from exchangelib import Q
 from exchangelib.recurrence import Recurrence
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict
@@ -23,6 +24,64 @@ from src.room_booking.modules.bookings.tz_utils import to_msk
 AUTO_SUBJECT_PREFIX = "Auto: "
 AUTO_CATEGORY = "Auto"
 BMP_CREATE_CHUNK_SIZE = 16
+
+_AUTO_FIND_FIELDS = (
+    "id",
+    "changekey",
+    "subject",
+    "start",
+    "end",
+    "categories",
+    "required_attendees",
+    "resources",
+    "recurrence",
+    "uid",
+    "type",
+    "organizer",
+)
+
+
+class _CalendarItemWindowFields(Protocol):
+    start: Any
+    end: Any
+    recurrence: Any
+
+
+def _as_window_datetime(
+    value: dtm.date | dtm.datetime,
+    *,
+    clock: dtm.time,
+    tzinfo: dtm.tzinfo | None,
+) -> dtm.datetime:
+    if isinstance(value, dtm.datetime):
+        return to_msk(value)
+    return dtm.datetime.combine(value, clock, tzinfo=tzinfo)
+
+
+def auto_item_overlaps_window(
+    item: _CalendarItemWindowFields,
+    window_start: dtm.datetime,
+    window_end: dtm.datetime,
+) -> bool:
+    item_start = to_msk(cast(dtm.datetime, item.start))
+    item_end = to_msk(cast(dtm.datetime, item.end))
+    recurrence = item.recurrence
+    boundary = getattr(recurrence, "boundary", None) if recurrence is not None else None
+    if boundary is None:
+        return item_start < window_end and item_end > window_start
+
+    tzinfo = item_start.tzinfo
+    series_start = getattr(boundary, "start", None)
+    range_start = (
+        _as_window_datetime(series_start, clock=item_start.time(), tzinfo=tzinfo)
+        if series_start is not None
+        else item_start
+    )
+    series_end = getattr(boundary, "end", None)
+    if series_end is None:
+        return range_start < window_end
+    range_end = _as_window_datetime(series_end, clock=item_end.time(), tzinfo=tzinfo)
+    return range_start < window_end and range_end > window_start
 
 
 class BmpBatchCreateEntry(BaseModel):
@@ -118,6 +177,13 @@ class BmpCalendarRepository(ExchangeBookingRepository):
             return f"{extra}\n\n{footer}"
         return footer
 
+    def _auto_find_items(self, *fields: str) -> list[exchangelib.CalendarItem]:
+        return list(
+            self.selected_calendar.filter(
+                Q(categories__contains=AUTO_CATEGORY) | Q(subject__startswith=AUTO_SUBJECT_PREFIX)
+            ).only(*fields)
+        )
+
     def _list_auto_chain_items(
         self,
         chain_category: str = AUTO_CATEGORY,
@@ -137,22 +203,11 @@ class BmpCalendarRepository(ExchangeBookingRepository):
         end_msk = to_msk(end)
 
         def _fetch() -> list[exchangelib.CalendarItem]:
-            items = self.selected_calendar.view(
-                exchangelib.EWSDateTime.from_datetime(start_msk),
-                exchangelib.EWSDateTime.from_datetime(end_msk),
-            ).only(
-                "id",
-                "subject",
-                "start",
-                "end",
-                "categories",
-                "required_attendees",
-                "resources",
-                "recurrence",
-                "uid",
-                "type",
-            )
-            return [item for item in items if self._is_auto_calendar_item(item)]
+            return [
+                item
+                for item in self._auto_find_items(*_AUTO_FIND_FIELDS)
+                if self._is_auto_calendar_item(item) and auto_item_overlaps_window(item, start_msk, end_msk)
+            ]
 
         return await asyncio.to_thread(_fetch)
 
@@ -227,7 +282,15 @@ class BmpCalendarRepository(ExchangeBookingRepository):
         title_normalized = title.strip()
         window_start = start_msk - dtm.timedelta(hours=2)
         window_end = end_msk + dtm.timedelta(hours=2)
-        for item in await self._list_auto_calendar_items(window_start, window_end):
+
+        def _fetch_slot_occurrences() -> list[exchangelib.CalendarItem]:
+            items = self.selected_calendar.view(
+                exchangelib.EWSDateTime.from_datetime(window_start),
+                exchangelib.EWSDateTime.from_datetime(window_end),
+            ).only(*_AUTO_FIND_FIELDS)
+            return [item for item in items if self._is_auto_calendar_item(item)]
+
+        for item in await asyncio.to_thread(_fetch_slot_occurrences):
             booking = self.booking_from_calendar_item(item, room_id=room_id)
             if booking is None:
                 continue
