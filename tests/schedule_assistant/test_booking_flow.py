@@ -270,6 +270,71 @@ def test_unknown_room_is_not_bookable() -> None:
     assert slots[0].disabled_reason == "unknown room"
 
 
+def _split_lec_courses() -> CoursesConfig:
+    return CoursesConfig(
+        courses=[
+            CourseConfig(
+                name="Security",
+                section_code="core",
+                components=[
+                    CourseConfig.Component(
+                        tag="lec",
+                        student_groups=["G1"],
+                        sessions=[
+                            ComponentSessionSeries(
+                                audience=["G1"],
+                                weekly_pattern=[
+                                    WeeklyPatternSlot(
+                                        weekday=Weekday.TUESDAY,
+                                        start_time=dtm.time(10, 40),
+                                        end_time=dtm.time(12, 10),
+                                        room="107",
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
+                    CourseConfig.Component(
+                        tag="lec",
+                        student_groups=["G1"],
+                        sessions=[
+                            ComponentSessionSeries(
+                                audience=["G1"],
+                                weekly_pattern=[
+                                    WeeklyPatternSlot(
+                                        weekday=Weekday.WEDNESDAY,
+                                        start_time=dtm.time(12, 40),
+                                        end_time=dtm.time(14, 10),
+                                        room="106",
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        ],
+    )
+
+
+def test_split_lec_components_keep_distinct_slot_ids() -> None:
+    slots = build_bookable_slots(_split_lec_courses(), _sections(), _term(), {"107", "106"})
+    slot_ids = [slot.slot_id for slot in slots]
+    assert len(slot_ids) == 2
+    assert len(set(slot_ids)) == 2
+
+    index = build_review_index(slots, auto_bookings=[], existing_bookings=[])
+    review_slots = [
+        slot
+        for program in index.tree.programs
+        for course in program.courses
+        for component in course.components
+        for slot in component.slots
+    ]
+    assert {slot.slot_id for slot in review_slots} == set(slot_ids)
+    assert {slot.date.lower() for slot in review_slots} == {"tuesday", "wednesday"}
+
+
 @pytest.mark.asyncio
 async def test_review_lists_extra_auto_bookings(
     authenticated_client: AsyncClient,

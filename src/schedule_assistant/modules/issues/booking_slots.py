@@ -328,6 +328,7 @@ def _slots_from_weekly_pattern(
     instructor: str | list[str] | None,
     program_name: str,
     component_id: str,
+    component_index: int,
     pattern_index: int,
 ) -> list[BookableSlot]:
     edits = list(pattern.edits or [])
@@ -372,7 +373,7 @@ def _slots_from_weekly_pattern(
                 audiences=tuple(audiences),
                 program_name=program_name,
                 component_id=component_id,
-                slot_id=f"{component_id}#w{pattern_index}#e{resolved_date.isoformat()}",
+                slot_id=f"{component_id}#c{component_index}#w{pattern_index}#e{resolved_date.isoformat()}",
             )
         )
 
@@ -403,7 +404,7 @@ def _slots_from_weekly_pattern(
                 audiences=tuple(audiences),
                 program_name=program_name,
                 component_id=component_id,
-                slot_id=f"{component_id}#w{pattern_index}#s{segment_index}",
+                slot_id=f"{component_id}#c{component_index}#w{pattern_index}#s{segment_index}",
             )
         )
 
@@ -429,7 +430,7 @@ def build_bookable_slots(
     slots: list[BookableSlot] = []
 
     for course in courses.courses:
-        for component in course.components:
+        for component_index, component in enumerate(course.components):
             if not component.sessions:
                 continue
             for session_index, session in enumerate(component.sessions):
@@ -477,7 +478,7 @@ def build_bookable_slots(
                             audiences=tuple(audiences),
                             program_name=program_name,
                             component_id=component_id,
-                            slot_id=f"{component_id}#d{occurrence_index}",
+                            slot_id=f"{component_id}#c{component_index}#d{occurrence_index}",
                         )
                     )
 
@@ -495,6 +496,7 @@ def build_bookable_slots(
                             instructor=pattern_instructor,
                             program_name=program_name,
                             component_id=component_id,
+                            component_index=component_index,
                             pattern_index=pattern_index,
                         ),
                     )
