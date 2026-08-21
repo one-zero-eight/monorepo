@@ -198,7 +198,7 @@ class BookingClient:
             body["outlook_entry_id"] = outlook_entry_id
         async with httpx.AsyncClient(headers=self._headers) as client:
             response = await client.post(
-                urljoin(self.url, "bookings/cancel-extra"),
+                urljoin(self.url, "bmp/auto-bookings/cancel-extra"),
                 json=body,
                 timeout=HTTP_TIMEOUT_SECONDS,
             )

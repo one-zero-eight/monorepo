@@ -8,7 +8,6 @@ __all__ = ["router"]
 import datetime as dtm
 from typing import cast
 
-import exchangelib
 import httpx
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, EmailStr
@@ -16,11 +15,9 @@ from pydantic import BaseModel, EmailStr
 from src.inh_accounts_sdk import inh_accounts
 from src.logging_ import logger
 from src.room_booking.dependencies import ApiKeyDep, VerifiedDep, VerifiedOrApiKeyDep, VerifiedOrRoomTvDep
-from src.room_booking.modules.bmp.repository import bmp_repository
 from src.room_booking.modules.bookings.exchange_repository import exchange_booking_repository
 from src.room_booking.modules.bookings.schemas import (
     Booking,
-    CancelExtraBookingRequest,
     CreateBookingRequest,
     PatchBookingRequest,
 )
@@ -267,64 +264,6 @@ async def delete_booking_by_entry_id(
         outlook_entry_id=outlook_entry_id,
         room=room,
     )
-    if calendar_item is None:
-        raise HTTPException(404, "Booking not found")
-
-    if user.email not in get_emails_to_attendees_index(calendar_item):
-        raise HTTPException(403, "You are not the participant of the booking")
-
-    canceled = await exchange_booking_repository.cancel_booking(calendar_item, email=user.email)
-    if not canceled:
-        raise HTTPException(404, "Booking not found")
-
-
-@router.post(
-    "/bookings/cancel-extra",
-    status_code=200,
-    responses={
-        200: {"description": "Canceled successfully"},
-        403: {"description": "You are not the participant of the booking"},
-        404: {"description": "Booking not found OR Room not found"},
-    },
-)
-async def cancel_extra_booking(user: VerifiedDep, request: CancelExtraBookingRequest) -> None:
-    room = room_repository.get_by_id(room_id=request.room_id)
-    if room is None:
-        raise HTTPException(404, "Room not found")
-
-    if request.outlook_booking_id:
-        calendar_item = await exchange_booking_repository.get_booking(request.outlook_booking_id)
-        if calendar_item is None:
-            raise HTTPException(404, "Booking not found")
-        if user.email not in get_emails_to_attendees_index(calendar_item):
-            raise HTTPException(403, "You are not the participant of the booking")
-        await exchange_booking_repository.cancel_booking(calendar_item, email=user.email)
-        return
-
-    if await bmp_repository.cancel_auto_booking_by_slot(
-        room_id=request.room_id,
-        start=request.start,
-        end=request.end,
-        title=request.title,
-        email=user.email,
-    ):
-        return
-
-    calendar_item: exchangelib.CalendarItem | None = None
-    if request.outlook_entry_id:
-        calendar_item = await exchange_booking_repository.get_calendar_item_by_entry_id(
-            outlook_entry_id=request.outlook_entry_id,
-            room=room,
-        )
-
-    if calendar_item is None:
-        calendar_item = await exchange_booking_repository.find_calendar_item_for_room_slot(
-            room=room,
-            start=request.start,
-            end=request.end,
-            title=request.title,
-        )
-
     if calendar_item is None:
         raise HTTPException(404, "Booking not found")
 

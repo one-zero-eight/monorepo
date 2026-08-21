@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -133,75 +133,3 @@ def test_bookings_user_sets_related_to_me(
     )
     assert response.status_code == 200
     assert response.json()[0]["related_to_me"] is True
-
-
-def _calendar_item_with_user(email: str) -> MagicMock:
-    attendee = MagicMock()
-    attendee.mailbox.email_address = email
-    attendee.response_type = "Accept"
-    item = MagicMock()
-    item.required_attendees = [attendee]
-    item.resources = []
-    return item
-
-
-@pytest.fixture
-def mock_cancel_extra_by_booking_id(monkeypatch: pytest.MonkeyPatch):
-    from src.room_booking.modules.bookings import routes as bookings_routes
-
-    calendar_item = _calendar_item_with_user("test-user-1@innopolis.university")
-    get_booking = AsyncMock(return_value=calendar_item)
-    cancel_booking = AsyncMock(return_value=True)
-    monkeypatch.setattr(bookings_routes.exchange_booking_repository, "get_booking", get_booking)
-    monkeypatch.setattr(bookings_routes.exchange_booking_repository, "cancel_booking", cancel_booking)
-    return get_booking, cancel_booking
-
-
-@pytest.fixture
-def mock_cancel_extra_by_bmp_slot(monkeypatch: pytest.MonkeyPatch):
-    from src.room_booking.modules.bookings import routes as bookings_routes
-
-    cancel_slot = AsyncMock(return_value=True)
-    monkeypatch.setattr(bookings_routes.bmp_repository, "cancel_auto_booking_by_slot", cancel_slot)
-    return cancel_slot
-
-
-def test_cancel_extra_by_outlook_booking_id(
-    room_booking_client: TestClient,
-    user_headers: dict[str, str],
-    mock_cancel_extra_by_booking_id: tuple[AsyncMock, AsyncMock],
-):
-    get_booking, cancel_booking = mock_cancel_extra_by_booking_id
-    response = room_booking_client.post(
-        "/bookings/cancel-extra",
-        headers=user_headers,
-        json={
-            "room_id": "3.1",
-            "start": msk(2025, 6, 2, 10).isoformat(),
-            "end": msk(2025, 6, 2, 11).isoformat(),
-            "title": "Test booking",
-            "outlook_booking_id": "booking-1",
-        },
-    )
-    assert response.status_code == 200
-    get_booking.assert_awaited_once_with("booking-1")
-    cancel_booking.assert_awaited_once()
-
-
-def test_cancel_extra_by_bmp_slot(
-    room_booking_client: TestClient,
-    user_headers: dict[str, str],
-    mock_cancel_extra_by_bmp_slot: AsyncMock,
-):
-    response = room_booking_client.post(
-        "/bookings/cancel-extra",
-        headers=user_headers,
-        json={
-            "room_id": "3.1",
-            "start": msk(2025, 6, 2, 10).isoformat(),
-            "end": msk(2025, 6, 2, 11).isoformat(),
-            "title": "Auto booking",
-        },
-    )
-    assert response.status_code == 200
-    mock_cancel_extra_by_bmp_slot.assert_awaited_once()

@@ -18,7 +18,8 @@ from src.room_booking.modules.bmp.repository import (
     CancelAllAutoBookingsResult,
     bmp_repository,
 )
-from src.room_booking.modules.bookings.schemas import Booking, CreateBookingRequest
+from src.room_booking.modules.bookings.exchange_repository import exchange_booking_repository
+from src.room_booking.modules.bookings.schemas import Booking, CancelExtraBookingRequest, CreateBookingRequest
 from src.room_booking.modules.bookings.tz_utils import msk_timezone
 from src.room_booking.modules.rooms.repository import room_repository
 
@@ -177,6 +178,61 @@ async def delete_auto_booking(
     if calendar_item is None:
         raise HTTPException(404, "Booking not found")
     await bmp_repository.cancel_booking(calendar_item, email=bmp_repository.account_email)
+
+
+@router.post(
+    "/auto-bookings/cancel-extra",
+    status_code=200,
+    responses={
+        200: {"description": "Canceled successfully"},
+        404: {"description": "Booking not found OR Room not found"},
+    },
+)
+async def cancel_extra_auto_booking(_: ApiKeyDep, request: CancelExtraBookingRequest) -> None:
+    """Cancel an unmatched schedule-assistant auto-booking (service callers only)."""
+    room = room_repository.get_by_id(room_id=request.room_id)
+    if room is None:
+        raise HTTPException(404, "Room not found")
+
+    actor_email = bmp_repository.account_email
+
+    if request.outlook_booking_id:
+        calendar_item = await exchange_booking_repository.get_booking(request.outlook_booking_id)
+        if calendar_item is None:
+            raise HTTPException(404, "Booking not found")
+        await exchange_booking_repository.cancel_booking(calendar_item, email=actor_email)
+        return
+
+    if await bmp_repository.cancel_auto_booking_by_slot(
+        room_id=request.room_id,
+        start=request.start,
+        end=request.end,
+        title=request.title,
+        email=actor_email,
+    ):
+        return
+
+    calendar_item = None
+    if request.outlook_entry_id:
+        calendar_item = await exchange_booking_repository.get_calendar_item_by_entry_id(
+            outlook_entry_id=request.outlook_entry_id,
+            room=room,
+        )
+
+    if calendar_item is None:
+        calendar_item = await exchange_booking_repository.find_calendar_item_for_room_slot(
+            room=room,
+            start=request.start,
+            end=request.end,
+            title=request.title,
+        )
+
+    if calendar_item is None:
+        raise HTTPException(404, "Booking not found")
+
+    canceled = await exchange_booking_repository.cancel_booking(calendar_item, email=actor_email)
+    if not canceled:
+        raise HTTPException(404, "Booking not found")
 
 
 @router.post(

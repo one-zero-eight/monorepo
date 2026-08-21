@@ -275,3 +275,96 @@ def test_bmp_batch_creates_in_chunks(
     item_indexes = [event["index"] for event in events if event["event"] == "item"]
     assert sent_indexes == [["0"], ["1"]]
     assert item_indexes == ["0", "1"]
+
+
+def _calendar_item_with_user(email: str):
+    from unittest.mock import MagicMock
+
+    attendee = MagicMock()
+    attendee.mailbox.email_address = email
+    attendee.response_type = "Accept"
+    item = MagicMock()
+    item.required_attendees = [attendee]
+    item.resources = []
+    return item
+
+
+@pytest.fixture
+def mock_cancel_extra_by_booking_id(monkeypatch: pytest.MonkeyPatch):
+    from src.room_booking.modules.bmp import routes as bmp_routes
+
+    calendar_item = _calendar_item_with_user("test-user-1@innopolis.university")
+    get_booking = AsyncMock(return_value=calendar_item)
+    cancel_booking = AsyncMock(return_value=True)
+    monkeypatch.setattr(bmp_routes.exchange_booking_repository, "get_booking", get_booking)
+    monkeypatch.setattr(bmp_routes.exchange_booking_repository, "cancel_booking", cancel_booking)
+    return get_booking, cancel_booking
+
+
+@pytest.fixture
+def mock_cancel_extra_by_bmp_slot(monkeypatch: pytest.MonkeyPatch):
+    from src.room_booking.modules.bmp import routes as bmp_routes
+
+    cancel_slot = AsyncMock(return_value=True)
+    monkeypatch.setattr(bmp_routes.bmp_repository, "cancel_auto_booking_by_slot", cancel_slot)
+    return cancel_slot
+
+
+def test_cancel_extra_auto_booking_by_outlook_id(
+    room_booking_client: TestClient,
+    api_key_headers: dict[str, str],
+    mock_cancel_extra_by_booking_id: tuple[AsyncMock, AsyncMock],
+):
+    get_booking, cancel_booking = mock_cancel_extra_by_booking_id
+    response = room_booking_client.post(
+        "/bmp/auto-bookings/cancel-extra",
+        headers=api_key_headers,
+        json={
+            "room_id": "3.1",
+            "start": msk(2025, 6, 2, 10).isoformat(),
+            "end": msk(2025, 6, 2, 11).isoformat(),
+            "title": "Test booking",
+            "outlook_booking_id": "booking-1",
+        },
+    )
+    assert response.status_code == 200
+    get_booking.assert_awaited_once_with("booking-1")
+    cancel_booking.assert_awaited_once()
+
+
+def test_cancel_extra_auto_booking_requires_api_key(
+    room_booking_client: TestClient,
+    user_headers: dict[str, str],
+    mock_cancel_extra_by_bmp_slot: AsyncMock,
+):
+    response = room_booking_client.post(
+        "/bmp/auto-bookings/cancel-extra",
+        headers=user_headers,
+        json={
+            "room_id": "3.1",
+            "start": msk(2025, 6, 2, 10).isoformat(),
+            "end": msk(2025, 6, 2, 11).isoformat(),
+            "title": "Auto booking",
+        },
+    )
+    assert response.status_code == 401
+    mock_cancel_extra_by_bmp_slot.assert_not_awaited()
+
+
+def test_cancel_extra_auto_booking_by_slot(
+    room_booking_client: TestClient,
+    api_key_headers: dict[str, str],
+    mock_cancel_extra_by_bmp_slot: AsyncMock,
+):
+    response = room_booking_client.post(
+        "/bmp/auto-bookings/cancel-extra",
+        headers=api_key_headers,
+        json={
+            "room_id": "3.1",
+            "start": msk(2025, 6, 2, 10).isoformat(),
+            "end": msk(2025, 6, 2, 11).isoformat(),
+            "title": "Auto booking",
+        },
+    )
+    assert response.status_code == 200
+    mock_cancel_extra_by_bmp_slot.assert_awaited_once()
