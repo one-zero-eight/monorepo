@@ -88,11 +88,11 @@ def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@t
                     components=[
                         CourseConfig.Component(
                             tag="class",
-                            student_groups=["SUM26-AAI"],
+                            audience=["SUM26-AAI"],
                             sessions=[
                                 ComponentSessionSeries(
                                     audience=["SUM26-AAI"],
-                                    occurrences=[
+                                    dates_pattern=[
                                         SessionOccurrence(
                                             date=dtm.date(2026, 6, 8),
                                             start_time=dtm.time(14, 20),
@@ -119,7 +119,7 @@ def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@t
                     components=[
                         CourseConfig.Component(
                             tag="lec",
-                            student_groups=["B25-CSE-01"],
+                            audience=["B25-CSE-01"],
                             sessions=[
                                 ComponentSessionSeries(
                                     audience=["B25-CSE-01"],
@@ -183,7 +183,7 @@ async def test_group_schedule_accessible_for_any_authenticated_user(
     assert len(payload["courses"]) == 1
     assert payload["courses"][0]["name"] == "Agentic AI"
     assert payload["courses"][0]["components"][0]["sessions"][0]["audience"] == ["SUM26-AAI"]
-    assert len(payload["courses"][0]["components"][0]["sessions"][0]["occurrences"]) == 2
+    assert len(payload["courses"][0]["components"][0]["sessions"][0]["dates_pattern"]) == 2
 
 
 @pytest.mark.asyncio
@@ -211,9 +211,10 @@ async def test_instructor_schedule_returns_only_their_meetings(
     payload = response.json()
     assert len(payload["courses"]) == 2
     assert payload["courses"][0]["name"] == "Agentic AI"
-    assert len(payload["courses"][0]["components"][0]["sessions"][0]["occurrences"]) == 1
+    assert len(payload["courses"][0]["components"][0]["sessions"][0]["dates_pattern"]) == 1
     assert (
-        payload["courses"][0]["components"][0]["sessions"][0]["occurrences"][0]["instructor"] == "teacher@innopolis.ru"
+        payload["courses"][0]["components"][0]["sessions"][0]["dates_pattern"][0]["instructor"]
+        == "teacher@innopolis.ru"
     )
     assert payload["courses"][1]["name"] == "Algorithms"
     assert len(payload["courses"][1]["components"][0]["sessions"][0]["weekly_pattern"]) == 1

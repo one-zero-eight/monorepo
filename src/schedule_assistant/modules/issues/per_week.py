@@ -36,7 +36,7 @@ def per_week_issues_from_schedule_config(courses: CoursesConfig, sections: Secti
             if component.per_week is None:
                 continue
 
-            expanded_groups = expand_group_tokens(component.student_groups, selector_map)
+            expanded_groups = expand_group_tokens(component.audience, selector_map)
             if not expanded_groups:
                 continue
 
@@ -50,7 +50,7 @@ def per_week_issues_from_schedule_config(courses: CoursesConfig, sections: Secti
             for audience in audiences:
                 actual = _weekly_slot_count_for_audience(
                     sessions,
-                    component_groups=component.student_groups,
+                    component_groups=component.audience,
                     audience=audience,
                     selector_map=selector_map,
                     per_group=component.per_group,

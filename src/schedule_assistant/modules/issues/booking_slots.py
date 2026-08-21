@@ -416,7 +416,7 @@ def _slots_from_weekly_pattern(
 def _session_audiences(component: CourseConfig.Component, session: ComponentSessionSeries) -> list[str]:
     if session.audience:
         return list(session.audience)
-    return list(component.student_groups)
+    return list(component.audience)
 
 
 def build_bookable_slots(
@@ -452,12 +452,12 @@ def build_bookable_slots(
                     f"{program_name}|{course.name}|{component.tag}|{_audiences_key(audiences)}|s{session_index}"
                 )
                 instructor = None
-                if session.occurrences:
-                    instructor = session.occurrences[0].instructor
+                if session.dates_pattern:
+                    instructor = session.dates_pattern[0].instructor
                 elif session.weekly_pattern:
                     instructor = session.weekly_pattern[0].instructor
 
-                for occurrence_index, occurrence in enumerate(session.occurrences or []):
+                for occurrence_index, occurrence in enumerate(session.dates_pattern or []):
                     start_time = occurrence.start_time.strftime("%H:%M:%S")
                     end_time = occurrence.end_time.strftime("%H:%M:%S")
                     room = _normalize_room(occurrence.room)

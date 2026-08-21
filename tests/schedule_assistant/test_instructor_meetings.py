@@ -40,7 +40,7 @@ def test_occurrence_counts_once() -> None:
                     sessions=[
                         ComponentSessionSeries(
                             audience=["G1"],
-                            occurrences=[
+                            dates_pattern=[
                                 SessionOccurrence(
                                     date=dtm.date(2026, 9, 2),
                                     start_time=dtm.time(9, 0),

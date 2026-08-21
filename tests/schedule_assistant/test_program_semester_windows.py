@@ -230,7 +230,7 @@ def test_booking_slots_respect_program_semester() -> None:
                 components=[
                     CourseConfig.Component(
                         tag="lab",
-                        student_groups=["B26-CSE-01"],
+                        audience=["B26-CSE-01"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["B26-CSE-01"],

@@ -186,7 +186,7 @@ def discouraged_opportunities_from_config(cfg: ScheduleConfig) -> int:
         for comp in course.components:
             if not comp.instructor_pool:
                 continue
-            groups = expand_groups(comp.student_groups, selector_map)
+            groups = expand_groups(comp.audience, selector_map)
             if not groups:
                 continue
             audiences = [[group] for group in groups] if comp.per_group else [groups]

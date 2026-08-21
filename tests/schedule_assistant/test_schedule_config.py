@@ -247,11 +247,11 @@ async def test_non_moderator_sees_only_scheduled_instructors(
             components=[
                 CourseConfig.Component(
                     tag="class",
-                    student_groups=["SUM26-AAI"],
+                    audience=["SUM26-AAI"],
                     sessions=[
                         ComponentSessionSeries(
                             audience=["SUM26-AAI"],
-                            occurrences=[
+                            dates_pattern=[
                                 SessionOccurrence(
                                     date=dtm.date(2026, 6, 8),
                                     start_time=dtm.time(14, 20),
@@ -328,11 +328,11 @@ async def test_moderator_sees_all_instructors(
             components=[
                 CourseConfig.Component(
                     tag="class",
-                    student_groups=["SUM26-AAI"],
+                    audience=["SUM26-AAI"],
                     sessions=[
                         ComponentSessionSeries(
                             audience=["SUM26-AAI"],
-                            occurrences=[
+                            dates_pattern=[
                                 SessionOccurrence(
                                     date=dtm.date(2026, 6, 8),
                                     start_time=dtm.time(14, 20),
@@ -588,7 +588,7 @@ async def test_instructor_meetings_counts_endpoint(
             components=[
                 CourseConfig.Component(
                     tag="lab",
-                    student_groups=["G1"],
+                    audience=["G1"],
                     sessions=[
                         ComponentSessionSeries(
                             audience=["G1"],

@@ -121,7 +121,7 @@ def test_validate_course_components_rejects_unknown_tag() -> None:
                 name="Math",
                 section_code="core",
                 components=[
-                    CourseConfig.Component(tag="seminar", student_groups=[], sessions=[]),
+                    CourseConfig.Component(tag="seminar", audience=[], sessions=[]),
                 ],
             )
         ]
@@ -146,7 +146,7 @@ def test_validate_course_components_allows_listed_tag() -> None:
                 name="Math",
                 section_code="core",
                 components=[
-                    CourseConfig.Component(tag="lec", student_groups=[], sessions=[]),
+                    CourseConfig.Component(tag="lec", audience=[], sessions=[]),
                 ],
             )
         ]
@@ -170,7 +170,7 @@ def test_validate_course_components_skips_tag_check_when_enum_empty() -> None:
                 name="Math",
                 section_code="core",
                 components=[
-                    CourseConfig.Component(tag="anything", student_groups=[], sessions=[]),
+                    CourseConfig.Component(tag="anything", audience=[], sessions=[]),
                 ],
             )
         ]

@@ -320,8 +320,8 @@ def _iter_flat_meetings(schedule: CoursesConfig, cfg: ScheduleConfig) -> Iterato
                         )
                     continue
 
-                if series.occurrences:
-                    for occurrence in series.occurrences:
+                if series.dates_pattern:
+                    for occurrence in series.dates_pattern:
                         day = list(Weekday)[occurrence.date.weekday()].value
                         yield FlatMeeting(
                             course_idx=c_idx,
@@ -388,7 +388,7 @@ def _back_to_back_lec_tut_counts(cfg: ScheduleConfig) -> tuple[int, int]:
         tut_groups_list: list[set[str]] = []
         for c in course.components:
             tag = str(c.tag).lower()
-            groups = set(expand_groups(c.student_groups, selector_map))
+            groups = set(expand_groups(c.audience, selector_map))
             if tag == "lec":
                 lec_groups_list.append(groups)
             elif tag == "tut":
@@ -438,12 +438,12 @@ def _lec_tut_lab_rows(cfg: ScheduleConfig) -> list[tuple[int, int, int, int | No
         if not tuts or len(lecs) != 1:
             continue
         lec_i, lec = lecs[0]
-        lec_groups = set(expand_groups(lec.student_groups, selector_map))
+        lec_groups = set(expand_groups(lec.audience, selector_map))
         for tut_i, tut in tuts:
-            tut_groups = set(expand_groups(tut.student_groups, selector_map))
+            tut_groups = set(expand_groups(tut.audience, selector_map))
             if labs:
                 for lab_i, lab in labs:
-                    lab_groups = set(expand_groups(lab.student_groups, selector_map))
+                    lab_groups = set(expand_groups(lab.audience, selector_map))
                     for g in sorted(lec_groups & tut_groups & lab_groups):
                         rows.append((c_idx, lec_i, tut_i, lab_i, g))
             else:
@@ -471,12 +471,12 @@ def _same_day_lec_tut_lab_total(cfg: ScheduleConfig) -> int:
         labs = [c for c in course.components if str(c.tag).lower() == "lab"]
         if not tuts or len(lecs) != 1:
             continue
-        lec_groups = set(expand_groups(lecs[0].student_groups, selector_map))
+        lec_groups = set(expand_groups(lecs[0].audience, selector_map))
         for tut in tuts:
-            tut_groups = set(expand_groups(tut.student_groups, selector_map))
+            tut_groups = set(expand_groups(tut.audience, selector_map))
             if labs:
                 for lab in labs:
-                    lab_groups = set(expand_groups(lab.student_groups, selector_map))
+                    lab_groups = set(expand_groups(lab.audience, selector_map))
                     total += len(lec_groups | tut_groups | lab_groups)
             else:
                 total += len(lec_groups | tut_groups)
@@ -593,7 +593,7 @@ def _expected_audience_meeting_counts(cfg: ScheduleConfig) -> dict[tuple[str, st
     out: dict[tuple[str, str, tuple[str, ...]], int] = {}
     for course in cfg.courses:
         for comp in course.components:
-            groups = expand_groups(comp.student_groups, selector_map)
+            groups = expand_groups(comp.audience, selector_map)
             if not groups:
                 continue
             audiences = [[g] for g in groups] if comp.per_group else [groups]
@@ -609,7 +609,7 @@ def _actual_audience_meeting_counts(schedule: CoursesConfig) -> dict[tuple[str, 
         for comp in course.components:
             for series in comp.sessions or []:
                 key = (course.name, str(comp.tag), tuple(series.audience))
-                meeting_count = len(series.weekly_pattern or []) + len(series.occurrences or [])
+                meeting_count = len(series.weekly_pattern or []) + len(series.dates_pattern or [])
                 out[key] = out.get(key, 0) + meeting_count
     return out
 

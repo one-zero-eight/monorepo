@@ -35,8 +35,8 @@ def collect_scheduled_instructor_tokens(courses: list[CourseConfig]) -> set[str]
             if not component.sessions:
                 continue
             for session in component.sessions:
-                if session.occurrences:
-                    for occurrence in session.occurrences:
+                if session.dates_pattern:
+                    for occurrence in session.dates_pattern:
                         if occurrence.instructor is None:
                             continue
                         if isinstance(occurrence.instructor, list):
@@ -105,13 +105,13 @@ def _filter_session_for_instructor(
     session: ComponentSessionSeries,
     identity: set[str],
 ) -> ComponentSessionSeries | None:
-    filtered_occurrences = _filter_occurrences(session.occurrences, identity)
+    filtered_occurrences = _filter_occurrences(session.dates_pattern, identity)
     filtered_weekly_pattern = _filter_weekly_pattern(session.weekly_pattern, identity)
     if not filtered_occurrences and not filtered_weekly_pattern:
         return None
     return session.model_copy(
         update={
-            "occurrences": filtered_occurrences,
+            "dates_pattern": filtered_occurrences,
             "weekly_pattern": filtered_weekly_pattern,
         },
     )

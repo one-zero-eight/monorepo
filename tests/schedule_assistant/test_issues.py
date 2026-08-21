@@ -196,11 +196,11 @@ def test_meetings_from_schedule_config() -> None:
                 components=[
                     CourseConfig.Component(
                         tag="class",
-                        student_groups=["SUM26-AAI"],
+                        audience=["SUM26-AAI"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["SUM26-AAI"],
-                                occurrences=[
+                                dates_pattern=[
                                     SessionOccurrence(
                                         date=dtm.date(2026, 6, 8),
                                         start_time=dtm.time(14, 20),
@@ -220,7 +220,7 @@ def test_meetings_from_schedule_config() -> None:
                 components=[
                     CourseConfig.Component(
                         tag="lec",
-                        student_groups=["B25-CSE-01"],
+                        audience=["B25-CSE-01"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["B25-CSE-01"],
@@ -351,7 +351,7 @@ def test_co_teaching_produces_single_meeting() -> None:
                 components=[
                     CourseConfig.Component(
                         tag="lec",
-                        student_groups=["G1"],
+                        audience=["G1"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["G1"],
@@ -393,7 +393,7 @@ def test_unplaced_issues_from_schedule_config() -> None:
                 name="Unplaced Course",
                 section_code="core",
                 components=[
-                    CourseConfig.Component(tag="lec", student_groups=["G1"]),
+                    CourseConfig.Component(tag="lec", audience=["G1"]),
                 ],
             ),
         ],
@@ -413,7 +413,7 @@ def test_unplaced_issues_from_schedule_config() -> None:
                 components=[
                     CourseConfig.Component(
                         tag="lab",
-                        student_groups=["G1"],
+                        audience=["G1"],
                         sessions=[
                             ComponentSessionSeries(audience=["G1"]),
                             ComponentSessionSeries(
@@ -517,7 +517,7 @@ async def test_issues_check_endpoint_missing_room_and_instructor(
                     components=[
                         CourseConfig.Component(
                             tag="lec",
-                            student_groups=["G1"],
+                            audience=["G1"],
                             sessions=[
                                 ComponentSessionSeries(
                                     audience=["G1"],
@@ -600,11 +600,11 @@ async def test_issues_check_endpoint(
                     components=[
                         CourseConfig.Component(
                             tag="lec",
-                            student_groups=["G1"],
+                            audience=["G1"],
                             sessions=[
                                 ComponentSessionSeries(
                                     audience=["G1"],
-                                    occurrences=[
+                                    dates_pattern=[
                                         SessionOccurrence(
                                             date=dtm.date(2026, 6, 8),
                                             start_time=dtm.time(14, 20),
@@ -624,11 +624,11 @@ async def test_issues_check_endpoint(
                     components=[
                         CourseConfig.Component(
                             tag="lec",
-                            student_groups=["G1"],
+                            audience=["G1"],
                             sessions=[
                                 ComponentSessionSeries(
                                     audience=["G1"],
-                                    occurrences=[
+                                    dates_pattern=[
                                         SessionOccurrence(
                                             date=dtm.date(2026, 6, 8),
                                             start_time=dtm.time(14, 20),

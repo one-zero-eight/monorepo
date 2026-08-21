@@ -1432,7 +1432,7 @@ def solve_schedule(
                 relates_to_tuple = tuple(int(v) for v in relates_to_value)
             else:
                 relates_to_tuple = (int(relates_to_value),)
-            groups = expand_groups(cls.student_groups, selector_map)
+            groups = expand_groups(cls.audience, selector_map)
             if not groups:
                 continue
 
@@ -1621,7 +1621,7 @@ def solve_schedule(
                 per_week=cls_cfg.per_week,
                 per_semester=cls_cfg.per_semester,
                 instructor_pool=list(cls_cfg.instructor_pool),
-                student_groups=list(cls_cfg.student_groups),
+                audience=list(cls_cfg.audience),
                 expected_enrollment=cls_cfg.expected_enrollment,
                 per_group=cls_cfg.per_group,
                 relates_to=cls_cfg.relates_to,

@@ -52,11 +52,11 @@ async def test_unbooked_issue_when_no_matching_booking() -> None:
                 components=[
                     CourseConfig.Component(
                         tag="lec",
-                        student_groups=["G1"],
+                        audience=["G1"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["G1"],
-                                occurrences=[
+                                dates_pattern=[
                                     SessionOccurrence(
                                         date=dtm.date(2026, 6, 8),
                                         start_time=dtm.time(14, 20),
@@ -101,11 +101,11 @@ async def test_no_unbooked_issue_when_booking_matches() -> None:
                 components=[
                     CourseConfig.Component(
                         tag="lec",
-                        student_groups=["G1"],
+                        audience=["G1"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["G1"],
-                                occurrences=[
+                                dates_pattern=[
                                     SessionOccurrence(
                                         date=dtm.date(2026, 6, 8),
                                         start_time=dtm.time(14, 20),

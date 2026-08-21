@@ -31,7 +31,7 @@ def test_filter_matches_instructor_by_display_name() -> None:
                     tag="class",
                     sessions=[
                         ComponentSessionSeries(
-                            occurrences=[
+                            dates_pattern=[
                                 SessionOccurrence(
                                     date=dtm.date(2026, 6, 8),
                                     start_time=dtm.time(14, 20),
@@ -101,7 +101,7 @@ def test_filter_courses_keeps_only_matching_occurrences() -> None:
                     tag="class",
                     sessions=[
                         ComponentSessionSeries(
-                            occurrences=[
+                            dates_pattern=[
                                 SessionOccurrence(
                                     date=dtm.date(2026, 6, 8),
                                     start_time=dtm.time(14, 20),
@@ -126,7 +126,7 @@ def test_filter_courses_keeps_only_matching_occurrences() -> None:
     assert filtered
     assert filtered[0].components
     assert filtered[0].components[0].sessions
-    occurrences = filtered[0].components[0].sessions[0].occurrences
-    assert occurrences is not None
-    assert len(occurrences) == 1
-    assert occurrences[0].instructor == "teacher@innopolis.ru"
+    dates_pattern = filtered[0].components[0].sessions[0].dates_pattern
+    assert dates_pattern is not None
+    assert len(dates_pattern) == 1
+    assert dates_pattern[0].instructor == "teacher@innopolis.ru"

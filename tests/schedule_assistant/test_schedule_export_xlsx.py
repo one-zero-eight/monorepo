@@ -113,7 +113,7 @@ def _sample_config() -> ScheduleConfig:
                 components=[
                     CourseConfig.Component(
                         tag="lec",
-                        student_groups=["@BS_Y1/Software Engineering"],
+                        audience=["@BS_Y1/Software Engineering"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["@BS_Y1/Software Engineering"],
@@ -141,11 +141,11 @@ def _sample_config() -> ScheduleConfig:
                 components=[
                     CourseConfig.Component(
                         tag="lab",
-                        student_groups=["ELEC-01"],
+                        audience=["ELEC-01"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["ELEC-01"],
-                                occurrences=[
+                                dates_pattern=[
                                     SessionOccurrence(
                                         date=dtm.date(2026, 9, 4),
                                         start_time=dtm.time(12, 40),
@@ -262,7 +262,7 @@ def test_export_has_sheet_per_section_with_default_layouts() -> None:
 
 def test_subjects_groups_track_only_when_complete() -> None:
     config = _sample_config()
-    config.courses[0].components[0].student_groups = ["B25-CSE-01"]
+    config.courses[0].components[0].audience = ["B25-CSE-01"]
     session = config.courses[0].components[0].sessions
     assert session is not None
     session[0].audience = ["B25-CSE-01"]
@@ -283,7 +283,7 @@ def test_subjects_section_block_has_outer_border() -> None:
             components=[
                 CourseConfig.Component(
                     tag="lec",
-                    student_groups=["@BS_Y1/Software Engineering"],
+                    audience=["@BS_Y1/Software Engineering"],
                     sessions=[
                         ComponentSessionSeries(
                             audience=["@BS_Y1/Software Engineering"],
@@ -367,7 +367,7 @@ def test_groups_export_repeats_time_column_per_program() -> None:
             components=[
                 CourseConfig.Component(
                     tag="lec",
-                    student_groups=["B24-CSE-01"],
+                    audience=["B24-CSE-01"],
                     sessions=[
                         ComponentSessionSeries(
                             audience=["B24-CSE-01"],

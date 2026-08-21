@@ -254,10 +254,10 @@ class ComponentSessionSeries(SettingBaseModel):
     """Placed meeting series for a component (electives use calendar dates)."""
 
     audience: list[str] = []
-    "Student group ids for this session series (subset of component student_groups)"
+    "Student group ids for this session series (subset of component audience)"
     weekly_pattern: list[WeeklyPatternSlot] | None = None
     "Fixed weekly slots for core courses"
-    occurrences: list[SessionOccurrence] | None = None
+    dates_pattern: list[SessionOccurrence] | None = None
     "Concrete placed meetings (for electives and other calendar-date series)"
 
 
@@ -278,7 +278,7 @@ class CourseConfig(SettingBaseModel):
         - [nikolay_kudasov, anatoliy_baskakov] # any of them can teach this class
         - [[nikolay_kudasov, anatoliy_baskakov], [alexey_stepanov]] # any of them can teach this class, either nikolay_kudasov with anatoliy_baskakov co-teaching, or alexey_stepanov teaching alone
         """
-        student_groups: list[str] = []
+        audience: list[str] = []
         """
         Who attends: each entry is a group id or an ``@`` selector from ``sections`` hierarchy (union if several).
 
@@ -289,9 +289,9 @@ class CourseConfig(SettingBaseModel):
         - ``[ENG-eap1]`` or ``[B22-CBS-02]`` — direct group id
         """
         expected_enrollment: int | None = None
-        "Expected enrollment used for room sizing, defer from sum(student_group.size for groups in student_groups) if None"
+        "Expected enrollment used for room sizing, defer from sum(student_group.size for groups in audience) if None"
         per_group: bool = False
-        "Whether one class instance should be created per group, if True, then one class instance will be created for each group in student_groups. It is useful for lab classes where each group needs a separate meeting. If false, then one class instance (meeting) will be created for all groups in student_groups, so they will be effectively in same time, same room, same instructor."
+        "Whether one class instance should be created per group, if True, then one class instance will be created for each group in audience. It is useful for lab classes where each group needs a separate meeting. If false, then one class instance (meeting) will be created for all groups in audience, so they will be effectively in same time, same room, same instructor."
         relates_to: int | list[int] | None = None
         "Optional component index or list of indices that this component depends on for same-day/order/back-to-back preferences."
         sessions: list[ComponentSessionSeries] | None = None

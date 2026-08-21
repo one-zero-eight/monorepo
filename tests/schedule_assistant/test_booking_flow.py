@@ -89,11 +89,11 @@ def _occurrence_courses(*, room: str | None = "107") -> CoursesConfig:
                 components=[
                     CourseConfig.Component(
                         tag="lec",
-                        student_groups=["G1"],
+                        audience=["G1"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["G1"],
-                                occurrences=[
+                                dates_pattern=[
                                     SessionOccurrence(
                                         date=dtm.date(2026, 6, 8),
                                         start_time=dtm.time(14, 20),
@@ -119,7 +119,7 @@ def _weekly_courses(*, room: str | None = "107") -> CoursesConfig:
                 components=[
                     CourseConfig.Component(
                         tag="lec",
-                        student_groups=["G1"],
+                        audience=["G1"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["G1"],
@@ -279,7 +279,7 @@ def _split_lec_courses() -> CoursesConfig:
                 components=[
                     CourseConfig.Component(
                         tag="lec",
-                        student_groups=["G1"],
+                        audience=["G1"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["G1"],
@@ -296,7 +296,7 @@ def _split_lec_courses() -> CoursesConfig:
                     ),
                     CourseConfig.Component(
                         tag="lec",
-                        student_groups=["G1"],
+                        audience=["G1"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["G1"],

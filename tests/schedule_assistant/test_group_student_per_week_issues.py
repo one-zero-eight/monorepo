@@ -185,7 +185,7 @@ def test_per_week_issue_when_slot_count_mismatch() -> None:
                     CourseConfig.Component(
                         tag="lec",
                         per_week=2,
-                        student_groups=["G1"],
+                        audience=["G1"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["G1"],
@@ -232,7 +232,7 @@ def test_no_per_week_issue_when_count_matches() -> None:
                     CourseConfig.Component(
                         tag="lec",
                         per_week=1,
-                        student_groups=["G1"],
+                        audience=["G1"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["G1"],
@@ -274,7 +274,7 @@ def test_per_group_shared_series_counts_for_each_group() -> None:
                         tag="lab",
                         per_week=1,
                         per_group=True,
-                        student_groups=["G1", "G2"],
+                        audience=["G1", "G2"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["G1", "G2"],
@@ -325,7 +325,7 @@ def test_per_group_shared_series_still_flags_short_count() -> None:
                         tag="lab",
                         per_week=2,
                         per_group=True,
-                        student_groups=["G1", "G2"],
+                        audience=["G1", "G2"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["G1", "G2"],

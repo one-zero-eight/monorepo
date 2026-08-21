@@ -157,15 +157,15 @@ def meetings_from_schedule_config(courses: CoursesConfig, sections: SectionsConf
         for component in course.components:
             if not component.sessions:
                 continue
-            component_groups = component.student_groups
+            component_groups = component.audience
             for session in component.sessions:
                 group_codes = _group_codes_for_session(component_groups, session, selector_map)
                 students_number = component.expected_enrollment
                 if students_number is None:
                     students_number = _enrollment_size(group_codes, sections)
 
-                if session.occurrences:
-                    for occurrence in session.occurrences:
+                if session.dates_pattern:
+                    for occurrence in session.dates_pattern:
                         meetings.append(
                             _meeting_from_occurrence(
                                 course,
@@ -191,7 +191,7 @@ def meetings_from_schedule_config(courses: CoursesConfig, sections: SectionsConf
 
 
 def _session_is_placed(session: ComponentSessionSeries) -> bool:
-    return bool(session.weekly_pattern) or bool(session.occurrences)
+    return bool(session.weekly_pattern) or bool(session.dates_pattern)
 
 
 def unplaced_issues_from_schedule_config(courses: CoursesConfig, sections: SectionsConfig) -> list[UnplacedIssue]:
@@ -202,7 +202,7 @@ def unplaced_issues_from_schedule_config(courses: CoursesConfig, sections: Secti
         for component in course.components:
             sessions = component.sessions or []
             if not sessions:
-                group_codes = tuple(sorted(expand_group_tokens(component.student_groups, selector_map)))
+                group_codes = tuple(sorted(expand_group_tokens(component.audience, selector_map)))
                 issue = UnplacedIssue(
                     issue_type=IssueTypeEnum.UNPLACED,
                     course_name=course.name,
@@ -216,7 +216,7 @@ def unplaced_issues_from_schedule_config(courses: CoursesConfig, sections: Secti
             for session in sessions:
                 if _session_is_placed(session):
                     continue
-                group_codes = _group_codes_for_session(component.student_groups, session, selector_map)
+                group_codes = _group_codes_for_session(component.audience, session, selector_map)
                 issue = UnplacedIssue(
                     issue_type=IssueTypeEnum.UNPLACED,
                     course_name=course.name,

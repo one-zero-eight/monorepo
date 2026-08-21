@@ -62,7 +62,7 @@ def _edits_by_week(
 def _session_audiences(component: CourseConfig.Component, session) -> list[str]:
     if session.audience:
         return list(session.audience)
-    return list(component.student_groups)
+    return list(component.audience)
 
 
 def count_instructor_meetings_in_term(
@@ -108,7 +108,7 @@ def count_meetings_by_instructor(
                 if window is None:
                     continue
 
-                for occurrence in session.occurrences or []:
+                for occurrence in session.dates_pattern or []:
                     bump(occurrence.instructor)
 
                 for slot in session.weekly_pattern or []:

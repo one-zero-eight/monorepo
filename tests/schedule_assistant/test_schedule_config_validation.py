@@ -93,7 +93,7 @@ def test_validate_courses_rejects_unknown_student_group() -> None:
                 components=[
                     CourseConfig.Component(
                         tag="class",
-                        student_groups=["UNKNOWN-GROUP"],
+                        audience=["UNKNOWN-GROUP"],
                     ),
                 ],
             ),
@@ -129,11 +129,11 @@ def test_validate_courses_accepts_online_room() -> None:
                 components=[
                     CourseConfig.Component(
                         tag="class",
-                        student_groups=["SUM26-AAI"],
+                        audience=["SUM26-AAI"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["SUM26-AAI"],
-                                occurrences=[
+                                dates_pattern=[
                                     SessionOccurrence(
                                         date=dtm.date(2026, 6, 8),
                                         start_time=dtm.time(14, 20),
@@ -153,7 +153,7 @@ def test_validate_courses_accepts_online_room() -> None:
                 components=[
                     CourseConfig.Component(
                         tag="lec",
-                        student_groups=["SUM26-AAI"],
+                        audience=["SUM26-AAI"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["SUM26-AAI"],
@@ -188,7 +188,7 @@ def test_validate_rooms_update_ignores_online_references() -> None:
                         tag="class",
                         sessions=[
                             ComponentSessionSeries(
-                                occurrences=[
+                                dates_pattern=[
                                     SessionOccurrence(
                                         date=dtm.date(2026, 6, 8),
                                         start_time=dtm.time(14, 20),
@@ -225,7 +225,7 @@ def test_validate_courses_rejects_non_canonical_online_rooms(invalid_room: str) 
                         tag="class",
                         sessions=[
                             ComponentSessionSeries(
-                                occurrences=[
+                                dates_pattern=[
                                     SessionOccurrence(
                                         date=dtm.date(2026, 6, 8),
                                         start_time=dtm.time(14, 20),
@@ -268,11 +268,11 @@ def test_validate_courses_rejects_unknown_instructor() -> None:
                 components=[
                     CourseConfig.Component(
                         tag="class",
-                        student_groups=["SUM26-AAI"],
+                        audience=["SUM26-AAI"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["SUM26-AAI"],
-                                occurrences=[
+                                dates_pattern=[
                                     SessionOccurrence(
                                         date=dtm.date(2026, 6, 8),
                                         start_time=dtm.time(14, 20),
@@ -315,7 +315,7 @@ def test_validate_courses_allows_missing_room_and_instructor() -> None:
                 components=[
                     CourseConfig.Component(
                         tag="lec",
-                        student_groups=["G1"],
+                        audience=["G1"],
                         sessions=[
                             ComponentSessionSeries(
                                 audience=["G1"],
@@ -406,7 +406,7 @@ async def test_put_courses_returns_422_for_invalid_references(
             components=[
                 CourseConfig.Component(
                     tag="class",
-                    student_groups=["UNKNOWN-GROUP"],
+                    audience=["UNKNOWN-GROUP"],
                 ),
             ],
         ).model_dump(mode="json"),
@@ -467,7 +467,7 @@ def test_validate_courses_rejects_audience_outside_section() -> None:
                 components=[
                     CourseConfig.Component(
                         tag="lec",
-                        student_groups=["ELEC-01"],
+                        audience=["ELEC-01"],
                     ),
                 ],
             ),

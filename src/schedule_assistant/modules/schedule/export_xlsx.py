@@ -221,10 +221,10 @@ def expand_meetings(config: ScheduleConfig) -> list[ExportMeeting]:
         short_name = (course.short_name or "").strip() or None
         for component in course.components:
             for session in component.sessions or []:
-                tokens = session.audience or component.student_groups
+                tokens = session.audience or component.audience
                 groups = tuple(sorted(expand_group_tokens(tokens, selector_map)))
 
-                for occurrence in session.occurrences or []:
+                for occurrence in session.dates_pattern or []:
                     meetings.append(
                         ExportMeeting(
                             course=course.name,
@@ -801,7 +801,7 @@ def _course_student_group_tokens(course: CourseConfig) -> list[str]:
     tokens: list[str] = []
     seen: set[str] = set()
     for component in course.components:
-        for token in component.student_groups:
+        for token in component.audience:
             if token in seen:
                 continue
             seen.add(token)

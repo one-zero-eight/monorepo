@@ -121,8 +121,8 @@ def _collect_meeting_instructor_ids(instructor: str | list[str] | None) -> set[s
 
 def _collect_session_instructor_ids(session: ComponentSessionSeries) -> set[str]:
     ids: set[str] = set()
-    if session.occurrences:
-        for occurrence in session.occurrences:
+    if session.dates_pattern:
+        for occurrence in session.dates_pattern:
             ids.update(_collect_meeting_instructor_ids(occurrence.instructor))
     if session.weekly_pattern:
         for slot in session.weekly_pattern:
@@ -135,8 +135,8 @@ def _collect_session_instructor_ids(session: ComponentSessionSeries) -> set[str]
 
 def _collect_session_room_ids(session: ComponentSessionSeries) -> set[str]:
     rooms: set[str] = set()
-    if session.occurrences:
-        for occurrence in session.occurrences:
+    if session.dates_pattern:
+        for occurrence in session.dates_pattern:
             if occurrence.room:
                 rooms.add(occurrence.room)
     if session.weekly_pattern:
@@ -163,7 +163,7 @@ def collect_course_references(courses: CoursesConfig) -> CourseReferences:
     room_ids: set[str] = set()
     for course in courses.courses:
         for component in course.components:
-            group_tokens.update(component.student_groups)
+            group_tokens.update(component.audience)
             instructor_ids.update(_collect_instructor_pool_ids(component.instructor_pool))
             if component.sessions:
                 for session in component.sessions:
@@ -506,17 +506,17 @@ def validate_courses(config: CoursesConfig, ctx: ValidationContext) -> list[str]
             tag = str(component.tag or "").strip()
             if allowed_tags and tag and tag not in allowed_tags:
                 errors.append(f"{path}.tag {tag!r} is not in term.course_component_tags")
-            for token in component.student_groups:
+            for token in component.audience:
                 if not _is_known_group_token(token, group_codes, selector_map):
-                    errors.append(f"{path}.student_groups references unknown group or selector {token!r}")
+                    errors.append(f"{path}.audience references unknown group or selector {token!r}")
                     continue
                 expanded = expand_group_tokens([token], selector_map)
                 if not expanded.issubset(section_groups):
                     errors.append(
-                        f"{path}.student_groups token {token!r} is outside section {section_code!r}",
+                        f"{path}.audience token {token!r} is outside section {section_code!r}",
                     )
 
-            component_groups = expand_group_tokens(component.student_groups, selector_map)
+            component_groups = expand_group_tokens(component.audience, selector_map)
 
             for pool_id in _collect_instructor_pool_ids(component.instructor_pool):
                 if pool_id not in instructor_ids:
@@ -538,7 +538,7 @@ def validate_courses(config: CoursesConfig, ctx: ValidationContext) -> list[str]
                 session_path = f"{path}.sessions[{session_index}]"
                 session_groups = expand_group_tokens(session.audience, selector_map)
                 if session.audience and not session_groups.issubset(component_groups):
-                    errors.append(f"{session_path}.audience must be a subset of component student_groups")
+                    errors.append(f"{session_path}.audience must be a subset of component audience")
                 for audience_token in session.audience:
                     if not _is_known_group_token(audience_token, group_codes, selector_map):
                         errors.append(
@@ -551,9 +551,9 @@ def validate_courses(config: CoursesConfig, ctx: ValidationContext) -> list[str]
                             f"{session_path}.audience token {audience_token!r} is outside section {section_code!r}",
                         )
 
-                if session.occurrences:
-                    for occurrence_index, occurrence in enumerate(session.occurrences):
-                        occurrence_path = f"{session_path}.occurrences[{occurrence_index}]"
+                if session.dates_pattern:
+                    for occurrence_index, occurrence in enumerate(session.dates_pattern):
+                        occurrence_path = f"{session_path}.dates_pattern[{occurrence_index}]"
                         _validate_occurrence_times(occurrence_path, occurrence, errors)
                         if occurrence.room and not _is_known_room_id(occurrence.room, room_ids):
                             errors.append(
