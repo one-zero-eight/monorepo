@@ -122,6 +122,10 @@ class Lesson(ScheduleAssistantSchema):
     "Specific dates when there is no lessons"
     date_from: dtm.date | None = None
     "Date from which the lesson starts"
+    window_start: dtm.date | None = None
+    "Resolved teaching window start (target/override)"
+    window_end: dtm.date | None = None
+    "Resolved teaching window end (target/override)"
     modifiers: Item | None = None
     "Parsed location string modifiers (internal, used when grouping)"
     # <

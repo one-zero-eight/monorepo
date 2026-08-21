@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from src.logging_ import logger
 
 from ..utils import MOSCOW_TZ, WEEKDAYS, remove_repeating_spaces_and_trailing_spaces
-from .config import Target
+from .config import Target, override_matches_row
 from .location_parser import Item, extract_room_from_location_string, parse_location_string
 from .parser import CoreCourseCell
 
@@ -204,8 +204,9 @@ def convert_cell_to_event(
 
         group, group_student_number = preprocess_group(group)
 
+        sheet_name = cell.google_sheet_name or target.sheet_name
         for override in target.override:
-            if group in override.groups or course in override.courses:
+            if override_matches_row(override, group=group, course=course, sheet_name=sheet_name):
                 starts = override.start_date
                 ends = override.end_date
                 break

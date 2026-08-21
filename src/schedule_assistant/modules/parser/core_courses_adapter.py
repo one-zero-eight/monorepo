@@ -260,7 +260,9 @@ def group_core_course_lessons(
 ) -> list[GroupedCoreCourse]:
     by_key: dict[tuple, list[Lesson]] = defaultdict(list)
     for lesson in lessons:
-        start_date, end_date = term_dates.get(lesson.google_sheet_name, (None, None))
+        sheet_start, sheet_end = term_dates.get(lesson.google_sheet_name, (None, None))
+        start_date = lesson.window_start or sheet_start
+        end_date = lesson.window_end or sheet_end
         key = (
             lesson.course_name or "",
             lesson.lesson_name,
@@ -312,6 +314,8 @@ def expand_grouped_core_course_lessons(grouped: list[GroupedCoreCourse]) -> list
                     date_on=date_on,
                     date_except=date_except,
                     date_from=date_from,
+                    window_start=course.start_date,
+                    window_end=course.end_date,
                     modifiers=component.modifiers,
                     students_number=component.students_number,
                     spreadsheet_id=course.spreadsheet_id,
@@ -353,6 +357,8 @@ def _event_to_lesson(
         source_type="core_course",
         date_on=None,
         date_except=None,
+        window_start=cell_event.starts,
+        window_end=cell_event.ends,
         students_number=students_number if students_number is not None else cell_event.group_student_number,
         spreadsheet_id=cell_event.spreadsheet_id,
         google_sheet_gid=cell_event.google_sheet_gid,
@@ -404,7 +410,7 @@ def _process_location_item(
 ) -> list[Lesson]:
     location_item = cell_event.location_item
     assert location_item is not None
-    starts = location_item.starts_from or target.start_date
+    starts = location_item.starts_from or cell_event.starts or target.start_date
 
     def convert_weeks_on_to_only_on(item: Item):
         if item.on_weeks:
@@ -447,6 +453,8 @@ def _process_location_item(
             date_on=location_item.on,
             date_except=location_item.except_,
             date_from=location_item.starts_from,
+            window_start=cell_event.starts,
+            window_end=cell_event.ends,
             students_number=students_number if students_number is not None else cell_event.group_student_number,
             spreadsheet_id=cell_event.spreadsheet_id,
             google_sheet_gid=cell_event.google_sheet_gid,

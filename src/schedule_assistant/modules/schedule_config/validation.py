@@ -424,6 +424,11 @@ def validate_sections(config: SectionsConfig) -> list[str]:
                             f"sections[{section_index}].programs[{program_index}].time_slots[{slot_index}]: "
                             "start_time must be before end_time",
                         )
+            if program.semester is not None and program.semester.start_date > program.semester.end_date:
+                errors.append(
+                    f"sections[{section_index}].programs[{program_index}].semester.start_date "
+                    "must be on or before end_date",
+                )
 
     errors.extend(f"Duplicate program code: {code!r}" for code in find_duplicates(program_codes))
     return errors

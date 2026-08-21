@@ -16,6 +16,10 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     WeeklyPatternSlot,
     WeeklyPatternSlotEdit,
 )
+from src.schedule_assistant.modules.schedule_config.semester_windows import (
+    meeting_dates_in_window,
+    resolve_audience_semester,
+)
 from src.schedule_assistant.weekday import Weekday, week_start_for_date
 
 VIRTUAL_ROOM_ID = "ONLINE"
@@ -160,17 +164,13 @@ def _weekday_api_value(day: str | Weekday) -> str:
     return str(day).strip().lower()
 
 
-def _weekly_meeting_dates_in_term(term: TermConfig, weekday: str | Weekday) -> list[dtm.date]:
+def _weekly_meeting_dates_in_window(
+    window: TermConfig.DateRange,
+    weekday: str | Weekday,
+) -> list[dtm.date]:
     weekday_api = _weekday_api_value(weekday)
     target = _API_WEEKDAY_TO_PYTHON[weekday_api]
-    dates: list[dtm.date] = []
-    current = term.semester.start_date
-    end = term.semester.end_date
-    while current <= end:
-        if current.weekday() == target:
-            dates.append(current)
-        current += dtm.timedelta(days=1)
-    return dates
+    return meeting_dates_in_window(window, target)
 
 
 def _edit_for_meeting_date(
@@ -192,7 +192,7 @@ def _edit_changes_meeting(edit: WeeklyPatternSlotEdit) -> bool:
 
 
 def _weekly_recurrence_for_segment(
-    term: TermConfig, day: str | Weekday, segment_start: dtm.date, segment_end: dtm.date
+    day: str | Weekday, segment_start: dtm.date, segment_end: dtm.date
 ) -> dict[str, str]:
     return {
         "kind": "weekly_until",
@@ -204,10 +204,11 @@ def _weekly_recurrence_for_segment(
 
 def _recurrence_segments_excluding_edit_weeks(
     term: TermConfig,
+    window: TermConfig.DateRange,
     weekday: str | Weekday,
     excluded_week_starts: set[dtm.date],
 ) -> list[tuple[dtm.date, dtm.date]]:
-    meeting_dates = _weekly_meeting_dates_in_term(term, weekday)
+    meeting_dates = _weekly_meeting_dates_in_window(window, weekday)
     active_dates = [
         meeting_date
         for meeting_date in meeting_dates
@@ -324,6 +325,7 @@ def _slots_from_weekly_pattern(
     group_codes: tuple[str, ...],
     pattern: WeeklyPatternSlot,
     term: TermConfig,
+    window: TermConfig.DateRange,
     known_room_ids: set[str],
     instructor: str | list[str] | None,
     program_name: str,
@@ -339,7 +341,7 @@ def _slots_from_weekly_pattern(
     slots: list[BookableSlot] = []
     excluded_week_starts: set[dtm.date] = set()
 
-    for meeting_date in _weekly_meeting_dates_in_term(term, day_label):
+    for meeting_date in _weekly_meeting_dates_in_window(window, day_label):
         edit = _edit_for_meeting_date(meeting_date, edits, term)
         if edit is None or not _edit_changes_meeting(edit):
             continue
@@ -378,9 +380,9 @@ def _slots_from_weekly_pattern(
         )
 
     for segment_index, (segment_start, segment_end) in enumerate(
-        _recurrence_segments_excluding_edit_weeks(term, day_label, excluded_week_starts)
+        _recurrence_segments_excluding_edit_weeks(term, window, day_label, excluded_week_starts)
     ):
-        recurrence = _weekly_recurrence_for_segment(term, day_label, segment_start, segment_end)
+        recurrence = _weekly_recurrence_for_segment(day_label, segment_start, segment_end)
         bookable, reason = _slot_bookable(base_room, known_room_ids)
         meeting, payload = _build_payload(
             course=course,
@@ -437,6 +439,9 @@ def build_bookable_slots(
                 audiences = _session_audiences(component, session)
                 if not audiences:
                     continue
+                window = resolve_audience_semester(term, audiences, sections=sections)
+                if window is None:
+                    continue
                 group_codes = tuple(sorted(expand_group_tokens(audiences, selector_map)))
                 program_name = resolve_program_for_audiences(
                     audiences,
@@ -492,6 +497,7 @@ def build_bookable_slots(
                             group_codes=group_codes,
                             pattern=pattern,
                             term=term,
+                            window=window,
                             known_room_ids=known_room_ids,
                             instructor=pattern_instructor,
                             program_name=program_name,

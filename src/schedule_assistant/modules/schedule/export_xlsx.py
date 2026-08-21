@@ -16,7 +16,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from src.schedule_assistant.modules.distributions.mapping import iter_section_group_codes
 from src.schedule_assistant.modules.issues.booking_slots import (
     _edit_for_meeting_date,
-    _weekly_meeting_dates_in_term,
+    _weekly_meeting_dates_in_window,
 )
 from src.schedule_assistant.modules.schedule_config.schemas import (
     CourseConfig,
@@ -25,6 +25,10 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     SectionsConfig,
     TermConfig,
     TermTimeSlot,
+)
+from src.schedule_assistant.modules.schedule_config.semester_windows import (
+    resolve_audience_semester,
+    union_semester_window,
 )
 from src.schedule_assistant.modules.schedule_config.validation import build_selector_map, expand_group_tokens
 from src.schedule_assistant.weekday import Weekday, week_start_for_date
@@ -238,7 +242,10 @@ def expand_meetings(config: ScheduleConfig) -> list[ExportMeeting]:
                 for slot in session.weekly_pattern or []:
                     if term.days and slot.weekday not in term.days:
                         continue
-                    for meeting_date in _weekly_meeting_dates_in_term(term, slot.weekday):
+                    window = resolve_audience_semester(term, list(tokens))
+                    if window is None:
+                        continue
+                    for meeting_date in _weekly_meeting_dates_in_window(window, slot.weekday):
                         edit = _edit_for_meeting_date(meeting_date, slot.edits or [], term)
                         if edit is not None and edit.cancel:
                             continue
@@ -661,9 +668,10 @@ def _write_groups_sheet(
 
 
 def _term_weeks(term: TermConfig) -> list[tuple[dtm.date, dtm.date]]:
-    """List (week_start, week_end) covering the semester, clipped to semester bounds."""
-    start = term.semester.start_date
-    end = term.semester.end_date
+    """List (week_start, week_end) covering the union semester window, clipped to bounds."""
+    bounds = union_semester_window(term)
+    start = bounds.start_date
+    end = bounds.end_date
     weeks: list[tuple[dtm.date, dtm.date]] = []
     cursor = week_start_for_date(start, term.starting_day)
     while cursor <= end:

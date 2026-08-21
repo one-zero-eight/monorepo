@@ -59,7 +59,10 @@ def _require_term() -> TermConfig:
 
 
 def _booking_window(term: TermConfig) -> tuple[dtm.datetime, dtm.datetime] | None:
-    return resolve_booking_fetch_window(term.semester.start_date, term.semester.end_date)
+    from src.schedule_assistant.modules.schedule_config.semester_windows import union_semester_window
+
+    window = union_semester_window(term)
+    return resolve_booking_fetch_window(window.start_date, window.end_date)
 
 
 async def _load_review_index() -> ReviewIndex:

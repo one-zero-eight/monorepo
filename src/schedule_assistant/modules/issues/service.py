@@ -16,6 +16,7 @@ from src.schedule_assistant.modules.issues.schemas import CheckParameters, Check
 from src.schedule_assistant.modules.issues.student_emails import student_email_issues_from_sections
 from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
 from src.schedule_assistant.modules.schedule_config.schemas import RoomConfig, TermConfig
+from src.schedule_assistant.modules.schedule_config.semester_windows import union_semester_window
 
 
 def _merge_room_capacities(config_rooms: RoomConfig, booking_rooms: list[RoomDTO]) -> dict[str, int | None]:
@@ -90,10 +91,11 @@ async def check_schedule_issues(params: CheckParameters) -> CheckResults:
         logger.info(f"Found {len(per_week_issues)} per_week issues")
         issues.extend(per_week_issues)
 
+    fetch_window = union_semester_window(term)
     checker_issues = await checker.get_issues(
         meetings,
-        start_date=term.semester.start_date,
-        end_date=term.semester.end_date,
+        start_date=fetch_window.start_date,
+        end_date=fetch_window.end_date,
         check_room=params.check_room,
         check_teacher=params.check_teacher,
         check_capacity=params.check_capacity,

@@ -170,6 +170,8 @@ class SectionConfig(SettingBaseModel):
         "Program-level groups when tracks are not used (for example, elective bucket ids)"
         time_slots: list[TermTimeSlot] | None = None
         "Optional custom teaching slots for this program; when set, replaces term.time_slots for this program"
+        semester: TermConfig.DateRange | None = None
+        "Optional teaching window for this program; when set, replaces term.semester for this program"
 
     code: str
     "Section identifier"
