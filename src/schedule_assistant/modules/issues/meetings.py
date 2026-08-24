@@ -17,9 +17,15 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     InstructorConfig,
     SectionsConfig,
     SessionOccurrence,
+    TermConfig,
     WeeklyPatternSlot,
 )
+from src.schedule_assistant.modules.schedule_config.semester_windows import (
+    meeting_dates_in_window,
+    resolve_audience_semester,
+)
 from src.schedule_assistant.modules.schedule_config.validation import build_selector_map, expand_group_tokens
+from src.schedule_assistant.weekday import week_start_for_date, weekday_index
 
 
 def _normalize(value: str) -> str:
@@ -127,6 +133,54 @@ def _meeting_from_weekly_slot(
     )
 
 
+def _meetings_from_weekly_slot_concrete(
+    course: CourseConfig,
+    component_tag: str,
+    group_codes: tuple[str, ...],
+    students_number: int | None,
+    slot: WeeklyPatternSlot,
+    *,
+    term: TermConfig,
+    audiences: list[str],
+) -> list[ScheduledMeeting]:
+    window = resolve_audience_semester(term, audiences)
+    if window is None:
+        return []
+    if term.days and slot.weekday not in term.days:
+        return []
+
+    pattern_dates = meeting_dates_in_window(window, weekday_index(slot.weekday.value))
+    if not pattern_dates:
+        return []
+
+    edits = slot.edits or []
+    edits_by_week = {week_start_for_date(edit.select_week, term.starting_day): edit for edit in edits}
+    meetings: list[ScheduledMeeting] = []
+    for pattern_date in pattern_dates:
+        edit = edits_by_week.get(week_start_for_date(pattern_date, term.starting_day))
+        if edit is not None and edit.cancel:
+            continue
+        resolved_date = edit.date if edit is not None and edit.date is not None else pattern_date
+        resolved_start = edit.start_time if edit is not None and edit.start_time is not None else slot.start_time
+        resolved_end = edit.end_time if edit is not None and edit.end_time is not None else slot.end_time
+        resolved_room = edit.room if edit is not None and edit.room is not None else slot.room
+        resolved_instructor = edit.instructor if edit is not None and edit.instructor is not None else slot.instructor
+        meetings.append(
+            _base_meeting(
+                course=course,
+                component_tag=component_tag,
+                group_codes=group_codes,
+                students_number=students_number,
+                placement=OccurrencePlacement(date=resolved_date),
+                start_time=resolved_start,
+                end_time=resolved_end,
+                room=resolved_room,
+                instructor=resolved_instructor,
+            )
+        )
+    return meetings
+
+
 def build_group_to_studying_teachers(
     sections: SectionsConfig,
     instructors: InstructorConfig,
@@ -149,8 +203,20 @@ def build_group_to_studying_teachers(
     return group_to_teachers
 
 
-def meetings_from_schedule_config(courses: CoursesConfig, sections: SectionsConfig) -> list[ScheduledMeeting]:
+def meetings_from_schedule_config(
+    courses: CoursesConfig,
+    sections: SectionsConfig,
+    term: TermConfig | None = None,
+    *,
+    expand_weekly: bool | None = None,
+) -> list[ScheduledMeeting]:
+    """Build scheduled meetings from courses.
+
+    When ``term`` is provided (or ``expand_weekly=True``), weekly slots are expanded into
+    concrete dated occurrences with overrides/cancellations applied.
+    """
     selector_map = build_selector_map(sections)
+    should_expand = expand_weekly if expand_weekly is not None else term is not None
     meetings: list[ScheduledMeeting] = []
 
     for course in courses.courses:
@@ -163,6 +229,7 @@ def meetings_from_schedule_config(courses: CoursesConfig, sections: SectionsConf
                 students_number = component.expected_enrollment
                 if students_number is None:
                     students_number = _enrollment_size(group_codes, sections)
+                audiences = list(session.audience or component_groups)
 
                 if session.dates_pattern:
                     for occurrence in session.dates_pattern:
@@ -177,15 +244,28 @@ def meetings_from_schedule_config(courses: CoursesConfig, sections: SectionsConf
                         )
                 if session.weekly_pattern:
                     for slot in session.weekly_pattern:
-                        meetings.append(
-                            _meeting_from_weekly_slot(
-                                course,
-                                component.tag,
-                                group_codes,
-                                students_number,
-                                slot,
-                            ),
-                        )
+                        if should_expand and term is not None:
+                            meetings.extend(
+                                _meetings_from_weekly_slot_concrete(
+                                    course,
+                                    component.tag,
+                                    group_codes,
+                                    students_number,
+                                    slot,
+                                    term=term,
+                                    audiences=audiences,
+                                )
+                            )
+                        else:
+                            meetings.append(
+                                _meeting_from_weekly_slot(
+                                    course,
+                                    component.tag,
+                                    group_codes,
+                                    students_number,
+                                    slot,
+                                ),
+                            )
 
     return meetings
 

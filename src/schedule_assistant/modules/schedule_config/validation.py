@@ -16,6 +16,7 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     TermConfig,
     WeeklyPatternSlot,
 )
+from src.schedule_assistant.weekday import week_start_for_date
 
 VIRTUAL_ROOM_ID = "ONLINE"
 
@@ -195,6 +196,59 @@ def _validate_occurrence_times(path: str, occurrence: SessionOccurrence, errors:
 def _validate_weekly_slot_times(path: str, slot: WeeklyPatternSlot, errors: list[str]) -> None:
     if slot.start_time >= slot.end_time:
         errors.append(f"{path}: start_time must be before end_time")
+
+
+def _validate_weekly_slot_edits(
+    path: str,
+    slot: WeeklyPatternSlot,
+    term: TermConfig | None,
+    errors: list[str],
+) -> None:
+    if not slot.edits:
+        return
+
+    starting_day = term.starting_day if term is not None else None
+    seen_weeks: set[dtm.date] = set()
+    semester = term.semester if term is not None else None
+
+    for edit_index, edit in enumerate(slot.edits):
+        edit_path = f"{path}.edits[{edit_index}]"
+        week_key = week_start_for_date(edit.select_week, starting_day) if starting_day is not None else edit.select_week
+        if week_key in seen_weeks:
+            errors.append(f"{edit_path}: duplicate select_week for week starting {week_key.isoformat()}")
+        else:
+            seen_weeks.add(week_key)
+
+        resolved_start = edit.start_time if edit.start_time is not None else slot.start_time
+        resolved_end = edit.end_time if edit.end_time is not None else slot.end_time
+        if not edit.cancel and resolved_start >= resolved_end:
+            errors.append(f"{edit_path}: resolved start_time must be before end_time")
+
+        if semester is not None:
+            if edit.select_week < semester.start_date or edit.select_week > semester.end_date:
+                errors.append(
+                    f"{edit_path}.select_week {edit.select_week.isoformat()} is outside term.semester",
+                )
+            if edit.date is not None and (edit.date < semester.start_date or edit.date > semester.end_date):
+                errors.append(f"{edit_path}.date {edit.date.isoformat()} is outside term.semester")
+
+        if edit.cancel:
+            has_override = any(
+                value is not None for value in (edit.date, edit.start_time, edit.end_time, edit.room, edit.instructor)
+            )
+            if has_override:
+                errors.append(f"{edit_path}: cancel cannot be combined with field overrides")
+            continue
+
+        is_noop = (
+            edit.date is None
+            and edit.start_time is None
+            and edit.end_time is None
+            and edit.room is None
+            and edit.instructor is None
+        )
+        if is_noop:
+            errors.append(f"{edit_path}: edit must cancel or override at least one field")
 
 
 def validate_term(term: TermConfig) -> list[str]:
@@ -577,6 +631,7 @@ def validate_courses(config: CoursesConfig, ctx: ValidationContext) -> list[str]
                                     f"{slot_path}.instructor references unknown instructor {meeting_instructor_id!r}",
                                 )
                         if slot.edits:
+                            _validate_weekly_slot_edits(slot_path, slot, ctx.term, errors)
                             for edit_index, edit in enumerate(slot.edits):
                                 edit_path = f"{slot_path}.edits[{edit_index}]"
                                 if edit.room and not _is_known_room_id(edit.room, room_ids):

@@ -45,12 +45,18 @@ def collect_scheduled_instructor_tokens(courses: list[CourseConfig]) -> set[str]
                             tokens.add(occurrence.instructor)
                 if session.weekly_pattern:
                     for slot in session.weekly_pattern:
-                        if slot.instructor is None:
-                            continue
-                        if isinstance(slot.instructor, list):
-                            tokens.update(slot.instructor)
-                        else:
-                            tokens.add(slot.instructor)
+                        if slot.instructor is not None:
+                            if isinstance(slot.instructor, list):
+                                tokens.update(slot.instructor)
+                            else:
+                                tokens.add(slot.instructor)
+                        for edit in slot.edits or []:
+                            if edit.cancel or edit.instructor is None:
+                                continue
+                            if isinstance(edit.instructor, list):
+                                tokens.update(edit.instructor)
+                            else:
+                                tokens.add(edit.instructor)
     return {_normalize(token) for token in tokens if token}
 
 
@@ -91,13 +97,24 @@ def _filter_occurrences(
     return filtered or None
 
 
+def _weekly_slot_matches_instructor(slot: WeeklyPatternSlot, identity: set[str]) -> bool:
+    if meeting_instructor_matches(slot.instructor, identity):
+        return True
+    for edit in slot.edits or []:
+        if edit.cancel:
+            continue
+        if meeting_instructor_matches(edit.instructor, identity):
+            return True
+    return False
+
+
 def _filter_weekly_pattern(
     weekly_pattern: list[WeeklyPatternSlot] | None,
     identity: set[str],
 ) -> list[WeeklyPatternSlot] | None:
     if not weekly_pattern:
         return None
-    filtered = [slot for slot in weekly_pattern if meeting_instructor_matches(slot.instructor, identity)]
+    filtered = [slot for slot in weekly_pattern if _weekly_slot_matches_instructor(slot, identity)]
     return filtered or None
 
 

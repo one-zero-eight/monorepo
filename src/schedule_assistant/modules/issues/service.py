@@ -43,7 +43,8 @@ async def check_schedule_issues(params: CheckParameters) -> CheckResults:
     instructors = schedule_config_repository.get_instructors()
     config_rooms = schedule_config_repository.get_rooms()
 
-    meetings = meetings_from_schedule_config(courses, sections)
+    meetings = meetings_from_schedule_config(courses, sections, expand_weekly=False)
+    concrete_meetings = meetings_from_schedule_config(courses, sections, term=term)
     booking_rooms: list[RoomDTO] = []
     if params.check_outlook or params.check_unbooked:
         booking_rooms = await booking_client.get_rooms()
@@ -93,7 +94,7 @@ async def check_schedule_issues(params: CheckParameters) -> CheckResults:
 
     fetch_window = union_semester_window(term)
     checker_issues = await checker.get_issues(
-        meetings,
+        concrete_meetings,
         start_date=fetch_window.start_date,
         end_date=fetch_window.end_date,
         check_room=params.check_room,
