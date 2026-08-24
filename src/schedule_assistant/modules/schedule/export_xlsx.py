@@ -63,6 +63,8 @@ INSTRUCTORS_COL_WIDTHS = (28, 28, 32, 16, 22, 48, 18)
 SUBJECTS_SHEET_NAME = "Subjects"
 SUBJECTS_HEADERS = ("Section", "Short name", "Name", "Name RU", "Groups", "Instructors")
 SUBJECTS_COL_WIDTHS = (18, 14, 36, 36, 42, 48)
+CALENDAR_LEGEND_HEADERS = ("Short name", "Course Name", "Instructor")
+CALENDAR_LEGEND_COL_WIDTHS = (14, 42, 28)
 
 _INVALID_SHEET_CHARS = re.compile(r"[\[\]\*\/\\?:]")
 
@@ -160,9 +162,24 @@ def _normalize_tracks(program: SectionConfig.SectionProgram) -> list[tuple[str, 
 def section_group_set(section: SectionConfig) -> set[str]:
     groups: set[str] = set()
     for program in section.programs:
-        for _track_name, track_groups in _normalize_tracks(program):
-            groups.update(track_groups)
+        groups.update(program_group_set(program))
     return groups
+
+
+def program_group_set(program: SectionConfig.SectionProgram) -> set[str]:
+    groups: set[str] = set()
+    for _track_name, track_groups in _normalize_tracks(program):
+        groups.update(track_groups)
+    return groups
+
+
+def filter_meetings_for_groups(
+    meetings: list[ExportMeeting],
+    groups: set[str],
+) -> list[ExportMeeting]:
+    if not groups:
+        return []
+    return [meeting for meeting in meetings if any(group in groups for group in meeting.groups)]
 
 
 def _instructor_label_by_id(config: ScheduleConfig) -> dict[str, str]:
@@ -280,10 +297,7 @@ def filter_meetings_for_section(
     meetings: list[ExportMeeting],
     section: SectionConfig,
 ) -> list[ExportMeeting]:
-    section_groups = section_group_set(section)
-    if not section_groups:
-        return []
-    return [meeting for meeting in meetings if any(group in section_groups for group in meeting.groups)]
+    return filter_meetings_for_groups(meetings, section_group_set(section))
 
 
 def build_columns(section: SectionConfig, meetings: list[ExportMeeting], config: ScheduleConfig) -> list[ExportColumn]:
@@ -699,11 +713,96 @@ def _compact_meeting_label(meeting: ExportMeeting) -> str:
     return main
 
 
+def _course_audience_tokens(course: CourseConfig) -> list[str]:
+    tokens: list[str] = []
+    seen: set[str] = set()
+    for component in course.components:
+        for token in component.audience:
+            if token in seen:
+                continue
+            seen.add(token)
+            tokens.append(token)
+        for series in component.sessions or []:
+            for token in series.audience or []:
+                if token in seen:
+                    continue
+                seen.add(token)
+                tokens.append(token)
+    return tokens
+
+
+def build_calendar_course_legend(
+    *,
+    courses: list[CourseConfig],
+    meetings: list[ExportMeeting],
+    groups: set[str],
+    instructor_labels: dict[str, str],
+    selector_map: dict[str, set[str]],
+    section_code: str | None = None,
+) -> list[tuple[str, str, str]]:
+    if not groups:
+        return []
+
+    instructors_by_course: dict[str, set[str]] = defaultdict(set)
+    for meeting in meetings:
+        if not any(group in groups for group in meeting.groups):
+            continue
+        course_name = meeting.course.strip()
+        if not course_name:
+            continue
+        for instructor_id in meeting.instructors:
+            label = instructor_labels.get(instructor_id, instructor_id).strip()
+            if label:
+                instructors_by_course[course_name].add(label)
+
+    rows: list[tuple[str, str, str]] = []
+    for course in courses:
+        if section_code is not None and (course.section_code or "").strip() != section_code:
+            continue
+        tokens = _course_audience_tokens(course)
+        expanded = expand_group_tokens(tokens, selector_map)
+        if not any(group in groups for group in expanded):
+            continue
+        course_name = course.name.strip()
+        if not course_name:
+            continue
+        course_instructors = [
+            instructor_labels.get(item.id, item.id).strip()
+            for item in (course.instructors or [])
+            if (instructor_labels.get(item.id, item.id) or "").strip()
+        ]
+        meeting_instructors = sorted(instructors_by_course.get(course_name, set()))
+        instructor = ", ".join(course_instructors or meeting_instructors) or "—"
+        short_name = (course.short_name or "").strip() or course_name
+        rows.append((short_name, course_name, instructor))
+
+    rows.sort(key=lambda row: row[0].casefold())
+    return rows
+
+
+def _write_calendar_course_legend(
+    ws: Worksheet,
+    *,
+    start_col: int,
+    rows: list[tuple[str, str, str]],
+) -> None:
+    for offset, header in enumerate(CALENDAR_LEGEND_HEADERS):
+        cell = ws.cell(1, start_col + offset, header)
+        _apply_fill(cell, HEADER_FILL, HEADER_FONT, CENTER)
+        ws.column_dimensions[get_column_letter(start_col + offset)].width = CALENDAR_LEGEND_COL_WIDTHS[offset]
+
+    for row_index, values in enumerate(rows, start=2):
+        for offset, value in enumerate(values):
+            cell = ws.cell(row_index, start_col + offset, value)
+            _apply_fill(cell, WHITE_FILL, NORMAL_FONT, LEFT)
+
+
 def _write_calendar_sheet(
     ws: Worksheet,
     *,
     term: TermConfig,
     meetings: list[ExportMeeting],
+    legend_rows: list[tuple[str, str, str]] | None = None,
 ) -> None:
     days = _term_days(term)
     slots = list(term.time_slots)
@@ -756,6 +855,9 @@ def _write_calendar_sheet(
     for i in range(len(days)):
         ws.column_dimensions[get_column_letter(i + 2)].width = 18
     ws.freeze_panes = "B2"
+
+    if legend_rows is not None:
+        _write_calendar_course_legend(ws, start_col=len(days) + 3, rows=legend_rows)
 
 
 def _write_table_sheet(
@@ -1063,16 +1165,40 @@ def _write_section_sheet(
             group_sizes=group_sizes,
         )
         return
-    _write_calendar_sheet(ws, term=config.term, meetings=meetings)
+    selector_map = build_selector_map(
+        SectionsConfig(sections=config.term.sections, students_groups=config.students_groups)
+    )
+    legend_rows = build_calendar_course_legend(
+        courses=config.courses,
+        meetings=meetings,
+        groups=section_group_set(section),
+        instructor_labels=instructor_labels,
+        selector_map=selector_map,
+        section_code=section.code,
+    )
+    _write_calendar_sheet(ws, term=config.term, meetings=meetings, legend_rows=legend_rows)
+
+
+def _next_sheet(wb: Workbook, title: str, *, first: bool) -> Worksheet:
+    if first:
+        ws = wb.active
+        assert ws is not None
+        ws.title = title
+        return ws
+    return wb.create_sheet(title)
 
 
 def build_export_workbook(config: ScheduleConfig) -> Workbook:
     all_meetings = expand_meetings(config)
     instructor_labels = _instructor_label_by_id(config)
     group_sizes = _group_sizes(config)
+    selector_map = build_selector_map(
+        SectionsConfig(sections=config.term.sections, students_groups=config.students_groups)
+    )
     wb = Workbook()
     used_names: set[str] = set()
     sections = list(config.term.sections)
+    first_sheet = True
 
     if not sections:
         ws = wb.active
@@ -1082,15 +1208,41 @@ def build_export_workbook(config: ScheduleConfig) -> Workbook:
         _append_summary_sheets(wb, config, used_names=used_names, instructor_labels=instructor_labels)
         return wb
 
-    for index, section in enumerate(sections):
+    for section in sections:
+        layout = section_export_layout(section)
+        if layout == "calendar" and len(section.programs) > 1:
+            for program in section.programs:
+                section_name = (section.name or section.code).strip()
+                program_name = (program.name or program.code).strip()
+                title = _unique_sheet_name(
+                    f"{section_name} {program_name}",
+                    used_names,
+                )
+                used_names.add(title)
+                ws = _next_sheet(wb, title, first=first_sheet)
+                first_sheet = False
+                program_groups = program_group_set(program)
+                program_meetings = filter_meetings_for_groups(all_meetings, program_groups)
+                legend_rows = build_calendar_course_legend(
+                    courses=config.courses,
+                    meetings=program_meetings,
+                    groups=program_groups,
+                    instructor_labels=instructor_labels,
+                    selector_map=selector_map,
+                    section_code=section.code,
+                )
+                _write_calendar_sheet(
+                    ws,
+                    term=config.term,
+                    meetings=program_meetings,
+                    legend_rows=legend_rows,
+                )
+            continue
+
         title = _unique_sheet_name(section.name or section.code, used_names)
         used_names.add(title)
-        if index == 0:
-            ws = wb.active
-            assert ws is not None
-            ws.title = title
-        else:
-            ws = wb.create_sheet(title)
+        ws = _next_sheet(wb, title, first=first_sheet)
+        first_sheet = False
         _write_section_sheet(
             ws,
             config=config,

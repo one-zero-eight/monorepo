@@ -194,6 +194,13 @@ def test_export_has_sheet_per_section_with_default_layouts() -> None:
     electives = wb["Electives"]
     assert electives["B1"].value == "Monday"
     assert electives["A2"].value == "Week 1"
+    legend_col = len(_sample_config().term.days) + 3
+    assert electives.cell(1, legend_col).value == "Short name"
+    assert electives.cell(1, legend_col + 1).value == "Course Name"
+    assert electives.cell(1, legend_col + 2).value == "Instructor"
+    assert electives.cell(2, legend_col).value == "SRE"
+    assert electives.cell(2, legend_col + 1).value == "SRE Course"
+    assert electives.cell(2, legend_col + 2).value == "Alice Teacher"
     found = False
     for row in electives.iter_rows(min_row=1, max_row=40, max_col=8):
         for cell in row:
@@ -258,6 +265,88 @@ def test_export_has_sheet_per_section_with_default_layouts() -> None:
     assert distributions["B5"].value == "SRE Course"
     assert distributions["C5"].value == "Electives"
     assert distributions["A6"].value == "e.student@innopolis.university"
+
+
+def test_calendar_export_splits_programs_into_sheets() -> None:
+    config = _sample_config()
+    electives = config.term.sections[1]
+    electives.programs = [
+        SectionConfig.SectionProgram(code="TECH", name="Tech", groups=["ELEC-01"]),
+        SectionConfig.SectionProgram(code="HUM", name="Humanities", groups=["ELEC-02"]),
+    ]
+    config.students_groups.append(
+        StudentsGroups(
+            code="ELEC-02",
+            kind="elective",
+            name="Philosophy",
+            students=["f.student@innopolis.university"],
+        )
+    )
+    config.courses.append(
+        CourseConfig(
+            name="Philosophy",
+            section_code="electives",
+            short_name="PHIL",
+            instructors=[CourseConfig.CourseInstructor(id="t1", role="Primary")],
+            components=[
+                CourseConfig.Component(
+                    tag="lec",
+                    audience=["ELEC-02"],
+                    sessions=[
+                        ComponentSessionSeries(
+                            audience=["ELEC-02"],
+                            dates_pattern=[
+                                SessionOccurrence(
+                                    date=dtm.date(2026, 9, 4),
+                                    start_time=dtm.time(12, 40),
+                                    end_time=dtm.time(14, 10),
+                                    room="ONLINE",
+                                    instructor="t1",
+                                )
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+    )
+
+    data, _ = export_schedule_xlsx(config)
+    wb = load_workbook(io.BytesIO(data))
+    assert wb.sheetnames == [
+        "Core",
+        "Electives Tech",
+        "Electives Humanities",
+        "Distributions",
+        "Instructors",
+        "Subjects",
+    ]
+
+    tech = wb["Electives Tech"]
+    assert tech["B1"].value == "Monday"
+    legend_col = len(config.term.days) + 3
+    assert tech.cell(1, legend_col).value == "Short name"
+    assert tech.cell(2, legend_col).value == "SRE"
+    tech_found = False
+    for row in tech.iter_rows(min_row=1, max_row=40, max_col=8):
+        for cell in row:
+            value = str(cell.value or "")
+            if "SRE" in value and "209" in value:
+                tech_found = True
+            assert "PHIL" not in value and "Philosophy" not in value
+    assert tech_found
+
+    humanities = wb["Electives Humanities"]
+    assert humanities.cell(1, legend_col).value == "Short name"
+    assert humanities.cell(2, legend_col).value == "PHIL"
+    hum_found = False
+    for row in humanities.iter_rows(min_row=1, max_row=40, max_col=8):
+        for cell in row:
+            value = str(cell.value or "")
+            if "PHIL" in value and "ONLINE" in value:
+                hum_found = True
+            assert "SRE" not in value
+    assert hum_found
 
 
 def test_subjects_groups_track_only_when_complete() -> None:
