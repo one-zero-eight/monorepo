@@ -1,11 +1,11 @@
 import asyncio
 import datetime as dtm
-from typing import cast
+from typing import Annotated, cast
 from urllib.parse import quote
 
 import httpx
 from beanie.odm.queries.update import UpdateResponse
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 from pydantic import ValidationError
 
@@ -16,6 +16,7 @@ from src.when2meet.config import settings
 from src.when2meet.mongo import Event, Participant
 
 from . import events_repo
+from .archive import archive_state, calculate_archive_after
 from .schemas import (
     AvailableRoom,
     BookedRoom,
@@ -24,6 +25,7 @@ from .schemas import (
     EventSummary,
     EventUpdate,
     EventView,
+    MeetingStatus,
     ParticipantUpdate,
     ParticipantView,
     RoomBookingBooking,
@@ -70,16 +72,32 @@ async def _event_view(event: Event) -> EventView:
         ):
             logger.warning("Failed to enrich When2Meet participants from Accounts", exc_info=True)
 
+    is_archived, archived_at = archive_state(
+        event.archive_after,
+        event.manually_archived_at,
+        dtm.datetime.now(dtm.UTC),
+    )
     return EventView(
-        **event.model_dump(exclude={"participants", "room_booking_in_progress"}),
+        **event.model_dump(exclude={"participants", "room_booking_in_progress", "manually_archived_at"}),
         participants=[_build_participant_view(p, users.get(p.user_id)) for p in event.participants],
+        is_archived=is_archived,
+        archived_at=archived_at,
     )
 
 
 def _event_summary(event: Event) -> EventSummary:
+    is_archived, archived_at = archive_state(
+        event.archive_after,
+        event.manually_archived_at,
+        dtm.datetime.now(dtm.UTC),
+    )
     return EventSummary(
-        **event.model_dump(include={"id", "slug", "name", "description", "created_at", "selected_time"}),
+        **event.model_dump(
+            include={"id", "slug", "name", "description", "created_at", "selected_time", "archive_after"}
+        ),
         participants_count=len(event.participants),
+        is_archived=is_archived,
+        archived_at=archived_at,
     )
 
 
@@ -480,6 +498,7 @@ async def _update_meeting_room_booking(
         locked_event = await _locked_event_with_booked_room(event)
         for field_name in event_update.model_fields_set:
             setattr(locked_event, field_name, getattr(event_update, field_name))
+        locked_event.archive_after = calculate_archive_after(locked_event.slots, locked_event.selected_time)
         try:
             locked_event.booked_room = await _update_room_booking(
                 locked_event,
@@ -600,6 +619,19 @@ def _ensure_owner(event: Event, user_id: str, action: str) -> None:
         )
 
 
+def _ensure_active(event: Event) -> None:
+    is_archived, _ = archive_state(
+        event.archive_after,
+        event.manually_archived_at,
+        dtm.datetime.now(dtm.UTC),
+    )
+    if is_archived:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Archived meeting cannot be modified",
+        )
+
+
 def _ensure_can_delete_participant(event: Event, participant: Participant, user_id: str) -> None:
     if event.owner_id == user_id or participant.user_id == user_id:
         return
@@ -616,9 +648,12 @@ def _ensure_can_delete_participant(event: Event, participant: Participant, user_
         status.HTTP_200_OK: {"description": "List of meetings owned by the user"},
     },
 )
-async def get_my_meetings(auth: INH_TOKEN_AUTH) -> list[EventSummary]:
+async def get_my_meetings(
+    auth: INH_TOKEN_AUTH,
+    meeting_status: Annotated[MeetingStatus, Query(alias="status")] = MeetingStatus.ACTIVE,
+) -> list[EventSummary]:
     """Get meetings owned by the authenticated user."""
-    events = await events_repo.get_my_events(auth.innohassle_id)
+    events = await events_repo.get_my_events(auth.innohassle_id, meeting_status, dtm.datetime.now(dtm.UTC))
     return [_event_summary(event) for event in events]
 
 
@@ -641,9 +676,16 @@ async def create_meeting(event_in: EventCreate, auth: INH_TOKEN_AUTH) -> EventVi
         status.HTTP_200_OK: {"description": "List of meetings where the user is a participant"},
     },
 )
-async def get_participating_meetings(auth: INH_TOKEN_AUTH) -> list[EventSummary]:
+async def get_participating_meetings(
+    auth: INH_TOKEN_AUTH,
+    meeting_status: Annotated[MeetingStatus, Query(alias="status")] = MeetingStatus.ACTIVE,
+) -> list[EventSummary]:
     """Get meetings where the authenticated user is a participant."""
-    events = await events_repo.get_participating_events(auth.innohassle_id)
+    events = await events_repo.get_participating_events(
+        auth.innohassle_id,
+        meeting_status,
+        dtm.datetime.now(dtm.UTC),
+    )
     return [_event_summary(event) for event in events]
 
 
@@ -667,7 +709,7 @@ async def get_meeting(meeting_ref: str, auth: INH_TOKEN_AUTH) -> EventView:
         status.HTTP_400_BAD_REQUEST: {"description": "Cannot clear selected meeting time while a room is booked"},
         status.HTTP_403_FORBIDDEN: {"description": "Not an owner"},
         status.HTTP_404_NOT_FOUND: {"description": "Meeting not found"},
-        status.HTTP_409_CONFLICT: {"description": "Room booking is already being changed for this meeting"},
+        status.HTTP_409_CONFLICT: {"description": "Meeting is archived or its room booking is being changed"},
     },
 )
 async def update_meeting(
@@ -679,6 +721,7 @@ async def update_meeting(
     """Update meeting details (owner only)."""
     event = await _get_meeting_or_404(meeting_ref)
     _ensure_owner(event, auth.innohassle_id, "update")
+    _ensure_active(event)
 
     changed_fields = event_update.model_fields_set
     updates_booking_time = "selected_time" in changed_fields and event_update.selected_time != event.selected_time
@@ -699,6 +742,26 @@ async def update_meeting(
         return await _event_view(event)
 
     event = await events_repo.update_event(event, event_update)
+    return await _event_view(event)
+
+
+@router.post(
+    "/{meeting_ref}/archive",
+    responses={
+        status.HTTP_200_OK: {"description": "Meeting archived"},
+        status.HTTP_403_FORBIDDEN: {"description": "Not an owner"},
+        status.HTTP_404_NOT_FOUND: {"description": "Meeting not found"},
+    },
+)
+async def archive_meeting(meeting_ref: str, auth: INH_TOKEN_AUTH) -> EventView:
+    """Archive a meeting manually (owner only)."""
+    event = await _get_meeting_or_404(meeting_ref)
+    _ensure_owner(event, auth.innohassle_id, "archive")
+
+    now = dtm.datetime.now(dtm.UTC)
+    is_archived, _ = archive_state(event.archive_after, event.manually_archived_at, now)
+    if not is_archived:
+        event = await events_repo.archive_event(event, now)
     return await _event_view(event)
 
 
@@ -729,6 +792,7 @@ async def delete_meeting(meeting_ref: str, auth: INH_TOKEN_AUTH, request: Reques
     responses={
         status.HTTP_200_OK: {"description": "Participant availability updated"},
         status.HTTP_404_NOT_FOUND: {"description": "Meeting not found"},
+        status.HTTP_409_CONFLICT: {"description": "Meeting is archived"},
     },
 )
 async def update_participant(
@@ -738,6 +802,7 @@ async def update_participant(
 ) -> EventView:
     """Add or update a participant's availability for a meeting."""
     event = await _get_meeting_or_404(meeting_ref)
+    _ensure_active(event)
 
     event = await events_repo.update_participant(event, participant_in, user_id=auth.innohassle_id)
     return await _event_view(event)
@@ -749,6 +814,7 @@ async def update_participant(
         status.HTTP_200_OK: {"description": "Participant removed"},
         status.HTTP_403_FORBIDDEN: {"description": "Not allowed to remove this participant"},
         status.HTTP_404_NOT_FOUND: {"description": "Meeting or participant not found"},
+        status.HTTP_409_CONFLICT: {"description": "Meeting is archived"},
     },
 )
 async def delete_participant(
@@ -760,6 +826,7 @@ async def delete_participant(
     event = await _get_meeting_or_404(meeting_ref)
     participant = _get_participant_or_404(event, user_id)
     _ensure_can_delete_participant(event, participant, auth.innohassle_id)
+    _ensure_active(event)
 
     event = await events_repo.delete_participant(event, user_id)
     return await _event_view(event)
@@ -772,7 +839,7 @@ async def delete_participant(
         status.HTTP_400_BAD_REQUEST: {"description": "Selected meeting time is not set or room is unavailable"},
         status.HTTP_403_FORBIDDEN: {"description": "Not an owner or room booking is forbidden"},
         status.HTTP_404_NOT_FOUND: {"description": "Meeting or room not found"},
-        status.HTTP_409_CONFLICT: {"description": "Room is already booked for this meeting"},
+        status.HTTP_409_CONFLICT: {"description": "Meeting is archived or already has a booked room"},
     },
 )
 async def book_room_for_meeting(
@@ -784,6 +851,7 @@ async def book_room_for_meeting(
     """Book a room for the meeting's selected time window (owner only)."""
     event = await _get_meeting_or_404(meeting_ref)
     _ensure_owner(event, auth.innohassle_id, "book a room for")
+    _ensure_active(event)
     if event.selected_time is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selected meeting time is not set")
     if event.booked_room is not None:
@@ -805,7 +873,7 @@ async def book_room_for_meeting(
         },
         status.HTTP_403_FORBIDDEN: {"description": "Not an owner or room booking is forbidden"},
         status.HTTP_404_NOT_FOUND: {"description": "Meeting, booking, or room not found"},
-        status.HTTP_409_CONFLICT: {"description": "Room booking is already being changed for this meeting"},
+        status.HTTP_409_CONFLICT: {"description": "Meeting is archived or its room booking is being changed"},
     },
 )
 async def change_room_for_meeting(
@@ -817,6 +885,7 @@ async def change_room_for_meeting(
     """Change the booked room for a meeting (owner only)."""
     event = await _get_meeting_or_404(meeting_ref)
     _ensure_owner(event, auth.innohassle_id, "change the booked room for")
+    _ensure_active(event)
     if event.booked_room is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room is not booked for this meeting")
     if event.selected_time is None:
@@ -835,7 +904,7 @@ async def change_room_for_meeting(
         status.HTTP_400_BAD_REQUEST: {"description": "Room is not booked for this meeting"},
         status.HTTP_403_FORBIDDEN: {"description": "Not an owner or room booking is forbidden"},
         status.HTTP_404_NOT_FOUND: {"description": "Meeting or booking not found"},
-        status.HTTP_409_CONFLICT: {"description": "Room booking is already being changed for this meeting"},
+        status.HTTP_409_CONFLICT: {"description": "Meeting is archived or its room booking is being changed"},
     },
 )
 async def cancel_room_for_meeting(
@@ -846,6 +915,7 @@ async def cancel_room_for_meeting(
     """Cancel the booked room for a meeting (owner only)."""
     event = await _get_meeting_or_404(meeting_ref)
     _ensure_owner(event, auth.innohassle_id, "cancel the booked room for")
+    _ensure_active(event)
     if event.booked_room is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room is not booked for this meeting")
 

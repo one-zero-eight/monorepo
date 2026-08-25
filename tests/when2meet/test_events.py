@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from src.when2meet.modules.events import events_repo, routes
+from src.when2meet.modules.events.schemas import BookedRoom
 
 ROOM_BOOKING_API_URL = "https://room-booking.test/api/v0"
 
@@ -30,8 +31,8 @@ def _created_booking(room_id: str, outlook_booking_id: str = "booking-1") -> dic
     return {
         "room_id": room_id,
         "title": "Room Search",
-        "start": "2026-06-15T10:00:00Z",
-        "end": "2026-06-15T11:00:00Z",
+        "start": "2027-06-15T10:00:00Z",
+        "end": "2027-06-15T11:00:00Z",
         "outlook_booking_id": outlook_booking_id,
         "outlook_entry_id": "entry-1",
         "attendees": None,
@@ -52,13 +53,13 @@ def _book_meeting_room(
 ) -> str:
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": name, "slots": ["2026-06-15T10:00:00Z", "2026-06-15T12:00:00Z"]},
+        json={"name": name, "slots": ["2027-06-15T10:00:00Z", "2027-06-15T12:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
     when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
-        json={"selected_time": {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}},
+        json={"selected_time": {"start": "2027-06-15T10:00:00Z", "end": "2027-06-15T11:00:00Z"}},
         headers=user_headers,
     )
     with respx.mock(assert_all_called=True) as respx_mock:
@@ -315,7 +316,7 @@ def test_create_event_with_auth(when2meet_client: TestClient, user_headers):
     """Verify event creation with ownership link."""
     event_data = {
         "name": "Auth Meeting",
-        "slots": ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z"],
+        "slots": ["2027-06-15T10:00:00Z", "2027-06-15T11:00:00Z"],
     }
     response = when2meet_client.post("/api/v0/meetings", json=event_data, headers=user_headers)
     assert response.status_code == 201
@@ -323,9 +324,58 @@ def test_create_event_with_auth(when2meet_client: TestClient, user_headers):
     assert data["owner_id"] == "test-user-1"
 
 
+def test_create_event_exposes_archive_deadline_from_latest_slot(when2meet_client: TestClient, user_headers):
+    response = when2meet_client.post(
+        "/api/v0/meetings",
+        json={
+            "name": "Future Meeting",
+            "slots": ["2027-06-15T10:00:00Z", "2027-06-15T12:00:00Z"],
+        },
+        headers=user_headers,
+    )
+
+    assert response.status_code == 201
+    assert response.json()["archive_after"] == "2027-06-15T12:30:00Z"
+    assert response.json()["is_archived"] is False
+    assert response.json()["archived_at"] is None
+
+
+def test_update_event_recalculates_archive_deadline(when2meet_client: TestClient, user_headers):
+    create_response = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Deadline Update", "slots": ["2027-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_response.json()["id"]
+
+    selected_response = when2meet_client.patch(
+        f"/api/v0/meetings/{event_id}",
+        json={"selected_time": {"start": "2027-07-01T14:00:00Z", "end": "2027-07-01T15:30:00Z"}},
+        headers=user_headers,
+    )
+    assert selected_response.status_code == 200
+    assert selected_response.json()["archive_after"] == "2027-07-01T15:30:00Z"
+
+    slots_response = when2meet_client.patch(
+        f"/api/v0/meetings/{event_id}",
+        json={"slots": ["2027-08-01T18:00:00Z"]},
+        headers=user_headers,
+    )
+    assert slots_response.status_code == 200
+    assert slots_response.json()["archive_after"] == "2027-07-01T15:30:00Z"
+
+    cleared_response = when2meet_client.patch(
+        f"/api/v0/meetings/{event_id}",
+        json={"selected_time": None},
+        headers=user_headers,
+    )
+    assert cleared_response.status_code == 200
+    assert cleared_response.json()["archive_after"] == "2027-08-01T18:30:00Z"
+
+
 def test_get_event(when2meet_client: TestClient, user_headers):
     """Verify loading event details."""
-    event_data = {"name": "Load Test", "slots": ["2026-06-15T10:00:00Z"]}
+    event_data = {"name": "Load Test", "slots": ["2027-06-15T10:00:00Z"]}
     create_response = when2meet_client.post("/api/v0/meetings", json=event_data, headers=user_headers)
     event_id = create_response.json()["id"]
 
@@ -336,7 +386,7 @@ def test_get_event(when2meet_client: TestClient, user_headers):
 
 def test_get_event_by_slug(when2meet_client: TestClient, user_headers):
     """Verify loading event details by short slug."""
-    event_data = {"name": "Slug Load Test", "slots": ["2026-06-15T10:00:00Z"]}
+    event_data = {"name": "Slug Load Test", "slots": ["2027-06-15T10:00:00Z"]}
     create_response = when2meet_client.post("/api/v0/meetings", json=event_data, headers=user_headers)
     slug = create_response.json()["slug"]
 
@@ -348,7 +398,7 @@ def test_get_event_by_slug(when2meet_client: TestClient, user_headers):
 
 def test_events_repo_read_returns_event_by_id(when2meet_client: TestClient, user_headers):
     """Verify repository read returns an existing event."""
-    event_data = {"name": "Repo Read Test", "slots": ["2026-06-15T10:00:00Z"]}
+    event_data = {"name": "Repo Read Test", "slots": ["2027-06-15T10:00:00Z"]}
     create_response = when2meet_client.post("/api/v0/meetings", json=event_data, headers=user_headers)
     event_id = PydanticObjectId(create_response.json()["id"])
 
@@ -372,12 +422,12 @@ def test_get_event_not_found(when2meet_client: TestClient, user_headers):
 def test_get_my_events(when2meet_client: TestClient, user_headers, auth_header_factory):
     """Verify filtering events owned by the user."""
     when2meet_client.post(
-        "/api/v0/meetings", json={"name": "My Meeting", "slots": ["2026-06-15T10:00:00Z"]}, headers=user_headers
+        "/api/v0/meetings", json={"name": "My Meeting", "slots": ["2027-06-15T10:00:00Z"]}, headers=user_headers
     )
 
     other_headers = auth_header_factory("other-user", "other@example.com")
     when2meet_client.post(
-        "/api/v0/meetings", json={"name": "Other Meeting", "slots": ["2026-06-15T10:00:00Z"]}, headers=other_headers
+        "/api/v0/meetings", json={"name": "Other Meeting", "slots": ["2027-06-15T10:00:00Z"]}, headers=other_headers
     )
 
     response = when2meet_client.get("/api/v0/meetings/", headers=user_headers)
@@ -387,6 +437,31 @@ def test_get_my_events(when2meet_client: TestClient, user_headers, auth_header_f
     assert data[0]["name"] == "My Meeting"
     assert "slug" in data[0]
     assert "participants_count" in data[0]
+
+
+def test_get_my_events_filters_active_and_archived(when2meet_client: TestClient, user_headers):
+    when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Active Meeting", "slots": ["2027-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Archived Meeting", "slots": ["2020-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+
+    active_response = when2meet_client.get("/api/v0/meetings/", headers=user_headers)
+    archived_response = when2meet_client.get("/api/v0/meetings/?status=archived", headers=user_headers)
+
+    assert [meeting["name"] for meeting in active_response.json()] == ["Active Meeting"]
+    assert [meeting["name"] for meeting in archived_response.json()] == ["Archived Meeting"]
+
+
+def test_get_my_events_rejects_unknown_status(when2meet_client: TestClient, user_headers):
+    response = when2meet_client.get("/api/v0/meetings/?status=unknown", headers=user_headers)
+
+    assert response.status_code == 422
 
 
 def test_events_mine_removed(when2meet_client: TestClient, user_headers):
@@ -400,13 +475,13 @@ def test_get_participating_events(when2meet_client: TestClient, user_headers, au
     other_headers = auth_header_factory("other-user", "other@example.com")
 
     create_resp = when2meet_client.post(
-        "/api/v0/meetings", json={"name": "Other's Meeting", "slots": ["2026-06-15T10:00:00Z"]}, headers=other_headers
+        "/api/v0/meetings", json={"name": "Other's Meeting", "slots": ["2027-06-15T10:00:00Z"]}, headers=other_headers
     )
     event_id = create_resp.json()["id"]
 
     when2meet_client.put(
         f"/api/v0/meetings/{event_id}/participants",
-        json={"availability": ["2026-06-15T10:00:00Z"]},
+        json={"availability": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
 
@@ -417,10 +492,44 @@ def test_get_participating_events(when2meet_client: TestClient, user_headers, au
     assert data[0]["name"] == "Other's Meeting"
 
 
+def test_get_participating_events_filters_active_and_archived(
+    when2meet_client: TestClient,
+    user_headers,
+    auth_header_factory,
+):
+    owner_headers = auth_header_factory("other-user", "other@example.com")
+    for name in ["Active Participation", "Archived Participation"]:
+        slot = "2027-06-15T10:00:00Z"
+        create_response = when2meet_client.post(
+            "/api/v0/meetings",
+            json={"name": name, "slots": [slot]},
+            headers=owner_headers,
+        )
+        when2meet_client.put(
+            f"/api/v0/meetings/{create_response.json()['id']}/participants",
+            json={"availability": [slot]},
+            headers=user_headers,
+        )
+        if name == "Archived Participation":
+            when2meet_client.post(
+                f"/api/v0/meetings/{create_response.json()['id']}/archive",
+                headers=owner_headers,
+            )
+
+    active_response = when2meet_client.get("/api/v0/meetings/participating", headers=user_headers)
+    archived_response = when2meet_client.get(
+        "/api/v0/meetings/participating?status=archived",
+        headers=user_headers,
+    )
+
+    assert [meeting["name"] for meeting in active_response.json()] == ["Active Participation"]
+    assert [meeting["name"] for meeting in archived_response.json()] == ["Archived Participation"]
+
+
 def test_patch_event_owner(when2meet_client: TestClient, user_headers, auth_header_factory):
     """Verify partial updates restricted to owner."""
     create_resp = when2meet_client.post(
-        "/api/v0/meetings", json={"name": "Initial Name", "slots": ["2026-06-15T10:00:00Z"]}, headers=user_headers
+        "/api/v0/meetings", json={"name": "Initial Name", "slots": ["2027-06-15T10:00:00Z"]}, headers=user_headers
     )
     event_id = create_resp.json()["id"]
 
@@ -437,6 +546,205 @@ def test_patch_event_owner(when2meet_client: TestClient, user_headers, auth_head
     assert patch_resp.status_code == 403
 
 
+def test_owner_manually_archives_meeting(when2meet_client: TestClient, user_headers):
+    create_response = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Archive Manually", "slots": ["2027-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_response.json()["id"]
+
+    archive_response = when2meet_client.post(f"/api/v0/meetings/{event_id}/archive", headers=user_headers)
+
+    assert archive_response.status_code == 200
+    assert archive_response.json()["is_archived"] is True
+    assert archive_response.json()["archived_at"] is not None
+    assert when2meet_client.get("/api/v0/meetings/", headers=user_headers).json() == []
+    archived_meetings = when2meet_client.get(
+        "/api/v0/meetings/?status=archived",
+        headers=user_headers,
+    ).json()
+    assert [meeting["id"] for meeting in archived_meetings] == [event_id]
+
+
+def test_manual_archive_is_idempotent(when2meet_client: TestClient, user_headers):
+    create_response = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Archive Once", "slots": ["2027-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_response.json()["id"]
+
+    first_response = when2meet_client.post(f"/api/v0/meetings/{event_id}/archive", headers=user_headers)
+    second_response = when2meet_client.post(f"/api/v0/meetings/{event_id}/archive", headers=user_headers)
+
+    assert second_response.status_code == 200
+    assert second_response.json()["archived_at"] == first_response.json()["archived_at"]
+
+
+def test_manual_archive_requires_owner(when2meet_client: TestClient, user_headers, auth_header_factory):
+    create_response = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Owner Archive", "slots": ["2027-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    other_headers = auth_header_factory("other-user", "other@example.com")
+
+    response = when2meet_client.post(
+        f"/api/v0/meetings/{create_response.json()['id']}/archive",
+        headers=other_headers,
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Only the owner can archive the meeting"
+
+
+def test_manual_archive_meeting_not_found(when2meet_client: TestClient, user_headers):
+    response = when2meet_client.post("/api/v0/meetings/missing-event/archive", headers=user_headers)
+
+    assert response.status_code == 404
+
+
+def test_manual_archive_does_not_override_automatic_archive(when2meet_client: TestClient, user_headers):
+    create_response = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Already Finished", "slots": ["2020-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_response.json()["id"]
+    automatic_archived_at = create_response.json()["archive_after"]
+
+    response = when2meet_client.post(f"/api/v0/meetings/{event_id}/archive", headers=user_headers)
+
+    assert response.status_code == 200
+    assert response.json()["archived_at"] == automatic_archived_at
+    portal = when2meet_client.portal
+    assert portal is not None
+    stored_event = portal.call(events_repo.read, PydanticObjectId(event_id))
+    assert stored_event is not None
+    assert stored_event.manually_archived_at is None
+
+
+def test_manual_archive_preserves_booked_room(when2meet_client: TestClient, user_headers):
+    create_response = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Archive With Room", "slots": ["2027-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_response.json()["id"]
+    portal = when2meet_client.portal
+    assert portal is not None
+    event = portal.call(events_repo.read, PydanticObjectId(event_id))
+    assert event is not None
+    event.booked_room = BookedRoom(room_id="3.2", outlook_booking_id="booking-1", outlook_entry_id="entry-1")
+    portal.call(event.save)
+
+    response = when2meet_client.post(f"/api/v0/meetings/{event_id}/archive", headers=user_headers)
+
+    assert response.status_code == 200
+    assert response.json()["booked_room"] == {
+        "room_id": "3.2",
+        "outlook_booking_id": "booking-1",
+        "outlook_entry_id": "entry-1",
+    }
+
+
+def test_manually_archived_meeting_is_read_only(when2meet_client: TestClient, user_headers):
+    create_response = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Read Only", "slots": ["2027-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_response.json()["id"]
+    when2meet_client.put(
+        f"/api/v0/meetings/{event_id}/participants",
+        json={"availability": ["2027-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    when2meet_client.patch(
+        f"/api/v0/meetings/{event_id}",
+        json={"selected_time": {"start": "2027-06-15T10:00:00Z", "end": "2027-06-15T11:00:00Z"}},
+        headers=user_headers,
+    )
+
+    portal = when2meet_client.portal
+    assert portal is not None
+    event = portal.call(events_repo.read, PydanticObjectId(event_id))
+    assert event is not None
+    event.booked_room = BookedRoom(room_id="3.2", outlook_booking_id="booking-1", outlook_entry_id="entry-1")
+    portal.call(event.save)
+    when2meet_client.post(f"/api/v0/meetings/{event_id}/archive", headers=user_headers)
+
+    responses = [
+        when2meet_client.patch(
+            f"/api/v0/meetings/{event_id}",
+            json={"name": "Changed"},
+            headers=user_headers,
+        ),
+        when2meet_client.put(
+            f"/api/v0/meetings/{event_id}/participants",
+            json={"availability": []},
+            headers=user_headers,
+        ),
+        when2meet_client.delete(
+            f"/api/v0/meetings/{event_id}/participants/test-user-1",
+            headers=user_headers,
+        ),
+        when2meet_client.post(
+            f"/api/v0/meetings/{event_id}/book-room",
+            json={"room_id": "3.3"},
+            headers=user_headers,
+        ),
+        when2meet_client.patch(
+            f"/api/v0/meetings/{event_id}/book-room",
+            json={"room_id": "3.3"},
+            headers=user_headers,
+        ),
+        when2meet_client.delete(
+            f"/api/v0/meetings/{event_id}/book-room",
+            headers=user_headers,
+        ),
+    ]
+
+    for response in responses:
+        assert response.status_code == 409
+        assert response.json()["detail"] == "Archived meeting cannot be modified"
+
+
+def test_automatically_archived_meeting_is_read_only(when2meet_client: TestClient, user_headers):
+    create_response = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Finished", "slots": ["2020-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+
+    response = when2meet_client.patch(
+        f"/api/v0/meetings/{create_response.json()['id']}",
+        json={"name": "Changed"},
+        headers=user_headers,
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Archived meeting cannot be modified"
+
+
+def test_archived_meeting_can_be_read_and_deleted(when2meet_client: TestClient, user_headers):
+    create_response = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Readable Archive", "slots": ["2027-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_response.json()["id"]
+    when2meet_client.post(f"/api/v0/meetings/{event_id}/archive", headers=user_headers)
+
+    get_response = when2meet_client.get(f"/api/v0/meetings/{event_id}", headers=user_headers)
+    delete_response = when2meet_client.delete(f"/api/v0/meetings/{event_id}", headers=user_headers)
+
+    assert get_response.status_code == 200
+    assert get_response.json()["is_archived"] is True
+    assert delete_response.status_code == 204
+
+
 def test_owner_selects_meeting_time_visible_to_participants(
     when2meet_client: TestClient,
     user_headers,
@@ -445,11 +753,11 @@ def test_owner_selects_meeting_time_visible_to_participants(
     """Verify owner can store final meeting time and participants can read it."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Decision Time", "slots": ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z"]},
+        json={"name": "Decision Time", "slots": ["2027-06-15T10:00:00Z", "2027-06-15T11:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
-    selected_time = {"start": "2026-06-15T10:00:00.123Z", "end": "2026-06-15T11:00:00Z"}
+    selected_time = {"start": "2027-06-15T10:00:00.123Z", "end": "2027-06-15T11:00:00Z"}
 
     patch_resp = when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
@@ -458,23 +766,23 @@ def test_owner_selects_meeting_time_visible_to_participants(
     )
     assert patch_resp.status_code == 200
     assert patch_resp.json()["selected_time"] == {
-        "start": "2026-06-15T10:00:00Z",
-        "end": "2026-06-15T11:00:00Z",
+        "start": "2027-06-15T10:00:00Z",
+        "end": "2027-06-15T11:00:00Z",
     }
 
     other_headers = auth_header_factory("participant-user", "participant@example.com")
     get_resp = when2meet_client.get(f"/api/v0/meetings/{event_id}", headers=other_headers)
     assert get_resp.status_code == 200
     assert get_resp.json()["selected_time"] == {
-        "start": "2026-06-15T10:00:00Z",
-        "end": "2026-06-15T11:00:00Z",
+        "start": "2027-06-15T10:00:00Z",
+        "end": "2027-06-15T11:00:00Z",
     }
 
     summary_resp = when2meet_client.get("/api/v0/meetings/", headers=user_headers)
     assert summary_resp.status_code == 200
     assert summary_resp.json()[0]["selected_time"] == {
-        "start": "2026-06-15T10:00:00Z",
-        "end": "2026-06-15T11:00:00Z",
+        "start": "2027-06-15T10:00:00Z",
+        "end": "2027-06-15T11:00:00Z",
     }
 
 
@@ -482,7 +790,7 @@ def test_non_owner_cannot_select_meeting_time(when2meet_client: TestClient, user
     """Verify selected meeting time is owner-controlled metadata."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Owner Time", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "Owner Time", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
@@ -490,7 +798,7 @@ def test_non_owner_cannot_select_meeting_time(when2meet_client: TestClient, user
 
     patch_resp = when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
-        json={"selected_time": {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}},
+        json={"selected_time": {"start": "2027-06-15T10:00:00Z", "end": "2027-06-15T11:00:00Z"}},
         headers=other_headers,
     )
 
@@ -501,14 +809,14 @@ def test_selected_meeting_time_requires_end_after_start(when2meet_client: TestCl
     """Verify invalid selected meeting intervals are rejected."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Invalid Time", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "Invalid Time", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
 
     patch_resp = when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
-        json={"selected_time": {"start": "2026-06-15T11:00:00Z", "end": "2026-06-15T10:00:00Z"}},
+        json={"selected_time": {"start": "2027-06-15T11:00:00Z", "end": "2027-06-15T10:00:00Z"}},
         headers=user_headers,
     )
 
@@ -519,7 +827,7 @@ def test_available_rooms_requires_selected_meeting_time(when2meet_client: TestCl
     """Verify available rooms cannot be requested before meeting time is selected."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "No Time Rooms", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "No Time Rooms", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
@@ -537,11 +845,11 @@ def test_available_rooms_returns_only_rooms_free_for_full_selected_time(
     """Verify rooms with overlapping bookings are excluded from availability."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Room Search", "slots": ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z"]},
+        json={"name": "Room Search", "slots": ["2027-06-15T10:00:00Z", "2027-06-15T11:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
-    selected_time = {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}
+    selected_time = {"start": "2027-06-15T10:00:00Z", "end": "2027-06-15T11:00:00Z"}
     when2meet_client.patch(f"/api/v0/meetings/{event_id}", json={"selected_time": selected_time}, headers=user_headers)
 
     with respx.mock(assert_all_called=True) as respx_mock:
@@ -560,9 +868,9 @@ def test_available_rooms_returns_only_rooms_free_for_full_selected_time(
             return_value=httpx.Response(
                 200,
                 json=[
-                    _booking("3.1", "2026-06-15T10:30:00Z", "2026-06-15T11:30:00Z"),
-                    _booking("3.2", "2026-06-15T09:00:00Z", "2026-06-15T10:00:00Z"),
-                    _booking("3.3", "2026-06-15T11:00:00Z", "2026-06-15T12:00:00Z"),
+                    _booking("3.1", "2027-06-15T10:30:00Z", "2027-06-15T11:30:00Z"),
+                    _booking("3.2", "2027-06-15T09:00:00Z", "2027-06-15T10:00:00Z"),
+                    _booking("3.3", "2027-06-15T11:00:00Z", "2027-06-15T12:00:00Z"),
                 ],
             )
         )
@@ -586,15 +894,15 @@ def test_available_rooms_returns_only_rooms_free_for_full_selected_time(
     bookings_request = bookings_route.calls.last.request
     assert bookings_request.headers["Authorization"] == user_headers["Authorization"]
     assert bookings_request.url.params.get_list("room_ids") == ["3.1", "3.2", "3.3", "107"]
-    assert bookings_request.url.params["start"] == "2026-06-15T10:00:00+00:00"
-    assert bookings_request.url.params["end"] == "2026-06-15T11:00:00+00:00"
+    assert bookings_request.url.params["start"] == "2027-06-15T10:00:00+00:00"
+    assert bookings_request.url.params["end"] == "2027-06-15T11:00:00+00:00"
 
     for route in (can_book_3_2_route, can_book_3_3_route, can_book_107_route):
         assert route.calls.last is not None
         can_book_request = route.calls.last.request
         assert can_book_request.headers["Authorization"] == user_headers["Authorization"]
-        assert can_book_request.url.params["start"] == "2026-06-15T10:00:00+00:00"
-        assert can_book_request.url.params["end"] == "2026-06-15T11:00:00+00:00"
+        assert can_book_request.url.params["start"] == "2027-06-15T10:00:00+00:00"
+        assert can_book_request.url.params["end"] == "2027-06-15T11:00:00+00:00"
 
     assert response.status_code == 200
     room_by_id = {room["id"]: room for room in response.json()}
@@ -623,13 +931,13 @@ def test_available_rooms_forwards_selected_time_timezone_to_room_booking(
         "/api/v0/meetings",
         json={
             "name": "Moscow Room Search",
-            "slots": ["2026-06-15T10:00:00Z"],
+            "slots": ["2027-06-15T10:00:00Z"],
             "timezone": "UTC",
         },
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
-    selected_time = {"start": "2026-06-15T10:00:00+03:00", "end": "2026-06-15T11:00:00+03:00"}
+    selected_time = {"start": "2027-06-15T10:00:00+03:00", "end": "2027-06-15T11:00:00+03:00"}
     when2meet_client.patch(f"/api/v0/meetings/{event_id}", json={"selected_time": selected_time}, headers=user_headers)
 
     with respx.mock(assert_all_called=True) as respx_mock:
@@ -649,11 +957,11 @@ def test_available_rooms_forwards_selected_time_timezone_to_room_booking(
 
     assert response.status_code == 200
     assert bookings_route.calls.last is not None
-    assert bookings_route.calls.last.request.url.params["start"] == "2026-06-15T10:00:00+03:00"
-    assert bookings_route.calls.last.request.url.params["end"] == "2026-06-15T11:00:00+03:00"
+    assert bookings_route.calls.last.request.url.params["start"] == "2027-06-15T10:00:00+03:00"
+    assert bookings_route.calls.last.request.url.params["end"] == "2027-06-15T11:00:00+03:00"
     assert can_book_route.calls.last is not None
-    assert can_book_route.calls.last.request.url.params["start"] == "2026-06-15T10:00:00+03:00"
-    assert can_book_route.calls.last.request.url.params["end"] == "2026-06-15T11:00:00+03:00"
+    assert can_book_route.calls.last.request.url.params["start"] == "2027-06-15T10:00:00+03:00"
+    assert can_book_route.calls.last.request.url.params["end"] == "2027-06-15T11:00:00+03:00"
 
 
 def test_available_rooms_returns_bad_gateway_when_room_booking_fails(
@@ -663,11 +971,11 @@ def test_available_rooms_returns_bad_gateway_when_room_booking_fails(
     """Verify room-booking upstream errors are hidden behind a stable API error."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Room Search Failure", "slots": ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z"]},
+        json={"name": "Room Search Failure", "slots": ["2027-06-15T10:00:00Z", "2027-06-15T11:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
-    selected_time = {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}
+    selected_time = {"start": "2027-06-15T10:00:00Z", "end": "2027-06-15T11:00:00Z"}
     when2meet_client.patch(f"/api/v0/meetings/{event_id}", json={"selected_time": selected_time}, headers=user_headers)
 
     with respx.mock(assert_all_called=True) as respx_mock:
@@ -685,11 +993,11 @@ def test_owner_books_room_for_selected_meeting_time(
     """Verify owner can book a room and the meeting stores the booking reference."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Room Search", "slots": ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z"]},
+        json={"name": "Room Search", "slots": ["2027-06-15T10:00:00Z", "2027-06-15T11:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
-    selected_time = {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}
+    selected_time = {"start": "2027-06-15T10:00:00Z", "end": "2027-06-15T11:00:00Z"}
     when2meet_client.patch(f"/api/v0/meetings/{event_id}", json={"selected_time": selected_time}, headers=user_headers)
 
     with respx.mock(assert_all_called=True) as respx_mock:
@@ -709,8 +1017,8 @@ def test_owner_books_room_for_selected_meeting_time(
     assert can_book_route.calls.last is not None
     can_book_request = can_book_route.calls.last.request
     assert can_book_request.headers["Authorization"] == user_headers["Authorization"]
-    assert can_book_request.url.params["start"] == "2026-06-15T10:00:00+00:00"
-    assert can_book_request.url.params["end"] == "2026-06-15T11:00:00+00:00"
+    assert can_book_request.url.params["start"] == "2027-06-15T10:00:00+00:00"
+    assert can_book_request.url.params["end"] == "2027-06-15T11:00:00+00:00"
 
     assert booking_route.calls.last is not None
     booking_request = booking_route.calls.last.request
@@ -719,8 +1027,8 @@ def test_owner_books_room_for_selected_meeting_time(
     assert booking_payload == {
         "room_id": "3.2",
         "title": "Room Search",
-        "start": "2026-06-15T10:00:00+00:00",
-        "end": "2026-06-15T11:00:00+00:00",
+        "start": "2027-06-15T10:00:00+00:00",
+        "end": "2027-06-15T11:00:00+00:00",
         "participant_emails": None,
         "recurrence": None,
         "categories": ["When2Meet"],
@@ -748,13 +1056,13 @@ def test_book_room_forwards_selected_time_timezone_to_room_booking(
         "/api/v0/meetings",
         json={
             "name": "Moscow Room Booking",
-            "slots": ["2026-06-15T10:00:00Z"],
+            "slots": ["2027-06-15T10:00:00Z"],
             "timezone": "UTC",
         },
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
-    selected_time = {"start": "2026-06-15T10:00:00+03:00", "end": "2026-06-15T11:00:00+03:00"}
+    selected_time = {"start": "2027-06-15T10:00:00+03:00", "end": "2027-06-15T11:00:00+03:00"}
     when2meet_client.patch(f"/api/v0/meetings/{event_id}", json={"selected_time": selected_time}, headers=user_headers)
 
     with respx.mock(assert_all_called=True) as respx_mock:
@@ -772,13 +1080,13 @@ def test_book_room_forwards_selected_time_timezone_to_room_booking(
 
     assert response.status_code == 200
     assert can_book_route.calls.last is not None
-    assert can_book_route.calls.last.request.url.params["start"] == "2026-06-15T10:00:00+03:00"
-    assert can_book_route.calls.last.request.url.params["end"] == "2026-06-15T11:00:00+03:00"
+    assert can_book_route.calls.last.request.url.params["start"] == "2027-06-15T10:00:00+03:00"
+    assert can_book_route.calls.last.request.url.params["end"] == "2027-06-15T11:00:00+03:00"
 
     assert booking_route.calls.last is not None
     booking_payload = json.loads(booking_route.calls.last.request.content)
-    assert booking_payload["start"] == "2026-06-15T10:00:00+03:00"
-    assert booking_payload["end"] == "2026-06-15T11:00:00+03:00"
+    assert booking_payload["start"] == "2027-06-15T10:00:00+03:00"
+    assert booking_payload["end"] == "2027-06-15T11:00:00+03:00"
 
 
 def test_non_owner_cannot_book_room_for_meeting(
@@ -789,13 +1097,13 @@ def test_non_owner_cannot_book_room_for_meeting(
     """Verify room booking is restricted to the meeting owner."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Owner Books", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "Owner Books", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
     when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
-        json={"selected_time": {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}},
+        json={"selected_time": {"start": "2027-06-15T10:00:00Z", "end": "2027-06-15T11:00:00Z"}},
         headers=user_headers,
     )
     other_headers = auth_header_factory("other-user", "other@example.com")
@@ -813,7 +1121,7 @@ def test_book_room_requires_selected_meeting_time(when2meet_client: TestClient, 
     """Verify room booking cannot happen before the meeting time is selected."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "No Time Booking", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "No Time Booking", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
@@ -832,7 +1140,7 @@ def test_book_room_helper_requires_selected_meeting_time(when2meet_client: TestC
     """Verify direct room-booking helper rejects meetings without selected time."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "No Time Helper", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "No Time Helper", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = PydanticObjectId(create_resp.json()["id"])
@@ -852,7 +1160,7 @@ def test_save_booked_room_requires_booking_lock(when2meet_client: TestClient, us
     """Verify booked room persistence requires the booking lock."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Lost Lock", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "Lost Lock", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = PydanticObjectId(create_resp.json()["id"])
@@ -872,7 +1180,7 @@ def test_replace_booked_room_requires_booking_lock(when2meet_client: TestClient,
     """Verify booked room replacement requires the booking lock."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Replace Lost Lock", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "Replace Lost Lock", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = PydanticObjectId(create_resp.json()["id"])
@@ -901,7 +1209,7 @@ def test_update_room_booking_requires_booked_room(when2meet_client: TestClient, 
     """Verify direct booking update helper requires a stored room booking."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "No Stored Booking", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "No Stored Booking", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = PydanticObjectId(create_resp.json()["id"])
@@ -921,7 +1229,7 @@ def test_update_room_booking_requires_selected_time(when2meet_client: TestClient
     """Verify direct booking update helper requires selected meeting time."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "No Selected Time", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "No Selected Time", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = PydanticObjectId(create_resp.json()["id"])
@@ -942,13 +1250,13 @@ def test_book_room_rejects_unavailable_room(when2meet_client: TestClient, user_h
     """Verify room-booking can-book denial prevents booking persistence."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Unavailable Room", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "Unavailable Room", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
     when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
-        json={"selected_time": {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}},
+        json={"selected_time": {"start": "2027-06-15T10:00:00Z", "end": "2027-06-15T11:00:00Z"}},
         headers=user_headers,
     )
 
@@ -981,13 +1289,13 @@ def test_book_room_rejects_concurrent_booking_attempt(when2meet_client: TestClie
     """Verify an in-progress booking lock prevents a second upstream booking."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Concurrent Room", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "Concurrent Room", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
     when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
-        json={"selected_time": {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}},
+        json={"selected_time": {"start": "2027-06-15T10:00:00Z", "end": "2027-06-15T11:00:00Z"}},
         headers=user_headers,
     )
     portal = when2meet_client.portal
@@ -1021,13 +1329,13 @@ def test_book_room_rejects_duplicate_meeting_booking(when2meet_client: TestClien
     """Verify a meeting cannot create multiple room bookings."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Duplicate Room", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "Duplicate Room", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
     when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
-        json={"selected_time": {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}},
+        json={"selected_time": {"start": "2027-06-15T10:00:00Z", "end": "2027-06-15T11:00:00Z"}},
         headers=user_headers,
     )
 
@@ -1062,7 +1370,7 @@ def test_owner_changes_selected_time_updates_room_booking(when2meet_client: Test
         "/api/v0/meetings",
         json={
             "name": "Move Time",
-            "slots": ["2026-06-15T10:00:00Z", "2026-06-15T12:00:00Z"],
+            "slots": ["2027-06-15T10:00:00Z", "2027-06-15T12:00:00Z"],
             "timezone": "UTC",
         },
         headers=user_headers,
@@ -1070,7 +1378,7 @@ def test_owner_changes_selected_time_updates_room_booking(when2meet_client: Test
     event_id = create_resp.json()["id"]
     when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
-        json={"selected_time": {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}},
+        json={"selected_time": {"start": "2027-06-15T10:00:00Z", "end": "2027-06-15T11:00:00Z"}},
         headers=user_headers,
     )
     with respx.mock(assert_all_called=True) as respx_mock:
@@ -1093,22 +1401,22 @@ def test_owner_changes_selected_time_updates_room_booking(when2meet_client: Test
         )
         response = when2meet_client.patch(
             f"/api/v0/meetings/{event_id}",
-            json={"selected_time": {"start": "2026-06-15T12:00:00+03:00", "end": "2026-06-15T13:00:00+03:00"}},
+            json={"selected_time": {"start": "2027-06-15T12:00:00+03:00", "end": "2027-06-15T13:00:00+03:00"}},
             headers=user_headers,
         )
 
     assert response.status_code == 200
     assert response.json()["selected_time"] == {
-        "start": "2026-06-15T12:00:00+03:00",
-        "end": "2026-06-15T13:00:00+03:00",
+        "start": "2027-06-15T12:00:00+03:00",
+        "end": "2027-06-15T13:00:00+03:00",
     }
     assert patch_route.calls.last is not None
     patch_request = patch_route.calls.last.request
     assert patch_request.headers["Authorization"] == user_headers["Authorization"]
     assert json.loads(patch_request.content) == {
         "title": "Move Time",
-        "start": "2026-06-15T12:00:00+03:00",
-        "end": "2026-06-15T13:00:00+03:00",
+        "start": "2027-06-15T12:00:00+03:00",
+        "end": "2027-06-15T13:00:00+03:00",
     }
 
 
@@ -1117,9 +1425,9 @@ def test_owner_changes_selected_time_updates_room_booking(when2meet_client: Test
     [
         ({"name": "Updated Without Room"}, "name", "Updated Without Room"),
         (
-            {"selected_time": {"start": "2026-06-15T12:00:00Z", "end": "2026-06-15T13:00:00Z"}},
+            {"selected_time": {"start": "2027-06-15T12:00:00Z", "end": "2027-06-15T13:00:00Z"}},
             "selected_time",
-            {"start": "2026-06-15T12:00:00Z", "end": "2026-06-15T13:00:00Z"},
+            {"start": "2027-06-15T12:00:00Z", "end": "2027-06-15T13:00:00Z"},
         ),
     ],
 )
@@ -1158,13 +1466,13 @@ def test_owner_cannot_clear_selected_time_while_room_is_booked(when2meet_client:
     """Verify selected time cannot be cleared while an external room booking exists."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Clear Time", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "Clear Time", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
     when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
-        json={"selected_time": {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}},
+        json={"selected_time": {"start": "2027-06-15T10:00:00Z", "end": "2027-06-15T11:00:00Z"}},
         headers=user_headers,
     )
     with respx.mock(assert_all_called=True) as respx_mock:
@@ -1222,7 +1530,7 @@ def test_update_booked_room_releases_lock_when_upstream_update_fails(
         respx_mock.patch(_booking_url("booking/1")).mock(return_value=httpx.Response(503))
         response = when2meet_client.patch(
             f"/api/v0/meetings/{event_id}",
-            json={"selected_time": {"start": "2026-06-15T12:00:00Z", "end": "2026-06-15T13:00:00Z"}},
+            json={"selected_time": {"start": "2027-06-15T12:00:00Z", "end": "2027-06-15T13:00:00Z"}},
             headers=user_headers,
         )
 
@@ -1261,13 +1569,13 @@ def test_owner_changes_booked_room(when2meet_client: TestClient, user_headers):
     """Verify owner can replace the room booking tied to a meeting."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Change Room", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "Change Room", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
     when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
-        json={"selected_time": {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}},
+        json={"selected_time": {"start": "2027-06-15T10:00:00Z", "end": "2027-06-15T11:00:00Z"}},
         headers=user_headers,
     )
     with respx.mock(assert_all_called=True) as respx_mock:
@@ -1340,7 +1648,7 @@ def test_change_booked_room_requires_existing_booking(when2meet_client: TestClie
     """Verify room change requires an existing meeting room booking."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "No Room To Change", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "No Room To Change", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
@@ -1502,13 +1810,13 @@ def test_change_booked_room_same_room_is_noop(when2meet_client: TestClient, user
     """Verify changing to the already booked room does not call Room Booking."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Same Room", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "Same Room", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
     when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
-        json={"selected_time": {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}},
+        json={"selected_time": {"start": "2027-06-15T10:00:00Z", "end": "2027-06-15T11:00:00Z"}},
         headers=user_headers,
     )
     with respx.mock(assert_all_called=True) as respx_mock:
@@ -1544,13 +1852,13 @@ def test_owner_cancels_booked_room(when2meet_client: TestClient, user_headers):
     """Verify owner can cancel the external room booking and clear meeting state."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Cancel Room", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "Cancel Room", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
     when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
-        json={"selected_time": {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}},
+        json={"selected_time": {"start": "2027-06-15T10:00:00Z", "end": "2027-06-15T11:00:00Z"}},
         headers=user_headers,
     )
     with respx.mock(assert_all_called=True) as respx_mock:
@@ -1598,7 +1906,7 @@ def test_cancel_booked_room_requires_existing_booking(when2meet_client: TestClie
     """Verify room cancellation requires an existing meeting room booking."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "No Room To Cancel", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "No Room To Cancel", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
@@ -1683,13 +1991,13 @@ def test_delete_meeting_cancels_booked_room(when2meet_client: TestClient, user_h
     """Verify deleting a meeting cancels its external room booking first."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Delete With Room", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "Delete With Room", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
     when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
-        json={"selected_time": {"start": "2026-06-15T10:00:00Z", "end": "2026-06-15T11:00:00Z"}},
+        json={"selected_time": {"start": "2027-06-15T10:00:00Z", "end": "2027-06-15T11:00:00Z"}},
         headers=user_headers,
     )
     with respx.mock(assert_all_called=True) as respx_mock:
@@ -1805,30 +2113,30 @@ def test_patch_event_preserves_hidden_participant_slots(when2meet_client: TestCl
     """Verify removed event slots stay in participant availability."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Slot Meeting", "slots": ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z"]},
+        json={"name": "Slot Meeting", "slots": ["2027-06-15T10:00:00Z", "2027-06-15T11:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
 
     when2meet_client.put(
         f"/api/v0/meetings/{event_id}/participants",
-        json={"availability": ["2026-06-15T11:00:00Z"]},
+        json={"availability": ["2027-06-15T11:00:00Z"]},
         headers=user_headers,
     )
 
     patch_resp = when2meet_client.patch(
-        f"/api/v0/meetings/{event_id}", json={"slots": ["2026-06-15T10:00:00Z"]}, headers=user_headers
+        f"/api/v0/meetings/{event_id}", json={"slots": ["2027-06-15T10:00:00Z"]}, headers=user_headers
     )
     assert patch_resp.status_code == 200
-    assert patch_resp.json()["participants"][0]["availability"] == ["2026-06-15T11:00:00Z"]
+    assert patch_resp.json()["participants"][0]["availability"] == ["2027-06-15T11:00:00Z"]
 
     patch_resp = when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
-        json={"slots": ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z"]},
+        json={"slots": ["2027-06-15T10:00:00Z", "2027-06-15T11:00:00Z"]},
         headers=user_headers,
     )
     assert patch_resp.status_code == 200
-    assert patch_resp.json()["participants"][0]["availability"] == ["2026-06-15T11:00:00Z"]
+    assert patch_resp.json()["participants"][0]["availability"] == ["2027-06-15T11:00:00Z"]
 
 
 def test_update_participant_keeps_hidden_slots(when2meet_client: TestClient, user_headers):
@@ -1837,7 +2145,7 @@ def test_update_participant_keeps_hidden_slots(when2meet_client: TestClient, use
         "/api/v0/meetings",
         json={
             "name": "Hidden Slot Meeting",
-            "slots": ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z", "2026-06-15T12:00:00Z"],
+            "slots": ["2027-06-15T10:00:00Z", "2027-06-15T11:00:00Z", "2027-06-15T12:00:00Z"],
         },
         headers=user_headers,
     )
@@ -1845,40 +2153,40 @@ def test_update_participant_keeps_hidden_slots(when2meet_client: TestClient, use
 
     when2meet_client.put(
         f"/api/v0/meetings/{event_id}/participants",
-        json={"availability": ["2026-06-15T11:00:00Z"]},
+        json={"availability": ["2027-06-15T11:00:00Z"]},
         headers=user_headers,
     )
 
     patch_resp = when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
-        json={"slots": ["2026-06-15T10:00:00Z", "2026-06-15T12:00:00Z"]},
+        json={"slots": ["2027-06-15T10:00:00Z", "2027-06-15T12:00:00Z"]},
         headers=user_headers,
     )
     assert patch_resp.status_code == 200
-    assert patch_resp.json()["participants"][0]["availability"] == ["2026-06-15T11:00:00Z"]
+    assert patch_resp.json()["participants"][0]["availability"] == ["2027-06-15T11:00:00Z"]
 
     update_resp = when2meet_client.put(
         f"/api/v0/meetings/{event_id}/participants",
-        json={"availability": ["2026-06-15T12:00:00Z"]},
+        json={"availability": ["2027-06-15T12:00:00Z"]},
         headers=user_headers,
     )
     assert update_resp.status_code == 200
     assert update_resp.json()["participants"][0]["availability"] == [
-        "2026-06-15T11:00:00Z",
-        "2026-06-15T12:00:00Z",
+        "2027-06-15T11:00:00Z",
+        "2027-06-15T12:00:00Z",
     ]
 
     patch_resp = when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
         json={
-            "slots": ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z", "2026-06-15T12:00:00Z"],
+            "slots": ["2027-06-15T10:00:00Z", "2027-06-15T11:00:00Z", "2027-06-15T12:00:00Z"],
         },
         headers=user_headers,
     )
     assert patch_resp.status_code == 200
     assert patch_resp.json()["participants"][0]["availability"] == [
-        "2026-06-15T11:00:00Z",
-        "2026-06-15T12:00:00Z",
+        "2027-06-15T11:00:00Z",
+        "2027-06-15T12:00:00Z",
     ]
 
 
@@ -1888,7 +2196,7 @@ def test_update_participant_deduplicates_hidden_slots_from_full_payload(when2mee
         "/api/v0/meetings",
         json={
             "name": "Full Payload Meeting",
-            "slots": ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z", "2026-06-15T12:00:00Z"],
+            "slots": ["2027-06-15T10:00:00Z", "2027-06-15T11:00:00Z", "2027-06-15T12:00:00Z"],
         },
         headers=user_headers,
     )
@@ -1896,32 +2204,32 @@ def test_update_participant_deduplicates_hidden_slots_from_full_payload(when2mee
 
     when2meet_client.put(
         f"/api/v0/meetings/{event_id}/participants",
-        json={"availability": ["2026-06-15T11:00:00Z"]},
+        json={"availability": ["2027-06-15T11:00:00Z"]},
         headers=user_headers,
     )
     when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
-        json={"slots": ["2026-06-15T10:00:00Z", "2026-06-15T12:00:00Z"]},
+        json={"slots": ["2027-06-15T10:00:00Z", "2027-06-15T12:00:00Z"]},
         headers=user_headers,
     )
 
     update_resp = when2meet_client.put(
         f"/api/v0/meetings/{event_id}/participants",
-        json={"availability": ["2026-06-15T11:00:00Z", "2026-06-15T12:00:00Z"]},
+        json={"availability": ["2027-06-15T11:00:00Z", "2027-06-15T12:00:00Z"]},
         headers=user_headers,
     )
 
     assert update_resp.status_code == 200
     assert update_resp.json()["participants"][0]["availability"] == [
-        "2026-06-15T11:00:00Z",
-        "2026-06-15T12:00:00Z",
+        "2027-06-15T11:00:00Z",
+        "2027-06-15T12:00:00Z",
     ]
 
 
 def test_delete_event(when2meet_client: TestClient, user_headers, auth_header_factory):
     """Verify event deletion restricted to owner."""
     create_resp = when2meet_client.post(
-        "/api/v0/meetings", json={"name": "Delete Me", "slots": ["2026-06-15T10:00:00Z"]}, headers=user_headers
+        "/api/v0/meetings", json={"name": "Delete Me", "slots": ["2027-06-15T10:00:00Z"]}, headers=user_headers
     )
     event_id = create_resp.json()["id"]
 
@@ -1940,12 +2248,12 @@ def test_update_participant_upserts_by_authenticated_user(when2meet_client: Test
     """Verify participant availability is tied to the authenticated user."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Participant Meeting", "slots": ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z"]},
+        json={"name": "Participant Meeting", "slots": ["2027-06-15T10:00:00Z", "2027-06-15T11:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
 
-    part_data = {"availability": ["2026-06-15T10:00:00Z"]}
+    part_data = {"availability": ["2027-06-15T10:00:00Z"]}
     resp = when2meet_client.put(f"/api/v0/meetings/{event_id}/participants", json=part_data, headers=user_headers)
     assert resp.status_code == 200
     data = resp.json()
@@ -1954,7 +2262,7 @@ def test_update_participant_upserts_by_authenticated_user(when2meet_client: Test
     assert part["email"] == "test-user-1@innopolis.university"
     assert part["name"] == "Test User One"
     assert part["telegram"] == "@test_user_one"
-    assert part["availability"] == ["2026-06-15T10:00:00Z"]
+    assert part["availability"] == ["2027-06-15T10:00:00Z"]
 
     get_resp = when2meet_client.get(f"/api/v0/meetings/{event_id}", headers=user_headers)
     assert get_resp.status_code == 200
@@ -1962,13 +2270,13 @@ def test_update_participant_upserts_by_authenticated_user(when2meet_client: Test
 
     resp = when2meet_client.put(
         f"/api/v0/meetings/{event_id}/participants",
-        json={"availability": ["2026-06-15T11:00:00Z"]},
+        json={"availability": ["2027-06-15T11:00:00Z"]},
         headers=user_headers,
     )
     assert resp.status_code == 200
     data = resp.json()
     assert len(data["participants"]) == 1
-    assert data["participants"][0]["availability"] == ["2026-06-15T11:00:00Z"]
+    assert data["participants"][0]["availability"] == ["2027-06-15T11:00:00Z"]
 
 
 def test_participant_profile_fallback_when_accounts_user_missing(
@@ -1979,7 +2287,7 @@ def test_participant_profile_fallback_when_accounts_user_missing(
     """Verify missing Accounts profile keeps participant availability visible."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Missing Profile", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "Missing Profile", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
@@ -1987,7 +2295,7 @@ def test_participant_profile_fallback_when_accounts_user_missing(
 
     response = when2meet_client.put(
         f"/api/v0/meetings/{event_id}/participants",
-        json={"availability": ["2026-06-15T10:00:00Z"]},
+        json={"availability": ["2027-06-15T10:00:00Z"]},
         headers=other_headers,
     )
     assert response.status_code == 200
@@ -1996,7 +2304,7 @@ def test_participant_profile_fallback_when_accounts_user_missing(
     assert participant["email"] is None
     assert participant["name"] is None
     assert participant["telegram"] is None
-    assert participant["availability"] == ["2026-06-15T10:00:00Z"]
+    assert participant["availability"] == ["2027-06-15T10:00:00Z"]
 
 
 def test_participant_profile_fallback_when_accounts_enrichment_fails(
@@ -2009,14 +2317,14 @@ def test_participant_profile_fallback_when_accounts_enrichment_fails(
 
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Accounts Failure", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "Accounts Failure", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
 
     when2meet_client.put(
         f"/api/v0/meetings/{event_id}/participants",
-        json={"availability": ["2026-06-15T10:00:00Z"]},
+        json={"availability": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
 
@@ -2033,14 +2341,14 @@ def test_participant_profile_fallback_when_accounts_enrichment_fails(
     assert participant["email"] is None
     assert participant["name"] is None
     assert participant["telegram"] is None
-    assert participant["availability"] == ["2026-06-15T10:00:00Z"]
+    assert participant["availability"] == ["2027-06-15T10:00:00Z"]
 
 
 def test_update_participant_rejects_extra_fields(when2meet_client: TestClient, user_headers):
     """Verify participant body does not accept user_id, name, or if_needed."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Participant Body", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "Participant Body", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
@@ -2050,8 +2358,8 @@ def test_update_participant_rejects_extra_fields(when2meet_client: TestClient, u
         json={
             "user_id": "other-user",
             "name": "Legacy Name",
-            "availability": ["2026-06-15T10:00:00Z"],
-            "if_needed": ["2026-06-15T10:00:00Z"],
+            "availability": ["2027-06-15T10:00:00Z"],
+            "if_needed": ["2027-06-15T10:00:00Z"],
         },
         headers=user_headers,
     )
@@ -2060,23 +2368,23 @@ def test_update_participant_rejects_extra_fields(when2meet_client: TestClient, u
 
 def test_update_participant_accepts_slots_outside_current_event_grid(when2meet_client: TestClient, user_headers):
     """Verify participants can save slots outside the current event grid."""
-    event_data = {"name": "Slot Bound", "slots": ["2026-06-15T10:00:00Z"]}
+    event_data = {"name": "Slot Bound", "slots": ["2027-06-15T10:00:00Z"]}
     create_response = when2meet_client.post("/api/v0/meetings", json=event_data, headers=user_headers)
     event_id = create_response.json()["id"]
 
-    participant_data = {"availability": ["2026-06-15T12:00:00Z"]}
+    participant_data = {"availability": ["2027-06-15T12:00:00Z"]}
     response = when2meet_client.put(
         f"/api/v0/meetings/{event_id}/participants", json=participant_data, headers=user_headers
     )
     assert response.status_code == 200
-    assert response.json()["participants"][0]["availability"] == ["2026-06-15T12:00:00Z"]
+    assert response.json()["participants"][0]["availability"] == ["2027-06-15T12:00:00Z"]
 
 
 def test_update_participant_event_not_found(when2meet_client: TestClient, user_headers):
     """Verify participant updates fail clearly for unknown event references."""
     response = when2meet_client.put(
         "/api/v0/meetings/missing-event/participants",
-        json={"availability": ["2026-06-15T10:00:00Z"]},
+        json={"availability": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
 
@@ -2087,14 +2395,14 @@ def test_update_participant_event_not_found(when2meet_client: TestClient, user_h
 def test_delete_participant(when2meet_client: TestClient, user_headers, auth_header_factory):
     """Verify participant deletion by owner or participant themselves."""
     create_resp = when2meet_client.post(
-        "/api/v0/meetings", json={"name": "Participant Admin", "slots": ["2026-06-15T10:00:00Z"]}, headers=user_headers
+        "/api/v0/meetings", json={"name": "Participant Admin", "slots": ["2027-06-15T10:00:00Z"]}, headers=user_headers
     )
     event_id = create_resp.json()["id"]
 
     other_headers = auth_header_factory("other-user", "other@example.com")
     when2meet_client.put(
         f"/api/v0/meetings/{event_id}/participants",
-        json={"availability": ["2026-06-15T10:00:00Z"]},
+        json={"availability": ["2027-06-15T10:00:00Z"]},
         headers=other_headers,
     )
 
@@ -2104,7 +2412,7 @@ def test_delete_participant(when2meet_client: TestClient, user_headers, auth_hea
 
     when2meet_client.put(
         f"/api/v0/meetings/{event_id}/participants",
-        json={"availability": ["2026-06-15T10:00:00Z"]},
+        json={"availability": ["2027-06-15T10:00:00Z"]},
         headers=other_headers,
     )
 
@@ -2114,7 +2422,7 @@ def test_delete_participant(when2meet_client: TestClient, user_headers, auth_hea
 
     when2meet_client.put(
         f"/api/v0/meetings/{event_id}/participants",
-        json={"availability": ["2026-06-15T10:00:00Z"]},
+        json={"availability": ["2027-06-15T10:00:00Z"]},
         headers=other_headers,
     )
     random_headers = auth_header_factory("random-user", "random@example.com")
@@ -2126,7 +2434,7 @@ def test_delete_participant_not_found(when2meet_client: TestClient, user_headers
     """Verify participant deletion distinguishes missing participant from missing event."""
     create_resp = when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Participant Missing", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "Participant Missing", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     event_id = create_resp.json()["id"]
@@ -2141,12 +2449,12 @@ def test_events_query_param_does_not_search(when2meet_client: TestClient, user_h
     """Verify GET /meetings/ ignores search params and returns owned events."""
     when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Unique Searchable Name", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "Unique Searchable Name", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
     when2meet_client.post(
         "/api/v0/meetings",
-        json={"name": "Common Name", "description": "Searchable Description", "slots": ["2026-06-15T10:00:00Z"]},
+        json={"name": "Common Name", "description": "Searchable Description", "slots": ["2027-06-15T10:00:00Z"]},
         headers=user_headers,
     )
 
@@ -2159,9 +2467,9 @@ def test_slot_normalization_and_sorting(when2meet_client: TestClient, user_heade
     """Verify backend ensures consistent slot format and order."""
     event_data = {
         "name": "Normalization",
-        "slots": ["2026-06-15T11:00:00.123Z", "2026-06-15T10:00:00Z"],
+        "slots": ["2027-06-15T11:00:00.123Z", "2027-06-15T10:00:00Z"],
     }
     response = when2meet_client.post("/api/v0/meetings", json=event_data, headers=user_headers)
     assert response.status_code == 201
     data = response.json()
-    assert data["slots"] == ["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z"]
+    assert data["slots"] == ["2027-06-15T10:00:00Z", "2027-06-15T11:00:00Z"]

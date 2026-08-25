@@ -1,4 +1,5 @@
 import datetime as dtm
+from enum import StrEnum
 
 from beanie import PydanticObjectId
 from pydantic import BaseModel, field_validator, model_validator
@@ -65,6 +66,11 @@ class MeetingTime(BaseSchema):
         return parse_timezone_datetime(self.end)
 
 
+class MeetingStatus(StrEnum):
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+
+
 class BookedRoom(BaseSchema):
     room_id: str
     "Booked room ID"
@@ -91,6 +97,8 @@ class EventCreate(BaseSchema):
     @field_validator("slots", mode="after")
     @classmethod
     def validate_slots(cls, v: list[dtm.datetime]) -> list[dtm.datetime]:
+        if not v:
+            raise ValueError("Meeting must have at least one slot")
         return _normalize_sorted_datetimes(v)
 
 
@@ -115,6 +123,8 @@ class EventUpdate(BaseSchema):
     def validate_slots(cls, v: list[dtm.datetime] | None) -> list[dtm.datetime] | None:
         if v is None:
             return None
+        if not v:
+            raise ValueError("Meeting must have at least one slot")
         return _normalize_sorted_datetimes(v)
 
 
@@ -168,6 +178,12 @@ class EventView(BaseSchema):
     "Final selected meeting time"
     booked_room: BookedRoom | None = None
     "Booked room reference"
+    archive_after: dtm.datetime
+    "Time after which the meeting is automatically archived"
+    is_archived: bool
+    "Whether the meeting is archived"
+    archived_at: dtm.datetime | None = None
+    "Effective automatic or manual archive time"
 
 
 class EventSummary(BaseSchema):
@@ -187,6 +203,12 @@ class EventSummary(BaseSchema):
     "Optional; frontend can derive from slots"
     selected_time: MeetingTime | None = None
     "Final selected meeting time"
+    archive_after: dtm.datetime
+    "Time after which the meeting is automatically archived"
+    is_archived: bool
+    "Whether the meeting is archived"
+    archived_at: dtm.datetime | None = None
+    "Effective automatic or manual archive time"
 
 
 class AvailableRoom(BaseSchema):

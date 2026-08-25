@@ -6,7 +6,8 @@ from beanie import PydanticObjectId
 
 from src.when2meet.mongo import Event, Participant
 
-from .schemas import EventCreate, EventUpdate, ParticipantUpdate
+from .archive import calculate_archive_after
+from .schemas import EventCreate, EventUpdate, MeetingStatus, ParticipantUpdate
 
 OBJECT_ID_RE = re.compile(r"^[0-9a-f]{24}$")
 SLUG_BYTES = 6
@@ -22,7 +23,12 @@ async def generate_unique_slug() -> str:
 
 async def create(data: EventCreate, owner_id: str | None = None) -> Event:
     """Create a new event."""
-    event = Event(**data.model_dump(), owner_id=owner_id, slug=await generate_unique_slug())
+    event = Event(
+        **data.model_dump(),
+        owner_id=owner_id,
+        slug=await generate_unique_slug(),
+        archive_after=calculate_archive_after(data.slots, selected_time=None),
+    )
     return await event.insert()
 
 
@@ -67,16 +73,37 @@ async def update_participant(event: Event, data: ParticipantUpdate, user_id: str
     return await event.save()
 
 
-async def get_my_events(owner_id: str) -> list[Event]:
+def _status_filter(meeting_status: MeetingStatus, now: dtm.datetime) -> dict[str, object]:
+    if meeting_status == MeetingStatus.ACTIVE:
+        return {
+            "manually_archived_at": None,
+            "archive_after": {"$gt": now},
+        }
+    return {
+        "$or": [
+            {"manually_archived_at": {"$exists": True}},
+            {"archive_after": {"$lte": now}},
+        ]
+    }
+
+
+async def get_my_events(owner_id: str, meeting_status: MeetingStatus, now: dtm.datetime) -> list[Event]:
     """Get events owned by the user."""
-    return await Event.find(Event.owner_id == owner_id).sort("-created_at").to_list()
+    return (
+        await Event.find(Event.owner_id == owner_id, _status_filter(meeting_status, now)).sort("-created_at").to_list()
+    )
 
 
-async def get_participating_events(user_id: str) -> list[Event]:
+async def get_participating_events(
+    user_id: str,
+    meeting_status: MeetingStatus,
+    now: dtm.datetime,
+) -> list[Event]:
     """Get events where the user is a participant but not the owner."""
     return (
         await Event.find(
             {"participants.user_id": user_id, "owner_id": {"$ne": user_id}},
+            _status_filter(meeting_status, now),
         )
         .sort("-created_at")
         .to_list()
@@ -85,9 +112,15 @@ async def get_participating_events(user_id: str) -> list[Event]:
 
 async def update_event(event: Event, data: EventUpdate) -> Event:
     """Update event details."""
-    update_data = data.model_dump(exclude_unset=True)
-    for field_name, value in update_data.items():
-        setattr(event, field_name, value)
+    for field_name in data.model_fields_set:
+        setattr(event, field_name, getattr(data, field_name))
+    event.archive_after = calculate_archive_after(event.slots, event.selected_time)
+    return await event.save()
+
+
+async def archive_event(event: Event, archived_at: dtm.datetime) -> Event:
+    """Manually archive an active event."""
+    event.manually_archived_at = archived_at
     return await event.save()
 
 

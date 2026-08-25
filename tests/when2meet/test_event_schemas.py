@@ -82,3 +82,11 @@ def test_datetime_fields_reject_missing_timezone():
 def test_event_create_rejects_unknown_fields():
     with pytest.raises(ValidationError):
         EventCreate.model_validate({"name": "Planning", "slots": [AWARE_SLOT], "owner_id": "other-user"})
+
+
+def test_event_create_and_update_reject_empty_slots():
+    with pytest.raises(ValidationError):
+        EventCreate(name="Planning", slots=[])
+
+    with pytest.raises(ValidationError):
+        EventUpdate(slots=[])

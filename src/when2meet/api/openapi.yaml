@@ -24,32 +24,47 @@ paths:
       summary: Get My Meetings
       description: Get meetings owned by the authenticated user.
       operationId: meetings_get_my_meetings
+      security:
+      - Bearer: []
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/MeetingStatus'
+          default: active
       responses:
         '200':
           description: List of meetings owned by the user
           content:
             application/json:
               schema:
+                type: array
                 items:
                   $ref: '#/components/schemas/EventSummary'
-                type: array
                 title: Response Meetings Get My Meetings
         '401':
           description: Unable to verify credentials OR Credentials not provided
-      security:
-      - Bearer: []
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     post:
       tags:
       - Meetings
       summary: Create Meeting
       description: Create a new meeting with time slots.
       operationId: meetings_create_meeting
+      security:
+      - Bearer: []
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/EventCreate'
-        required: true
       responses:
         '201':
           description: New meeting is created
@@ -65,8 +80,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-      security:
-      - Bearer: []
   /meetings/participating:
     get:
       tags:
@@ -74,20 +87,33 @@ paths:
       summary: Get Participating Meetings
       description: Get meetings where the authenticated user is a participant.
       operationId: meetings_get_participating_meetings
+      security:
+      - Bearer: []
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/MeetingStatus'
+          default: active
       responses:
         '200':
           description: List of meetings where the user is a participant
           content:
             application/json:
               schema:
+                type: array
                 items:
                   $ref: '#/components/schemas/EventSummary'
-                type: array
                 title: Response Meetings Get Participating Meetings
         '401':
           description: Unable to verify credentials OR Credentials not provided
-      security:
-      - Bearer: []
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /meetings/{meeting_ref}:
     get:
       tags:
@@ -149,14 +175,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EventView'
+        '400':
+          description: Cannot clear selected meeting time while a room is booked
         '403':
           description: Not an owner
         '404':
           description: Meeting not found
-        '400':
-          description: Cannot clear selected meeting time while a room is booked
         '409':
-          description: Room booking is already being changed for this meeting
+          description: Meeting is archived or its room booking is being changed
         '401':
           description: Unable to verify credentials OR Credentials not provided
         '422':
@@ -197,6 +223,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /meetings/{meeting_ref}/archive:
+    post:
+      tags:
+      - Meetings
+      summary: Archive Meeting
+      description: Archive a meeting manually (owner only).
+      operationId: meetings_archive_meeting
+      security:
+      - Bearer: []
+      parameters:
+      - name: meeting_ref
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Meeting Ref
+      responses:
+        '200':
+          description: Meeting archived
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventView'
+        '403':
+          description: Not an owner
+        '404':
+          description: Meeting not found
+        '401':
+          description: Unable to verify credentials OR Credentials not provided
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /meetings/{meeting_ref}/participants:
     put:
       tags:
@@ -228,6 +289,8 @@ paths:
                 $ref: '#/components/schemas/EventView'
         '404':
           description: Meeting not found
+        '409':
+          description: Meeting is archived
         '401':
           description: Unable to verify credentials OR Credentials not provided
         '422':
@@ -269,6 +332,8 @@ paths:
           description: Not allowed to remove this participant
         '404':
           description: Meeting or participant not found
+        '409':
+          description: Meeting is archived
         '401':
           description: Unable to verify credentials OR Credentials not provided
         '422':
@@ -313,7 +378,7 @@ paths:
         '404':
           description: Meeting or room not found
         '409':
-          description: Room is already booked for this meeting
+          description: Meeting is archived or already has a booked room
         '401':
           description: Unable to verify credentials OR Credentials not provided
         '422':
@@ -357,7 +422,7 @@ paths:
         '404':
           description: Meeting, booking, or room not found
         '409':
-          description: Room booking is already being changed for this meeting
+          description: Meeting is archived or its room booking is being changed
         '401':
           description: Unable to verify credentials OR Credentials not provided
         '422':
@@ -395,7 +460,7 @@ paths:
         '404':
           description: Meeting or booking not found
         '409':
-          description: Room booking is already being changed for this meeting
+          description: Meeting is archived or its room booking is being changed
         '401':
           description: Unable to verify credentials OR Credentials not provided
         '422':
@@ -584,6 +649,22 @@ components:
           - $ref: '#/components/schemas/MeetingTime'
           - type: 'null'
           description: Final selected meeting time
+        archive_after:
+          type: string
+          format: date-time
+          title: Archive After
+          description: Time after which the meeting is automatically archived
+        is_archived:
+          type: boolean
+          title: Is Archived
+          description: Whether the meeting is archived
+        archived_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Archived At
+          description: Effective automatic or manual archive time
       additionalProperties: false
       type: object
       required:
@@ -592,6 +673,8 @@ components:
       - name
       - created_at
       - participants_count
+      - archive_after
+      - is_archived
       title: EventSummary
     EventUpdate:
       properties:
@@ -709,6 +792,22 @@ components:
           - $ref: '#/components/schemas/BookedRoom'
           - type: 'null'
           description: Booked room reference
+        archive_after:
+          type: string
+          format: date-time
+          title: Archive After
+          description: Time after which the meeting is automatically archived
+        is_archived:
+          type: boolean
+          title: Is Archived
+          description: Whether the meeting is archived
+        archived_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Archived At
+          description: Effective automatic or manual archive time
       additionalProperties: false
       type: object
       required:
@@ -718,6 +817,8 @@ components:
       - slots
       - participants
       - created_at
+      - archive_after
+      - is_archived
       title: EventView
     HTTPValidationError:
       properties:
@@ -728,16 +829,20 @@ components:
           title: Detail
       type: object
       title: HTTPValidationError
+    MeetingStatus:
+      type: string
+      enum:
+      - active
+      - archived
+      title: MeetingStatus
     MeetingTime:
       properties:
         start:
           type: string
-          format: date-time
           title: Start
           description: Selected meeting start time
         end:
           type: string
-          format: date-time
           title: End
           description: Selected meeting end time
       additionalProperties: false

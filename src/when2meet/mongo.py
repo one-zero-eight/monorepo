@@ -46,6 +46,10 @@ class Event(Document):
     "Optional metadata for display/edit"
     selected_time: MeetingTime | None = None
     "Final selected meeting time"
+    archive_after: dtm.datetime
+    "Time after which the meeting is automatically archived"
+    manually_archived_at: dtm.datetime | None = None
+    "Time when the owner manually archived the meeting"
     booked_room: BookedRoom | None = None
     "Booked room reference"
     room_booking_in_progress: bool = False
@@ -66,8 +70,11 @@ class Event(Document):
         indexes: ClassVar[list[Any]] = [
             IndexModel("slug", unique=True),
             "owner_id",
+            IndexModel([("owner_id", 1), ("archive_after", -1)]),
             [("created_at", -1)],
             "participants.user_id",
+            IndexModel([("participants.user_id", 1), ("archive_after", -1)]),
+            "manually_archived_at",
             [
                 ("name", "text"),
                 ("description", "text"),
