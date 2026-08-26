@@ -449,7 +449,9 @@ def _process_location_item(
             course_name=cell_event.course,
             group_name=group_name if group_name is not None else cell_event.group,
             teacher=cell_event.teacher,
-            room=location_item.location or cell_event.location,
+            # Prefer parsed room; do not fall back to the raw cell when the
+            # location string is modifier-only (e.g. "ТОЛЬКО НА 12/09", "НАЧАЛО С 31/08").
+            room=location_item.location,
             date_on=location_item.on,
             date_except=location_item.except_,
             date_from=location_item.starts_from,

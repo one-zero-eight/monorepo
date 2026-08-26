@@ -107,23 +107,26 @@ class CoreCoursesParser:
 
             by_courses = self.split_df_by_courses(sheet_df, time_columns_index)
             grouped_dfs_with_cells_lst = []
-            for course_df in by_courses:
+            for course_block in by_courses:
                 # ---- Set course and group as header; weekday and timeslot as index ----
-                self.set_course_and_group_as_header(course_df)
-                self.set_weekday_and_time_as_index(course_df)
+                self.set_course_and_group_as_header(course_block)
+                course_df = self.set_weekday_and_time_as_index(course_block)
+                if course_df.shape[1] == 0:
+                    logger.warning("Skipping course block with no group columns after removing the time column")
+                    continue
                 # ---- Convert it to GroupBy with CoreCourseCell(value=[subject, teacher, location], a1=excel_range) ----
-                grouped_dfs_with_cells = (
-                    course_df
-                    # ---- Group by weekday and time ----
-                    .groupby(level=[0, 1], sort=False)
-                    .agg(list)
-                    # ---- Convert each cell to CoreCourseCell ----
-                    .map(
-                        self.factory_core_course_cell,
-                        spreadsheet_id=spreadsheet_id,
-                        google_sheet_name=google_sheet_name,
-                        google_sheet_gid=google_sheet_gid,
-                    )
+                # pandas 2.x squeezes a single remaining course column to Series
+                # and drops the (course, group) MultiIndex.
+                original_columns = course_df.columns
+                grouped = course_df.groupby(level=[0, 1], sort=False).agg(list)
+                if isinstance(grouped, pd.Series):
+                    grouped = grouped.to_frame()
+                grouped.columns = original_columns
+                grouped_dfs_with_cells = grouped.map(
+                    self.factory_core_course_cell,
+                    spreadsheet_id=spreadsheet_id,
+                    google_sheet_name=google_sheet_name,
+                    google_sheet_gid=google_sheet_gid,
                 )
                 assert isinstance(grouped_dfs_with_cells, DataFrame)
                 grouped_dfs_with_cells_lst.append(grouped_dfs_with_cells)
@@ -289,7 +292,7 @@ class CoreCoursesParser:
 
         return merged_ranges
 
-    def set_weekday_and_time_as_index(self, df: pd.DataFrame, column: int = 0) -> None:
+    def set_weekday_and_time_as_index(self, df: pd.DataFrame, column: int = 0) -> pd.DataFrame:
         """
         Set time column as index and process it to datetime format
 
@@ -335,6 +338,7 @@ class CoreCoursesParser:
         df.set_index(multiindex, inplace=True)
         # drop rows with weekday
         df.drop("delete", inplace=True, level=0)
+        return df
 
     def set_course_and_group_as_header(self, df: pd.DataFrame, rows: tuple = (0, 1)) -> None:
         """

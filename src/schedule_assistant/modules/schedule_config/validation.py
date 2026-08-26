@@ -25,6 +25,17 @@ def _is_virtual_room_id(room_id: str) -> bool:
     return room_id == VIRTUAL_ROOM_ID
 
 
+def _clock_time(value: dtm.time) -> dtm.time:
+    """Compare schedule times by clock fields only (ignore tzinfo)."""
+    if value.tzinfo is None:
+        return value
+    return value.replace(tzinfo=None)
+
+
+def _time_before(start: dtm.time, end: dtm.time) -> bool:
+    return _clock_time(start) < _clock_time(end)
+
+
 @dataclass(frozen=True)
 class ValidationContext:
     sections: SectionsConfig
@@ -189,12 +200,12 @@ def _is_known_room_id(room_id: str, room_ids: set[str]) -> bool:
 
 
 def _validate_occurrence_times(path: str, occurrence: SessionOccurrence, errors: list[str]) -> None:
-    if occurrence.start_time >= occurrence.end_time:
+    if not _time_before(occurrence.start_time, occurrence.end_time):
         errors.append(f"{path}: start_time must be before end_time")
 
 
 def _validate_weekly_slot_times(path: str, slot: WeeklyPatternSlot, errors: list[str]) -> None:
-    if slot.start_time >= slot.end_time:
+    if not _time_before(slot.start_time, slot.end_time):
         errors.append(f"{path}: start_time must be before end_time")
 
 
@@ -221,7 +232,7 @@ def _validate_weekly_slot_edits(
 
         resolved_start = edit.start_time if edit.start_time is not None else slot.start_time
         resolved_end = edit.end_time if edit.end_time is not None else slot.end_time
-        if not edit.cancel and resolved_start >= resolved_end:
+        if not edit.cancel and not _time_before(resolved_start, resolved_end):
             errors.append(f"{edit_path}: resolved start_time must be before end_time")
 
         if semester is not None:
@@ -256,7 +267,7 @@ def validate_term(term: TermConfig) -> list[str]:
     if term.semester.start_date > term.semester.end_date:
         errors.append("term.semester.start_date must be on or before end_date")
     for index, slot in enumerate(term.time_slots):
-        if slot.start_time >= slot.end_time:
+        if not _time_before(slot.start_time, slot.end_time):
             errors.append(f"term.time_slots[{index}]: start_time must be before end_time")
     errors.extend(_validate_room_attribute_defs(term.room_attributes))
     return errors
@@ -367,16 +378,17 @@ def _validate_instructor_slot_preferences(
 ) -> list[str]:
     errors: list[str] = []
     teaching_day_names = set(teaching_days_from_term_config(term))
-    slot_starts = {slot.start_time for slot in term.time_slots}
+    slot_starts = {_clock_time(slot.start_time) for slot in term.time_slots}
     seen: set[tuple[str, dtm.time]] = set()
     for index, entry in enumerate(instructor.slot_preferences):
         prefix = f"{path_prefix}[{index}]"
         day_name = entry.weekday.value
         if day_name not in teaching_day_names:
             errors.append(f"{prefix}.weekday {day_name!r} is not in term.days")
-        if entry.start_time not in slot_starts:
+        entry_start = _clock_time(entry.start_time)
+        if entry_start not in slot_starts:
             errors.append(f"{prefix}.start_time {entry.start_time!r} does not match any term.time_slots start_time")
-        key = (day_name, entry.start_time)
+        key = (day_name, entry_start)
         if key in seen:
             errors.append(f"{prefix}: duplicate weekday+start_time ({day_name!r}, {entry.start_time!r})")
         seen.add(key)
@@ -473,7 +485,7 @@ def validate_sections(config: SectionsConfig) -> list[str]:
                         )
             if program.time_slots:
                 for slot_index, slot in enumerate(program.time_slots):
-                    if slot.start_time >= slot.end_time:
+                    if not _time_before(slot.start_time, slot.end_time):
                         errors.append(
                             f"sections[{section_index}].programs[{program_index}].time_slots[{slot_index}]: "
                             "start_time must be before end_time",
