@@ -1,6 +1,7 @@
 from io import BytesIO
 from urllib.parse import urlparse
 
+import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
@@ -113,6 +114,43 @@ def test_clubs_get_returns_404_for_unknown_entities(clubs_client: TestClient):
     missing_by_slug = clubs_client.get("/clubs/by-slug/no-such-club")
     assert missing_by_slug.status_code == 404
     assert missing_by_slug.json()["detail"] == "Club not found"
+
+
+@pytest.mark.parametrize("route_kind", ["id", "slug"])
+def test_club_leader_edit_creates_pending_update(
+    clubs_client: TestClient,
+    superadmin_headers: dict[str, str],
+    user_headers: dict[str, str],
+    route_kind: str,
+):
+    admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
+    create_response = clubs_client.post(
+        "/clubs/",
+        json={**_club_payload(f"leader-edit-{route_kind}"), "leader_innohassle_id": "test-user-1"},
+        headers=admin_headers,
+    )
+    assert create_response.status_code == 200
+    created = create_response.json()
+
+    demote_response = clubs_client.post(
+        "/users/change_role",
+        params={"role": "default", "user_to_change_email": "test-user-1@innopolis.university"},
+        headers=superadmin_headers,
+    )
+    assert demote_response.status_code == 200
+
+    route = f"/clubs/by-id/{created['id']}" if route_kind == "id" else f"/clubs/by-slug/{created['slug']}"
+    update_response = clubs_client.post(
+        route,
+        json={**_club_payload(created["slug"], title="Leader proposed title"), "is_active": False},
+        headers=user_headers,
+    )
+
+    assert update_response.status_code == 200
+    payload = update_response.json()
+    assert payload["title"] == "Test Club"
+    assert payload["is_active"] is True
+    assert payload["pending_update"]["title"] == "Leader proposed title"
 
 
 def test_clubs_edit_and_delete_flow(

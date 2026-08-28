@@ -163,7 +163,9 @@ async def edit_club_info(id: PydanticObjectId, club_info: clubs_repo.UpdateClub,
             raise HTTPException(status_code=404, detail="Club not found")
         return updated_club
     else:
-        club.pending_update = PendingClubUpdate(**club_info.model_dump(exclude={"new_leader_email", "pending_update"}))
+        club.pending_update = PendingClubUpdate(
+            **club_info.model_dump(exclude={"new_leader_email", "pending_update", "slug", "is_active"})
+        )
         await club.save()
         return club
 
@@ -209,7 +211,7 @@ async def edit_club_info_by_slug(slug: str, update_club: clubs_repo.UpdateClub, 
             raise HTTPException(status_code=400, detail="Slug already exists")
     else:
         club.pending_update = PendingClubUpdate(
-            **update_club.model_dump(exclude={"new_leader_email", "pending_update"})
+            **update_club.model_dump(exclude={"new_leader_email", "pending_update", "slug", "is_active"})
         )
         await club.save()
         return club
