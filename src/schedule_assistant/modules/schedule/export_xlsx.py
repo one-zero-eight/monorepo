@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from typing import Literal
 
 from openpyxl import Workbook
+from openpyxl.cell.rich_text import CellRichText, TextBlock
+from openpyxl.cell.text import InlineFont
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
@@ -33,7 +35,7 @@ from src.schedule_assistant.modules.schedule_config.semester_windows import (
 from src.schedule_assistant.modules.schedule_config.validation import build_selector_map, expand_group_tokens
 from src.schedule_assistant.weekday import Weekday, week_start_for_date
 
-ExportLayout = Literal["groups", "calendar"]
+ExportLayout = Literal["groups", "compact_groups", "calendar"]
 
 HEADER_FILL = PatternFill("solid", fgColor="548DD4")
 TIME_HEADER_FILL = PatternFill("solid", fgColor="741B47")
@@ -47,6 +49,8 @@ HEADER_FONT = Font(bold=True, color="000000")
 WEEKDAY_FONT = Font(bold=True, color="000000")
 TITLE_FONT = Font(bold=True)
 NORMAL_FONT = Font(bold=False)
+COMPACT_TITLE_INLINE_FONT = InlineFont(b=True, sz=11)
+COMPACT_DETAIL_INLINE_FONT = InlineFont(b=False, sz=9)
 CENTER = Alignment(horizontal="center", vertical="center", wrap_text=True)
 LEFT = Alignment(horizontal="left", vertical="center", wrap_text=True)
 
@@ -54,6 +58,19 @@ GROUPS_TIME_COL_WIDTH = 14
 GROUPS_COL_WIDTH = 24
 GROUPS_EVENT_ROW_HEIGHT_MIN = 15
 GROUPS_LINE_HEIGHT = 15
+COMPACT_GROUPS_TIME_COL_WIDTH = 12
+COMPACT_GROUPS_COL_WIDTH = 13
+COMPACT_GROUPS_ROW_HEIGHT_MIN = 30
+COMPACT_GROUPS_LINE_HEIGHT = 12
+COMPACT_WEEKDAY_LABELS = {
+    Weekday.MONDAY: "Mon",
+    Weekday.TUESDAY: "Tue",
+    Weekday.WEDNESDAY: "Wed",
+    Weekday.THURSDAY: "Thu",
+    Weekday.FRIDAY: "Fri",
+    Weekday.SATURDAY: "Sat",
+    Weekday.SUNDAY: "Sun",
+}
 DISTRIBUTIONS_SHEET_NAME = "Distributions"
 DISTRIBUTIONS_HEADERS = ("E-mail", "Group", "Section")
 DISTRIBUTIONS_COL_WIDTHS = (36, 28, 18)
@@ -120,6 +137,8 @@ def export_filename(term_name: str) -> str:
 def section_export_layout(section: SectionConfig) -> ExportLayout:
     if section.default_layout == "calendar":
         return "calendar"
+    if section.default_layout == "compact_groups":
+        return "compact_groups"
     return "groups"
 
 
@@ -300,7 +319,13 @@ def filter_meetings_for_section(
     return filter_meetings_for_groups(meetings, section_group_set(section))
 
 
-def build_columns(section: SectionConfig, meetings: list[ExportMeeting], config: ScheduleConfig) -> list[ExportColumn]:
+def build_columns(
+    section: SectionConfig,
+    meetings: list[ExportMeeting],
+    config: ScheduleConfig,
+    *,
+    include_unused: bool = False,
+) -> list[ExportColumn]:
     used_groups = {group for meeting in meetings for group in meeting.groups}
     group_names = {group.code: (group.name or group.code) for group in config.students_groups}
     columns: list[ExportColumn] = []
@@ -312,7 +337,7 @@ def build_columns(section: SectionConfig, meetings: list[ExportMeeting], config:
             for group_id in track_groups:
                 if group_id in seen:
                     continue
-                if used_groups and group_id not in used_groups:
+                if not include_unused and used_groups and group_id not in used_groups:
                     continue
                 columns.append(
                     ExportColumn(
@@ -339,6 +364,31 @@ def build_columns(section: SectionConfig, meetings: list[ExportMeeting], config:
                     )
                     seen.add(group_id)
     return columns
+
+
+def _compact_occupied_slots(
+    meetings: list[ExportMeeting],
+    term: TermConfig,
+) -> list[tuple[Weekday, TermTimeSlot]]:
+    slots = list(term.time_slots)
+    slot_starts = {slot.start_time for slot in slots}
+    occupied: set[tuple[Weekday, dtm.time]] = set()
+    extra_slots: dict[dtm.time, TermTimeSlot] = {}
+    for meeting in meetings:
+        row_start = meeting.start if meeting.start in slot_starts else _nearest_slot_start(meeting.start, slots)
+        if row_start is None:
+            row_start = meeting.start
+            extra_slots.setdefault(
+                row_start,
+                TermTimeSlot(start_time=meeting.start, end_time=meeting.end),
+            )
+        occupied.add((list(Weekday)[meeting.date.weekday()], row_start))
+
+    ordered_slots = sorted(
+        [*slots, *extra_slots.values()],
+        key=lambda slot: (slot.start_time, slot.end_time),
+    )
+    return [(day, slot) for day in _term_days(term) for slot in ordered_slots if (day, slot.start_time) in occupied]
 
 
 def _nearest_slot_start(start: dtm.time, slots: list[TermTimeSlot]) -> dtm.time | None:
@@ -679,6 +729,105 @@ def _write_groups_sheet(
             row = block_start + 3
 
     ws.freeze_panes = "A3"
+
+
+def _write_compact_groups_sheet(
+    ws: Worksheet,
+    *,
+    columns: list[ExportColumn],
+    term: TermConfig,
+    occupied_slots: list[tuple[Weekday, TermTimeSlot]],
+    cells: dict[tuple[Weekday, dtm.time, str], list[ExportMeeting]],
+    instructor_labels: dict[str, str],
+    group_sizes: dict[str, int | None],
+) -> None:
+    time_header = ws.cell(1, 1)
+    _apply_fill(time_header, TIME_HEADER_FILL, HEADER_FONT, CENTER)
+    ws.merge_cells(start_row=1, start_column=1, end_row=2, end_column=1)
+    _apply_fill(ws.cell(2, 1), TIME_HEADER_FILL, HEADER_FONT, CENTER)
+    ws.column_dimensions["A"].width = COMPACT_GROUPS_TIME_COL_WIDTH
+
+    index = 0
+    while index < len(columns):
+        end_index = index + 1
+        while end_index < len(columns) and columns[end_index].year_label == columns[index].year_label:
+            end_index += 1
+        group_start = index + 2
+        group_end = end_index + 1
+        year_cell = ws.cell(1, group_start, columns[index].year_label)
+        _apply_fill(year_cell, HEADER_FILL, HEADER_FONT, CENTER)
+        if group_end > group_start:
+            ws.merge_cells(
+                start_row=1,
+                start_column=group_start,
+                end_row=1,
+                end_column=group_end,
+            )
+            for col in range(group_start, group_end + 1):
+                _apply_fill(ws.cell(1, col), HEADER_FILL, HEADER_FONT, CENTER)
+
+        for offset, column in enumerate(columns[index:end_index]):
+            label = column.group_label
+            cell = ws.cell(2, group_start + offset, label)
+            _apply_fill(cell, HEADER_FILL, HEADER_FONT, CENTER)
+            ws.column_dimensions[get_column_letter(group_start + offset)].width = COMPACT_GROUPS_COL_WIDTH
+        index = end_index
+
+    for row, (day, slot) in enumerate(occupied_slots, start=3):
+        time_label = f"{COMPACT_WEEKDAY_LABELS[day]}\n{_slot_label(slot.start_time, slot.end_time)}"
+        time_cell = ws.cell(row, 1, time_label)
+        _apply_fill(time_cell, WHITE_FILL, NORMAL_FONT, CENTER)
+
+        row_height = COMPACT_GROUPS_ROW_HEIGHT_MIN
+        index = 0
+        while index < len(columns):
+            column = columns[index]
+            meetings = cells.get((day, slot.start_time, column.group_id), [])
+            signature = cell_signature(meetings)
+            span = 1
+            while (
+                index + span < len(columns)
+                and columns[index + span].year_label == column.year_label
+                and cell_signature(cells.get((day, slot.start_time, columns[index + span].group_id), [])) == signature
+                and signature
+            ):
+                span += 1
+            start_col = index + 2
+            end_col = start_col + span - 1
+
+            if meetings:
+                meeting = meetings[0]
+                title = meeting.course_short_name or meeting.course
+                instructors = format_instructors(meeting.instructors, instructor_labels)
+                details = [part for part in (instructors, meeting.room) if part]
+                text = "\n".join((title, *details))
+                fill = PatternFill("solid", fgColor=course_fill_color(meeting.course))
+                rich_text = CellRichText(
+                    TextBlock(COMPACT_TITLE_INLINE_FONT, title),
+                    *(TextBlock(COMPACT_DETAIL_INLINE_FONT, f"\n{detail}") for detail in details),
+                )
+                ws.cell(row, start_col, rich_text)
+                if end_col > start_col:
+                    ws.merge_cells(
+                        start_row=row,
+                        start_column=start_col,
+                        end_row=row,
+                        end_column=end_col,
+                    )
+                for col in range(start_col, end_col + 1):
+                    _apply_fill(ws.cell(row, col), fill, None, CENTER)
+                width = COMPACT_GROUPS_COL_WIDTH * span
+                row_height = max(
+                    row_height,
+                    _wrapped_line_count(text, width) * COMPACT_GROUPS_LINE_HEIGHT,
+                )
+            else:
+                _apply_fill(ws.cell(row, start_col), WHITE_FILL, None, CENTER)
+            index += span
+
+        ws.row_dimensions[row].height = row_height
+
+    ws.freeze_panes = "B3"
 
 
 def _term_weeks(term: TermConfig) -> list[tuple[dtm.date, dtm.date]]:
@@ -1153,9 +1302,25 @@ def _write_section_sheet(
 ) -> None:
     meetings = filter_meetings_for_section(all_meetings, section)
     layout = section_export_layout(section)
-    if layout == "groups":
-        columns = build_columns(section, meetings, config)
+    if layout in {"groups", "compact_groups"}:
+        columns = build_columns(
+            section,
+            meetings,
+            config,
+            include_unused=layout == "compact_groups",
+        )
         cells = _collapse_weekly_cells(meetings, config.term.time_slots)
+        if layout == "compact_groups":
+            _write_compact_groups_sheet(
+                ws,
+                columns=columns,
+                term=config.term,
+                occupied_slots=_compact_occupied_slots(meetings, config.term),
+                cells=cells,
+                instructor_labels=instructor_labels,
+                group_sizes=group_sizes,
+            )
+            return
         _write_groups_sheet(
             ws,
             columns=columns,

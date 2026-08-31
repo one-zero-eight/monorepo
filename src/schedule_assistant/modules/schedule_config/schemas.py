@@ -177,8 +177,8 @@ class SectionConfig(SettingBaseModel):
     "Section identifier"
     name: str
     "Section display name"
-    default_layout: Literal["groups", "calendar"] | None = None
-    "Default timetable layout when opening this section (groups or calendar)"
+    default_layout: Literal["groups", "compact_groups", "calendar"] | None = None
+    "Default timetable layout when opening this section (groups, compact groups, or calendar)"
     programs: list[SectionProgram] = []
     "Programs inside the section"
 

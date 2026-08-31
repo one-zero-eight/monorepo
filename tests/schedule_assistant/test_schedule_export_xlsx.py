@@ -492,6 +492,66 @@ def test_groups_export_repeats_time_column_per_program() -> None:
     assert "D1:D2" in merges
 
 
+def test_compact_groups_export_keeps_all_groups_and_only_occupied_slots() -> None:
+    config = _sample_config()
+    core = config.term.sections[0]
+    core.default_layout = "compact_groups"
+    core.programs[0].tracks[0].groups.append("B25-CSE-03")
+    config.students_groups.append(
+        StudentsGroups(code="B25-CSE-03", kind="core", name="B25-CSE-03", estimated_size=25),
+    )
+    component = config.courses[0].components[0]
+    component.audience = ["B25-CSE-01", "B25-CSE-02"]
+    sessions = component.sessions
+    assert sessions is not None
+    sessions[0].audience = ["B25-CSE-01", "B25-CSE-02"]
+    sessions[0].dates_pattern = [
+        SessionOccurrence(
+            date=dtm.date(2026, 9, 8),
+            start_time=dtm.time(14, 20),
+            end_time=dtm.time(15, 50),
+            room="305",
+            instructor="t1",
+        )
+    ]
+
+    data, _ = export_schedule_xlsx(config)
+    wb = load_workbook(io.BytesIO(data))
+
+    assert wb.sheetnames == ["Core", "Electives", "Distributions", "Instructors", "Subjects"]
+    core_sheet = wb["Core"]
+    assert core_sheet["A1"].value is None
+    assert core_sheet["B2"].value == "B25-CSE-01"
+    assert core_sheet["C2"].value == "B25-CSE-02"
+    assert core_sheet["D2"].value == "B25-CSE-03"
+    assert core_sheet["A3"].value == "Mon\n09:00-10:30"
+    assert core_sheet["A4"].value == "Tue\n14:20-15:50"
+    assert core_sheet["B3"].value == "MATH\nAlice Teacher\n108"
+    assert core_sheet["B4"].value == "MATH\nAlice Teacher\n305"
+    assert core_sheet["D3"].value is None
+    assert core_sheet["D4"].value is None
+    assert core_sheet.max_row == 4
+    assert core_sheet.max_column == 4
+    assert core_sheet.column_dimensions["A"].width == 12
+    assert core_sheet.column_dimensions["B"].width == 13
+    assert core_sheet.row_dimensions[3].height == 36
+    assert core_sheet["B3"].alignment.horizontal == "center"
+    assert core_sheet["B3"].alignment.vertical == "center"
+
+    rich_core_sheet = load_workbook(io.BytesIO(data), rich_text=True)["Core"]
+    rich_text = rich_core_sheet["B3"].value
+    assert rich_text[0].font.b is True
+    assert rich_text[0].font.sz == 11
+    assert rich_text[1].font.b is False
+    assert rich_text[1].font.sz == 9
+    assert rich_text[2].font.b is False
+    assert rich_text[2].font.sz == 9
+    assert wb["Electives"]["B1"].value == "Monday"
+    assert wb["Distributions"]["A1"].value == "E-mail"
+    assert wb["Instructors"]["G2"].value == "t1"
+    assert wb["Subjects"]["C2"].value == "Math I"
+
+
 def _seed_export_config(repo: ScheduleConfigRepository) -> None:
     config = _sample_config()
     term_without_sections = config.term.model_copy(update={"sections": []})
