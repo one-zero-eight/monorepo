@@ -347,6 +347,23 @@ def test_validate_instructors_rejects_duplicate_ids() -> None:
     assert any("Duplicate instructor id" in error for error in errors)
 
 
+def test_validate_instructors_rejects_duplicate_emails() -> None:
+    config = InstructorConfig(
+        instructors=[
+            InstructorConfig.Instructor(
+                id="teacher-one",
+                email=" Teacher@Innopolis.RU ",
+            ),
+            InstructorConfig.Instructor(
+                id="teacher-two",
+                email="teacher@innopolis.ru",
+            ),
+        ],
+    )
+    errors = validate_instructors(config)
+    assert any("Duplicate instructor email" in error for error in errors)
+
+
 def test_validate_resource_update_blocks_removing_referenced_instructor() -> None:
     old = InstructorConfig(
         instructors=[InstructorConfig.Instructor(id="teacher@innopolis.ru")],

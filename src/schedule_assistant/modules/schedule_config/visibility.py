@@ -80,6 +80,16 @@ def find_instructor_by_id(instructors: InstructorConfig, instructor_id: str) -> 
     return None
 
 
+def find_instructor_by_email(instructors: InstructorConfig, email: str) -> InstructorConfig.Instructor | None:
+    normalized_email = _normalize(email)
+    if not normalized_email:
+        return None
+    for instructor in instructors.instructors:
+        if instructor.email and _normalize(instructor.email) == normalized_email:
+            return instructor
+    return None
+
+
 def meeting_instructor_matches(instructor: str | list[str] | None, identity: set[str]) -> bool:
     if instructor is None:
         return False

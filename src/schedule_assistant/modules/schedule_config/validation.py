@@ -413,6 +413,12 @@ def validate_instructors(config: InstructorConfig, *, term: TermConfig | None = 
     errors: list[str] = []
     instructor_ids = [instructor.id for instructor in config.instructors]
     errors.extend(f"Duplicate instructor id: {instructor_id!r}" for instructor_id in find_duplicates(instructor_ids))
+    instructor_emails = [
+        instructor.email.strip().casefold()
+        for instructor in config.instructors
+        if instructor.email and instructor.email.strip()
+    ]
+    errors.extend(f"Duplicate instructor email: {email!r}" for email in find_duplicates(instructor_emails))
     allowed_positions = [
         position for position in (term.instructor_positions if term is not None else []) if position.strip()
     ]

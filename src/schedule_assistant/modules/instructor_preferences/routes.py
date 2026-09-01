@@ -14,19 +14,10 @@ from src.schedule_assistant.modules.instructor_preferences.schemas import (
 from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
 from src.schedule_assistant.modules.schedule_config.schemas import InstructorConfig, InstructorSlotPreferenceEntry
 from src.schedule_assistant.modules.schedule_config.validation import validate_instructors
+from src.schedule_assistant.modules.schedule_config.visibility import find_instructor_by_email
 from src.schedule_assistant.modules.solver.instructor_preferences import validate_instructor_slot_preferences
 
 router = APIRouter(prefix="/instructor-preferences", tags=["Instructor Preferences"])
-
-
-def _find_instructor_by_email(email: str) -> InstructorConfig.Instructor | None:
-    needle = email.strip().casefold()
-    if not needle:
-        return None
-    for instructor in schedule_config_repository.list_instructors():
-        if (instructor.email or "").strip().casefold() == needle:
-            return instructor
-    return None
 
 
 def _preference_form(instructor: InstructorConfig.Instructor) -> InstructorPreferenceForm:
@@ -86,7 +77,10 @@ def _instructor_for_invite_key(token: str) -> InstructorConfig.Instructor:
 @router.get("/me")
 async def get_my_preferences(user_and_token: VerifyTokenDep) -> InstructorPreferenceForm:
     user, _token = user_and_token
-    instructor = _find_instructor_by_email(user.email)
+    instructor = find_instructor_by_email(
+        schedule_config_repository.get_instructors(),
+        user.email,
+    )
     if instructor is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -101,7 +95,10 @@ async def update_my_preferences(
     body: InstructorPreferenceUpdate,
 ) -> InstructorPreferenceForm:
     user, _token = user_and_token
-    instructor = _find_instructor_by_email(user.email)
+    instructor = find_instructor_by_email(
+        schedule_config_repository.get_instructors(),
+        user.email,
+    )
     if instructor is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

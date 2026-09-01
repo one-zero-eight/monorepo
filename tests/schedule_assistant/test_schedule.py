@@ -7,6 +7,7 @@ from httpx import AsyncClient
 from pydantic import SecretStr
 
 from src.schedule_assistant.modules.schedule import service
+from src.schedule_assistant.modules.schedule.ics import teacher_alias
 from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
 from src.schedule_assistant.modules.schedule_config.schemas import (
     ComponentSessionSeries,
@@ -76,8 +77,13 @@ def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@t
                 ),
                 InstructorConfig.Instructor(
                     id="other@innopolis.ru",
-                    email="other@innopolis.ru",
+                    email="other@innopolis.university",
                     name_en="Teacher Two",
+                ),
+                InstructorConfig.Instructor(
+                    id="unscheduled@innopolis.ru",
+                    email="unscheduled@innopolis.ru",
+                    name_en="Unscheduled Teacher",
                 ),
             ],
         ),
@@ -250,6 +256,11 @@ def _service_headers() -> dict[str, str]:
     return {"Authorization": "Bearer test-schedule-assistant-api-key"}
 
 
+def test_teacher_alias_only_strips_email() -> None:
+    assert teacher_alias(" Teacher@Innopolis.RU ") == "teacher-Teacher@Innopolis.RU"
+    assert teacher_alias("Teacher@Innopolis.RU") != teacher_alias("teacher@innopolis.ru")
+
+
 @pytest.mark.asyncio
 async def test_virtual_event_groups_require_service_api_key(
     fastapi_test_client: AsyncClient,
@@ -282,7 +293,26 @@ async def test_virtual_event_groups_default_to_english(
                 "description": "Schedule for SUM26-AAI",
                 "kind": "english",
                 "group_code": "SUM26-AAI",
-            }
+                "instructor_id": None,
+            },
+            {
+                "id": None,
+                "alias": teacher_alias("other@innopolis.university"),
+                "name": "Teacher Two",
+                "description": "Schedule for Teacher Two",
+                "kind": "instructor",
+                "group_code": None,
+                "instructor_id": "other@innopolis.ru",
+            },
+            {
+                "id": None,
+                "alias": teacher_alias("teacher@innopolis.ru"),
+                "name": "Teacher One",
+                "description": "Schedule for Teacher One",
+                "kind": "instructor",
+                "group_code": None,
+                "instructor_id": "teacher@innopolis.ru",
+            },
         ]
     }
 
@@ -301,6 +331,8 @@ async def test_null_published_group_kinds_publishes_all(
     assert [group["alias"] for group in response.json()["event_groups"]] == [
         "core-b25-cse-01",
         "english-sum26-aai",
+        teacher_alias("other@innopolis.university"),
+        teacher_alias("teacher@innopolis.ru"),
     ]
 
 
@@ -323,7 +355,73 @@ async def test_predefined_aliases_normalize_email(
         headers=_service_headers(),
     )
     assert response.status_code == 200
-    assert response.json() == {"event_groups": ["english-sum26-aai"]}
+    assert response.json() == {
+        "event_groups": [
+            "english-sum26-aai",
+            teacher_alias("other@innopolis.university"),
+        ]
+    }
+
+    response = await fastapi_test_client.get(
+        "/integration/users/TEACHER@INNOPOLIS.RU/predefined",
+        headers=_service_headers(),
+    )
+    assert response.status_code == 200
+    assert response.json() == {"event_groups": [teacher_alias("teacher@innopolis.ru")]}
+
+
+@pytest.mark.asyncio
+async def test_instructor_ics_contains_only_matching_meetings(
+    fastapi_test_client: AsyncClient,
+    schedule_data_repo: ScheduleConfigRepository,
+) -> None:
+    _seed_config(schedule_data_repo)
+    alias = teacher_alias("teacher@innopolis.ru")
+
+    response = await fastapi_test_client.get(
+        f"/integration/event-groups/{alias}/schedule.ics",
+        headers=_service_headers(),
+    )
+
+    assert response.status_code == 200
+    calendar = icalendar.Calendar.from_ical(response.text)
+    events = [cast(icalendar.Event, component) for component in calendar.walk("VEVENT")]
+    assert len(events) == 10
+    assert {str(event["summary"]) for event in events} == {
+        "Agentic AI (class)",
+        "Algorithms (lec)",
+    }
+    assert {str(event["description"]).splitlines()[0] for event in events} == {"Instructor: Teacher One"}
+
+
+@pytest.mark.asyncio
+async def test_batch_aliases_ics_deduplicates_student_and_instructor_match(
+    fastapi_test_client: AsyncClient,
+    schedule_data_repo: ScheduleConfigRepository,
+) -> None:
+    _seed_config(schedule_data_repo)
+
+    response = await fastapi_test_client.post(
+        "/integration/event-groups/schedule.ics",
+        json={
+            "aliases": [
+                "english-sum26-aai",
+                teacher_alias("teacher@innopolis.ru"),
+            ]
+        },
+        headers=_service_headers(),
+    )
+
+    assert response.status_code == 200
+    calendar = icalendar.Calendar.from_ical(response.text)
+    events = [cast(icalendar.Event, component) for component in calendar.walk("VEVENT")]
+    assert len(events) == 11
+    matching_agentic_events = [
+        event
+        for event in events
+        if str(event["summary"]) == "Agentic AI (class)" and "Instructor: Teacher One" in str(event["description"])
+    ]
+    assert len(matching_agentic_events) == 1
 
 
 @pytest.mark.asyncio

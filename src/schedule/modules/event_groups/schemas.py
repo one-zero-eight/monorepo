@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src.schedule.modules.tags.schemas import CreateTag, ViewTag
 
-VIRTUAL_EVENT_GROUP_ALIAS_PREFIXES = ("english-",)
+VIRTUAL_EVENT_GROUP_ALIAS_PREFIXES = ("english-", "teacher-")
 
 
 def _validate_event_group_path(path: str | None) -> str | None:

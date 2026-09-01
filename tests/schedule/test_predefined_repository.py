@@ -53,9 +53,22 @@ def test_get_user_predefined_combines_static_and_assistant(
     )
     with respx.mock(assert_all_called=True) as mock:
         route = mock.get(f"{api_url}/integration/users/{TEST_USER_EMAIL}/predefined").mock(
-            return_value=httpx.Response(200, json={"event_groups": ["virtual-group", "static-group"]})
+            return_value=httpx.Response(
+                200,
+                json={
+                    "event_groups": [
+                        "virtual-group",
+                        "teacher-teacher@innopolis.university",
+                        "static-group",
+                    ]
+                },
+            )
         )
         aliases = schedule_portal.call(predefined_repository.get_user_predefined, me["id"])
 
     assert route.called
-    assert aliases == ["static-group", "virtual-group"]
+    assert aliases == [
+        "static-group",
+        "virtual-group",
+        "teacher-teacher@innopolis.university",
+    ]

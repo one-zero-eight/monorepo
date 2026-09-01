@@ -19,6 +19,10 @@ def group_alias(group_kind: str, group_code: str) -> str:
     return f"{_slug(group_kind)}-{_slug(group_code)}"
 
 
+def teacher_alias(email: str) -> str:
+    return f"teacher-{email.strip()}"
+
+
 def base_calendar(name: str) -> icalendar.Calendar:
     calendar = icalendar.Calendar()
     calendar.add("prodid", "-//one-zero-eight//Schedule Assistant//EN")

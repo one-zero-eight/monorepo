@@ -23,10 +23,15 @@ def test_create_and_read_by_alias(schedule_client: TestClient, parser_headers: d
     assert body["name"] == created["name"]
 
 
-def test_create_rejects_reserved_virtual_alias(schedule_client: TestClient, parser_headers: dict[str, str]):
+@pytest.mark.parametrize("alias", ["english-test", "teacher-test"])
+def test_create_rejects_reserved_virtual_alias(
+    schedule_client: TestClient,
+    parser_headers: dict[str, str],
+    alias: str,
+):
     response = schedule_client.post(
         "/event-groups/",
-        json={**SAMPLE_EVENT_GROUP, "alias": "english-test"},
+        json={**SAMPLE_EVENT_GROUP, "alias": alias},
         headers=parser_headers,
     )
     assert response.status_code == 422

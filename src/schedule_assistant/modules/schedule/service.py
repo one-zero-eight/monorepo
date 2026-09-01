@@ -4,18 +4,23 @@ from src.schedule_assistant.config import settings
 from src.schedule_assistant.modules.issues.schemas import ScheduledMeeting
 from src.schedule_assistant.modules.schedule.domain import meetings_from_schedule_config
 from src.schedule_assistant.modules.schedule.export_xlsx import export_schedule_xlsx as build_schedule_xlsx
-from src.schedule_assistant.modules.schedule.ics import group_alias, render_calendar
+from src.schedule_assistant.modules.schedule.ics import group_alias, render_calendar, teacher_alias
 from src.schedule_assistant.modules.schedule.schemas import VirtualEventGroup
 from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
 from src.schedule_assistant.modules.schedule_config.schemas import (
     CourseConfig,
     CoursesConfig,
+    InstructorConfig,
     SectionsConfig,
     StudentsGroups,
 )
 from src.schedule_assistant.modules.schedule_config.visibility import (
     filter_courses_for_instructor,
+    filter_scheduled_instructors,
+    find_instructor_by_email,
     find_instructor_by_id,
+    instructor_identity_values,
+    meeting_instructor_matches,
 )
 
 
@@ -30,8 +35,17 @@ def _published_kind(kind: str) -> bool:
     return _normalize_email(kind) in published
 
 
+def _instructor_name(instructor: InstructorConfig.Instructor) -> str:
+    return (
+        (instructor.name_en or "").strip()
+        or (instructor.name_ru or "").strip()
+        or (instructor.email or "").strip()
+        or instructor.id
+    )
+
+
 def list_virtual_event_groups() -> list[VirtualEventGroup]:
-    groups = [
+    student_groups = [
         VirtualEventGroup(
             alias=group_alias(group.kind, group.code),
             name=group.name or group.code,
@@ -42,7 +56,26 @@ def list_virtual_event_groups() -> list[VirtualEventGroup]:
         for group in schedule_config_repository.get_sections().students_groups
         if _published_kind(group.kind)
     ]
-    groups.sort(key=lambda group: (group.alias, group.group_code))
+    instructors = filter_scheduled_instructors(
+        schedule_config_repository.get_instructors(),
+        schedule_config_repository.get_courses().courses,
+    ).instructors
+    instructor_groups = [
+        VirtualEventGroup(
+            alias=teacher_alias(instructor.email),
+            name=_instructor_name(instructor),
+            description=f"Schedule for {_instructor_name(instructor)}",
+            kind="instructor",
+            instructor_id=instructor.id,
+        )
+        for instructor in instructors
+        if instructor.email and instructor.email.strip()
+    ]
+    groups = student_groups + instructor_groups
+    aliases = [group.alias for group in groups]
+    if len(aliases) != len(set(aliases)):
+        raise RuntimeError("Virtual event group aliases must be unique")
+    groups.sort(key=lambda group: group.alias)
     return groups
 
 
@@ -54,6 +87,13 @@ def get_predefined_aliases(user_email: str) -> list[str]:
         if _published_kind(group.kind)
         and any(_normalize_email(student) == normalized_email for student in group.students)
     ]
+    scheduled_instructors = filter_scheduled_instructors(
+        schedule_config_repository.get_instructors(),
+        schedule_config_repository.get_courses().courses,
+    )
+    instructor = find_instructor_by_email(scheduled_instructors, user_email)
+    if instructor is not None and instructor.email:
+        aliases.append(teacher_alias(instructor.email))
     return sorted(set(aliases))
 
 
@@ -92,7 +132,7 @@ def _instructor_names() -> dict[str, str]:
 
 def get_group_ics(alias: str) -> bytes:
     group = _group_by_alias(alias)
-    meetings = [meeting for meeting in _concrete_meetings() if group.group_code in meeting.groups]
+    meetings = [meeting for meeting in _concrete_meetings() if _meeting_matches_group(meeting, group)]
     return render_calendar(
         group.name,
         [(alias, meeting) for meeting in meetings],
@@ -100,16 +140,55 @@ def get_group_ics(alias: str) -> bytes:
     )
 
 
+def _meeting_matches_group(
+    meeting: ScheduledMeeting,
+    group: VirtualEventGroup,
+) -> bool:
+    if group.group_code is not None:
+        return group.group_code in meeting.groups
+    if group.instructor_id is None:
+        return False
+    instructor = find_instructor_by_id(
+        schedule_config_repository.get_instructors(),
+        group.instructor_id,
+    )
+    if instructor is None:
+        return False
+    return meeting_instructor_matches(
+        meeting.instructor,
+        instructor_identity_values(instructor),
+    )
+
+
+def _meeting_identity(meeting: ScheduledMeeting) -> tuple[object, ...]:
+    placement = meeting.placement
+    return (
+        meeting.course_name,
+        meeting.component_tag,
+        getattr(placement, "date", None),
+        meeting.start_time.replace(tzinfo=None),
+        meeting.end_time.replace(tzinfo=None),
+        meeting.room,
+        tuple(meeting.instructor) if isinstance(meeting.instructor, list) else meeting.instructor,
+        tuple(meeting.groups),
+    )
+
+
 def get_aliases_ics(aliases: list[str]) -> bytes:
     normalized_aliases = sorted(set(aliases))
     groups = {alias: _group_by_alias(alias) for alias in normalized_aliases}
     meetings = _concrete_meetings()
-    alias_meetings = [
-        (alias, meeting)
-        for alias, group in groups.items()
-        for meeting in meetings
-        if group.group_code in meeting.groups
-    ]
+    alias_meetings: list[tuple[str, ScheduledMeeting]] = []
+    seen_meetings: set[tuple[object, ...]] = set()
+    for alias, group in groups.items():
+        for meeting in meetings:
+            if not _meeting_matches_group(meeting, group):
+                continue
+            identity = _meeting_identity(meeting)
+            if identity in seen_meetings:
+                continue
+            seen_meetings.add(identity)
+            alias_meetings.append((alias, meeting))
     return render_calendar(
         "Schedule Assistant",
         alias_meetings,
