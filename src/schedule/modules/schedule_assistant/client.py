@@ -66,6 +66,10 @@ class ScheduleAssistantClient:
                 response = await client.get(f"integration/event-groups/{quote(alias, safe='')}/schedule.ics")
                 response.raise_for_status()
                 return response.content
+        except httpx.HTTPStatusError as error:
+            if error.response.status_code == 404:
+                raise HTTPException(status_code=404, detail="Event group not found") from error
+            self._raise_upstream_error(error)
         except httpx.HTTPError as error:
             self._raise_upstream_error(error)
 

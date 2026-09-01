@@ -353,3 +353,33 @@ def test_personal_ics_propagates_assistant_failure(
 
     assert response.status_code == 502
     assert response.json()["detail"] == "Schedule Assistant request failed with status 503"
+
+
+def test_unknown_event_group_returns_404_when_assistant_does_not_have_it(
+    schedule_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from src.schedule.config import settings
+    from src.schedule.config_schema import ScheduleAssistantIntegrationSettings
+
+    api_url = "https://assistant.test"
+    monkeypatch.setattr(
+        settings,
+        "schedule_assistant",
+        ScheduleAssistantIntegrationSettings(
+            api_url=api_url,
+            api_key=SecretStr("service-key"),
+        ),
+    )
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(f"{api_url}/integration/event-groups/old-group/schedule.ics").mock(
+            return_value=httpx.Response(404, json={"detail": "Event group not found"})
+        )
+
+        response = schedule_client.get(
+            "/old-group.ics",
+            params={"user_id": 1, "export_type": "url"},
+        )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Event group not found"

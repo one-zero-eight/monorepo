@@ -1,5 +1,5 @@
 import datetime as dtm
-from typing import cast
+from typing import Any, cast
 
 import icalendar
 import pytest
@@ -20,6 +20,7 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     StudentsGroups,
     TermConfig,
     WeeklyPatternSlot,
+    WeeklyPatternSlotEdit,
 )
 from src.schedule_assistant.weekday import Weekday
 
@@ -374,9 +375,19 @@ async def test_predefined_aliases_normalize_email(
 async def test_instructor_ics_contains_only_matching_meetings(
     fastapi_test_client: AsyncClient,
     schedule_data_repo: ScheduleConfigRepository,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _seed_config(schedule_data_repo)
     alias = teacher_alias("teacher@innopolis.ru")
+    original_get_instructors = schedule_data_repo.get_instructors
+    get_instructors_calls = 0
+
+    def count_get_instructors_calls() -> InstructorConfig:
+        nonlocal get_instructors_calls
+        get_instructors_calls += 1
+        return original_get_instructors()
+
+    monkeypatch.setattr(schedule_data_repo, "get_instructors", count_get_instructors_calls)
 
     response = await fastapi_test_client.get(
         f"/integration/event-groups/{alias}/schedule.ics",
@@ -386,12 +397,16 @@ async def test_instructor_ics_contains_only_matching_meetings(
     assert response.status_code == 200
     calendar = icalendar.Calendar.from_ical(response.text)
     events = [cast(icalendar.Event, component) for component in calendar.walk("VEVENT")]
-    assert len(events) == 10
+    assert len(events) == 2
     assert {str(event["summary"]) for event in events} == {
         "Agentic AI (class)",
         "Algorithms (lec)",
     }
     assert {str(event["description"]).splitlines()[0] for event in events} == {"Instructor: Teacher One"}
+    recurring_events = [event for event in events if event.get("RRULE")]
+    assert len(recurring_events) == 1
+    assert cast(Any, recurring_events[0]["RRULE"])["FREQ"] == ["WEEKLY"]
+    assert get_instructors_calls == 2
 
 
 @pytest.mark.asyncio
@@ -415,7 +430,7 @@ async def test_batch_aliases_ics_deduplicates_student_and_instructor_match(
     assert response.status_code == 200
     calendar = icalendar.Calendar.from_ical(response.text)
     events = [cast(icalendar.Event, component) for component in calendar.walk("VEVENT")]
-    assert len(events) == 11
+    assert len(events) == 3
     matching_agentic_events = [
         event
         for event in events
@@ -477,6 +492,51 @@ def test_group_ics_handles_database_times_with_mixed_timezone_awareness(
     assert all(event.decoded("dtstart").utcoffset() == dtm.timedelta(hours=3) for event in events)
 
 
+def test_weekly_ics_uses_rrule_exdate_and_recurrence_override(
+    schedule_data_repo: ScheduleConfigRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _seed_config(schedule_data_repo)
+    monkeypatch.setattr("src.schedule_assistant.modules.schedule.service.settings.published_group_kinds", None)
+    courses = schedule_data_repo.get_courses()
+    sessions = courses.courses[1].components[0].sessions
+    assert sessions is not None
+    weekly_pattern = sessions[0].weekly_pattern
+    assert weekly_pattern is not None
+    weekly_slot = weekly_pattern[0]
+    weekly_slot.edits = [
+        WeeklyPatternSlotEdit(
+            select_week=dtm.date(2026, 6, 8),
+            cancel=True,
+        ),
+        WeeklyPatternSlotEdit(
+            select_week=dtm.date(2026, 6, 15),
+            date=dtm.date(2026, 6, 16),
+            start_time=dtm.time(10, 40),
+            end_time=dtm.time(12, 10),
+            room="ONLINE",
+            instructor="other@innopolis.ru",
+        ),
+    ]
+    schedule_data_repo.set_courses(courses, saved_by="test")
+
+    calendar = icalendar.Calendar.from_ical(service.get_group_ics("core-b25-cse-01"))
+    events = [cast(icalendar.Event, component) for component in calendar.walk("VEVENT")]
+
+    assert len(events) == 2
+    recurring = next(event for event in events if event.get("RRULE"))
+    override = next(event for event in events if event.get("RECURRENCE-ID"))
+    assert cast(Any, recurring["RRULE"])["FREQ"] == ["WEEKLY"]
+    exdates = cast(Any, recurring["EXDATE"])
+    assert not isinstance(exdates, list)
+    assert len(exdates.dts) == 1
+    assert override.decoded("dtstart").date() == dtm.date(2026, 6, 16)
+    assert override.decoded("dtstart").time() == dtm.time(10, 40)
+    assert override.decoded("recurrence-id").date() == dtm.date(2026, 6, 15)
+    assert str(override["location"]) == "ONLINE"
+    assert str(override["description"]).splitlines()[0] == "Instructor: Teacher Two"
+
+
 @pytest.mark.asyncio
 async def test_batch_aliases_ics_combines_selected_groups(
     fastapi_test_client: AsyncClient,
@@ -500,7 +560,7 @@ async def test_batch_aliases_ics_combines_selected_groups(
     assert response.status_code == 200
     calendar = icalendar.Calendar.from_ical(response.text)
     events = [component for component in calendar.walk("VEVENT")]
-    assert len(events) == 11
+    assert len(events) == 3
     assert {str(event["summary"]) for event in events} == {
         "Agentic AI (class)",
         "Algorithms (lec)",

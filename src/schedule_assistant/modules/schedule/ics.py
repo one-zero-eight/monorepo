@@ -5,7 +5,13 @@ from zoneinfo import ZoneInfo
 
 import icalendar
 
-from src.schedule_assistant.modules.issues.schemas import OccurrencePlacement, ScheduledMeeting
+from src.schedule_assistant.modules.issues.schemas import (
+    OccurrencePlacement,
+    ScheduledMeeting,
+    WeeklyPatternPlacement,
+)
+from src.schedule_assistant.modules.schedule_config.schemas import WeeklyPatternSlotEdit
+from src.schedule_assistant.weekday import week_start_for_date, weekday_index
 
 TIMEZONE = ZoneInfo("Europe/Moscow")
 
@@ -51,14 +57,22 @@ def _clock_time(value: dtm.time) -> dtm.time:
 
 
 def _uid(alias: str, meeting: ScheduledMeeting) -> str:
-    if not isinstance(meeting.placement, OccurrencePlacement):
-        raise TypeError("ICS generation requires concrete meeting dates")
+    if isinstance(meeting.placement, OccurrencePlacement):
+        placement_identity = meeting.placement.date.isoformat()
+    else:
+        placement_identity = "\x1f".join(
+            [
+                meeting.placement.weekday.value,
+                str(meeting.placement.start_date),
+                str(meeting.placement.end_date),
+            ]
+        )
     identity = "\x1f".join(
         [
             alias,
             meeting.course_name,
             meeting.component_tag,
-            meeting.placement.date.isoformat(),
+            placement_identity,
             _clock_time(meeting.start_time).isoformat(),
             _clock_time(meeting.end_time).isoformat(),
             *meeting.groups,
@@ -68,25 +82,11 @@ def _uid(alias: str, meeting: ScheduledMeeting) -> str:
     return f"{digest}@innohassle.ru"
 
 
-def add_meeting(
-    calendar: icalendar.Calendar,
-    alias: str,
+def _add_event_details(
+    event: icalendar.Event,
     meeting: ScheduledMeeting,
     instructor_names: dict[str, str],
 ) -> None:
-    if not isinstance(meeting.placement, OccurrencePlacement):
-        raise TypeError("ICS generation requires concrete meeting dates")
-    event = icalendar.Event()
-    event.add("uid", _uid(alias, meeting))
-    event.add("dtstamp", dtm.datetime(1970, 1, 1, tzinfo=dtm.UTC))
-    event.add(
-        "dtstart",
-        dtm.datetime.combine(meeting.placement.date, _clock_time(meeting.start_time), tzinfo=TIMEZONE),
-    )
-    event.add(
-        "dtend",
-        dtm.datetime.combine(meeting.placement.date, _clock_time(meeting.end_time), tzinfo=TIMEZONE),
-    )
     event.add("summary", f"{meeting.course_name} ({meeting.component_tag})")
     if meeting.room and meeting.room.strip():
         event.add("location", meeting.room.strip())
@@ -97,6 +97,94 @@ def add_meeting(
         description.append(f"Groups: {', '.join(meeting.groups)}")
     if description:
         event.add("description", "\n".join(description))
+
+
+def _event(
+    uid: str,
+    meeting: ScheduledMeeting,
+    date: dtm.date,
+    instructor_names: dict[str, str],
+) -> icalendar.Event:
+    event = icalendar.Event()
+    event.add("uid", uid)
+    event.add("dtstamp", dtm.datetime(1970, 1, 1, tzinfo=dtm.UTC))
+    event.add("dtstart", dtm.datetime.combine(date, _clock_time(meeting.start_time), tzinfo=TIMEZONE))
+    event.add("dtend", dtm.datetime.combine(date, _clock_time(meeting.end_time), tzinfo=TIMEZONE))
+    _add_event_details(event, meeting, instructor_names)
+    return event
+
+
+def _weekly_occurrence_date(placement: WeeklyPatternPlacement, selected_week: dtm.date) -> dtm.date:
+    week_start = week_start_for_date(selected_week, placement.starting_day)
+    day_offset = (weekday_index(placement.weekday.value) - placement.starting_day.index) % 7
+    return week_start + dtm.timedelta(days=day_offset)
+
+
+def _first_weekly_date(placement: WeeklyPatternPlacement) -> dtm.date:
+    if placement.start_date is None:
+        raise TypeError("Weekly ICS generation requires a start date")
+    day_offset = (weekday_index(placement.weekday.value) - placement.start_date.weekday()) % 7
+    return placement.start_date + dtm.timedelta(days=day_offset)
+
+
+def _apply_edit(meeting: ScheduledMeeting, edit: WeeklyPatternSlotEdit) -> ScheduledMeeting:
+    return meeting.model_copy(
+        update={
+            "start_time": edit.start_time or meeting.start_time,
+            "end_time": edit.end_time or meeting.end_time,
+            "room": edit.room if edit.room is not None else meeting.room,
+            "instructor": edit.instructor if edit.instructor is not None else meeting.instructor,
+        }
+    )
+
+
+def add_meeting(
+    calendar: icalendar.Calendar,
+    alias: str,
+    meeting: ScheduledMeeting,
+    instructor_names: dict[str, str],
+) -> None:
+    uid = _uid(alias, meeting)
+    if isinstance(meeting.placement, OccurrencePlacement):
+        calendar.add_component(_event(uid, meeting, meeting.placement.date, instructor_names))
+        return
+
+    placement = meeting.placement
+    if placement.end_date is None:
+        raise TypeError("Weekly ICS generation requires an end date")
+    first_date = _first_weekly_date(placement)
+    if first_date > placement.end_date:
+        return
+
+    event = _event(uid, meeting, first_date, instructor_names)
+    event.add(
+        "rrule",
+        {
+            "freq": "weekly",
+            "until": dtm.datetime.combine(
+                placement.end_date,
+                dtm.time(23, 59, 59),
+                tzinfo=TIMEZONE,
+            ),
+        },
+    )
+
+    for edit in placement.edits:
+        original_date = _weekly_occurrence_date(placement, edit.select_week)
+        if original_date < first_date or original_date > placement.end_date:
+            continue
+        original_start = dtm.datetime.combine(original_date, _clock_time(meeting.start_time), tzinfo=TIMEZONE)
+        if edit.cancel:
+            event.add("exdate", original_start)
+            continue
+        override = _event(
+            uid,
+            _apply_edit(meeting, edit),
+            edit.date or original_date,
+            instructor_names,
+        )
+        override.add("recurrence-id", original_start)
+        calendar.add_component(override)
     calendar.add_component(event)
 
 
@@ -110,7 +198,11 @@ def render_calendar(
     for alias, meeting in sorted(
         alias_meetings,
         key=lambda item: (
-            item[1].placement.date if isinstance(item[1].placement, OccurrencePlacement) else dtm.date.min,
+            (
+                item[1].placement.date
+                if isinstance(item[1].placement, OccurrencePlacement)
+                else item[1].placement.start_date or dtm.date.min
+            ),
             item[1].start_time,
             item[0],
             item[1].course_name,

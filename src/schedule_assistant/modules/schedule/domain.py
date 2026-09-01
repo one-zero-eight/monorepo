@@ -19,7 +19,7 @@ from src.schedule_assistant.modules.schedule_config.semester_windows import (
     resolve_audience_semester,
 )
 from src.schedule_assistant.modules.schedule_config.validation import build_selector_map, expand_group_tokens
-from src.schedule_assistant.weekday import week_start_for_date, weekday_index
+from src.schedule_assistant.weekday import Weekday, week_start_for_date, weekday_index
 
 
 def _group_codes_for_session(
@@ -96,7 +96,11 @@ def _meeting_from_weekly_slot(
     group_codes: tuple[str, ...],
     students_number: int | None,
     slot: WeeklyPatternSlot,
+    *,
+    term: TermConfig | None = None,
+    audiences: list[str] | None = None,
 ) -> ScheduledMeeting:
+    window = resolve_audience_semester(term, audiences or []) if term is not None else None
     return _base_meeting(
         course=course,
         component_tag=component_tag,
@@ -105,6 +109,9 @@ def _meeting_from_weekly_slot(
         placement=WeeklyPatternPlacement(
             weekday=slot.weekday,
             edits=slot.edits or [],
+            start_date=window.start_date if window is not None else None,
+            end_date=window.end_date if window is not None else None,
+            starting_day=term.starting_day if term is not None else Weekday.MONDAY,
         ),
         start_time=slot.start_time,
         end_time=slot.end_time,
@@ -205,6 +212,8 @@ def meetings_from_schedule_config(
                                 group_codes,
                                 students_number,
                                 slot,
+                                term=term,
+                                audiences=audiences,
                             )
                         )
     return meetings

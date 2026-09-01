@@ -19,6 +19,9 @@ class WeeklyPatternPlacement(ScheduleAssistantSchema):
     kind: Literal["weekly_pattern"] = "weekly_pattern"
     weekday: Weekday
     edits: list[WeeklyPatternSlotEdit] = Field(default_factory=list)
+    start_date: dtm.date | None = None
+    end_date: dtm.date | None = None
+    starting_day: Weekday = Weekday.MONDAY
 
 
 MeetingPlacement = Annotated[

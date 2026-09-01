@@ -1,7 +1,13 @@
+import datetime as dtm
+
 from fastapi import HTTPException, status
 
 from src.schedule_assistant.config import settings
-from src.schedule_assistant.modules.issues.schemas import ScheduledMeeting
+from src.schedule_assistant.modules.issues.schemas import (
+    OccurrencePlacement,
+    ScheduledMeeting,
+    WeeklyPatternPlacement,
+)
 from src.schedule_assistant.modules.schedule.domain import meetings_from_schedule_config
 from src.schedule_assistant.modules.schedule.export_xlsx import export_schedule_xlsx as build_schedule_xlsx
 from src.schedule_assistant.modules.schedule.ics import group_alias, render_calendar, teacher_alias
@@ -13,6 +19,7 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     InstructorConfig,
     SectionsConfig,
     StudentsGroups,
+    WeeklyPatternSlotEdit,
 )
 from src.schedule_assistant.modules.schedule_config.visibility import (
     filter_courses_for_instructor,
@@ -22,6 +29,7 @@ from src.schedule_assistant.modules.schedule_config.visibility import (
     instructor_identity_values,
     meeting_instructor_matches,
 )
+from src.schedule_assistant.weekday import week_start_for_date, weekday_index
 
 
 def _normalize_email(email: str) -> str:
@@ -118,9 +126,24 @@ def _concrete_meetings() -> list[ScheduledMeeting]:
     )
 
 
-def _instructor_names() -> dict[str, str]:
+def _calendar_meetings() -> list[ScheduledMeeting]:
+    term = schedule_config_repository.get_term()
+    if term is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Schedule term config is required for calendar export",
+        )
+    return meetings_from_schedule_config(
+        schedule_config_repository.get_courses(),
+        schedule_config_repository.get_sections(),
+        term=term,
+        expand_weekly=False,
+    )
+
+
+def _instructor_names(instructors: InstructorConfig) -> dict[str, str]:
     names: dict[str, str] = {}
-    for instructor in schedule_config_repository.get_instructors().instructors:
+    for instructor in instructors.instructors:
         label = (instructor.name_en or instructor.name_ru or "").strip()
         if not label:
             continue
@@ -132,32 +155,79 @@ def _instructor_names() -> dict[str, str]:
 
 def get_group_ics(alias: str) -> bytes:
     group = _group_by_alias(alias)
-    meetings = [meeting for meeting in _concrete_meetings() if _meeting_matches_group(meeting, group)]
+    instructors = schedule_config_repository.get_instructors()
+    instructor_identities = _instructor_identities_by_group([group], instructors)
+    meetings = _meetings_for_group(_calendar_meetings(), group, instructor_identities)
     return render_calendar(
         group.name,
         [(alias, meeting) for meeting in meetings],
-        instructor_names=_instructor_names(),
+        instructor_names=_instructor_names(instructors),
     )
 
 
-def _meeting_matches_group(
-    meeting: ScheduledMeeting,
+def _instructor_identities_by_group(
+    groups: list[VirtualEventGroup],
+    instructors: InstructorConfig,
+) -> dict[str, set[str]]:
+    identities: dict[str, set[str]] = {}
+    for group in groups:
+        if group.instructor_id is None:
+            continue
+        instructor = find_instructor_by_id(instructors, group.instructor_id)
+        if instructor is not None:
+            identities[group.alias] = instructor_identity_values(instructor)
+    return identities
+
+
+def _weekly_edit_date(placement: WeeklyPatternPlacement, edit: WeeklyPatternSlotEdit) -> dtm.date:
+    week_start = week_start_for_date(edit.select_week, placement.starting_day)
+    day_offset = (weekday_index(placement.weekday.value) - placement.starting_day.index) % 7
+    return edit.date or week_start + dtm.timedelta(days=day_offset)
+
+
+def _teacher_weekly_meetings(meeting: ScheduledMeeting, identity: set[str]) -> list[ScheduledMeeting]:
+    placement = meeting.placement
+    if not isinstance(placement, WeeklyPatternPlacement):
+        return [meeting] if meeting_instructor_matches(meeting.instructor, identity) else []
+
+    if meeting_instructor_matches(meeting.instructor, identity):
+        edits = [
+            edit.model_copy(update={"cancel": True})
+            if edit.instructor is not None and not meeting_instructor_matches(edit.instructor, identity)
+            else edit
+            for edit in placement.edits
+        ]
+        return [meeting.model_copy(update={"placement": placement.model_copy(update={"edits": edits})})]
+
+    occurrences: list[ScheduledMeeting] = []
+    for edit in placement.edits:
+        if edit.cancel or not meeting_instructor_matches(edit.instructor, identity):
+            continue
+        occurrences.append(
+            meeting.model_copy(
+                update={
+                    "placement": OccurrencePlacement(date=_weekly_edit_date(placement, edit)),
+                    "start_time": edit.start_time or meeting.start_time,
+                    "end_time": edit.end_time or meeting.end_time,
+                    "room": edit.room if edit.room is not None else meeting.room,
+                    "instructor": edit.instructor,
+                }
+            )
+        )
+    return occurrences
+
+
+def _meetings_for_group(
+    meetings: list[ScheduledMeeting],
     group: VirtualEventGroup,
-) -> bool:
+    instructor_identities: dict[str, set[str]],
+) -> list[ScheduledMeeting]:
     if group.group_code is not None:
-        return group.group_code in meeting.groups
-    if group.instructor_id is None:
-        return False
-    instructor = find_instructor_by_id(
-        schedule_config_repository.get_instructors(),
-        group.instructor_id,
-    )
-    if instructor is None:
-        return False
-    return meeting_instructor_matches(
-        meeting.instructor,
-        instructor_identity_values(instructor),
-    )
+        return [meeting for meeting in meetings if group.group_code in meeting.groups]
+    identity = instructor_identities.get(group.alias)
+    if identity is None:
+        return []
+    return [teacher_meeting for meeting in meetings for teacher_meeting in _teacher_weekly_meetings(meeting, identity)]
 
 
 def _meeting_identity(meeting: ScheduledMeeting) -> tuple[object, ...]:
@@ -166,6 +236,9 @@ def _meeting_identity(meeting: ScheduledMeeting) -> tuple[object, ...]:
         meeting.course_name,
         meeting.component_tag,
         getattr(placement, "date", None),
+        getattr(placement, "weekday", None),
+        getattr(placement, "start_date", None),
+        getattr(placement, "end_date", None),
         meeting.start_time.replace(tzinfo=None),
         meeting.end_time.replace(tzinfo=None),
         meeting.room,
@@ -177,13 +250,13 @@ def _meeting_identity(meeting: ScheduledMeeting) -> tuple[object, ...]:
 def get_aliases_ics(aliases: list[str]) -> bytes:
     normalized_aliases = sorted(set(aliases))
     groups = {alias: _group_by_alias(alias) for alias in normalized_aliases}
-    meetings = _concrete_meetings()
+    instructors = schedule_config_repository.get_instructors()
+    instructor_identities = _instructor_identities_by_group(list(groups.values()), instructors)
+    meetings = _calendar_meetings()
     alias_meetings: list[tuple[str, ScheduledMeeting]] = []
     seen_meetings: set[tuple[object, ...]] = set()
     for alias, group in groups.items():
-        for meeting in meetings:
-            if not _meeting_matches_group(meeting, group):
-                continue
+        for meeting in _meetings_for_group(meetings, group, instructor_identities):
             identity = _meeting_identity(meeting)
             if identity in seen_meetings:
                 continue
@@ -192,7 +265,7 @@ def get_aliases_ics(aliases: list[str]) -> bytes:
     return render_calendar(
         "Schedule Assistant",
         alias_meetings,
-        instructor_names=_instructor_names(),
+        instructor_names=_instructor_names(instructors),
     )
 
 
