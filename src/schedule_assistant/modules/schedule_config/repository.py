@@ -1,4 +1,5 @@
 import uuid
+from dataclasses import replace
 from typing import Any, cast
 
 import jsonpatch
@@ -54,6 +55,9 @@ from src.schedule_assistant.modules.schedule_config.validation import (
     validate_student_group,
     validate_student_group_delete,
     validate_term_config,
+)
+from src.schedule_assistant.modules.schedule_config.weekly_pattern_canonicalization import (
+    canonicalize_courses,
 )
 from src.schedule_assistant.utcnow import utcnow
 
@@ -438,6 +442,8 @@ class ScheduleConfigRepository:
             old_dump = self._assembled_dump_if_possible(session)
             ctx = self._validation_context(session)
             self._raise_validation_errors(validate_course(course, ctx))
+            course = canonicalize_courses([course], ctx.term)[0][0]
+            self._raise_validation_errors(validate_course(course, ctx))
             session.add(_course_to_row(course))
             session.flush()
             revision = self._append_history(
@@ -457,6 +463,8 @@ class ScheduleConfigRepository:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Course not found: {name!r}")
             old_dump = self._assembled_dump_if_possible(session)
             ctx = self._validation_context(session)
+            self._raise_validation_errors(validate_course(course, ctx, exclude_name=name))
+            course = canonicalize_courses([course], ctx.term)[0][0]
             self._raise_validation_errors(validate_course(course, ctx, exclude_name=name))
             if course.name != name:
                 if session.get(CourseRow, course.name) is not None:
@@ -516,6 +524,8 @@ class ScheduleConfigRepository:
                 courses=CoursesConfig(),
                 term=self._load_term_config(session),
             )
+            self._raise_validation_errors(validate_courses(config, ctx))
+            config = CoursesConfig(courses=canonicalize_courses(config.courses, ctx.term)[0])
             self._raise_validation_errors(validate_courses(config, ctx))
             session.execute(delete(CourseRow))
             for course in config.courses:
@@ -1083,6 +1093,13 @@ class ScheduleConfigRepository:
                 changed_resources.append("courses")
             self._raise_validation_errors(errors)
 
+            if update.courses is not None:
+                new_courses = CoursesConfig(
+                    courses=canonicalize_courses(update.courses, merged_term)[0],
+                )
+                canonical_context = replace(validation_context, courses=new_courses)
+                self._raise_validation_errors(validate_courses(new_courses, canonical_context))
+
             if merged_term is not None and "term" in resources:
                 self._apply_term_update(session, merged_term)
             if update.students_groups is not None:
@@ -1092,7 +1109,7 @@ class ScheduleConfigRepository:
             if update.instructors is not None:
                 self._apply_instructors_update(session, update.instructors)
             if update.courses is not None:
-                self._apply_courses_update(session, update.courses)
+                self._apply_courses_update(session, new_courses.courses)
 
             session.flush()
             revision = self._append_history(
