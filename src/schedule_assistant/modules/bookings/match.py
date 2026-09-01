@@ -1,5 +1,6 @@
 import datetime as dtm
 import re
+import unicodedata
 from collections.abc import Iterable
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -40,6 +41,19 @@ def parse_booking_datetime(value: str) -> dtm.datetime:
 
 def _booking_categories_key(categories: Iterable[Any]) -> tuple[str, ...]:
     return tuple(str(category) for category in categories if str(category) != "Auto")
+
+
+def _exchange_categories_key(categories: Iterable[Any]) -> tuple[str, ...]:
+    sanitized: list[str] = []
+    for category in categories:
+        text = re.sub(r"[,;]", " ", str(category))
+        text = unicodedata.normalize("NFKD", text)
+        text = text.encode("ascii", "ignore").decode("ascii")
+        text = re.sub(r"\s+", " ", text).strip()
+        text = re.sub(r"\s*/\s*$", "", text).strip()
+        if text and text != "Auto":
+            sanitized.append(text)
+    return tuple(sanitized)
 
 
 def auto_recurrence_fields(recurrence: Any) -> dict[str, str] | None:
@@ -176,6 +190,20 @@ def _auto_booking_categories_match(payload_categories: list[Any], auto_categorie
     return _course_names_match_for_auto(payload_key[-1], auto_key[-1])
 
 
+def _auto_booking_metadata_matches(payload: dict[str, Any], auto_booking: dict[str, Any]) -> bool:
+    payload_categories = payload.get("categories")
+    auto_categories = auto_booking.get("categories")
+    if not isinstance(payload_categories, list) or not isinstance(auto_categories, list):
+        return False
+    if _auto_booking_categories_match(payload_categories, auto_categories):
+        return True
+    if _exchange_categories_key(payload_categories) != _exchange_categories_key(auto_categories):
+        return False
+    payload_title = _normalize_booking_title_for_parse(str(payload.get("title") or ""))
+    auto_title = _normalize_booking_title_for_parse(str(auto_booking.get("title") or ""))
+    return bool(payload_title and payload_title == auto_title)
+
+
 def _booking_identity_dict(booking: dict[str, Any]) -> dict[str, Any]:
     return {
         "room_id": booking.get("room_id"),
@@ -270,11 +298,7 @@ def payload_matches_auto_booking(payload: dict[str, Any], auto_booking: dict[str
     if str(payload.get("room_id")) != str(auto_booking.get("room_id")):
         return False
 
-    payload_categories = payload.get("categories")
-    auto_categories = auto_booking.get("categories")
-    if not isinstance(payload_categories, list) or not isinstance(auto_categories, list):
-        return False
-    if not _auto_booking_categories_match(payload_categories, auto_categories):
+    if not _auto_booking_metadata_matches(payload, auto_booking):
         return False
 
     payload_start = parse_booking_datetime(str(payload["start"]))
@@ -310,7 +334,7 @@ def _auto_booking_matches_weekly_payload_identity(
     payload_categories = payload.get("categories")
     auto_categories = auto_booking.get("categories")
     if isinstance(payload_categories, list) and isinstance(auto_categories, list):
-        if not _auto_booking_categories_match(payload_categories, auto_categories):
+        if not _auto_booking_metadata_matches(payload, auto_booking):
             return False
     elif not booking_matches_payload_identity(_booking_identity_dict(auto_booking), payload):
         return False

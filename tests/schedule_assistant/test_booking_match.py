@@ -1,3 +1,7 @@
+from src.schedule_assistant.modules.bookings.match import (
+    find_extra_auto_bookings,
+    payload_matches_auto_booking,
+)
 from src.schedule_assistant.modules.issues.booking_match import booking_matches_payload, slot_has_matching_booking
 
 
@@ -86,3 +90,65 @@ def test_weekly_payload_matches_single_calendar_instance() -> None:
         "categories": ["Auto", "core", "BS_Y1", "Algorithms"],
     }
     assert booking_matches_payload(booking, payload)
+
+
+def test_cyrillic_course_category_removed_by_exchange_still_matches() -> None:
+    payload = {
+        "room_id": "318",
+        "title": "Прикладная статистика в анализе данных (lec)",
+        "start": "2026-08-24T14:20:00+03:00",
+        "end": "2026-08-24T15:50:00+03:00",
+        "categories": ["core", "B24-MFAI-01", "Прикладная статистика в анализе данных"],
+        "recurrence": {
+            "kind": "weekly_until",
+            "weekday": "monday",
+            "start_date": "2026-08-24",
+            "until_date": "2026-12-21",
+        },
+    }
+    booking = {
+        "room_id": "318",
+        "title": "Auto: Прикладная статистика в анализе данных (lec)",
+        "start": "2026-08-24T14:20:00+03:00",
+        "end": "2026-08-24T15:50:00+03:00",
+        "categories": ["Auto", "core", "B24-MFAI-01"],
+        "recurrence": (
+            "<t:WeeklyRecurrence><t:DaysOfWeek>Monday</t:DaysOfWeek></t:WeeklyRecurrence>"
+            "<t:StartDate>2026-08-24</t:StartDate><t:EndDate>2026-12-21</t:EndDate>"
+        ),
+        "outlook_booking_id": "booking-1",
+    }
+
+    assert payload_matches_auto_booking(payload, booking)
+    assert find_extra_auto_bookings([booking], [payload]) == []
+
+
+def test_sanitized_categories_require_exact_title() -> None:
+    payload = {
+        "room_id": "318",
+        "title": "Прикладная статистика в анализе данных (lec)",
+        "start": "2026-08-24T14:20:00+03:00",
+        "end": "2026-08-24T15:50:00+03:00",
+        "categories": ["core", "B24-MFAI-01", "Прикладная статистика в анализе данных"],
+        "recurrence": {
+            "kind": "weekly_until",
+            "weekday": "monday",
+            "start_date": "2026-08-24",
+            "until_date": "2026-12-21",
+        },
+    }
+    booking = {
+        "room_id": "318",
+        "title": "Auto: Другой предмет (lec)",
+        "start": "2026-08-24T14:20:00+03:00",
+        "end": "2026-08-24T15:50:00+03:00",
+        "categories": ["Auto", "core", "B24-MFAI-01"],
+        "recurrence": (
+            "<t:WeeklyRecurrence><t:DaysOfWeek>Monday</t:DaysOfWeek></t:WeeklyRecurrence>"
+            "<t:StartDate>2026-08-24</t:StartDate><t:EndDate>2026-12-21</t:EndDate>"
+        ),
+        "outlook_booking_id": "booking-1",
+    }
+
+    assert not payload_matches_auto_booking(payload, booking)
+    assert find_extra_auto_bookings([booking], [payload]) == [booking]
