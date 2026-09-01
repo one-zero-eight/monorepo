@@ -1,11 +1,13 @@
 import asyncio
 import json
-from unittest.mock import AsyncMock
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from exchangelib.items import MOVE_TO_DELETED_ITEMS, SEND_TO_ALL_AND_SAVE_COPY
 from fastapi.testclient import TestClient
 
-from src.room_booking.modules.bmp.repository import BmpBatchItemResult
+from src.room_booking.modules.bmp.repository import BmpBatchItemResult, BmpCalendarRepository
 from src.room_booking.modules.bookings.schemas import Booking
 from tests.room_booking.datetime_helpers import dt_params, msk
 
@@ -278,8 +280,6 @@ def test_bmp_batch_creates_in_chunks(
 
 
 def _calendar_item_with_user(email: str):
-    from unittest.mock import MagicMock
-
     attendee = MagicMock()
     attendee.mailbox.email_address = email
     attendee.response_type = "Accept"
@@ -287,6 +287,86 @@ def _calendar_item_with_user(email: str):
     item.required_attendees = [attendee]
     item.resources = []
     return item
+
+
+@pytest.mark.asyncio
+async def test_batch_cancel_uses_bulk_delete_and_deduplicates_ids():
+    repository = object.__new__(BmpCalendarRepository)
+    repository.account = MagicMock()
+    repository.account.bulk_delete.return_value = [True, True]
+    repository._recently = MagicMock()
+    repository._recently.is_canceled = AsyncMock(return_value=False)
+    repository._recently.mark_canceled = AsyncMock()
+    items = {
+        "booking-1": SimpleNamespace(id="booking-1", subject="Auto: First", categories=["Auto"]),
+        "booking-2": SimpleNamespace(id="booking-2", subject="Auto: Second", categories=["Auto"]),
+    }
+    repository.get_booking = AsyncMock(side_effect=items.get)
+
+    result = await repository.cancel_bookings_batch(["booking-1", "booking-1", "booking-2"])
+
+    assert result.cancelled == ["booking-1", "booking-2"]
+    assert result.failed == {}
+    assert repository.get_booking.await_count == 2
+    repository.account.bulk_delete.assert_called_once_with(
+        ids=[items["booking-1"], items["booking-2"]],
+        delete_type=MOVE_TO_DELETED_ITEMS,
+        send_meeting_cancellations=SEND_TO_ALL_AND_SAVE_COPY,
+        chunk_size=8,
+    )
+
+
+@pytest.mark.asyncio
+async def test_batch_cancel_rejects_non_auto_booking():
+    repository = object.__new__(BmpCalendarRepository)
+    repository.account = MagicMock()
+    repository._recently = MagicMock()
+    repository._recently.is_canceled = AsyncMock(return_value=False)
+    repository._recently.mark_canceled = AsyncMock()
+    repository.get_booking = AsyncMock(
+        return_value=SimpleNamespace(id="booking-1", subject="Unrelated meeting", categories=[])
+    )
+
+    result = await repository.cancel_bookings_batch(["booking-1"])
+
+    assert result.cancelled == []
+    assert result.failed == {"booking-1": "Booking is not an Auto booking"}
+    repository.account.bulk_delete.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_batch_cancel_treats_missing_booking_as_already_cancelled():
+    repository = object.__new__(BmpCalendarRepository)
+    repository.account = MagicMock()
+    repository._recently = MagicMock()
+    repository._recently.is_canceled = AsyncMock(return_value=False)
+    repository._recently.mark_canceled = AsyncMock()
+    repository.get_booking = AsyncMock(return_value=None)
+
+    result = await repository.cancel_bookings_batch(["booking-1"])
+
+    assert result.cancelled == ["booking-1"]
+    assert result.failed == {}
+    repository._recently.mark_canceled.assert_awaited_once_with("booking-1")
+    repository.account.bulk_delete.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_batch_cancel_reconciles_timeout_after_delete():
+    repository = object.__new__(BmpCalendarRepository)
+    repository.account = MagicMock()
+    repository.account.bulk_delete.side_effect = TimeoutError("Exchange timeout")
+    repository._recently = MagicMock()
+    repository._recently.is_canceled = AsyncMock(return_value=False)
+    repository._recently.mark_canceled = AsyncMock()
+    item = SimpleNamespace(id="booking-1", subject="Auto: First", categories=["Auto"])
+    repository.get_booking = AsyncMock(side_effect=[item, None])
+
+    result = await repository.cancel_bookings_batch(["booking-1"])
+
+    assert result.cancelled == ["booking-1"]
+    assert result.failed == {}
+    repository._recently.mark_canceled.assert_awaited_once_with("booking-1")
 
 
 @pytest.fixture

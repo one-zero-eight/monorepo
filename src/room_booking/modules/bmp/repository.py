@@ -9,6 +9,8 @@ from typing import Any, Literal, Protocol, cast
 
 import exchangelib
 from exchangelib import Q
+from exchangelib.errors import ErrorItemNotFound
+from exchangelib.items import MOVE_TO_DELETED_ITEMS, SEND_TO_ALL_AND_SAVE_COPY
 from exchangelib.recurrence import Recurrence
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict
@@ -24,6 +26,7 @@ from src.room_booking.modules.bookings.tz_utils import to_msk
 AUTO_SUBJECT_PREFIX = "Auto: "
 AUTO_CATEGORY = "Auto"
 BMP_CREATE_CHUNK_SIZE = 16
+BMP_CANCEL_CHUNK_SIZE = 8
 
 _AUTO_FIND_FIELDS = (
     "id",
@@ -186,13 +189,8 @@ class BmpCalendarRepository(ExchangeBookingRepository):
 
     def _list_auto_chain_items(
         self,
-        chain_category: str = AUTO_CATEGORY,
     ) -> list[exchangelib.CalendarItem]:
-        return list(
-            self.selected_calendar.filter(categories__contains=chain_category).only(
-                "id", "changekey", "subject", "organizer", "categories"
-            )
-        )
+        return self._auto_find_items("id", "changekey", "subject", "organizer", "categories")
 
     async def _list_auto_calendar_items(
         self,
@@ -225,18 +223,45 @@ class BmpCalendarRepository(ExchangeBookingRepository):
 
     async def cancel_all_auto_bookings(self) -> CancelAllAutoBookingsResult:
         items = await asyncio.to_thread(self._list_auto_chain_items)
-        cancelled: list[str] = []
-        failed: dict[str, str] = {}
-        for item in items:
-            item_id = str(item.id)
-            try:
-                await self.cancel_booking(item, email=self.account_email)
-                cancelled.append(item_id)
-            except Exception as e:
-                failed[item_id] = str(e)
-        result = CancelAllAutoBookingsResult(cancelled=cancelled, failed=failed)
+        result = await self._bulk_cancel_auto_items(items)
         logger.info(f"Canceled {len(result.cancelled)}/{len(result.cancelled) + len(result.failed)} auto bookings")
         return result
+
+    async def _bulk_cancel_auto_items(
+        self,
+        items: list[exchangelib.CalendarItem],
+    ) -> CancelAllAutoBookingsResult:
+        cancelled: list[str] = []
+        failed: dict[str, str] = {}
+
+        for offset in range(0, len(items), BMP_CANCEL_CHUNK_SIZE):
+            chunk = items[offset : offset + BMP_CANCEL_CHUNK_SIZE]
+            try:
+                results = await asyncio.to_thread(
+                    self.account.bulk_delete,
+                    ids=chunk,
+                    delete_type=MOVE_TO_DELETED_ITEMS,
+                    send_meeting_cancellations=SEND_TO_ALL_AND_SAVE_COPY,
+                    chunk_size=BMP_CANCEL_CHUNK_SIZE,
+                )
+            except Exception as e:
+                for item in chunk:
+                    item_id = str(item.id)
+                    if await self.get_booking(item_id) is None:
+                        await self._recently.mark_canceled(item_id)
+                        cancelled.append(item_id)
+                    else:
+                        failed[item_id] = str(e)
+                continue
+            for item, delete_result in zip(chunk, results, strict=True):
+                item_id = str(item.id)
+                if delete_result is True or isinstance(delete_result, ErrorItemNotFound):
+                    await self._recently.mark_canceled(item_id)
+                    cancelled.append(item_id)
+                    continue
+                failed[item_id] = str(delete_result)
+
+        return CancelAllAutoBookingsResult(cancelled=cancelled, failed=failed)
 
     async def cancel_bookings_batch(
         self,
@@ -247,25 +272,31 @@ class BmpCalendarRepository(ExchangeBookingRepository):
         if not outlook_booking_ids:
             return CancelAllAutoBookingsResult(cancelled=[], failed={})
 
+        booking_ids = list(dict.fromkeys(outlook_booking_ids))
         cancelled: list[str] = []
         failed: dict[str, str] = {}
+        items: list[exchangelib.CalendarItem] = []
 
-        for booking_id in outlook_booking_ids:
+        for booking_id in booking_ids:
             if await self._recently.is_canceled(booking_id):
                 cancelled.append(booking_id)
                 continue
             item = await self.get_booking(booking_id)
             if item is None:
-                failed[booking_id] = "Booking not found"
-                continue
-            try:
-                await self.cancel_booking(item, email=email)
+                await self._recently.mark_canceled(booking_id)
                 cancelled.append(booking_id)
-            except Exception as e:
-                failed[booking_id] = str(e)
+                continue
+            if not self._is_auto_calendar_item(item):
+                failed[booking_id] = "Booking is not an Auto booking"
+                continue
+            items.append(item)
+
+        bulk_result = await self._bulk_cancel_auto_items(items)
+        cancelled.extend(bulk_result.cancelled)
+        failed.update(bulk_result.failed)
 
         result = CancelAllAutoBookingsResult(cancelled=cancelled, failed=failed)
-        logger.info(f"Batch canceled {len(result.cancelled)}/{len(outlook_booking_ids)} auto bookings (email={email})")
+        logger.info(f"Batch canceled {len(result.cancelled)}/{len(booking_ids)} auto bookings (email={email})")
         return result
 
     async def cancel_auto_booking_by_slot(
