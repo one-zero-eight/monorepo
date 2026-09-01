@@ -92,7 +92,7 @@ jobs:
           version: 1.0
 
       - name: 📦 Set up uv
-        uses: astral-sh/setup-uv@v8.2.0
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
           activate-environment: true
@@ -174,7 +174,7 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref }}
 
       - name: 📦 Set up uv
-        uses: astral-sh/setup-uv@v8.2.0
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
           activate-environment: true
@@ -183,7 +183,7 @@ jobs:
         run: uv sync --frozen
 
       - name: 📥 Download suite reports
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: pytest-*
           merge-multiple: true
