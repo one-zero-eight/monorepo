@@ -7,14 +7,12 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy.sql.expression import exists
 
 from src.inh_accounts_sdk import inh_accounts
-from src.schedule.exceptions import EventGroupNotFoundException
 from src.schedule.modules.crud import AbstractCRUDRepository, crud_factory
 from src.schedule.modules.users.linked import LinkedCalendarCreate, LinkedCalendarUpdate, LinkedCalendarView
 from src.schedule.modules.users.schemas import CreateUser, TargetForExport, UpdateUser, ViewUser, ViewUserScheduleKey
-from src.schedule.storages.sql.models import EventGroup, LinkedCalendar, User, UserScheduleKeys, UserXFavoriteEventGroup
+from src.schedule.storages.sql.models import LinkedCalendar, User, UserScheduleKeys, UserXFavoriteEventGroup
 from src.schedule.storages.sql.models.event_groups import UserXHiddenEventGroup
 from src.schedule.storages.sql.storage import SQLAlchemyStorage
 
@@ -124,22 +122,16 @@ class SqlUserRepository:
         user_id = (await self.create(user)).id
         return user_id
 
-    async def add_favorite(self, user_id: int, favorite_id: int) -> ViewUser:
+    async def add_favorite(self, user_id: int, group_alias: str) -> ViewUser:
         async with self._create_session() as session:
-            # check if favorite exists
-            favorite_exists = await session.scalar(exists(EventGroup.id).where(EventGroup.id == favorite_id).select())
-
-            if not favorite_exists:
-                raise EventGroupNotFoundException(detail=f"Event group with id {favorite_id} does not exist")
-
             q = (
                 insert(UserXFavoriteEventGroup)
                 .values(
                     user_id=user_id,
-                    group_id=favorite_id,
+                    group_alias=group_alias,
                 )
                 .on_conflict_do_nothing(
-                    index_elements=[UserXFavoriteEventGroup.user_id, UserXFavoriteEventGroup.group_id]
+                    index_elements=[UserXFavoriteEventGroup.user_id, UserXFavoriteEventGroup.group_alias]
                 )
             )
             await session.execute(q)
@@ -147,7 +139,7 @@ class SqlUserRepository:
             await session.commit()
             return ViewUser.model_validate(user)
 
-    async def remove_favorite(self, user_id: int, favorite_id: int) -> ViewUser:
+    async def remove_favorite(self, user_id: int, group_alias: str) -> ViewUser:
         async with self._create_session() as session:
             q = (
                 delete(UserXFavoriteEventGroup)
@@ -155,7 +147,7 @@ class SqlUserRepository:
                     UserXFavoriteEventGroup.user_id == user_id,
                 )
                 .where(
-                    UserXFavoriteEventGroup.group_id == favorite_id,
+                    UserXFavoriteEventGroup.group_alias == group_alias,
                 )
             )
             await session.execute(q)
@@ -163,23 +155,23 @@ class SqlUserRepository:
             await session.commit()
             return ViewUser.model_validate(user)
 
-    async def set_hidden_event_group(self, user_id: int, group_id: int, hide: bool = True) -> ViewUser:
+    async def set_hidden_event_group(self, user_id: int, group_alias: str, hide: bool = True) -> ViewUser:
         async with self._create_session() as session:
             if hide:
                 q = (
                     insert(UserXHiddenEventGroup)
                     .values(
                         user_id=user_id,
-                        group_id=group_id,
+                        group_alias=group_alias,
                     )
                     .on_conflict_do_nothing(
-                        index_elements=[UserXHiddenEventGroup.user_id, UserXHiddenEventGroup.group_id]
+                        index_elements=[UserXHiddenEventGroup.user_id, UserXHiddenEventGroup.group_alias]
                     )
                 )
             else:
                 q = delete(UserXHiddenEventGroup).where(
                     UserXHiddenEventGroup.user_id == user_id,
-                    UserXHiddenEventGroup.group_id == group_id,
+                    UserXHiddenEventGroup.group_alias == group_alias,
                 )
             await session.execute(q)
             await session.commit()

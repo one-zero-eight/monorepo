@@ -8,6 +8,7 @@ from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import JSONResponse
 
+from src.schedule.config import settings
 from src.schedule.dependencies import VERIFY_PARSER_DEPENDENCY
 from src.schedule.exceptions import (
     EventGroupNotFoundException,
@@ -22,6 +23,7 @@ from src.schedule.modules.event_groups.schemas import (
     UpdateEventGroup,
     ViewEventGroup,
 )
+from src.schedule.modules.schedule_assistant.client import schedule_assistant_client
 from src.schedule.utils import locate_ics_by_path
 
 router = APIRouter(prefix="/event-groups", tags=["Event Groups"], route_class=AutoDeriveResponsesAPIRoute)
@@ -87,6 +89,9 @@ async def update_event_group(
     if event_group is None:
         raise EventGroupNotFoundException()
 
+    if update_scheme.alias is not None and update_scheme.alias != event_group.alias:
+        raise HTTPException(status_code=409, detail="Event group alias cannot be changed")
+
     # owners_and_moderators = {ownership.user_id for ownership in event_group.ownerships}
     #
     # if current_user_id not in owners_and_moderators:
@@ -133,9 +138,14 @@ async def find_event_group_by_alias(alias: str) -> ViewEventGroup:
 
     event_group = await event_group_repository.read_by_alias(alias)
 
-    if event_group is None:
-        raise EventGroupNotFoundException()
-    return event_group
+    if event_group is not None:
+        return event_group
+    if settings.schedule_assistant is not None:
+        virtual_groups = await schedule_assistant_client.get_event_groups()
+        virtual_group = next((group for group in virtual_groups if group.alias == alias), None)
+        if virtual_group is not None:
+            return ViewEventGroup(**virtual_group.model_dump(), virtual=True)
+    raise EventGroupNotFoundException()
 
 
 @router.delete(
@@ -213,6 +223,14 @@ async def list_event_groups() -> ListEventGroupsResponse:
     """
 
     groups = await event_group_repository.read_all()
+    if settings.schedule_assistant is not None:
+        local_aliases = {group.alias for group in groups}
+        virtual_groups = await schedule_assistant_client.get_event_groups()
+        groups.extend(
+            ViewEventGroup(**group.model_dump(), virtual=True)
+            for group in virtual_groups
+            if group.alias not in local_aliases
+        )
     return ListEventGroupsResponse.from_iterable(groups)
 
 

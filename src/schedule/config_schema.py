@@ -40,6 +40,15 @@ class RoomBookingIntegrationSettings(BaseSchema):
     "API key for the Room Booking API"
 
 
+class ScheduleAssistantIntegrationSettings(BaseSchema):
+    """Schedule Assistant integration settings."""
+
+    api_url: str = "https://api.innohassle.ru/schedule-assistant/v0"
+    "URL of the Schedule Assistant API"
+    api_key: SecretStr
+    "Service API key for the Schedule Assistant API"
+
+
 class ScheduleSettings(ServiceSettingsBase):
     """Settings for the Schedule service."""
 
@@ -61,3 +70,5 @@ class ScheduleSettings(ServiceSettingsBase):
     "InNoHassle Workshops integration settings"
     room_booking: RoomBookingIntegrationSettings | None = None
     "InNoHassle Room Booking integration settings"
+    schedule_assistant: ScheduleAssistantIntegrationSettings | None = None
+    "Schedule Assistant integration settings"

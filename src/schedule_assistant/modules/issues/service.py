@@ -7,13 +7,13 @@ from src.schedule_assistant.modules.issues.instructor_ids import instructor_id_i
 from src.schedule_assistant.modules.issues.instructor_preferences import instructor_preference_issues_from_meetings
 from src.schedule_assistant.modules.issues.meetings import (
     build_group_to_studying_teachers,
-    meetings_from_schedule_config,
     missing_assignment_issues_from_meetings,
     unplaced_issues_from_schedule_config,
 )
 from src.schedule_assistant.modules.issues.per_week import per_week_issues_from_schedule_config
 from src.schedule_assistant.modules.issues.schemas import CheckParameters, CheckResults, Issue, IssueTypeEnum
 from src.schedule_assistant.modules.issues.student_emails import student_email_issues_from_sections
+from src.schedule_assistant.modules.schedule.domain import meetings_from_schedule_config
 from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
 from src.schedule_assistant.modules.schedule_config.schemas import RoomConfig, TermConfig
 from src.schedule_assistant.modules.schedule_config.semester_windows import union_semester_window

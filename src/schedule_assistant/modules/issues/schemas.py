@@ -40,7 +40,9 @@ class ScheduledMeeting(ScheduleAssistantSchema):
 
     @model_validator(mode="after")
     def validate_time(self) -> Self:
-        if not self.start_time < self.end_time:
+        start_time = self.start_time.replace(tzinfo=None)
+        end_time = self.end_time.replace(tzinfo=None)
+        if not start_time < end_time:
             raise ValueError("Start time has to be less than end time")
         return self
 

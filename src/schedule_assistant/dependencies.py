@@ -1,4 +1,12 @@
-__all__ = ["ModeratorDep", "VerifyTokenDep", "is_moderator_email", "verify_moderator_dep", "verify_token_dep"]
+__all__ = [
+    "ModeratorDep",
+    "ServiceApiKeyDep",
+    "VerifyTokenDep",
+    "is_moderator_email",
+    "verify_moderator_dep",
+    "verify_service_api_key",
+    "verify_token_dep",
+]
 
 from typing import Annotated
 
@@ -14,6 +22,27 @@ bearer_scheme = HTTPBearer(
     bearerFormat="JWT",
     auto_error=False,
 )
+
+
+async def verify_service_api_key(
+    bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> str:
+    if bearer is None or not bearer.credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No credentials provided",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if bearer.credentials != settings.api_key.get_secret_value():
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid service API key",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return bearer.credentials
+
+
+ServiceApiKeyDep = Annotated[str, Depends(verify_service_api_key)]
 
 
 async def verify_token_dep(

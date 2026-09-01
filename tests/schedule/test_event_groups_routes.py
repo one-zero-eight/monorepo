@@ -1,4 +1,8 @@
+import httpx
+import pytest
+import respx
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 
 from tests.schedule.conftest import create_event_group
 from tests.schedule.constants import AUTH_REQUIRED_DETAIL, SAMPLE_EVENT_GROUP
@@ -17,6 +21,16 @@ def test_create_and_read_by_alias(schedule_client: TestClient, parser_headers: d
     body = response.json()
     assert body["alias"] == created["alias"]
     assert body["name"] == created["name"]
+
+
+def test_create_rejects_reserved_virtual_alias(schedule_client: TestClient, parser_headers: dict[str, str]):
+    response = schedule_client.post(
+        "/event-groups/",
+        json={**SAMPLE_EVENT_GROUP, "alias": "english-test"},
+        headers=parser_headers,
+    )
+    assert response.status_code == 422
+    assert "reserved" in response.text
 
 
 def test_read_by_alias_not_found(schedule_client: TestClient):
@@ -44,6 +58,20 @@ def test_update_event_group(schedule_client: TestClient, parser_headers: dict[st
     assert response.json()["name"] == "Updated Name"
 
 
+def test_update_event_group_rejects_alias_rename(schedule_client: TestClient, parser_headers: dict[str, str]):
+    created = create_event_group(schedule_client, parser_headers, alias="stable-alias-group")
+    response = schedule_client.put(
+        f"/event-groups/{created['id']}",
+        json={"alias": "renamed-group"},
+        headers=parser_headers,
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Event group alias cannot be changed"
+
+    read_response = schedule_client.get("/event-groups/by-alias", params={"alias": "stable-alias-group"})
+    assert read_response.status_code == 200
+
+
 def test_batch_create_or_read(schedule_client: TestClient, parser_headers: dict[str, str]):
     groups = [
         {**SAMPLE_EVENT_GROUP, "alias": "batch-group-a"},
@@ -66,3 +94,28 @@ def test_batch_create_or_read(schedule_client: TestClient, parser_headers: dict[
     assert second.status_code == 201
     second_ids = {group["id"] for group in second.json()["event_groups"]}
     assert second_ids == first_ids
+
+
+def test_list_and_read_include_assistant_groups(schedule_client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    from src.schedule.config import settings
+    from src.schedule.config_schema import ScheduleAssistantIntegrationSettings
+
+    api_url = "https://assistant.test"
+    monkeypatch.setattr(
+        settings,
+        "schedule_assistant",
+        ScheduleAssistantIntegrationSettings(api_url=api_url, api_key=SecretStr("service-key")),
+    )
+    payload = [{"alias": "virtual-group", "name": "Virtual Group", "description": "Assistant"}]
+
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.get(f"{api_url}/integration/event-groups").mock(return_value=httpx.Response(200, json=payload))
+        list_response = schedule_client.get("/event-groups/")
+        read_response = schedule_client.get("/event-groups/by-alias", params={"alias": "virtual-group"})
+
+    assert route.call_count == 2
+    assert list_response.status_code == 200
+    assert list_response.json()["event_groups"][0]["virtual"] is True
+    assert read_response.status_code == 200
+    assert read_response.json()["alias"] == "virtual-group"
+    assert read_response.json()["id"] is None

@@ -1,8 +1,12 @@
 import datetime as dtm
+from typing import cast
 
+import icalendar
 import pytest
 from httpx import AsyncClient
+from pydantic import SecretStr
 
+from src.schedule_assistant.modules.schedule import service
 from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
 from src.schedule_assistant.modules.schedule_config.schemas import (
     ComponentSessionSeries,
@@ -54,7 +58,7 @@ def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@t
                 ),
                 StudentsGroups(
                     code="SUM26-AAI",
-                    kind="elective",
+                    kind="english",
                     name="SUM26-AAI",
                     students=["other@innopolis.university"],
                 ),
@@ -240,3 +244,166 @@ async def test_instructor_schedule_not_found(
 
     response = await authenticated_client.get("/schedule/instructors/unknown@innopolis.ru")
     assert response.status_code == 404
+
+
+def _service_headers() -> dict[str, str]:
+    return {"Authorization": "Bearer test-schedule-assistant-api-key"}
+
+
+@pytest.mark.asyncio
+async def test_virtual_event_groups_require_service_api_key(
+    fastapi_test_client: AsyncClient,
+) -> None:
+    response = await fastapi_test_client.get("/integration/event-groups")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_virtual_event_groups_default_to_english(
+    fastapi_test_client: AsyncClient,
+    schedule_data_repo: ScheduleConfigRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _seed_config(schedule_data_repo)
+    monkeypatch.setattr(
+        "src.schedule_assistant.dependencies.settings.api_key",
+        SecretStr("test-schedule-assistant-api-key"),
+    )
+    monkeypatch.setattr("src.schedule_assistant.modules.schedule.service.settings.published_group_kinds", ["english"])
+
+    response = await fastapi_test_client.get("/integration/event-groups", headers=_service_headers())
+    assert response.status_code == 200
+    assert response.json() == {
+        "event_groups": [
+            {
+                "id": None,
+                "alias": "english-sum26-aai",
+                "name": "SUM26-AAI",
+                "description": "Schedule for SUM26-AAI",
+                "kind": "english",
+                "group_code": "SUM26-AAI",
+            }
+        ]
+    }
+
+
+@pytest.mark.asyncio
+async def test_null_published_group_kinds_publishes_all(
+    fastapi_test_client: AsyncClient,
+    schedule_data_repo: ScheduleConfigRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _seed_config(schedule_data_repo)
+    monkeypatch.setattr("src.schedule_assistant.modules.schedule.service.settings.published_group_kinds", None)
+
+    response = await fastapi_test_client.get("/integration/event-groups", headers=_service_headers())
+    assert response.status_code == 200
+    assert [group["alias"] for group in response.json()["event_groups"]] == [
+        "core-b25-cse-01",
+        "english-sum26-aai",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_predefined_aliases_normalize_email(
+    fastapi_test_client: AsyncClient,
+    schedule_data_repo: ScheduleConfigRepository,
+) -> None:
+    _seed_config(schedule_data_repo, student_email=" Student@Innopolis.University ")
+
+    response = await fastapi_test_client.get(
+        "/integration/users/student@innopolis.university/predefined",
+        headers=_service_headers(),
+    )
+    assert response.status_code == 200
+    assert response.json() == {"event_groups": []}
+
+    response = await fastapi_test_client.get(
+        "/integration/users/OTHER@INNOPOLIS.UNIVERSITY/predefined",
+        headers=_service_headers(),
+    )
+    assert response.status_code == 200
+    assert response.json() == {"event_groups": ["english-sum26-aai"]}
+
+
+@pytest.mark.asyncio
+async def test_group_ics_is_valid_and_deterministic(
+    fastapi_test_client: AsyncClient,
+    schedule_data_repo: ScheduleConfigRepository,
+) -> None:
+    _seed_config(schedule_data_repo)
+
+    first = await fastapi_test_client.get(
+        "/integration/event-groups/english-sum26-aai/schedule.ics",
+        headers=_service_headers(),
+    )
+    second = await fastapi_test_client.get(
+        "/integration/event-groups/english-sum26-aai/schedule.ics",
+        headers=_service_headers(),
+    )
+    assert first.status_code == 200
+    assert first.content == second.content
+    calendar = icalendar.Calendar.from_ical(first.text)
+    events = [cast(icalendar.Event, component) for component in calendar.walk("VEVENT")]
+    assert len(events) == 2
+    assert {str(event["summary"]) for event in events} == {"Agentic AI (class)"}
+    assert {str(event["location"]) for event in events} == {"ONLINE"}
+    assert {str(event["description"]).splitlines()[0] for event in events} == {
+        "Instructor: Teacher One",
+        "Instructor: Teacher Two",
+    }
+    assert all(event.decoded("dtstart").tzname() == "MSK" for event in events)
+    assert all(event.decoded("dtstart").utcoffset() == dtm.timedelta(hours=3) for event in events)
+    assert len({str(event["uid"]) for event in events}) == 2
+
+
+def test_group_ics_handles_database_times_with_mixed_timezone_awareness(
+    schedule_data_repo: ScheduleConfigRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _seed_config(schedule_data_repo)
+    monkeypatch.setattr("src.schedule_assistant.modules.schedule.service.settings.published_group_kinds", None)
+    courses = schedule_data_repo.get_courses()
+    algorithms_component = courses.courses[1].components[0]
+    assert algorithms_component.sessions is not None
+    algorithms_session = algorithms_component.sessions[0]
+    assert algorithms_session.weekly_pattern is not None
+    slot = algorithms_session.weekly_pattern[0]
+    slot.start_time = slot.start_time.replace(tzinfo=dtm.timezone(dtm.timedelta(hours=3)))
+    schedule_data_repo.set_courses(courses, saved_by="test")
+
+    calendar = icalendar.Calendar.from_ical(service.get_group_ics("core-b25-cse-01"))
+    events = [cast(icalendar.Event, component) for component in calendar.walk("VEVENT")]
+
+    assert events
+    assert all(event.decoded("dtstart").utcoffset() == dtm.timedelta(hours=3) for event in events)
+
+
+@pytest.mark.asyncio
+async def test_batch_aliases_ics_combines_selected_groups(
+    fastapi_test_client: AsyncClient,
+    schedule_data_repo: ScheduleConfigRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _seed_config(schedule_data_repo)
+    monkeypatch.setattr("src.schedule_assistant.modules.schedule.service.settings.published_group_kinds", None)
+
+    response = await fastapi_test_client.post(
+        "/integration/event-groups/schedule.ics",
+        json={
+            "aliases": [
+                "english-sum26-aai",
+                "core-b25-cse-01",
+                "english-sum26-aai",
+            ]
+        },
+        headers=_service_headers(),
+    )
+    assert response.status_code == 200
+    calendar = icalendar.Calendar.from_ical(response.text)
+    events = [component for component in calendar.walk("VEVENT")]
+    assert len(events) == 11
+    assert {str(event["summary"]) for event in events} == {
+        "Agentic AI (class)",
+        "Algorithms (lec)",
+    }

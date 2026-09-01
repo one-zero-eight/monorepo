@@ -36,8 +36,8 @@ class ViewUser(BaseModel):
     email: str
     innohassle_id: str | None = None
     name: str | None = None
-    favorite_event_groups: list[int] = Field(default_factory=list)
-    hidden_event_groups: list[int] = Field(default_factory=list)
+    favorite_event_groups: list[str] = Field(default_factory=list)
+    hidden_event_groups: list[str] = Field(default_factory=list)
     linked_calendars: dict[str, LinkedCalendarView] = Field(default_factory=dict)
     music_room_hidden: bool
     sports_hidden: bool

@@ -150,6 +150,13 @@ class SqlEventGroupRepository:
                 result[row.alias] = row.id
             return result
 
+    async def existing_aliases(self, aliases: list[str]) -> set[str]:
+        if not aliases:
+            return set()
+        async with self._create_session() as session:
+            q = select(EventGroup.alias).where(EventGroup.alias.in_(aliases))
+            return set(await session.scalars(q))
+
     async def update(self, event_group_id: int, event_group: UpdateEventGroup) -> ViewEventGroup:
         async with self._create_session() as session:
             return await CRUD.update(session, data=event_group, id=event_group_id)

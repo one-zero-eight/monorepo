@@ -174,6 +174,7 @@ def load_root_settings() -> Settings:
         schedule_assistant_service=ScheduleAssistantSettings(
             environment=Environment.TESTING,
             app_root_path="/schedule-assistant/v0",
+            api_key=SecretStr("test-schedule-assistant-api-key"),
             db_url=SecretStr(
                 f"postgresql+psycopg://postgres:test@{SUITE_POSTGRES_NETLOC}/{schedule_assistant_test_database_name()}"
             ),

@@ -34,7 +34,7 @@ async def get_me(user_id: CURRENT_USER_ID_DEPENDENCY) -> ViewUser:
 
 
 class UserPredefinedGroupsResponse(BaseModel):
-    event_groups: list[int]
+    event_groups: list[str]
 
 
 @router.get("/me/predefined", responses={200: {"description": "Predefined event groups for user"}})
@@ -51,11 +51,22 @@ async def get_predefined(user_id: CURRENT_USER_ID_DEPENDENCY) -> UserPredefinedG
     "/me/favorites",
     responses={200: {"description": "Favorite added successfully"}, **EventGroupNotFoundException.responses},
 )
-async def add_favorite(user_id: CURRENT_USER_ID_DEPENDENCY, group_id: int) -> ViewUser:
+async def add_favorite(user_id: CURRENT_USER_ID_DEPENDENCY, group_alias: str) -> ViewUser:
     """
     Add favorite to current user
     """
-    updated_user = await user_repository.add_favorite(user_id, group_id)
+    if await event_group_repository.read_by_alias(group_alias) is None:
+        from src.schedule.config import settings
+        from src.schedule.modules.schedule_assistant.client import schedule_assistant_client
+
+        virtual_aliases = (
+            {group.alias for group in await schedule_assistant_client.get_event_groups()}
+            if settings.schedule_assistant is not None
+            else set()
+        )
+        if group_alias not in virtual_aliases:
+            raise EventGroupNotFoundException(detail=f"Event group with alias {group_alias} does not exist")
+    updated_user = await user_repository.add_favorite(user_id, group_alias)
     return updated_user
 
 
@@ -63,12 +74,12 @@ async def add_favorite(user_id: CURRENT_USER_ID_DEPENDENCY, group_id: int) -> Vi
     "/me/favorites",
     responses={200: {"description": "Favorite deleted"}},
 )
-async def delete_favorite(user_id: CURRENT_USER_ID_DEPENDENCY, group_id: int) -> ViewUser:
+async def delete_favorite(user_id: CURRENT_USER_ID_DEPENDENCY, group_alias: str) -> ViewUser:
     """
     Delete favorite from current user
     """
 
-    updated_user = await user_repository.remove_favorite(user_id, group_id)
+    updated_user = await user_repository.remove_favorite(user_id, group_alias)
     return updated_user
 
 
@@ -79,16 +90,23 @@ async def delete_favorite(user_id: CURRENT_USER_ID_DEPENDENCY, group_id: int) ->
         **ObjectNotFound.responses,
     },
 )
-async def hide_favorite(user_id: CURRENT_USER_ID_DEPENDENCY, group_id: int, hide: bool = True) -> ViewUser:
+async def hide_favorite(user_id: CURRENT_USER_ID_DEPENDENCY, group_alias: str, hide: bool = True) -> ViewUser:
     """
-    Hide favorite from current user
+    Hide a favorite or predefined event group from current user
     """
-    # check if a group exists
+    user = await user_repository.read(user_id)
+    if user is None:
+        raise ObjectNotFound()
 
-    if await event_group_repository.read(group_id) is None:
-        raise ObjectNotFound(f"Event group with id {group_id} does not exist")
+    predefined_aliases = await predefined_repository.get_user_predefined(user_id)
+    if group_alias not in user.favorite_event_groups and group_alias not in predefined_aliases:
+        raise ObjectNotFound(f"Favorite or predefined event group with alias {group_alias} does not exist")
 
-    updated_user = await user_repository.set_hidden_event_group(user_id=user_id, group_id=group_id, hide=hide)
+    updated_user = await user_repository.set_hidden_event_group(
+        user_id=user_id,
+        group_alias=group_alias,
+        hide=hide,
+    )
     return updated_user
 
 

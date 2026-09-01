@@ -26,16 +26,19 @@ class User(Base, IdMixin):
         "UserXFavoriteEventGroup", cascade="all, delete-orphan", passive_deletes=True
     )
 
-    favorite_event_groups: AssociationProxy[list[int]] = association_proxy(
+    favorite_event_groups: AssociationProxy[list[str]] = association_proxy(
         "favorites_association",
-        "group_id",
+        "group_alias",
     )
     hidden_event_groups_association: Mapped[list[UserXHiddenEventGroup]] = relationship(
         "UserXHiddenEventGroup",
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    hidden_event_groups: AssociationProxy[list[int]] = association_proxy("hidden_event_groups_association", "group_id")
+    hidden_event_groups: AssociationProxy[list[str]] = association_proxy(
+        "hidden_event_groups_association",
+        "group_alias",
+    )
 
     linked_calendars: Mapped[list[LinkedCalendar]] = relationship(
         "LinkedCalendar",

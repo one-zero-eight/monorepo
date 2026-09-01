@@ -434,14 +434,19 @@ async def get_event_group_ics_by_alias(
     logger.info(f"User-Agent: {user_agent}")
 
     if event_group is None:
-        raise EventGroupNotFoundException()
+        if settings.schedule_assistant is None:
+            raise EventGroupNotFoundException()
+        from src.schedule.modules.schedule_assistant.client import schedule_assistant_client
+
+        ical_bytes = await schedule_assistant_client.get_event_group_ics(event_group_alias)
+        return Response(content=ical_bytes, media_type="text/calendar")
     if event_group.path:
         try:
             ics_path = locate_ics_by_path(event_group.path)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
-        if user_agent == "Google-Calendar-Importer":  # patch reccurrences for Google Calendar
+        if user_agent == "Google-Calendar-Importer":
             with ics_path.open() as f:
                 calendar: icalendar.Calendar = icalendar.Calendar.from_ical(f.read())
             events = []

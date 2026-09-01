@@ -542,6 +542,25 @@ $defs:
     - jwt_marker
     title: OmnideskSettings
     type: object
+  ScheduleAssistantIntegrationSettings:
+    additionalProperties: false
+    description: Schedule Assistant integration settings.
+    properties:
+      api_url:
+        default: https://api.innohassle.ru/schedule-assistant/v0
+        description: URL of the Schedule Assistant API
+        title: Api Url
+        type: string
+      api_key:
+        description: Service API key for the Schedule Assistant API
+        format: password
+        title: Api Key
+        type: string
+        writeOnly: true
+    required:
+    - api_key
+    title: ScheduleAssistantIntegrationSettings
+    type: object
   ScheduleAssistantSettings:
     additionalProperties: false
     description: Settings for the Schedule Assistant service.
@@ -562,6 +581,21 @@ $defs:
           Specify as a regex: `https://.*.innohassle.ru`'
         title: Cors Allow Origin Regex
         type: string
+      api_key:
+        description: Shared secret for service-to-service Schedule Assistant API access
+        format: password
+        title: Api Key
+        type: string
+        writeOnly: true
+      published_group_kinds:
+        anyOf:
+        - items:
+            type: string
+          type: array
+        - type: 'null'
+        description: Student group kinds published as virtual event groups; null publishes
+          all kinds
+        title: Published Group Kinds
       moderator_emails:
         description: Innopolis emails allowed to access moderator-only endpoints
         items:
@@ -581,6 +615,7 @@ $defs:
         $ref: '#/$defs/src__schedule_assistant__config_schema__RoomBookingSettings'
         description: Room Booking API integration settings
     required:
+    - api_key
     - db_url
     - booking
     title: ScheduleAssistantSettings
@@ -641,6 +676,12 @@ $defs:
         - type: 'null'
         default: null
         description: InNoHassle Room Booking integration settings
+      schedule_assistant:
+        anyOf:
+        - $ref: '#/$defs/ScheduleAssistantIntegrationSettings'
+        - type: 'null'
+        default: null
+        description: Schedule Assistant integration settings
     required:
     - db_url
     title: ScheduleSettings

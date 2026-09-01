@@ -33,20 +33,16 @@ class EventGroup(
     path: Mapped[str] = mapped_column(nullable=True, unique=True)
     satellite: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=True)
 
-    favorites_association: Mapped[list[UserXFavoriteEventGroup]] = relationship(
-        "UserXFavoriteEventGroup", cascade="all, delete-orphan", passive_deletes=True
-    )
-
     events: Mapped[list[Event]] = relationship("Event", secondary="events_x_event_groups")
 
 
 class UserXFavoriteEventGroup(Base):
     __tablename__ = "users_x_favorite_groups"
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
-    group_id: Mapped[int] = mapped_column(ForeignKey("event_groups.id", ondelete="CASCADE"), primary_key=True)
+    group_alias: Mapped[str] = mapped_column(String(255), primary_key=True)
 
 
 class UserXHiddenEventGroup(Base):
     __tablename__ = "users_x_hidden_groups"
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
-    group_id: Mapped[int] = mapped_column(ForeignKey("event_groups.id", ondelete="CASCADE"), primary_key=True)
+    group_alias: Mapped[str] = mapped_column(String(255), primary_key=True)

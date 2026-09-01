@@ -1,8 +1,8 @@
 import datetime as dtm
 
-from src.schedule_assistant.modules.issues.meetings import meetings_from_schedule_config
 from src.schedule_assistant.modules.issues.placement import meetings_overlap
 from src.schedule_assistant.modules.issues.schemas import OccurrencePlacement, ScheduledMeeting, WeeklyPatternPlacement
+from src.schedule_assistant.modules.schedule.domain import meetings_from_schedule_config
 from src.schedule_assistant.modules.schedule_config.schemas import (
     ComponentSessionSeries,
     CourseConfig,

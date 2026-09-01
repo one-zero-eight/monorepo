@@ -132,12 +132,15 @@ async def generate_ics_from_url(
         yield calendar.to_ical()
 
 
-async def _generate_ics_from_multiple(user: ViewUser, *ics: Path) -> AsyncGenerator[bytes]:
+async def _generate_ics_from_multiple(
+    user: ViewUser,
+    *ics: Path,
+    external_ics: bytes | None = None,
+) -> AsyncGenerator[bytes]:
     async def _async_read_schedule(ics_path: Path):
         async with aiofiles.open(ics_path) as f:
             content = await f.read()
-            _cal = icalendar.Calendar.from_ical(content)
-            return _cal
+            return icalendar.Calendar.from_ical(content)
 
     tasks = [_async_read_schedule(ics_path) for ics_path in ics]
     calendars = await asyncio.gather(*tasks)
@@ -155,6 +158,11 @@ async def _generate_ics_from_multiple(user: ViewUser, *ics: Path) -> AsyncGenera
             vevent: icalendar.Event
             vevent["x-wr-origin"] = calendar["x-wr-calname"]
             yield vevent.to_ical()
+    if external_ics is not None:
+        external_calendar = icalendar.Calendar.from_ical(external_ics)
+        for component in external_calendar.walk(name="VEVENT"):
+            vevent = _as_event(component)
+            yield vevent.to_ical()
     yield b"END:VCALENDAR"
 
 
@@ -165,21 +173,31 @@ async def get_personal_event_groups_ics(user: ViewUser) -> AsyncGenerator[bytes]
 
     nonhidden = all_user_event_groups - hidden
     paths = set()
-    for event_group_id in nonhidden:
-        event_group = await event_group_repository.read(event_group_id)
+    external_aliases = set(nonhidden)
+    for event_group_alias in nonhidden:
+        event_group = await event_group_repository.read_by_alias(event_group_alias)
         if event_group is None:
             continue
+        external_aliases.discard(event_group_alias)
         if event_group.path is None:
-            raise HTTPException(
-                status_code=501,
-                detail="Can not create .ics file for event group on the fly (set static .ics file for the event group",
-            )
+            raise HTTPException(status_code=501, detail=f"Local event group {event_group_alias} has no static ICS")
         try:
             ics_path = locate_ics_by_path(event_group.path)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
         paths.add(ics_path)
-    ical_generator = _generate_ics_from_multiple(user, *paths)
+    external_ics = None
+    if external_aliases:
+        if settings.schedule_assistant is None:
+            raise HTTPException(status_code=502, detail="Schedule Assistant integration is not configured")
+        from src.schedule.modules.schedule_assistant.client import schedule_assistant_client
+
+        external_ics = await schedule_assistant_client.get_event_groups_ics(sorted(external_aliases))
+    ical_generator = _generate_ics_from_multiple(
+        user,
+        *paths,
+        external_ics=external_ics,
+    )
     return ical_generator
 
 

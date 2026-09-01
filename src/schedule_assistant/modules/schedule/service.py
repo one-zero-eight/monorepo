@@ -1,6 +1,11 @@
 from fastapi import HTTPException, status
 
+from src.schedule_assistant.config import settings
+from src.schedule_assistant.modules.issues.schemas import ScheduledMeeting
+from src.schedule_assistant.modules.schedule.domain import meetings_from_schedule_config
 from src.schedule_assistant.modules.schedule.export_xlsx import export_schedule_xlsx as build_schedule_xlsx
+from src.schedule_assistant.modules.schedule.ics import group_alias, render_calendar
+from src.schedule_assistant.modules.schedule.schemas import VirtualEventGroup
 from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
 from src.schedule_assistant.modules.schedule_config.schemas import (
     CourseConfig,
@@ -16,6 +21,100 @@ from src.schedule_assistant.modules.schedule_config.visibility import (
 
 def _normalize_email(email: str) -> str:
     return email.strip().casefold()
+
+
+def _published_kind(kind: str) -> bool:
+    if settings.published_group_kinds is None:
+        return True
+    published = {_normalize_email(value) for value in settings.published_group_kinds}
+    return _normalize_email(kind) in published
+
+
+def list_virtual_event_groups() -> list[VirtualEventGroup]:
+    groups = [
+        VirtualEventGroup(
+            alias=group_alias(group.kind, group.code),
+            name=group.name or group.code,
+            description=f"Schedule for {group.name or group.code}",
+            kind=group.kind,
+            group_code=group.code,
+        )
+        for group in schedule_config_repository.get_sections().students_groups
+        if _published_kind(group.kind)
+    ]
+    groups.sort(key=lambda group: (group.alias, group.group_code))
+    return groups
+
+
+def get_predefined_aliases(user_email: str) -> list[str]:
+    normalized_email = _normalize_email(user_email)
+    aliases = [
+        group_alias(group.kind, group.code)
+        for group in schedule_config_repository.get_sections().students_groups
+        if _published_kind(group.kind)
+        and any(_normalize_email(student) == normalized_email for student in group.students)
+    ]
+    return sorted(set(aliases))
+
+
+def _group_by_alias(alias: str) -> VirtualEventGroup:
+    for group in list_virtual_event_groups():
+        if group.alias == alias:
+            return group
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event group not found")
+
+
+def _concrete_meetings() -> list[ScheduledMeeting]:
+    term = schedule_config_repository.get_term()
+    if term is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Schedule term config is required for calendar export",
+        )
+    return meetings_from_schedule_config(
+        schedule_config_repository.get_courses(),
+        schedule_config_repository.get_sections(),
+        term=term,
+    )
+
+
+def _instructor_names() -> dict[str, str]:
+    names: dict[str, str] = {}
+    for instructor in schedule_config_repository.get_instructors().instructors:
+        label = (instructor.name_en or instructor.name_ru or "").strip()
+        if not label:
+            continue
+        for identifier in (instructor.id, instructor.email, instructor.alias):
+            if identifier and identifier.strip():
+                names[identifier.strip().casefold()] = label
+    return names
+
+
+def get_group_ics(alias: str) -> bytes:
+    group = _group_by_alias(alias)
+    meetings = [meeting for meeting in _concrete_meetings() if group.group_code in meeting.groups]
+    return render_calendar(
+        group.name,
+        [(alias, meeting) for meeting in meetings],
+        instructor_names=_instructor_names(),
+    )
+
+
+def get_aliases_ics(aliases: list[str]) -> bytes:
+    normalized_aliases = sorted(set(aliases))
+    groups = {alias: _group_by_alias(alias) for alias in normalized_aliases}
+    meetings = _concrete_meetings()
+    alias_meetings = [
+        (alias, meeting)
+        for alias, group in groups.items()
+        for meeting in meetings
+        if group.group_code in meeting.groups
+    ]
+    return render_calendar(
+        "Schedule Assistant",
+        alias_meetings,
+        instructor_names=_instructor_names(),
+    )
 
 
 def _build_selector_map(sections: SectionsConfig) -> dict[str, set[str]]:
