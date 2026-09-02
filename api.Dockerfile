@@ -1,3 +1,7 @@
+# syntax=docker.io/docker/dockerfile-upstream:1.23.0
+
+ARG SOURCE_DATE_EPOCH=0
+
 ###########################################################
 # Builder stage. Build dependencies.
 FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS builder
@@ -28,6 +32,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Production stage.
 FROM python:3.14-slim-bookworm AS production
 
+ARG SOURCE_DATE_EPOCH
 ARG APP_MODULE
 ENV APP_MODULE=${APP_MODULE}
 
@@ -51,12 +56,19 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     libgdk-pixbuf-2.0-0
 
 
-RUN groupadd -g 1500 uv && \
-    useradd -m -u 1500 -g uv uv
+RUN groupadd -g 1500 uv \
+    && useradd -m -u 1500 -g uv uv \
+    && find /etc/passwd /etc/group /etc/shadow /etc/gshadow /etc/subuid /etc/subgid /home/uv \
+        -depth -exec touch -h -d "@${SOURCE_DATE_EPOCH}" {} +
 
 
-COPY --chown=uv:uv . /app
-COPY --from=builder --chown=uv:uv /app/.venv /app/.venv
+RUN --mount=from=builder,source=/app/.venv,target=/mnt/venv \
+    mkdir -p /app \
+    && cp -a /mnt/venv /app/.venv \
+    && chown -R 1500:1500 /app \
+    && find /app -depth -exec touch -h -d "@${SOURCE_DATE_EPOCH}" {} +
+
+COPY --chown=1500:1500 . /app
 
 WORKDIR /app
 
