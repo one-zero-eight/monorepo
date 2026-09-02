@@ -20,13 +20,16 @@ def pytest_configure(config):
         return f"{seconds:.3f}s"
 
     @classmethod
-    def from_time_value(cls, time_value):
+    def from_time_value(cls, time_value, format_seconds=format_seconds):
         return cls(
             total=format_seconds(time_value.sum),
             name=time_value.name,
             num=str(time_value.calls),
             med=format_seconds(time_value.med),
             min=format_seconds(time_value.min),
+            p90=format_seconds(time_value.p90),
+            p95=format_seconds(time_value.p95),
+            p99=format_seconds(time_value.p99),
             max=format_seconds(time_value.max),
         )
 

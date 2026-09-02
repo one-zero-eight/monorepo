@@ -16,7 +16,7 @@ class BeanieDocument(Document):
     model_config = ConfigDict(json_schema_serialization_defaults_required=True)
 
     if TYPE_CHECKING:
-        id: PydanticObjectId
+        id: PydanticObjectId | None = None
     else:
         id: PydanticObjectId | None = Field(
             default_factory=lambda: (
