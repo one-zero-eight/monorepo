@@ -20,6 +20,10 @@ router = APIRouter(
     tags=["Board Games"],
     route_class=AutoDeriveResponsesAPIRoute,
 )
+public_router = APIRouter(
+    tags=["Board Games"],
+    route_class=AutoDeriveResponsesAPIRoute,
+)
 
 
 class LendBoardGame(BaseSchema):
@@ -142,7 +146,7 @@ async def get_all_board_games(_: INH_TOKEN_AUTH) -> list[board_games_repo.BoardG
     return await board_games_repo.read_all_with_availability()
 
 
-@router.get("/board-games/{id}/photo", response_class=RedirectResponse)
+@public_router.get("/board-games/{id}/photo", response_class=RedirectResponse)
 async def get_board_game_photo(id: PydanticObjectId) -> RedirectResponse:
     board_game = await board_games_repo.read(id)
     if board_game is None:

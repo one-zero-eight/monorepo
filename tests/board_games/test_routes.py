@@ -41,6 +41,7 @@ def test_admin_can_upload_board_game_photo(
     photo = board_games_client.get(f"/board-games/{game_id}/photo", follow_redirects=False)
     assert photo.status_code == 307
     assert f"board-game-photos/{uploaded.json()['photo_file_id']}-512" in photo.headers["location"]
+    assert "X-Amz-Signature=" in photo.headers["location"]
 
 
 def test_photo_file_id_can_only_be_set_through_upload(

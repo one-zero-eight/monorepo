@@ -1,7 +1,6 @@
 __all__ = ["photos_repo"]
 
 import io
-from urllib.parse import urlunsplit
 
 from minio import Minio
 
@@ -34,14 +33,7 @@ class PhotosRepo:
 
     def get_url(self, photo_file_id: str, size: int | None = None) -> str:
         object_name = self.get_object_name(photo_file_id, size)
-        return urlunsplit(
-            self.minio_client._base_url.build(
-                method="GET",
-                region=self.minio_client._get_region(self.bucket),
-                bucket_name=self.bucket,
-                object_name=object_name,
-            )
-        )
+        return self.minio_client.presigned_get_object(self.bucket, object_name)
 
     def put(self, photo_file_id: str, size: int | None, data: bytes, content_type: str) -> None:
         self.minio_client.put_object(

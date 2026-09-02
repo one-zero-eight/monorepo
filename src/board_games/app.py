@@ -70,5 +70,6 @@ import src.board_games.modules.users.routes  # noqa: E402
 
 app.include_router(src.board_games.modules.users.routes.router)
 popule_openapi_tags(app, src.board_games.modules.users.routes)
+app.include_router(src.board_games.modules.board_games.routes.public_router)
 app.include_router(src.board_games.modules.board_games.routes.router)
 popule_openapi_tags(app, src.board_games.modules.board_games.routes)
