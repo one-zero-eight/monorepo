@@ -1,7 +1,12 @@
+from io import BytesIO
+
+import filetype
 from beanie import PydanticObjectId
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, UploadFile
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
+from PIL import Image
 from pydantic import Field
+from starlette.responses import RedirectResponse
 
 from src.board_games.dependencies import BOARD_GAMES_ADMIN_AUTH
 from src.board_games.mongo import BoardGame, Reservation, ReservationStatus
@@ -9,6 +14,7 @@ from src.common_pydantic import BaseSchema
 from src.dependencies import INH_TOKEN_AUTH
 
 from . import board_games_repo
+from .photos_repo import photos_repo
 
 router = APIRouter(
     tags=["Board Games"],
@@ -41,6 +47,41 @@ async def edit_board_game(
     board_game: BoardGame | None = await board_games_repo.update(id, body)
     if board_game is None:
         raise HTTPException(status_code=404, detail="Board Game not found")
+    return board_game
+
+
+@router.post("/admin/board-games/{id}/photo")
+async def set_board_game_photo(
+    id: PydanticObjectId,
+    photo_file: UploadFile,
+    _: BOARD_GAMES_ADMIN_AUTH,
+) -> BoardGame:
+    board_game = await board_games_repo.read(id)
+    if board_game is None:
+        raise HTTPException(status_code=404, detail="Board game not found")
+
+    bytes_ = await photo_file.read()
+    content_type = photo_file.content_type
+    if content_type is None:  # pragma: no cover
+        kind = filetype.guess(bytes_)
+        content_type = kind.mime if kind else None
+    if content_type not in ("image/jpeg", "image/png", "image/webp"):
+        raise HTTPException(status_code=400, detail=f"Invalid content type ({content_type})")
+
+    image = Image.open(BytesIO(bytes_))
+    full_buf = BytesIO()
+    image.save(full_buf, format="WEBP")
+
+    thumbnail = image.copy()
+    thumbnail.thumbnail((512, 512), Image.Resampling.LANCZOS)
+    thumbnail_buf = BytesIO()
+    thumbnail.save(thumbnail_buf, format="WEBP", quality=95, method=6)
+
+    photo_file_id = str(PydanticObjectId())
+    photos_repo.put(photo_file_id, None, full_buf.getvalue(), "image/webp")
+    photos_repo.put(photo_file_id, 512, thumbnail_buf.getvalue(), "image/webp")
+    board_game.photo_file_id = photo_file_id
+    await board_game.save()
     return board_game
 
 
@@ -99,6 +140,16 @@ async def remove_reservation(id: PydanticObjectId, _: BOARD_GAMES_ADMIN_AUTH) ->
 @router.get("/board-games")
 async def get_all_board_games(_: INH_TOKEN_AUTH) -> list[board_games_repo.BoardGameWithAvailability]:
     return await board_games_repo.read_all_with_availability()
+
+
+@router.get("/board-games/{id}/photo", response_class=RedirectResponse)
+async def get_board_game_photo(id: PydanticObjectId) -> RedirectResponse:
+    board_game = await board_games_repo.read(id)
+    if board_game is None:
+        raise HTTPException(status_code=404, detail="Board game not found")
+    if not board_game.photo_file_id:
+        raise HTTPException(status_code=404, detail="No photo available")
+    return RedirectResponse(url=photos_repo.get_url(board_game.photo_file_id, 512))
 
 
 @router.get("/users/me/reservations")

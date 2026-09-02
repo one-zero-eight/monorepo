@@ -103,3 +103,4 @@ class MinioSettings(BaseSchema):
     "Secret key (password) for the user account."
     club_logos_prefix: str = "logos/"
     club_description_images_prefix: str = "description-images/"
+    board_game_photos_prefix: str = "board-game-photos/"

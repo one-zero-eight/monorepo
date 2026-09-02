@@ -88,6 +88,9 @@ $defs:
       mongo:
         $ref: '#/$defs/MongoDatabaseSettings'
         description: Configuration for MongoDB
+      minio:
+        $ref: '#/$defs/MinioSettings'
+        description: Configuration for S3 object storage
       superadmin_emails:
         description: Innomails of superadmins who can set admin roles
         items:
@@ -486,6 +489,10 @@ $defs:
       club_description_images_prefix:
         default: description-images/
         title: Club Description Images Prefix
+        type: string
+      board_game_photos_prefix:
+        default: board-game-photos/
+        title: Board Game Photos Prefix
         type: string
     title: MinioSettings
     type: object

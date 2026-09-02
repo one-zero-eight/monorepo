@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.common_beanie import BeanieStore
+from src.common_minio import MinioStore
 
 
 @pytest.fixture(scope="session")
@@ -28,7 +29,9 @@ def clean_up_stores_per_test(request: pytest.FixtureRequest):
 
     app = cast(FastAPI, client.app)
     beanie_store: BeanieStore = app.state.beanie_store
+    minio_store: MinioStore = app.state.minio_store
 
     portal.call(beanie_store.clear_database)
+    minio_store.clear_bucket()
 
     yield

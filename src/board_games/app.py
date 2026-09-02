@@ -19,14 +19,19 @@ from .config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from src.board_games.modules.board_games.photos_repo import photos_repo
     from src.board_games.mongo import document_models
+    from src.common_minio import setup_minio
     from src.inh_accounts_sdk import inh_accounts
 
     await inh_accounts.update_key_set()
 
     beanie_store = await setup_beanie(settings.mongo.uri, "board_games", document_models)
+    minio_store = setup_minio(settings.minio)
 
     app.state.beanie_store = beanie_store
+    app.state.minio_store = minio_store
+    photos_repo.post_init(minio_store)
 
     yield
 

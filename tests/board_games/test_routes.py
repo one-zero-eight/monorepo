@@ -1,4 +1,7 @@
+from io import BytesIO
+
 from fastapi.testclient import TestClient
+from PIL import Image
 
 
 def make_admin(board_games_client: TestClient, superadmin_headers: dict[str, str]) -> None:
@@ -8,6 +11,62 @@ def make_admin(board_games_client: TestClient, superadmin_headers: dict[str, str
         headers=superadmin_headers,
     )
     assert response.status_code == 200
+
+
+def test_admin_can_upload_board_game_photo(
+    board_games_client: TestClient,
+    superadmin_headers: dict[str, str],
+    user_headers: dict[str, str],
+):
+    make_admin(board_games_client, superadmin_headers)
+    created = board_games_client.post(
+        "/admin/board-games",
+        json={"title": "Photo Game", "total_copies": 1},
+        headers=user_headers,
+    )
+    game_id = created.json()["id"]
+
+    image = Image.new("RGB", (800, 600), "blue")
+    image_buffer = BytesIO()
+    image.save(image_buffer, format="PNG")
+    uploaded = board_games_client.post(
+        f"/admin/board-games/{game_id}/photo",
+        files={"photo_file": ("photo.png", image_buffer.getvalue(), "image/png")},
+        headers=user_headers,
+    )
+
+    assert uploaded.status_code == 200
+    assert uploaded.json()["photo_file_id"] is not None
+
+    photo = board_games_client.get(f"/board-games/{game_id}/photo", follow_redirects=False)
+    assert photo.status_code == 307
+    assert f"board-game-photos/{uploaded.json()['photo_file_id']}-512" in photo.headers["location"]
+
+
+def test_photo_file_id_can_only_be_set_through_upload(
+    board_games_client: TestClient,
+    superadmin_headers: dict[str, str],
+    user_headers: dict[str, str],
+):
+    make_admin(board_games_client, superadmin_headers)
+    created_with_photo_id = board_games_client.post(
+        "/admin/board-games",
+        json={"title": "Injected Photo", "photo_file_id": "external-id"},
+        headers=user_headers,
+    )
+    assert created_with_photo_id.status_code == 422
+
+    created = board_games_client.post(
+        "/admin/board-games",
+        json={"title": "Protected Photo"},
+        headers=user_headers,
+    )
+    patched = board_games_client.patch(
+        f"/admin/board-games/{created.json()['id']}",
+        json={"photo_file_id": "external-id"},
+        headers=user_headers,
+    )
+    assert patched.status_code == 422
 
 
 def test_user_can_see_available_games_and_reserve(
@@ -21,13 +80,12 @@ def test_user_can_see_available_games_and_reserve(
         json={
             "title": "Catan",
             "description": "Trade and build",
-            "photo_url": "https://example.test/catan.jpg",
             "total_copies": 1,
         },
         headers=user_headers,
     )
     assert created.status_code == 200
-    assert created.json()["photo_url"] == "https://example.test/catan.jpg"
+    assert created.json()["photo_file_id"] is None
     game_id = created.json()["id"]
 
     listed = board_games_client.get("/board-games", headers=user_headers)
@@ -93,7 +151,7 @@ def test_admin_can_lend_reservation_and_see_borrower(
         headers=user_headers,
     )
     assert created.status_code == 200
-    assert created.json()["photo_url"] is None
+    assert created.json()["photo_file_id"] is None
     game_id = created.json()["id"]
     reservation = board_games_client.post(f"/board-games/{game_id}/reservations", headers=user_headers)
     reservation_id = reservation.json()["id"]

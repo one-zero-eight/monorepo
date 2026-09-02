@@ -3,18 +3,19 @@ import datetime as dtm
 from beanie import PydanticObjectId
 from pydantic import Field
 
-from src.board_games.mongo import BoardGame, BoardGameSchema, Reservation, ReservationStatus
+from src.board_games.mongo import BoardGame, Reservation, ReservationStatus
 from src.common_pydantic import BaseSchema
 
 
-class CreateBoardGame(BoardGameSchema):
-    pass
+class CreateBoardGame(BaseSchema):
+    title: str
+    description: str | None = None
+    total_copies: int = Field(default=1, ge=1)
 
 
 class UpdateBoardGame(BaseSchema):
     title: str | None = None
     description: str | None = None
-    photo_url: str | None = None
     total_copies: int | None = Field(default=None, ge=1)
 
 

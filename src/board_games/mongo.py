@@ -43,8 +43,8 @@ class BoardGameSchema(BaseSchema):
     "Board game title"
     description: str | None = None
     "Short board game description"
-    photo_url: str | None = None
-    "Board game photo URL"
+    photo_file_id: str | None = None
+    "File ID of the board game photo"
     total_copies: int = Field(default=1, ge=1)
     "Number of copies available for reservation"
 
