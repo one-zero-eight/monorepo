@@ -121,6 +121,12 @@ def load_root_settings() -> Settings:
             mongo=MongoDatabaseSettings(
                 uri=SecretStr(mongo_uri.replace("<service_name>", "board_games")),
             ),
+            minio=MinioSettings(
+                endpoint=SUITE_MINIO_ENDPOINT,
+                access_key=SUITE_MINIO_ACCESS_KEY,
+                secret_key=SecretStr(SUITE_MINIO_KEY),
+                bucket=minio_bucket.replace("<service_name>", "board-games"),
+            ),
         ),
         when2meet_service=When2MeetSettings(
             environment=Environment.TESTING,

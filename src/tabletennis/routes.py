@@ -94,7 +94,7 @@ async def format_top(top: dict[int, str] | None) -> list[dict[str, Any]]:
     players = await Player.find({"innohassle_id": {"$in": player_ids}}).to_list()
     players_by_id = {p.innohassle_id: p for p in players}
 
-    result = []
+    result: list[dict[str, Any]] = []
     for place in sorted(top.keys()):
         p_id = top[place]
         player = players_by_id.get(p_id)
@@ -262,7 +262,7 @@ async def get_tours(auth: INH_TOKEN_AUTH) -> list[dict[str, Any]]:
             }
         )
 
-    result.sort(key=lambda x: x["date"] or "", reverse=True)
+    result.sort(key=lambda item: str(item["date"] or ""), reverse=True)
     return result
 
 

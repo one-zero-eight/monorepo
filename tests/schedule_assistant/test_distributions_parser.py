@@ -120,7 +120,7 @@ def test_suggest_mapping_skips_ambiguous_normalized_targets() -> None:
 
 
 def test_sort_labels_unmatched_first_then_program_order() -> None:
-    labels = [
+    labels: list[dict[str, str | int]] = [
         {"label": "EAP6", "email_count": 3},
         {"label": "Unknown", "email_count": 1},
         {"label": "AWA-I 10", "email_count": 2},
@@ -134,7 +134,7 @@ def test_sort_labels_unmatched_first_then_program_order() -> None:
     }
     ordered = sort_labels_by_suggested_mapping(
         labels,
-        label_of=lambda item: item["label"],
+        label_of=lambda item: str(item["label"]),
         suggested_mapping=suggested,
         target_group_codes=["AWA-I-10", "EAP-6", "FL-3"],
     )

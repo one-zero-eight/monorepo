@@ -267,23 +267,27 @@ async def get_files(
     """Get all files for the user (brief info without joins and banned)."""
     try:
         files = await google_file_repository.get_by_author_id(user_token_data.innohassle_id)
-        return [
-            GoogleFile(
-                author_id=file.author_id,
-                default_role=file.default_role,
-                slug=file.slug,
-                file_id=file.file_id,
-                file_type=file.file_type,
-                owner_gmail=file.owner_gmail,
-                owner_permission_id=file.owner_permission_id,
-                title=file.title,
-                expire_at=file.expire_at,
-                sso_joins_count=len(file.sso_joins or []),
-                sso_banned_count=len(file.sso_banned or []),
-                created_at=file.id.generation_time,
+        result: list[GoogleFile] = []
+        for file in files:
+            if file.id is None:
+                raise RuntimeError("Stored Google file is missing its document ID")
+            result.append(
+                GoogleFile(
+                    author_id=file.author_id,
+                    default_role=file.default_role,
+                    slug=file.slug,
+                    file_id=file.file_id,
+                    file_type=file.file_type,
+                    owner_gmail=file.owner_gmail,
+                    owner_permission_id=file.owner_permission_id,
+                    title=file.title,
+                    expire_at=file.expire_at,
+                    sso_joins_count=len(file.sso_joins or []),
+                    sso_banned_count=len(file.sso_banned or []),
+                    created_at=file.id.generation_time,
+                )
             )
-            for file in files
-        ]
+        return result
     except Exception as e:  # noqa: BLE001
         logger.error(f"Error getting files | user_id={user_token_data.innohassle_id} error={e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -302,6 +306,8 @@ async def get_file(
             raise HTTPException(status_code=404, detail="File not found")
 
         verify_file_ownership(file, user_token_data.innohassle_id)
+        if file.id is None:
+            raise RuntimeError("Stored Google file is missing its document ID")
 
         return GoogleFile(
             author_id=file.author_id,

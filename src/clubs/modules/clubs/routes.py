@@ -201,6 +201,8 @@ async def edit_club_info_by_slug(slug: str, update_club: clubs_repo.UpdateClub, 
 
     if is_admin:
         try:
+            if club.id is None:  # pragma: no cover
+                raise HTTPException(status_code=500, detail="Stored club is missing its document ID")
             updated_club = await clubs_repo.update(club.id, update_club.to_club_schema())
             if updated_club is None:  # pragma: no cover
                 raise HTTPException(status_code=400, detail="Failed to update club info")  # pragma: no cover
