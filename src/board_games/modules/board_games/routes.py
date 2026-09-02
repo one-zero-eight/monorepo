@@ -170,7 +170,7 @@ async def get_users_reservations(
 async def make_reservation(
     id: PydanticObjectId,
     current_user: INH_TOKEN_AUTH,
-    body: board_games_repo.CreateReservation | None = None,
+    body: board_games_repo.CreateReservation,
 ) -> Reservation:
     game = await board_games_repo.read(id)
     if game is None:
@@ -179,7 +179,7 @@ async def make_reservation(
         game,
         current_user.innohassle_id,
         current_user.email,
-        body or board_games_repo.CreateReservation(),
+        body,
     )
     if reservation is None:
         raise HTTPException(status_code=409, detail="Board game is not available")

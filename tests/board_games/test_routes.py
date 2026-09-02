@@ -97,6 +97,20 @@ def test_user_can_see_available_games_and_reserve(
     assert listed_admin.status_code == 200
     assert listed_admin.json()[0]["available_in_storage"] == 1
 
+    missing_telegram = board_games_client.post(
+        f"/board-games/{game_id}/reservations",
+        json={"return_date": "2026-06-30"},
+        headers=user_headers,
+    )
+    assert missing_telegram.status_code == 422
+
+    missing_return_date = board_games_client.post(
+        f"/board-games/{game_id}/reservations",
+        json={"tg_alias": "@test_user_one"},
+        headers=user_headers,
+    )
+    assert missing_return_date.status_code == 422
+
     reserved = board_games_client.post(
         f"/board-games/{game_id}/reservations",
         json={
@@ -131,7 +145,11 @@ def test_user_can_see_available_games_and_reserve(
     assert edited.json()["when_available"] == "next week"
     assert edited.json()["comments"] == "Updated note"
 
-    unavailable = board_games_client.post(f"/board-games/{game_id}/reservations", headers=user_headers)
+    unavailable = board_games_client.post(
+        f"/board-games/{game_id}/reservations",
+        json={"tg_alias": "@test_user_one", "return_date": "2026-06-30"},
+        headers=user_headers,
+    )
     assert unavailable.status_code == 409
     assert unavailable.json()["detail"] == "Board game is not available"
 
@@ -154,7 +172,11 @@ def test_admin_can_lend_reservation_and_see_borrower(
     assert created.status_code == 200
     assert created.json()["photo_file_id"] is None
     game_id = created.json()["id"]
-    reservation = board_games_client.post(f"/board-games/{game_id}/reservations", headers=user_headers)
+    reservation = board_games_client.post(
+        f"/board-games/{game_id}/reservations",
+        json={"tg_alias": "@test_user_one", "return_date": "2026-06-30"},
+        headers=user_headers,
+    )
     reservation_id = reservation.json()["id"]
 
     current = board_games_client.get("/admin/reservations", params={"how": "current"}, headers=user_headers)

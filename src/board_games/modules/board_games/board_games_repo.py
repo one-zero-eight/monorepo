@@ -33,8 +33,8 @@ class CreateReservationResult(Reservation):
 
 
 class CreateReservation(BaseSchema):
-    tg_alias: str | None = None
-    return_date: dtm.date | None = None
+    tg_alias: str = Field(min_length=1)
+    return_date: dtm.date
     when_available: str | None = None
     comments: str | None = None
 
