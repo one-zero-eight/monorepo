@@ -6,6 +6,8 @@ from fastapi.testclient import TestClient
 
 from src.common_beanie import BeanieStore
 
+TABLETENNIS_ADMIN_EMAIL = "tt-admin@innopolis.university"
+
 
 @pytest.fixture(scope="session")
 def tabletennis_client(request: pytest.FixtureRequest):
@@ -13,10 +15,19 @@ def tabletennis_client(request: pytest.FixtureRequest):
     from src.migrations import migrate_service
 
     migrate_service("tabletennis")
+    from src.tabletennis.config import settings
+
+    settings.admin_emails.append(TABLETENNIS_ADMIN_EMAIL)
+
     from src.tabletennis import app as tabletennis_app
 
     with TestClient(tabletennis_app.app) as client:
         yield client
+
+
+@pytest.fixture(scope="session")
+def admin_headers(tabletennis_client: TestClient, auth_header_factory):
+    return auth_header_factory("tt-admin-1", TABLETENNIS_ADMIN_EMAIL)
 
 
 @pytest.fixture(autouse=True)

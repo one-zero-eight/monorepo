@@ -56,6 +56,8 @@ class Tournament(BeanieDocumentMixin, Document):
     val_top: dict[int, str] = Field(default={})
     qual_top: dict[int, str] = Field(default={})
 
+    bonus_applied: bool = Field(default=False)
+
     class Settings(BeanieDocumentMixin.Settings):
         name = "Tournament_v2"
         indexes: ClassVar[list[IndexModel]] = [IndexModel("tour_id", unique=True)]
