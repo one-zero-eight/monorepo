@@ -18,11 +18,132 @@ from .mongo import Game, Player, Tournament
 
 router = APIRouter(tags=["Table Tennis"], route_class=AutoDeriveResponsesAPIRoute)
 
-K_FACTOR = 32
-
 
 def isactive(last_game_date: dtm.datetime) -> bool:
     return dtm.datetime.now(dtm.UTC) - last_game_date < dtm.timedelta(days=30)
+
+
+def _get_k_factor(avg_rating: float) -> float:
+    if avg_rating < 250:
+        return 0.2
+    elif avg_rating < 350:
+        return 0.25
+    elif avg_rating < 450:
+        return 0.3
+    elif avg_rating < 550:
+        return 0.35
+    else:
+        return 0.4
+
+
+def _get_d_factor(set_diff: int) -> float:
+    if set_diff == 1:
+        return 0.8
+    elif set_diff == 2:
+        return 1.0
+    else:
+        return 1.2
+
+
+async def _get_tournament_avg_rating(tournament: Tournament) -> float:
+    player_ids = tournament.players or []
+    if not player_ids:
+        return 300
+    players = await Player.find({"innohassle_id": {"$in": player_ids}}).to_list()
+    ratings = [p.rating for p in players]
+    return sum(ratings) / len(ratings) if ratings else 300
+
+
+def _get_player_kd(player: Player, is_winner: bool, avg_rating: float, set_diff: int) -> tuple[float, float]:
+    """
+    A beginner (manually flagged via /set-status) always gets D=1, with k=1 on a win
+    and k=0.5 on a loss. A non-beginner always uses the tournament/set-margin tables,
+    regardless of the opponent's status.
+    """
+    if player.status == "Beginner":
+        return (1.0, 1.0) if is_winner else (0.5, 1.0)
+    return _get_k_factor(avg_rating), _get_d_factor(set_diff)
+
+
+async def _apply_rttf_delta(
+    winner: Player, loser: Player, s_winner: int, s_loser: int, tournament: Tournament
+) -> tuple[int, int]:
+    set_diff = abs(s_winner - s_loser)
+    diff = winner.rating - loser.rating
+
+    if diff >= 100:
+        return 0, 0
+
+    base = (100 - diff) / 10
+
+    avg_rating = await _get_tournament_avg_rating(tournament)
+    k_w, d_w = _get_player_kd(winner, is_winner=True, avg_rating=avg_rating, set_diff=set_diff)
+    k_l, d_l = _get_player_kd(loser, is_winner=False, avg_rating=avg_rating, set_diff=set_diff)
+
+    delta_w = round(base * k_w * d_w)
+    delta_l = -round(base * k_l * d_l)
+
+    if delta_w == 0:
+        delta_w = 1
+    if delta_l == 0:
+        delta_l = -1
+
+    return delta_w, delta_l
+
+
+async def _apply_tournament_bonuses(tournament: Tournament) -> None:
+    """
+    change-val-top overwrites standings wholesale and may be called more than once
+    for the same tournament (e.g. to fix a mistake), so bonuses are granted at most once.
+    """
+    if tournament.bonus_applied or not tournament.val_top or len(tournament.players or []) < 16:
+        return
+
+    top_places = sorted(tournament.val_top.items())
+    prize_players = [p_id for _, p_id in top_places[:3]]
+    if len(prize_players) < 3:
+        return
+
+    all_players = await Player.find({"innohassle_id": {"$in": tournament.players}}).to_list()
+    players_by_id = {p.innohassle_id: p for p in all_players}
+    sorted_by_rating = sorted(all_players, key=lambda p: p.rating, reverse=True)
+    top12_avg = sum(p.rating for p in sorted_by_rating[:12]) / min(12, len(sorted_by_rating))
+
+    bonus_pct = {
+        1: {(0, 100): 0.025, (100, 151): 0.02, (151, 201): 0.01},
+        2: {(0, 100): 0.015, (100, 151): 0.01, (151, 201): 0.005},
+        3: {(0, 100): 0.01, (100, 151): 0.005, (151, 201): 0.0},
+    }
+
+    place_counts: dict[int, int] = {}
+    for place, p_id in top_places:
+        if place <= 3:
+            place_counts[place] = place_counts.get(place, 0) + 1
+
+    for place, p_id in top_places:
+        if place > 3 or p_id not in players_by_id:
+            continue
+        player = players_by_id[p_id]
+        diff = player.rating - top12_avg
+        if diff > 200:
+            continue
+
+        if diff < 100:
+            pct = bonus_pct[place][(0, 100)]
+        elif diff < 151:
+            pct = bonus_pct[place][(100, 151)]
+        else:
+            pct = bonus_pct[place][(151, 201)]
+
+        if pct > 0:
+            bonus = round(player.rating * pct / place_counts.get(place, 1))
+            if bonus > 0:
+                player.rating += bonus
+                await player.save()
+                logger.info(f"Bonus +{bonus} for {player.nickname} (place {place}, tournament {tournament.tour_id})")
+
+    tournament.bonus_applied = True
+    await tournament.save()
 
 
 async def get_tour_top(tour_id: str) -> tuple[dict[int, str], dict[int, str]]:
@@ -637,6 +758,8 @@ async def change_val_top(
     tournament.val_top = top
     await tournament.save()
 
+    await _apply_tournament_bonuses(tournament)
+
     logger.info(f"Admin {auth.email} set val_top for tournament {tour_id}: {top}")
 
     return {"status": "success", "tour_id": tour_id, "val_top": await format_top(top)}
@@ -805,38 +928,13 @@ async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: i
         db_game.finished = True
         await db_game.save()
 
-    r1 = p1.rating
-    r2 = p2.rating
+    if s1 > s2:
+        delta_1, delta_2 = await _apply_rttf_delta(p1, p2, s1, s2, tournament)
+    else:
+        delta_2, delta_1 = await _apply_rttf_delta(p2, p1, s2, s1, tournament)
 
-    expected_1 = 1 / (1 + 10 ** ((r2 - r1) / 400))
-    expected_2 = 1 / (1 + 10 ** ((r1 - r2) / 400))
-
-    actual_1 = 1.0 if s1 > s2 else 0.0
-    actual_2 = 1.0 if s2 > s1 else 0.0
-
-    delta_1 = round(K_FACTOR * (actual_1 - expected_1))
-    delta_2 = round(K_FACTOR * (actual_2 - expected_2))
-
-    if delta_1 == 0:
-        delta_1 = 1 if actual_1 == 1.0 else -1
-    if delta_2 == 0:
-        delta_2 = 1 if actual_2 == 1.0 else -1
-
-    if p1.rating > 1500 and p2.status == "Beginner" and s1 > s2:
-        delta_1, delta_2 = 0, 0
-    if p2.rating > 1500 and p1.status == "Beginner" and s2 > s1:
-        delta_1, delta_2 = 0, 0
-
-    new_r1 = p1.rating + delta_1
-    new_r2 = p2.rating + delta_2
-
-    if p1.status == "Advanced" and new_r1 < 1500:
-        delta_1 = 1500 - p1.rating
-    if p2.status == "Advanced" and new_r2 < 1500:
-        delta_2 = 1500 - p2.rating
-
-    p1.rating += delta_1
-    p2.rating += delta_2
+    p1.rating = max(1, p1.rating + delta_1)
+    p2.rating = max(1, p2.rating + delta_2)
 
     current_time = dtm.datetime.now(tz=dtm.UTC)
     p1.last_game = current_time
@@ -857,18 +955,13 @@ async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: i
         p2.wins += 1
         p1.losses += 1
 
-    if p1.rating > 1500 and p1.status != "Admin":
-        p1.status = "Advanced"
-    if p2.rating > 1500 and p2.status != "Admin":
-        p2.status = "Advanced"
-
     await tournament.save()
     await p1.save()
     await p2.save()
 
     logger.info(
         f"Match {game_id} in tour {tour_id} saved by admin {auth.email}: {p1.nickname} ({s1}) vs {p2.nickname} ({s2}). "
-        f"Elo: {p1.nickname} ({'+' if delta_1 >= 0 else ''}{delta_1}), {p2.nickname} ({'+' if delta_2 >= 0 else ''}{delta_2})"
+        f"RTTF: {p1.nickname} ({'+' if delta_1 >= 0 else ''}{delta_1}), {p2.nickname} ({'+' if delta_2 >= 0 else ''}{delta_2})"
     )
 
     return {
