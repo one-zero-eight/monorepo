@@ -42,8 +42,12 @@ def test_validate_sections_rejects_duplicate_group_codes() -> None:
     config = SectionsConfig(
         sections=[SectionConfig(code="core", name="Core", programs=[])],
         students_groups=[
-            StudentsGroups(code="G1", kind="core"),
-            StudentsGroups(code="g1", kind="core"),
+            StudentsGroups(
+                code="G1",
+            ),
+            StudentsGroups(
+                code="g1",
+            ),
         ],
     )
     errors = validate_sections(config)
@@ -77,7 +81,11 @@ def test_validate_courses_rejects_unknown_student_group() -> None:
                     programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["SUM26-AAI"])],
                 )
             ],
-            students_groups=[StudentsGroups(code="SUM26-AAI", kind="elective")],
+            students_groups=[
+                StudentsGroups(
+                    code="SUM26-AAI",
+                )
+            ],
         ),
         rooms=RoomConfig(),
         instructors=InstructorConfig(
@@ -113,7 +121,11 @@ def test_validate_courses_accepts_online_room() -> None:
                     programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["SUM26-AAI"])],
                 )
             ],
-            students_groups=[StudentsGroups(code="SUM26-AAI", kind="elective")],
+            students_groups=[
+                StudentsGroups(
+                    code="SUM26-AAI",
+                )
+            ],
         ),
         rooms=RoomConfig(),
         instructors=InstructorConfig(
@@ -254,7 +266,11 @@ def test_validate_courses_rejects_unknown_instructor() -> None:
                     programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["SUM26-AAI"])],
                 )
             ],
-            students_groups=[StudentsGroups(code="SUM26-AAI", kind="elective")],
+            students_groups=[
+                StudentsGroups(
+                    code="SUM26-AAI",
+                )
+            ],
         ),
         rooms=RoomConfig(rooms=[RoomConfig.Room(id="108", name="Room 108", capacity=100)]),
         instructors=InstructorConfig(),
@@ -301,7 +317,11 @@ def test_validate_courses_allows_missing_room_and_instructor() -> None:
                     programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])],
                 )
             ],
-            students_groups=[StudentsGroups(code="G1", kind="core")],
+            students_groups=[
+                StudentsGroups(
+                    code="G1",
+                )
+            ],
         ),
         rooms=RoomConfig(rooms=[RoomConfig.Room(id="108", name="Room 108", capacity=100)]),
         instructors=InstructorConfig(instructors=[InstructorConfig.Instructor(id="t@innopolis.ru")]),
@@ -410,7 +430,11 @@ async def test_put_courses_returns_422_for_invalid_references(
                     programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["SUM26-AAI"])],
                 )
             ],
-            students_groups=[StudentsGroups(code="SUM26-AAI", kind="elective")],
+            students_groups=[
+                StudentsGroups(
+                    code="SUM26-AAI",
+                )
+            ],
         ),
         saved_by="test@test.com",
     )
@@ -468,8 +492,12 @@ def test_validate_courses_rejects_audience_outside_section() -> None:
                 ),
             ],
             students_groups=[
-                StudentsGroups(code="CORE-01", kind="core"),
-                StudentsGroups(code="ELEC-01", kind="elective"),
+                StudentsGroups(
+                    code="CORE-01",
+                ),
+                StudentsGroups(
+                    code="ELEC-01",
+                ),
             ],
         ),
         rooms=RoomConfig(),

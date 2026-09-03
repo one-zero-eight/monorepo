@@ -36,7 +36,12 @@ def _minimal_term_settings() -> TermConfig:
 
 
 def _core_sections(*, group_codes: list[str] | None = None) -> SectionsConfig:
-    students_groups = [StudentsGroups(code=code, kind="core") for code in (group_codes or [])]
+    students_groups = [
+        StudentsGroups(
+            code=code,
+        )
+        for code in (group_codes or [])
+    ]
     return SectionsConfig(
         sections=[SectionConfig(code="core", name="Core", programs=[])],
         students_groups=students_groups,
@@ -228,7 +233,11 @@ async def test_non_moderator_sees_only_scheduled_instructors(
                     programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["SUM26-AAI"])],
                 )
             ],
-            students_groups=[StudentsGroups(code="SUM26-AAI", kind="elective")],
+            students_groups=[
+                StudentsGroups(
+                    code="SUM26-AAI",
+                )
+            ],
         ),
         saved_by="mod@test.com",
     )
@@ -309,7 +318,11 @@ async def test_moderator_sees_all_instructors(
                     programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["SUM26-AAI"])],
                 )
             ],
-            students_groups=[StudentsGroups(code="SUM26-AAI", kind="elective")],
+            students_groups=[
+                StudentsGroups(
+                    code="SUM26-AAI",
+                )
+            ],
         ),
         saved_by="test@test.com",
     )
@@ -569,7 +582,11 @@ async def test_instructor_meetings_counts_endpoint(
                     programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])],
                 )
             ],
-            students_groups=[StudentsGroups(code="G1", kind="core")],
+            students_groups=[
+                StudentsGroups(
+                    code="G1",
+                )
+            ],
         ),
         saved_by="mod@test.com",
     )

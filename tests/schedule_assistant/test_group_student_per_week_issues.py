@@ -120,8 +120,8 @@ def test_student_issue_when_shared_student_overlaps() -> None:
     sections = SectionsConfig(
         sections=[SectionConfig(code="core", name="Core", programs=[])],
         students_groups=[
-            StudentsGroups(code="G1", kind="core", students=["student@innopolis.ru"]),
-            StudentsGroups(code="G2", kind="core", students=["student@innopolis.ru"]),
+            StudentsGroups(code="G1", students=["student@innopolis.ru"]),
+            StudentsGroups(code="G2", students=["student@innopolis.ru"]),
         ],
     )
     checker = IssueChecker(
@@ -210,7 +210,11 @@ def test_per_week_issue_when_slot_count_mismatch() -> None:
                 code="core", name="Core", programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])]
             )
         ],
-        students_groups=[StudentsGroups(code="G1", kind="core")],
+        students_groups=[
+            StudentsGroups(
+                code="G1",
+            )
+        ],
     )
 
     issues = per_week_issues_from_schedule_config(courses, sections)
@@ -257,7 +261,11 @@ def test_no_per_week_issue_when_count_matches() -> None:
                 code="core", name="Core", programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])]
             )
         ],
-        students_groups=[StudentsGroups(code="G1", kind="core")],
+        students_groups=[
+            StudentsGroups(
+                code="G1",
+            )
+        ],
     )
 
     assert per_week_issues_from_schedule_config(courses, sections) == []
@@ -306,8 +314,12 @@ def test_per_group_shared_series_counts_for_each_group() -> None:
             )
         ],
         students_groups=[
-            StudentsGroups(code="G1", kind="core"),
-            StudentsGroups(code="G2", kind="core"),
+            StudentsGroups(
+                code="G1",
+            ),
+            StudentsGroups(
+                code="G2",
+            ),
         ],
     )
 
@@ -353,8 +365,12 @@ def test_per_group_shared_series_still_flags_short_count() -> None:
             )
         ],
         students_groups=[
-            StudentsGroups(code="G1", kind="core"),
-            StudentsGroups(code="G2", kind="core"),
+            StudentsGroups(
+                code="G1",
+            ),
+            StudentsGroups(
+                code="G2",
+            ),
         ],
     )
 

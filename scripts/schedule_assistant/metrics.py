@@ -783,10 +783,15 @@ def calculate_schedule_metrics(result: SolveResult, cfg: ScheduleConfig) -> Sche
     same_day_lec_tut_lab_total = _same_day_lec_tut_lab_total(cfg)
     same_day_lec_tut_lab_satisfied = _same_day_lec_tut_lab_satisfied(events, cfg)
 
-    english_groups_count = sum(1 for g in cfg.students_groups if str(g.kind).strip().lower() == "english")
-    electives_groups_count = sum(
-        1 for g in cfg.students_groups if str(g.kind).strip().lower() in {"elective", "electives"}
-    )
+    section_group_codes: dict[str, set[str]] = {}
+    for section in cfg.term.sections:
+        codes = section_group_codes.setdefault(section.code.strip().lower(), set())
+        for program in section.programs:
+            codes.update(program.groups)
+            for track in program.tracks:
+                codes.update(track.groups)
+    english_groups_count = len(section_group_codes.get("english", set()))
+    electives_groups_count = len(section_group_codes.get("electives", set()))
 
     preference_opportunities = discouraged_opportunities_from_config(cfg)
     preference_weighted_total = 0

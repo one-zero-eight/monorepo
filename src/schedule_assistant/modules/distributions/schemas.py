@@ -18,7 +18,6 @@ class DistributionPreviewStats(BaseModel):
 class DistributionTargetGroup(BaseModel):
     code: str
     name: str | None = None
-    kind: str
     students_count: int = 0
 
 

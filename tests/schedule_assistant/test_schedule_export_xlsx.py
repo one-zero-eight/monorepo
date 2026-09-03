@@ -81,21 +81,18 @@ def _sample_config() -> ScheduleConfig:
         students_groups=[
             StudentsGroups(
                 code="B25-CSE-01",
-                kind="core",
                 name="B25-CSE-01",
                 estimated_size=27,
                 students=["b.student@innopolis.university", "a.student@innopolis.university"],
             ),
             StudentsGroups(
                 code="B25-CSE-02",
-                kind="core",
                 name="B25-CSE-02",
                 estimated_size=26,
                 students=["c.student@innopolis.university"],
             ),
             StudentsGroups(
                 code="ELEC-01",
-                kind="elective",
                 name="SRE Course",
                 students=["e.student@innopolis.university", "d.student@innopolis.university"],
             ),
@@ -277,7 +274,6 @@ def test_calendar_export_splits_programs_into_sheets() -> None:
     config.students_groups.append(
         StudentsGroups(
             code="ELEC-02",
-            kind="elective",
             name="Philosophy",
             students=["f.student@innopolis.university"],
         )
@@ -446,7 +442,7 @@ def test_groups_export_repeats_time_column_per_program() -> None:
         )
     )
     config.students_groups.append(
-        StudentsGroups(code="B24-CSE-01", kind="core", name="B24-CSE-01", estimated_size=29),
+        StudentsGroups(code="B24-CSE-01", name="B24-CSE-01", estimated_size=29),
     )
     config.courses.append(
         CourseConfig(
@@ -498,7 +494,7 @@ def test_compact_groups_export_keeps_all_groups_and_only_occupied_slots() -> Non
     core.default_layout = "compact_groups"
     core.programs[0].tracks[0].groups.append("B25-CSE-03")
     config.students_groups.append(
-        StudentsGroups(code="B25-CSE-03", kind="core", name="B25-CSE-03", estimated_size=25),
+        StudentsGroups(code="B25-CSE-03", name="B25-CSE-03", estimated_size=25),
     )
     component = config.courses[0].components[0]
     component.audience = ["B25-CSE-01", "B25-CSE-02"]

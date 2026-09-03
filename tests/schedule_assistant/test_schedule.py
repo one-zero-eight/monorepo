@@ -46,7 +46,25 @@ def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@t
                         SectionConfig.SectionProgram(
                             code="BS",
                             name="BS",
-                            groups=["B25-CSE-01", "SUM26-AAI"],
+                            groups=["CORE-ONLY"],
+                        ),
+                    ],
+                ),
+                SectionConfig(
+                    code="english",
+                    name="Английский",
+                    programs=[
+                        SectionConfig.SectionProgram(
+                            code="ENGLISH",
+                            name="English",
+                            groups=["B25-CSE-01"],
+                            tracks=[
+                                SectionConfig.SectionProgram.ProgramTrack(
+                                    code="AAI",
+                                    name="AAI",
+                                    groups=["SUM26-AAI", "SUM26-AAI"],
+                                ),
+                            ],
                         ),
                     ],
                 ),
@@ -54,16 +72,15 @@ def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@t
             students_groups=[
                 StudentsGroups(
                     code="B25-CSE-01",
-                    kind="core",
                     name="B25-CSE-01",
                     students=[student_email],
                 ),
                 StudentsGroups(
                     code="SUM26-AAI",
-                    kind="english",
                     name="SUM26-AAI",
                     students=["other@innopolis.university"],
                 ),
+                StudentsGroups(code="CORE-ONLY", name="CORE-ONLY"),
             ],
         ),
         saved_by="mod@innopolis.university",
@@ -95,7 +112,7 @@ def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@t
             courses=[
                 CourseConfig(
                     name="Agentic AI",
-                    section_code="core",
+                    section_code="english",
                     components=[
                         CourseConfig.Component(
                             tag="class",
@@ -126,7 +143,7 @@ def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@t
                 ),
                 CourseConfig(
                     name="Algorithms",
-                    section_code="core",
+                    section_code="english",
                     components=[
                         CourseConfig.Component(
                             tag="lec",
@@ -169,7 +186,6 @@ async def test_my_groups_returns_membership(
     assert response.json() == [
         {
             "code": "B25-CSE-01",
-            "kind": "core",
             "name": "B25-CSE-01",
             "estimated_size": None,
             "students": ["test@test.com"],
@@ -271,7 +287,7 @@ async def test_virtual_event_groups_require_service_api_key(
 
 
 @pytest.mark.asyncio
-async def test_virtual_event_groups_default_to_english(
+async def test_virtual_event_groups_publish_english_section_groups(
     fastapi_test_client: AsyncClient,
     schedule_data_repo: ScheduleConfigRepository,
     monkeypatch: pytest.MonkeyPatch,
@@ -281,18 +297,23 @@ async def test_virtual_event_groups_default_to_english(
         "src.schedule_assistant.dependencies.settings.api_key",
         SecretStr("test-schedule-assistant-api-key"),
     )
-    monkeypatch.setattr("src.schedule_assistant.modules.schedule.service.settings.published_group_kinds", ["english"])
-
     response = await fastapi_test_client.get("/integration/event-groups", headers=_service_headers())
     assert response.status_code == 200
     assert response.json() == {
         "event_groups": [
             {
                 "id": None,
+                "alias": "english-b25-cse-01",
+                "name": "B25-CSE-01",
+                "description": "Schedule for B25-CSE-01",
+                "group_code": "B25-CSE-01",
+                "instructor_id": None,
+            },
+            {
+                "id": None,
                 "alias": "english-sum26-aai",
                 "name": "SUM26-AAI",
                 "description": "Schedule for SUM26-AAI",
-                "kind": "english",
                 "group_code": "SUM26-AAI",
                 "instructor_id": None,
             },
@@ -301,7 +322,6 @@ async def test_virtual_event_groups_default_to_english(
                 "alias": teacher_alias("other@innopolis.university"),
                 "name": "Teacher Two",
                 "description": "Schedule for Teacher Two",
-                "kind": "instructor",
                 "group_code": None,
                 "instructor_id": "other@innopolis.ru",
             },
@@ -310,7 +330,6 @@ async def test_virtual_event_groups_default_to_english(
                 "alias": teacher_alias("teacher@innopolis.ru"),
                 "name": "Teacher One",
                 "description": "Schedule for Teacher One",
-                "kind": "instructor",
                 "group_code": None,
                 "instructor_id": "teacher@innopolis.ru",
             },
@@ -319,19 +338,18 @@ async def test_virtual_event_groups_default_to_english(
 
 
 @pytest.mark.asyncio
-async def test_null_published_group_kinds_publishes_all(
+async def test_missing_english_section_publishes_no_student_groups(
     fastapi_test_client: AsyncClient,
     schedule_data_repo: ScheduleConfigRepository,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _seed_config(schedule_data_repo)
-    monkeypatch.setattr("src.schedule_assistant.modules.schedule.service.settings.published_group_kinds", None)
+    sections = schedule_data_repo.get_sections()
+    sections.sections = [section for section in sections.sections if section.code != "english"]
+    schedule_data_repo.set_sections(sections, saved_by="test")
 
     response = await fastapi_test_client.get("/integration/event-groups", headers=_service_headers())
     assert response.status_code == 200
     assert [group["alias"] for group in response.json()["event_groups"]] == [
-        "core-b25-cse-01",
-        "english-sum26-aai",
         teacher_alias("other@innopolis.university"),
         teacher_alias("teacher@innopolis.ru"),
     ]
@@ -349,7 +367,7 @@ async def test_predefined_aliases_normalize_email(
         headers=_service_headers(),
     )
     assert response.status_code == 200
-    assert response.json() == {"event_groups": []}
+    assert response.json() == {"event_groups": ["english-b25-cse-01"]}
 
     response = await fastapi_test_client.get(
         "/integration/users/OTHER@INNOPOLIS.UNIVERSITY/predefined",
@@ -472,10 +490,8 @@ async def test_group_ics_is_valid_and_deterministic(
 
 def test_group_ics_handles_database_times_with_mixed_timezone_awareness(
     schedule_data_repo: ScheduleConfigRepository,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _seed_config(schedule_data_repo)
-    monkeypatch.setattr("src.schedule_assistant.modules.schedule.service.settings.published_group_kinds", None)
     courses = schedule_data_repo.get_courses()
     algorithms_component = courses.courses[1].components[0]
     assert algorithms_component.sessions is not None
@@ -485,7 +501,7 @@ def test_group_ics_handles_database_times_with_mixed_timezone_awareness(
     slot.start_time = slot.start_time.replace(tzinfo=dtm.timezone(dtm.timedelta(hours=3)))
     schedule_data_repo.set_courses(courses, saved_by="test")
 
-    calendar = icalendar.Calendar.from_ical(service.get_group_ics("core-b25-cse-01"))
+    calendar = icalendar.Calendar.from_ical(service.get_group_ics("english-b25-cse-01"))
     events = [cast(icalendar.Event, component) for component in calendar.walk("VEVENT")]
 
     assert events
@@ -494,10 +510,8 @@ def test_group_ics_handles_database_times_with_mixed_timezone_awareness(
 
 def test_weekly_ics_uses_rrule_exdate_and_recurrence_override(
     schedule_data_repo: ScheduleConfigRepository,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _seed_config(schedule_data_repo)
-    monkeypatch.setattr("src.schedule_assistant.modules.schedule.service.settings.published_group_kinds", None)
     courses = schedule_data_repo.get_courses()
     sessions = courses.courses[1].components[0].sessions
     assert sessions is not None
@@ -520,7 +534,7 @@ def test_weekly_ics_uses_rrule_exdate_and_recurrence_override(
     ]
     schedule_data_repo.set_courses(courses, saved_by="test")
 
-    calendar = icalendar.Calendar.from_ical(service.get_group_ics("core-b25-cse-01"))
+    calendar = icalendar.Calendar.from_ical(service.get_group_ics("english-b25-cse-01"))
     events = [cast(icalendar.Event, component) for component in calendar.walk("VEVENT")]
 
     assert len(events) == 2
@@ -541,17 +555,15 @@ def test_weekly_ics_uses_rrule_exdate_and_recurrence_override(
 async def test_batch_aliases_ics_combines_selected_groups(
     fastapi_test_client: AsyncClient,
     schedule_data_repo: ScheduleConfigRepository,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _seed_config(schedule_data_repo)
-    monkeypatch.setattr("src.schedule_assistant.modules.schedule.service.settings.published_group_kinds", None)
 
     response = await fastapi_test_client.post(
         "/integration/event-groups/schedule.ics",
         json={
             "aliases": [
                 "english-sum26-aai",
-                "core-b25-cse-01",
+                "english-b25-cse-01",
                 "english-sum26-aai",
             ]
         },

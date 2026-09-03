@@ -594,15 +594,6 @@ $defs:
         title: Api Key
         type: string
         writeOnly: true
-      published_group_kinds:
-        anyOf:
-        - items:
-            type: string
-          type: array
-        - type: 'null'
-        description: Student group kinds published as virtual event groups; null publishes
-          all kinds
-        title: Published Group Kinds
       moderator_emails:
         description: Innopolis emails allowed to access moderator-only endpoints
         items:

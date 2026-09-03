@@ -261,7 +261,6 @@ def _build_preview(
             DistributionTargetGroup(
                 code=group.code,
                 name=group.name,
-                kind=group.kind,
                 students_count=len(group.students),
             )
             for group in targets

@@ -186,8 +186,6 @@ class SectionConfig(SettingBaseModel):
 class StudentsGroups(SettingBaseModel):
     code: str
     "Student entity code (group/program/selector id)"
-    kind: str
-    "Distribution kind (for example, core/english/elective)"
     name: str | None = None
     "Optional display name"
     estimated_size: int | None = None

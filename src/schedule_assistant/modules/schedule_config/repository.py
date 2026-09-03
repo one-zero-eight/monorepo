@@ -317,7 +317,6 @@ class ScheduleConfigRepository:
         student_groups = [
             StudentsGroups(
                 code=row.code,
-                kind=row.kind,
                 name=row.name,
                 estimated_size=row.estimated_size,
                 students=row.students,
@@ -406,7 +405,6 @@ class ScheduleConfigRepository:
                 session.add(
                     StudentGroupRow(
                         code=group.code,
-                        kind=group.kind,
                         name=group.name,
                         estimated_size=group.estimated_size,
                         students=group.students,
@@ -680,7 +678,6 @@ class ScheduleConfigRepository:
                 return None
             return StudentsGroups(
                 code=row.code,
-                kind=row.kind,
                 name=row.name,
                 estimated_size=row.estimated_size,
                 students=row.students,
@@ -698,7 +695,6 @@ class ScheduleConfigRepository:
             session.add(
                 StudentGroupRow(
                     code=group.code,
-                    kind=group.kind,
                     name=group.name,
                     estimated_size=group.estimated_size,
                     students=group.students,
@@ -732,7 +728,6 @@ class ScheduleConfigRepository:
                 session.flush()
                 row = StudentGroupRow(code=group.code)
                 session.add(row)
-            row.kind = group.kind
             row.name = group.name
             row.estimated_size = group.estimated_size
             row.students = group.students
@@ -995,7 +990,6 @@ class ScheduleConfigRepository:
             session.add(
                 StudentGroupRow(
                     code=group.code,
-                    kind=group.kind,
                     name=group.name,
                     estimated_size=group.estimated_size,
                     students=group.students,

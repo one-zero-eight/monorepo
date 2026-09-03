@@ -8,7 +8,6 @@ class VirtualEventGroup(ScheduleAssistantSchema):
     alias: str
     name: str
     description: str
-    kind: str
     group_code: str | None = None
     instructor_id: str | None = None
 

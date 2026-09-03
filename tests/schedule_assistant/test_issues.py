@@ -186,7 +186,7 @@ def test_meetings_from_schedule_config() -> None:
                 programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["SUM26-AAI"])],
             )
         ],
-        students_groups=[StudentsGroups(code="SUM26-AAI", kind="elective", estimated_size=25)],
+        students_groups=[StudentsGroups(code="SUM26-AAI", estimated_size=25)],
     )
     courses = CoursesConfig(
         courses=[
@@ -314,12 +314,10 @@ def test_student_email_issues_from_sections() -> None:
         students_groups=[
             StudentsGroups(
                 code="G1",
-                kind="core",
                 students=["ok@innopolis.university", "bad@gmail.com"],
             ),
             StudentsGroups(
                 code="G2",
-                kind="english",
                 students=["bad@gmail.com", "also-bad"],
             ),
         ],
@@ -341,7 +339,7 @@ def test_co_teaching_produces_single_meeting() -> None:
                 code="core", name="Core", programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])]
             )
         ],
-        students_groups=[StudentsGroups(code="G1", kind="core", estimated_size=10)],
+        students_groups=[StudentsGroups(code="G1", estimated_size=10)],
     )
     courses = CoursesConfig(
         courses=[
@@ -384,7 +382,7 @@ def test_unplaced_issues_from_schedule_config() -> None:
                 code="core", name="Core", programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])]
             )
         ],
-        students_groups=[StudentsGroups(code="G1", kind="core", estimated_size=10)],
+        students_groups=[StudentsGroups(code="G1", estimated_size=10)],
     )
 
     courses_no_sessions = CoursesConfig(
@@ -499,7 +497,7 @@ async def test_issues_check_endpoint_missing_room_and_instructor(
                     programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])],
                 )
             ],
-            students_groups=[StudentsGroups(code="G1", kind="core", estimated_size=10)],
+            students_groups=[StudentsGroups(code="G1", estimated_size=10)],
         ),
         saved_by="test@test.com",
     )
@@ -574,7 +572,7 @@ async def test_issues_check_endpoint(
                     programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])],
                 )
             ],
-            students_groups=[StudentsGroups(code="G1", kind="core", estimated_size=10)],
+            students_groups=[StudentsGroups(code="G1", estimated_size=10)],
         ),
         saved_by="test@test.com",
     )

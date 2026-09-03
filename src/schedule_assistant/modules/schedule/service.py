@@ -2,7 +2,7 @@ import datetime as dtm
 
 from fastapi import HTTPException, status
 
-from src.schedule_assistant.config import settings
+from src.schedule_assistant.modules.distributions.mapping import section_target_groups
 from src.schedule_assistant.modules.issues.schemas import (
     OccurrencePlacement,
     ScheduledMeeting,
@@ -10,7 +10,7 @@ from src.schedule_assistant.modules.issues.schemas import (
 )
 from src.schedule_assistant.modules.schedule.domain import meetings_from_schedule_config
 from src.schedule_assistant.modules.schedule.export_xlsx import export_schedule_xlsx as build_schedule_xlsx
-from src.schedule_assistant.modules.schedule.ics import group_alias, render_calendar, teacher_alias
+from src.schedule_assistant.modules.schedule.ics import english_group_alias, render_calendar, teacher_alias
 from src.schedule_assistant.modules.schedule.schemas import VirtualEventGroup
 from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
 from src.schedule_assistant.modules.schedule_config.schemas import (
@@ -36,13 +36,6 @@ def _normalize_email(email: str) -> str:
     return email.strip().casefold()
 
 
-def _published_kind(kind: str) -> bool:
-    if settings.published_group_kinds is None:
-        return True
-    published = {_normalize_email(value) for value in settings.published_group_kinds}
-    return _normalize_email(kind) in published
-
-
 def _instructor_name(instructor: InstructorConfig.Instructor) -> str:
     return (
         (instructor.name_en or "").strip()
@@ -52,17 +45,23 @@ def _instructor_name(instructor: InstructorConfig.Instructor) -> str:
     )
 
 
+def _published_student_groups() -> list[StudentsGroups]:
+    config = schedule_config_repository.get_sections()
+    english_section = next((section for section in config.sections if section.code == "english"), None)
+    if english_section is None:
+        return []
+    return section_target_groups(english_section, config.students_groups)
+
+
 def list_virtual_event_groups() -> list[VirtualEventGroup]:
     student_groups = [
         VirtualEventGroup(
-            alias=group_alias(group.kind, group.code),
+            alias=english_group_alias(group.code),
             name=group.name or group.code,
             description=f"Schedule for {group.name or group.code}",
-            kind=group.kind,
             group_code=group.code,
         )
-        for group in schedule_config_repository.get_sections().students_groups
-        if _published_kind(group.kind)
+        for group in _published_student_groups()
     ]
     instructors = filter_scheduled_instructors(
         schedule_config_repository.get_instructors(),
@@ -73,7 +72,6 @@ def list_virtual_event_groups() -> list[VirtualEventGroup]:
             alias=teacher_alias(instructor.email),
             name=_instructor_name(instructor),
             description=f"Schedule for {_instructor_name(instructor)}",
-            kind="instructor",
             instructor_id=instructor.id,
         )
         for instructor in instructors
@@ -90,10 +88,9 @@ def list_virtual_event_groups() -> list[VirtualEventGroup]:
 def get_predefined_aliases(user_email: str) -> list[str]:
     normalized_email = _normalize_email(user_email)
     aliases = [
-        group_alias(group.kind, group.code)
-        for group in schedule_config_repository.get_sections().students_groups
-        if _published_kind(group.kind)
-        and any(_normalize_email(student) == normalized_email for student in group.students)
+        english_group_alias(group.code)
+        for group in _published_student_groups()
+        if any(_normalize_email(student) == normalized_email for student in group.students)
     ]
     scheduled_instructors = filter_scheduled_instructors(
         schedule_config_repository.get_instructors(),

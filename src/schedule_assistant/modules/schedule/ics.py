@@ -21,8 +21,8 @@ def _slug(value: str) -> str:
     return slug or hashlib.sha256(value.encode()).hexdigest()[:16]
 
 
-def group_alias(group_kind: str, group_code: str) -> str:
-    return f"{_slug(group_kind)}-{_slug(group_code)}"
+def english_group_alias(group_code: str) -> str:
+    return f"english-{_slug(group_code)}"
 
 
 def teacher_alias(email: str) -> str:

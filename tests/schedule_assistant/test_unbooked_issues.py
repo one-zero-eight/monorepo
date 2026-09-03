@@ -29,7 +29,7 @@ def _checker(courses: CoursesConfig) -> IssueChecker:
                     programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])],
                 )
             ],
-            students_groups=[StudentsGroups(code="G1", kind="core", estimated_size=10)],
+            students_groups=[StudentsGroups(code="G1", estimated_size=10)],
         ),
         term=TermConfig(
             name="Summer 2026",

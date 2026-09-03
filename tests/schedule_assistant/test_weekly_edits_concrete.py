@@ -49,7 +49,11 @@ def _term() -> TermConfig:
 def _sections() -> SectionsConfig:
     return SectionsConfig(
         sections=_term().sections,
-        students_groups=[StudentsGroups(code="G1", kind="core")],
+        students_groups=[
+            StudentsGroups(
+                code="G1",
+            )
+        ],
     )
 
 

@@ -28,7 +28,6 @@ class StudentGroupRow(Base):
     __tablename__ = "student_groups"
 
     code: Mapped[str] = mapped_column(String, primary_key=True)
-    kind: Mapped[str] = mapped_column(String, nullable=False)
     name: Mapped[str | None] = mapped_column(String, nullable=True)
     estimated_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
     students: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)

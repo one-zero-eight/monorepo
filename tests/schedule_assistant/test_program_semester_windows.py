@@ -146,7 +146,11 @@ def test_validate_sections_rejects_inverted_program_semester() -> None:
                 ],
             )
         ],
-        students_groups=[StudentsGroups(code="G1", kind="core")],
+        students_groups=[
+            StudentsGroups(
+                code="G1",
+            )
+        ],
     )
     errors = validate_sections(config)
     assert any("semester.start_date must be on or before end_date" in error for error in errors)
@@ -220,7 +224,11 @@ def test_booking_slots_respect_program_semester() -> None:
     )
     sections = SectionsConfig(
         sections=term.sections,
-        students_groups=[StudentsGroups(code="B26-CSE-01", kind="core")],
+        students_groups=[
+            StudentsGroups(
+                code="B26-CSE-01",
+            )
+        ],
     )
     courses = CoursesConfig(
         courses=[

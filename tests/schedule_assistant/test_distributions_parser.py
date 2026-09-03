@@ -69,9 +69,11 @@ def test_parse_electives_bs3_ignores_academic_group_column() -> None:
 
 def test_suggest_mapping_exact_and_normalized_not_year_shift() -> None:
     targets = [
-        StudentsGroups(code="B25-CSE-01", kind="core", name="CSE 01"),
-        StudentsGroups(code="AWA-I-10", kind="english"),
-        StudentsGroups(code="python-adv", kind="elective", name="Углубленный Python"),
+        StudentsGroups(code="B25-CSE-01", name="CSE 01"),
+        StudentsGroups(
+            code="AWA-I-10",
+        ),
+        StudentsGroups(code="python-adv", name="Углубленный Python"),
     ]
     mapping = suggest_mapping(
         ["B25-CSE-01", "B24-CSE-01", "AWA-I 10", "Углубленный Python"],
@@ -92,10 +94,18 @@ def test_normalize_label_collapses_separators() -> None:
 
 def test_suggest_mapping_english_spacing_and_hyphen_variants() -> None:
     targets = [
-        StudentsGroups(code="AWA-I-1", kind="english"),
-        StudentsGroups(code="AWA-I-10", kind="english"),
-        StudentsGroups(code="EAP-6", kind="english"),
-        StudentsGroups(code="FL-3", kind="english"),
+        StudentsGroups(
+            code="AWA-I-1",
+        ),
+        StudentsGroups(
+            code="AWA-I-10",
+        ),
+        StudentsGroups(
+            code="EAP-6",
+        ),
+        StudentsGroups(
+            code="FL-3",
+        ),
     ]
     mapping = suggest_mapping(
         ["AWA-I 10", "EAP6", "AWA-I 1", "FL 3", "AWA-I 99"],
@@ -112,8 +122,12 @@ def test_suggest_mapping_english_spacing_and_hyphen_variants() -> None:
 
 def test_suggest_mapping_skips_ambiguous_normalized_targets() -> None:
     targets = [
-        StudentsGroups(code="G1", kind="core"),
-        StudentsGroups(code="G-1", kind="core"),
+        StudentsGroups(
+            code="G1",
+        ),
+        StudentsGroups(
+            code="G-1",
+        ),
     ]
     mapping = suggest_mapping(["G 1"], targets)
     assert mapping["G 1"] is None
@@ -169,10 +183,18 @@ def test_forged_english_maps_to_hyphenated_codes() -> None:
     assert set(parsed.emails_by_label) == {"AWA-I 10", "EAP6", "AWA-I 1", "FL 3"}
 
     targets = [
-        StudentsGroups(code="AWA-I-1", kind="english"),
-        StudentsGroups(code="AWA-I-10", kind="english"),
-        StudentsGroups(code="EAP-6", kind="english"),
-        StudentsGroups(code="FL-3", kind="english"),
+        StudentsGroups(
+            code="AWA-I-1",
+        ),
+        StudentsGroups(
+            code="AWA-I-10",
+        ),
+        StudentsGroups(
+            code="EAP-6",
+        ),
+        StudentsGroups(
+            code="FL-3",
+        ),
     ]
     mapping = suggest_mapping([item.label for item in parsed.labels], targets)
     assert mapping["AWA-I 10"] == "AWA-I-10"
@@ -224,8 +246,16 @@ def test_real_foreign_language_xlsx_maps_to_hyphenated_english_codes() -> None:
     assert "AWA-I 10" in parsed.emails_by_label
     assert "EAP6" in parsed.emails_by_label or any(normalize_label(label) == "eap6" for label in parsed.emails_by_label)
 
-    targets = [StudentsGroups(code=f"AWA-I-{n}", kind="english") for n in range(1, 17)] + [
-        StudentsGroups(code=f"EAP-{n}", kind="english") for n in (1, 2, 3, 4, 6, 7, 8, 9, 10, 11)
+    targets = [
+        StudentsGroups(
+            code=f"AWA-I-{n}",
+        )
+        for n in range(1, 17)
+    ] + [
+        StudentsGroups(
+            code=f"EAP-{n}",
+        )
+        for n in (1, 2, 3, 4, 6, 7, 8, 9, 10, 11)
     ]
     mapping = suggest_mapping([item.label for item in parsed.labels], targets)
     assert mapping.get("AWA-I 10") == "AWA-I-10"
