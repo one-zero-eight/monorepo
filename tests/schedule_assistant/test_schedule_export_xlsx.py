@@ -5,7 +5,7 @@ import pytest
 from httpx import AsyncClient
 from openpyxl import load_workbook
 
-from src.schedule_assistant.modules.schedule.export_xlsx import export_schedule_xlsx
+from src.schedule_assistant.modules.schedule.export_xlsx import course_fill_color, export_schedule_xlsx
 from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
 from src.schedule_assistant.modules.schedule_config.schemas import (
     ComponentSessionSeries,
@@ -262,6 +262,34 @@ def test_export_has_sheet_per_section_with_default_layouts() -> None:
     assert distributions["B5"].value == "SRE Course"
     assert distributions["C5"].value == "Electives"
     assert distributions["A6"].value == "e.student@innopolis.university"
+
+
+def test_groups_export_uses_configured_color_and_fallback() -> None:
+    configured = _sample_config()
+    configured.courses[0].color = "#123ABC"
+    configured_data, _ = export_schedule_xlsx(configured)
+    configured_fill = load_workbook(io.BytesIO(configured_data))["Core"]["B4"].fill.fgColor.rgb
+    assert configured_fill is not None
+    assert configured_fill[-6:] == "123ABC"
+    configured.courses[1].color = "#654321"
+    configured_data, _ = export_schedule_xlsx(configured)
+    electives_sheet = load_workbook(io.BytesIO(configured_data))["Electives"]
+    elective_cells = [
+        cell
+        for row in electives_sheet.iter_rows()
+        for cell in row
+        if cell.value and "SRE" in str(cell.value) and "209" in str(cell.value)
+    ]
+    assert len(elective_cells) == 1
+    assert elective_cells[0].fill.fgColor.rgb is not None
+    assert elective_cells[0].fill.fgColor.rgb[-6:] == "654321"
+
+    fallback = _sample_config()
+    fallback_data, _ = export_schedule_xlsx(fallback)
+    fallback_fill = load_workbook(io.BytesIO(fallback_data))["Core"]["B4"].fill.fgColor.rgb
+    assert fallback_fill is not None
+    assert fallback_fill[-6:] == course_fill_color("Math I")
+    assert fallback.courses[0].color is None
 
 
 def test_calendar_export_splits_programs_into_sheets() -> None:

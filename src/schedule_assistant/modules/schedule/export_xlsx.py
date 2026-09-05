@@ -4,7 +4,6 @@ import datetime as dtm
 import io
 import re
 from collections import Counter, defaultdict
-from colorsys import hls_to_rgb
 from dataclasses import dataclass
 from typing import Literal
 
@@ -34,6 +33,8 @@ from src.schedule_assistant.modules.schedule_config.semester_windows import (
 )
 from src.schedule_assistant.modules.schedule_config.validation import build_selector_map, expand_group_tokens
 from src.schedule_assistant.weekday import Weekday, week_start_for_date
+
+from .course_colors import course_color
 
 ExportLayout = Literal["groups", "compact_groups", "calendar"]
 
@@ -235,17 +236,8 @@ def cell_signature(meetings: list[ExportMeeting]) -> str:
     return "||".join(f"{pattern_signature(m)}#{i}" for i, m in enumerate(meetings))
 
 
-def course_fill_color(course: str) -> str:
-    key = course.strip() or "—"
-    h = 0
-    for ch in key:
-        h = (h * 31 + ord(ch)) & 0xFFFFFFFF
-    hue = ((h * 137.508) % 360.0) / 360.0
-    mix = (h >> 3) & 0xFF
-    sat = 0.45 + (mix % 4) * 0.08
-    light = 0.78 + ((mix >> 2) % 5) * 0.03
-    r, g, b = hls_to_rgb(hue, light, sat)
-    return f"{int(r * 255):02X}{int(g * 255):02X}{int(b * 255):02X}"
+def course_fill_color(course: str, configured_color: str | None = None) -> str:
+    return course_color(course, configured_color).removeprefix("#")
 
 
 def expand_meetings(config: ScheduleConfig) -> list[ExportMeeting]:
@@ -578,6 +570,7 @@ def _write_event_block(
     end_col: int,
     meetings: list[ExportMeeting],
     instructor_labels: dict[str, str],
+    course_colors: dict[str, str | None],
 ) -> tuple[str, str, str]:
     """Write a 3-row event (or empty) block. Returns (title, instructors, room) texts."""
     if not meetings:
@@ -596,7 +589,7 @@ def _write_event_block(
     title = meeting_title(meeting)
     instructors = format_instructors(meeting.instructors, instructor_labels)
     room = meeting.room
-    fill = PatternFill("solid", fgColor=course_fill_color(meeting.course))
+    fill = PatternFill("solid", fgColor=course_fill_color(meeting.course, course_colors.get(meeting.course)))
     ws.cell(start_row, start_col, title)
     ws.cell(start_row + 1, start_col, instructors)
     ws.cell(start_row + 2, start_col, room)
@@ -622,6 +615,7 @@ def _write_groups_sheet(
     cells: dict[tuple[Weekday, dtm.time, str], list[ExportMeeting]],
     instructor_labels: dict[str, str],
     group_sizes: dict[str, int | None],
+    course_colors: dict[str, str | None],
 ) -> None:
     days = _term_days(term)
     slots = list(term.time_slots)
@@ -716,6 +710,7 @@ def _write_groups_sheet(
                         end_col=end_col,
                         meetings=meetings,
                         instructor_labels=instructor_labels,
+                        course_colors=course_colors,
                     )
                     if meetings:
                         row_heights[0] = max(row_heights[0], _row_height_for_text(title, span))
@@ -740,6 +735,7 @@ def _write_compact_groups_sheet(
     cells: dict[tuple[Weekday, dtm.time, str], list[ExportMeeting]],
     instructor_labels: dict[str, str],
     group_sizes: dict[str, int | None],
+    course_colors: dict[str, str | None],
 ) -> None:
     time_header = ws.cell(1, 1)
     _apply_fill(time_header, TIME_HEADER_FILL, HEADER_FONT, CENTER)
@@ -801,7 +797,10 @@ def _write_compact_groups_sheet(
                 instructors = format_instructors(meeting.instructors, instructor_labels)
                 details = [part for part in (instructors, meeting.room) if part]
                 text = "\n".join((title, *details))
-                fill = PatternFill("solid", fgColor=course_fill_color(meeting.course))
+                fill = PatternFill(
+                    "solid",
+                    fgColor=course_fill_color(meeting.course, course_colors.get(meeting.course)),
+                )
                 rich_text = CellRichText(
                     TextBlock(COMPACT_TITLE_INLINE_FONT, title),
                     *(TextBlock(COMPACT_DETAIL_INLINE_FONT, f"\n{detail}") for detail in details),
@@ -951,6 +950,7 @@ def _write_calendar_sheet(
     *,
     term: TermConfig,
     meetings: list[ExportMeeting],
+    course_colors: dict[str, str | None],
     legend_rows: list[tuple[str, str, str]] | None = None,
 ) -> None:
     days = _term_days(term)
@@ -994,7 +994,19 @@ def _write_calendar_sheet(
                     unique.setdefault(pattern_signature(meeting), meeting)
                 text = "\n".join(_compact_meeting_label(m) for m in unique.values())
                 cell = ws.cell(row, i + 2, text or None)
-                _apply_fill(cell, WHITE_FILL, NORMAL_FONT, LEFT)
+                unique_meetings = list(unique.values())
+                fill = (
+                    PatternFill(
+                        "solid",
+                        fgColor=course_fill_color(
+                            unique_meetings[0].course,
+                            course_colors.get(unique_meetings[0].course),
+                        ),
+                    )
+                    if len(unique_meetings) == 1
+                    else WHITE_FILL
+                )
+                _apply_fill(cell, fill, NORMAL_FONT, LEFT)
             row += 1
 
         if week_number < len(weeks):
@@ -1299,6 +1311,7 @@ def _write_section_sheet(
     all_meetings: list[ExportMeeting],
     instructor_labels: dict[str, str],
     group_sizes: dict[str, int | None],
+    course_colors: dict[str, str | None],
 ) -> None:
     meetings = filter_meetings_for_section(all_meetings, section)
     layout = section_export_layout(section)
@@ -1319,6 +1332,7 @@ def _write_section_sheet(
                 cells=cells,
                 instructor_labels=instructor_labels,
                 group_sizes=group_sizes,
+                course_colors=course_colors,
             )
             return
         _write_groups_sheet(
@@ -1328,6 +1342,7 @@ def _write_section_sheet(
             cells=cells,
             instructor_labels=instructor_labels,
             group_sizes=group_sizes,
+            course_colors=course_colors,
         )
         return
     selector_map = build_selector_map(
@@ -1341,7 +1356,13 @@ def _write_section_sheet(
         selector_map=selector_map,
         section_code=section.code,
     )
-    _write_calendar_sheet(ws, term=config.term, meetings=meetings, legend_rows=legend_rows)
+    _write_calendar_sheet(
+        ws,
+        term=config.term,
+        meetings=meetings,
+        course_colors=course_colors,
+        legend_rows=legend_rows,
+    )
 
 
 def _next_sheet(wb: Workbook, title: str, *, first: bool) -> Worksheet:
@@ -1357,6 +1378,7 @@ def build_export_workbook(config: ScheduleConfig) -> Workbook:
     all_meetings = expand_meetings(config)
     instructor_labels = _instructor_label_by_id(config)
     group_sizes = _group_sizes(config)
+    course_colors = {course.name: course.color for course in config.courses}
     selector_map = build_selector_map(
         SectionsConfig(sections=config.term.sections, students_groups=config.students_groups)
     )
@@ -1400,6 +1422,7 @@ def build_export_workbook(config: ScheduleConfig) -> Workbook:
                     ws,
                     term=config.term,
                     meetings=program_meetings,
+                    course_colors=course_colors,
                     legend_rows=legend_rows,
                 )
             continue
@@ -1415,6 +1438,7 @@ def build_export_workbook(config: ScheduleConfig) -> Workbook:
             all_meetings=all_meetings,
             instructor_labels=instructor_labels,
             group_sizes=group_sizes,
+            course_colors=course_colors,
         )
 
     _append_summary_sheets(wb, config, used_names=used_names, instructor_labels=instructor_labels)

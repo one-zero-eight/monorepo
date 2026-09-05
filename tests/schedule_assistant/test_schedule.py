@@ -7,6 +7,7 @@ from httpx import AsyncClient
 from pydantic import SecretStr
 
 from src.schedule_assistant.modules.schedule import service
+from src.schedule_assistant.modules.schedule.course_colors import course_color, ics_color_name
 from src.schedule_assistant.modules.schedule.ics import teacher_alias
 from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
 from src.schedule_assistant.modules.schedule_config.schemas import (
@@ -112,6 +113,7 @@ def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@t
             courses=[
                 CourseConfig(
                     name="Agentic AI",
+                    color="#12AB34",
                     section_code="english",
                     components=[
                         CourseConfig.Component(
@@ -486,6 +488,7 @@ async def test_group_ics_is_valid_and_deterministic(
     assert all(event.decoded("dtstart").tzname() == "MSK" for event in events)
     assert all(event.decoded("dtstart").utcoffset() == dtm.timedelta(hours=3) for event in events)
     assert len({str(event["uid"]) for event in events}) == 2
+    assert {str(event["color"]) for event in events} == {"green"}
 
 
 def test_group_ics_handles_database_times_with_mixed_timezone_awareness(
@@ -549,6 +552,9 @@ def test_weekly_ics_uses_rrule_exdate_and_recurrence_override(
     assert override.decoded("recurrence-id").date() == dtm.date(2026, 6, 15)
     assert str(override["location"]) == "ONLINE"
     assert str(override["description"]).splitlines()[0] == "Instructor: Teacher Two"
+    expected_color = ics_color_name(course_color("Algorithms"))
+    assert str(recurring["color"]) == expected_color
+    assert str(override["color"]) == expected_color
 
 
 @pytest.mark.asyncio

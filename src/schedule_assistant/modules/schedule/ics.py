@@ -13,6 +13,8 @@ from src.schedule_assistant.modules.issues.schemas import (
 from src.schedule_assistant.modules.schedule_config.schemas import WeeklyPatternSlotEdit
 from src.schedule_assistant.weekday import week_start_for_date, weekday_index
 
+from .course_colors import course_color, ics_color_name
+
 TIMEZONE = ZoneInfo("Europe/Moscow")
 
 
@@ -104,12 +106,14 @@ def _event(
     meeting: ScheduledMeeting,
     date: dtm.date,
     instructor_names: dict[str, str],
+    color: str,
 ) -> icalendar.Event:
     event = icalendar.Event()
     event.add("uid", uid)
     event.add("dtstamp", dtm.datetime(1970, 1, 1, tzinfo=dtm.UTC))
     event.add("dtstart", dtm.datetime.combine(date, _clock_time(meeting.start_time), tzinfo=TIMEZONE))
     event.add("dtend", dtm.datetime.combine(date, _clock_time(meeting.end_time), tzinfo=TIMEZONE))
+    event.add("color", ics_color_name(color))
     _add_event_details(event, meeting, instructor_names)
     return event
 
@@ -143,10 +147,12 @@ def add_meeting(
     alias: str,
     meeting: ScheduledMeeting,
     instructor_names: dict[str, str],
+    course_colors: dict[str, str | None],
 ) -> None:
     uid = _uid(alias, meeting)
+    color = course_color(meeting.course_name, course_colors.get(meeting.course_name))
     if isinstance(meeting.placement, OccurrencePlacement):
-        calendar.add_component(_event(uid, meeting, meeting.placement.date, instructor_names))
+        calendar.add_component(_event(uid, meeting, meeting.placement.date, instructor_names, color))
         return
 
     placement = meeting.placement
@@ -156,7 +162,7 @@ def add_meeting(
     if first_date > placement.end_date:
         return
 
-    event = _event(uid, meeting, first_date, instructor_names)
+    event = _event(uid, meeting, first_date, instructor_names, color)
     event.add(
         "rrule",
         {
@@ -182,6 +188,7 @@ def add_meeting(
             _apply_edit(meeting, edit),
             edit.date or original_date,
             instructor_names,
+            color,
         )
         override.add("recurrence-id", original_start)
         calendar.add_component(override)
@@ -192,9 +199,11 @@ def render_calendar(
     calendar_name: str,
     alias_meetings: list[tuple[str, ScheduledMeeting]],
     instructor_names: dict[str, str] | None = None,
+    course_colors: dict[str, str | None] | None = None,
 ) -> bytes:
     calendar = base_calendar(calendar_name)
     resolved_instructor_names = instructor_names or {}
+    resolved_course_colors = course_colors or {}
     for alias, meeting in sorted(
         alias_meetings,
         key=lambda item: (
@@ -209,5 +218,5 @@ def render_calendar(
             item[1].component_tag,
         ),
     ):
-        add_meeting(calendar, alias, meeting, resolved_instructor_names)
+        add_meeting(calendar, alias, meeting, resolved_instructor_names, resolved_course_colors)
     return calendar.to_ical(sorted=True)

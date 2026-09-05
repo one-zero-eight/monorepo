@@ -123,7 +123,7 @@ def _concrete_meetings() -> list[ScheduledMeeting]:
     )
 
 
-def _calendar_meetings() -> list[ScheduledMeeting]:
+def _calendar_meetings(courses: list[CourseConfig] | None = None) -> list[ScheduledMeeting]:
     term = schedule_config_repository.get_term()
     if term is None:
         raise HTTPException(
@@ -131,7 +131,7 @@ def _calendar_meetings() -> list[ScheduledMeeting]:
             detail="Schedule term config is required for calendar export",
         )
     return meetings_from_schedule_config(
-        schedule_config_repository.get_courses(),
+        CoursesConfig(courses=courses) if courses is not None else schedule_config_repository.get_courses(),
         schedule_config_repository.get_sections(),
         term=term,
         expand_weekly=False,
@@ -150,15 +150,21 @@ def _instructor_names(instructors: InstructorConfig) -> dict[str, str]:
     return names
 
 
+def _course_colors(courses: list[CourseConfig]) -> dict[str, str | None]:
+    return {course.name: course.color for course in courses}
+
+
 def get_group_ics(alias: str) -> bytes:
     group = _group_by_alias(alias)
     instructors = schedule_config_repository.get_instructors()
     instructor_identities = _instructor_identities_by_group([group], instructors)
-    meetings = _meetings_for_group(_calendar_meetings(), group, instructor_identities)
+    courses = schedule_config_repository.get_courses().courses
+    meetings = _meetings_for_group(_calendar_meetings(courses), group, instructor_identities)
     return render_calendar(
         group.name,
         [(alias, meeting) for meeting in meetings],
         instructor_names=_instructor_names(instructors),
+        course_colors=_course_colors(courses),
     )
 
 
@@ -249,7 +255,8 @@ def get_aliases_ics(aliases: list[str]) -> bytes:
     groups = {alias: _group_by_alias(alias) for alias in normalized_aliases}
     instructors = schedule_config_repository.get_instructors()
     instructor_identities = _instructor_identities_by_group(list(groups.values()), instructors)
-    meetings = _calendar_meetings()
+    courses = schedule_config_repository.get_courses().courses
+    meetings = _calendar_meetings(courses)
     alias_meetings: list[tuple[str, ScheduledMeeting]] = []
     seen_meetings: set[tuple[object, ...]] = set()
     for alias, group in groups.items():
@@ -263,6 +270,7 @@ def get_aliases_ics(aliases: list[str]) -> bytes:
         "Schedule Assistant",
         alias_meetings,
         instructor_names=_instructor_names(instructors),
+        course_colors=_course_colors(courses),
     )
 
 
