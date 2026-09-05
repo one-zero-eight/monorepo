@@ -843,7 +843,10 @@ def _term_weeks(term: TermConfig) -> list[tuple[dtm.date, dtm.date]]:
     return weeks
 
 
-def _compact_meeting_label(meeting: ExportMeeting) -> str:
+def _compact_meeting_label(meeting: ExportMeeting, slot: TermTimeSlot) -> str:
+    time_suffix = ""
+    if meeting.start != slot.start_time or meeting.end != slot.end_time:
+        time_suffix = f" ({_slot_label(meeting.start, meeting.end)})"
     name = (meeting.course_short_name or meeting.course).strip() or "—"
     tag = meeting.tag.strip().lower()
     if tag and tag not in name.casefold() and tag not in {"class"}:
@@ -853,12 +856,12 @@ def _compact_meeting_label(meeting: ExportMeeting) -> str:
     groups = list(meeting.groups)
     short = (meeting.course_short_name or "").strip().casefold()
     if len(groups) == 1 and short and groups[0].casefold() == short:
-        return main
+        return f"{main}{time_suffix}"
     if groups and not (len(groups) == 1 and groups[0].casefold() == name.casefold()):
         shown = groups[:3]
         suffix = ", ".join(shown) + (", ..." if len(groups) > 3 else "")
-        return f"{main} ({suffix})"
-    return main
+        return f"{main} ({suffix}){time_suffix}"
+    return f"{main}{time_suffix}"
 
 
 def _course_audience_tokens(course: CourseConfig) -> list[str]:
@@ -992,7 +995,7 @@ def _write_calendar_sheet(
                 unique: dict[str, ExportMeeting] = {}
                 for meeting in cell_meetings:
                     unique.setdefault(pattern_signature(meeting), meeting)
-                text = "\n".join(_compact_meeting_label(m) for m in unique.values())
+                text = "\n".join(_compact_meeting_label(m, slot) for m in unique.values())
                 cell = ws.cell(row, i + 2, text or None)
                 unique_meetings = list(unique.values())
                 fill = (

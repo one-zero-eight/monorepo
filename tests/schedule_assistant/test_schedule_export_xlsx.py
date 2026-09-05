@@ -292,6 +292,51 @@ def test_groups_export_uses_configured_color_and_fallback() -> None:
     assert fallback.courses[0].color is None
 
 
+@pytest.mark.parametrize(
+    ("start_time", "end_time", "time_suffix"),
+    [
+        (dtm.time(18, 0), dtm.time(19, 30), " (18:00-19:30)"),
+        (dtm.time(18, 10), dtm.time(19, 40), " (18:10-19:40)"),
+        (dtm.time(17, 40), dtm.time(19, 30), " (17:40-19:30)"),
+        (dtm.time(18, 0), dtm.time(19, 10), " (18:00-19:10)"),
+        (dtm.time(17, 40), dtm.time(19, 10), ""),
+    ],
+)
+@pytest.mark.parametrize(
+    ("short_name", "expected_label"),
+    [("SRE", "SRE ONLINE (ELEC-01)"), ("ELEC-01", "ELEC-01 ONLINE")],
+)
+def test_calendar_export_shows_time_only_when_different_from_row_slot(
+    start_time: dtm.time,
+    end_time: dtm.time,
+    time_suffix: str,
+    short_name: str,
+    expected_label: str,
+) -> None:
+    config = _sample_config()
+    course = config.courses[1]
+    course.short_name = short_name
+    component = course.components[0]
+    component.tag = "class"
+    assert component.sessions is not None
+    component.sessions[0].dates_pattern = [
+        SessionOccurrence(
+            date=dtm.date(2026, 9, 4),
+            start_time=start_time,
+            end_time=end_time,
+            room="ONLINE",
+            instructor="t1",
+        )
+    ]
+
+    data, _ = export_schedule_xlsx(config)
+    sheet = load_workbook(io.BytesIO(data))["Electives"]
+
+    assert sheet["F2"].value == "September 4"
+    assert sheet["A8"].value == "17:40-19:10"
+    assert sheet["F8"].value == f"{expected_label}{time_suffix}"
+
+
 def test_calendar_export_splits_programs_into_sheets() -> None:
     config = _sample_config()
     electives = config.term.sections[1]
