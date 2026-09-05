@@ -12,6 +12,7 @@ from src.schedule_assistant.modules.parser.core_courses_adapter import (
     expand_grouped_core_course_lessons,
     group_core_course_lessons,
     grouped_core_course_to_json,
+    merge_identical_lessons,
 )
 from src.schedule_assistant.modules.parser.schemas import Lesson
 
@@ -112,6 +113,50 @@ def test_group_uses_majority_non_null_course_color() -> None:
     )
 
     assert grouped[0].color == "#112233"
+
+
+@pytest.mark.parametrize(
+    "colors",
+    [
+        ("#112233", "#112233", "#AABBCC"),
+        ("#AABBCC", "#112233", "#112233"),
+    ],
+)
+@pytest.mark.parametrize("merge_in_stages", [False, True])
+def test_shared_lecture_merges_across_colors_and_preserves_majority(colors, merge_in_stages) -> None:
+    lessons = [
+        _lesson(color=color).model_copy(update={"group_name": group, "students_number": 10, "a1_range": cell})
+        for color, group, cell in zip(colors, ("G1", "G2", "G3"), ("B2", "C2", "D2"))
+    ]
+    if merge_in_stages:
+        lessons = merge_identical_lessons(lessons[:2]) + lessons[2:]
+    merged = merge_identical_lessons(lessons)
+    grouped = group_core_course_lessons(merged, term_dates=TERM_DATES)
+
+    assert len(merged) == 1
+    assert len(grouped) == 1
+    assert grouped[0].color == "#112233"
+    assert len(grouped[0].components) == 1
+    component = grouped[0].components[0]
+    assert component.audience == ["G1", "G2", "G3"]
+    assert component.students_number == 30
+    assert component.a1_range == "B2;C2;D2"
+
+
+@pytest.mark.parametrize("additional_slot", [False, True])
+def test_group_rejects_tied_course_colors_after_merging(additional_slot) -> None:
+    lessons = [_lesson(color="#112233"), _lesson(color="#AABBCC")]
+    if additional_slot:
+        lessons.extend(
+            [
+                _lesson(color="#112233"),
+                _lesson(start_time=dtm.time(10, 40), end_time=dtm.time(12, 10), color="#AABBCC"),
+            ]
+        )
+    merged = merge_identical_lessons(lessons)
+
+    with pytest.raises(ValueError, match=r"History.*#112233.*#AABBCC"):
+        group_core_course_lessons(merged, term_dates=TERM_DATES)
 
 
 def test_group_rejects_tied_course_colors() -> None:

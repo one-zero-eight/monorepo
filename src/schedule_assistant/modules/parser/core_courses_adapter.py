@@ -243,11 +243,18 @@ def _lesson_to_component(lesson: Lesson) -> CoreCourseComponent:
     )
 
 
-def _majority_course_color(course: str, lessons: list[Lesson]) -> str | None:
+def _source_color_counts(lessons: list[Lesson]) -> Counter[str]:
     counts: Counter[str] = Counter()
     for lesson in lessons:
-        if lesson.color is not None:
-            counts[lesson.color] += lesson.color_count
+        if lesson.color_counts:
+            counts.update(lesson.color_counts)
+        elif lesson.color is not None:
+            counts[lesson.color] += 1
+    return counts
+
+
+def _majority_course_color(course: str, lessons: list[Lesson]) -> str | None:
+    counts = _source_color_counts(lessons)
     if not counts:
         return None
     top_count = max(counts.values())
@@ -498,7 +505,7 @@ def _process_location_item(
 
 
 def _are_lessons_identical(lesson1: Lesson, lesson2: Lesson) -> bool:
-    """Check if two lessons are identical (excluding Excel cell location)"""
+    """Check if two lessons are identical (excluding Excel cell location and color)."""
     return (
         lesson1.lesson_name == lesson2.lesson_name
         and lesson1.weekday == lesson2.weekday
@@ -506,7 +513,6 @@ def _are_lessons_identical(lesson1: Lesson, lesson2: Lesson) -> bool:
         and lesson1.end_time == lesson2.end_time
         and lesson1.room == lesson2.room
         and lesson1.teacher == lesson2.teacher
-        and lesson1.color == lesson2.color
         and lesson1.date_on == lesson2.date_on
         and lesson1.date_except == lesson2.date_except
     )
@@ -542,7 +548,7 @@ def merge_identical_lessons(lessons: list[Lesson]) -> list[Lesson]:
             lesson.a1_range = ";".join(excel_ranges)
             lesson.group_name = tuple(sorted(merged_groups))
             lesson.students_number = students_number
-            lesson.color_count = sum(item.color_count for item in group)
+            lesson.color_counts = dict(_source_color_counts(group))
             result.append(lesson)
         else:
             result.append(group[0])
