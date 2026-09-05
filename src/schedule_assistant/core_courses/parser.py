@@ -15,7 +15,9 @@ from typing import TYPE_CHECKING
 import numpy as np
 import openpyxl
 import pandas as pd
+from openpyxl.cell.cell import MergedCell
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.worksheet import Worksheet
 from pandas.core.frame import DataFrame
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -41,6 +43,8 @@ class CoreCourseCell(BaseModel):
     "Sheet name"
     a1: str | None
     "A1 coordinates of left-upper cell"
+    color: str | None = None
+    "Opaque solid fill of the subject cell as #RRGGBB"
 
     def __repr__(self):
         return "\n".join(map(str, self.value))
@@ -49,6 +53,7 @@ class CoreCourseCell(BaseModel):
 class CoreCoursesParser:
     def __init__(self):
         self.last_dfs_merged_ranges: dict[str, list[tuple[int, int, int, int]]] | None = None
+        self._subject_colors: dict[str, dict[str, str | None]] = {}
 
     def pipeline(
         self,
@@ -127,6 +132,7 @@ class CoreCoursesParser:
                     spreadsheet_id=spreadsheet_id,
                     google_sheet_name=google_sheet_name,
                     google_sheet_gid=google_sheet_gid,
+                    xlsx_sheet_name=target_sheet_name,
                 )
                 assert isinstance(grouped_dfs_with_cells, DataFrame)
                 grouped_dfs_with_cells_lst.append(grouped_dfs_with_cells)
@@ -149,6 +155,9 @@ class CoreCoursesParser:
         dfs = pd.read_excel(xlsx_file, engine="openpyxl", sheet_name=None, header=None, dtype=object)
         # ---- Clean up dataframes ----
         merged_ranges: dict[str, list[tuple[int, int, int, int]]] = defaultdict(list)
+        xlsx_file.seek(0)
+        workbook = openpyxl.load_workbook(xlsx_file)
+        self._subject_colors = {}
         for target_sheet_name in target_sheet_names:
             df = dfs[target_sheet_name]
             # ---- Select range ----
@@ -158,6 +167,10 @@ class CoreCoursesParser:
             merged_ranges[target_sheet_name] = self.merge_cells(df, xlsx_file, target_sheet_name)
             # ---- Add excel range to each 'subject' cell (first of three cells) ----
             self.assign_excel_row_and_column_to_subject(df)
+            self._subject_colors[target_sheet_name] = self._extract_subject_colors(
+                df,
+                workbook[target_sheet_name],
+            )
             # ---- Fill empty cells ----
             df = df.replace(r"^\s*$", np.nan, regex=True)
             # ---- Strip, translate and remove trailing spaces ----
@@ -168,6 +181,15 @@ class CoreCoursesParser:
             dfs[target_sheet_name] = df
 
         return dfs, merged_ranges
+
+    def _extract_subject_colors(self, df: pd.DataFrame, sheet: Worksheet) -> dict[str, str | None]:
+        colors: dict[str, str | None] = {}
+        for value in df.to_numpy().flat:
+            if not isinstance(value, str) or "$" not in value:
+                continue
+            _, coordinate = value.rsplit("$", maxsplit=1)
+            colors[coordinate] = subject_cell_fill_color(sheet, coordinate)
+        return colors
 
     def auto_detect_range(
         self, sheet_df: pd.DataFrame, xlsx_file: io.BytesIO, sheet_name: str
@@ -369,6 +391,7 @@ class CoreCoursesParser:
         google_sheet_name: str,
         google_sheet_gid: str,
         spreadsheet_id: str,
+        xlsx_sheet_name: str | None = None,
     ) -> CoreCourseCell | None:
         if all(pd.isna(y) for y in values):
             return None
@@ -386,12 +409,17 @@ class CoreCoursesParser:
         for i, v in enumerate(values):
             if v is not None and isinstance(v, str) and "$" in v:
                 values[i], a1 = v.rsplit("$", maxsplit=1)
+        subject = values[0]
+        assert subject is not None
         return CoreCourseCell(
-            value=tuple(values),
+            value=(subject, values[1], values[2]),
             spreadsheet_id=spreadsheet_id,
             google_sheet_name=google_sheet_name,
             google_sheet_gid=google_sheet_gid,
             a1=a1,
+            color=self._subject_colors.get(xlsx_sheet_name or sanitize_sheet_name(google_sheet_name), {}).get(a1)
+            if a1
+            else None,
         )
 
     def split_df_by_courses(self, df: pd.DataFrame, time_columns: list[int]) -> list[pd.DataFrame]:
@@ -457,3 +485,27 @@ def use(
             continue
 
         yield event
+
+
+def subject_cell_fill_color(sheet: Worksheet, coordinate: str) -> str | None:
+    cell = sheet[coordinate]
+    if isinstance(cell, MergedCell):
+        for merged_range in sheet.merged_cells.ranges:
+            if coordinate in merged_range:
+                cell = sheet.cell(row=merged_range.min_row, column=merged_range.min_col)
+                break
+
+    fill = cell.fill
+    if fill.fill_type != "solid":
+        return None
+    if fill.fgColor.type != "rgb" or not isinstance(fill.fgColor.rgb, str):
+        return None
+
+    rgb = fill.fgColor.rgb.upper()
+    if len(rgb) == 8:
+        if rgb[:2] not in {"00", "FF"}:
+            return None
+        rgb = rgb[2:]
+    if not re.fullmatch(r"[0-9A-F]{6}", rgb):
+        return None
+    return f"#{rgb}"

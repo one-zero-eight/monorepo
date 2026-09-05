@@ -1,5 +1,5 @@
 import datetime as dtm
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Generator
 
 from openpyxl.utils import coordinate_to_tuple, get_column_letter
@@ -243,6 +243,20 @@ def _lesson_to_component(lesson: Lesson) -> CoreCourseComponent:
     )
 
 
+def _majority_course_color(course: str, lessons: list[Lesson]) -> str | None:
+    counts: Counter[str] = Counter()
+    for lesson in lessons:
+        if lesson.color is not None:
+            counts[lesson.color] += lesson.color_count
+    if not counts:
+        return None
+    top_count = max(counts.values())
+    top_colors = sorted(color for color, count in counts.items() if count == top_count)
+    if len(top_colors) > 1:
+        raise ValueError(f"Course {course!r} has tied top colors: {', '.join(top_colors)}")
+    return top_colors[0]
+
+
 def grouped_core_course_to_json(course: GroupedCoreCourse) -> dict:
     data = course.model_dump(mode="json")
     for component in data.get("components", []):
@@ -283,6 +297,7 @@ def group_core_course_lessons(
             GroupedCoreCourse(
                 cohort=cohort or None,
                 subject=subject,
+                color=_majority_course_color(subject, bucket),
                 spreadsheet_id=spreadsheet_id,
                 google_sheet_gid=google_sheet_gid,
                 google_sheet_name=google_sheet_name,
@@ -302,6 +317,7 @@ def expand_grouped_core_course_lessons(grouped: list[GroupedCoreCourse]) -> list
             flat.append(
                 Lesson(
                     lesson_name=course.subject,
+                    color=course.color,
                     lesson_class_type=component.type,
                     weekday=component.weekday,
                     start_time=component.start_time,
@@ -346,6 +362,7 @@ def _event_to_lesson(
 ) -> Lesson:
     return Lesson(
         lesson_name=cell_event.subject,
+        color=cell_event.color,
         lesson_class_type=cell_event.class_type,
         weekday=WEEKDAYS[cell_event.weekday],
         start_time=cell_event.start_time,
@@ -442,6 +459,7 @@ def _process_location_item(
     def build_lesson() -> Lesson:
         return Lesson(
             lesson_name=cell_event.subject,
+            color=cell_event.color,
             lesson_class_type=cell_event.class_type,
             weekday=WEEKDAYS[cell_event.weekday],
             start_time=lesson_start_time,
@@ -488,6 +506,7 @@ def _are_lessons_identical(lesson1: Lesson, lesson2: Lesson) -> bool:
         and lesson1.end_time == lesson2.end_time
         and lesson1.room == lesson2.room
         and lesson1.teacher == lesson2.teacher
+        and lesson1.color == lesson2.color
         and lesson1.date_on == lesson2.date_on
         and lesson1.date_except == lesson2.date_except
     )
@@ -523,6 +542,7 @@ def merge_identical_lessons(lessons: list[Lesson]) -> list[Lesson]:
             lesson.a1_range = ";".join(excel_ranges)
             lesson.group_name = tuple(sorted(merged_groups))
             lesson.students_number = students_number
+            lesson.color_count = sum(item.color_count for item in group)
             result.append(lesson)
         else:
             result.append(group[0])

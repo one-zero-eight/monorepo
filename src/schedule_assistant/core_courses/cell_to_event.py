@@ -53,6 +53,8 @@ class CoreCourseEvent(BaseModel):
     "Sheet name"
     a1: str | None = None
     "A1 coordinates of left-upper cell, may be a range"
+    color: str | None = None
+    "Opaque solid fill of the source subject cell as #RRGGBB"
 
     subject: str
     "Event subject"
@@ -226,6 +228,7 @@ def convert_cell_to_event(
             google_sheet_gid=cell.google_sheet_gid,
             google_sheet_name=cell.google_sheet_name,
             a1=cell.a1,
+            color=cell.color,
             subject=subject,
             teacher=teacher,
             location=location,

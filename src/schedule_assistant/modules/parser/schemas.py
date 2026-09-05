@@ -60,6 +60,8 @@ class GroupedCoreCourse(ScheduleAssistantSchema):
     "Academic cohort (course row in spreadsheet)"
     subject: str
     "Subject name"
+    color: str | None = None
+    "Majority opaque solid fill from source cells as #RRGGBB"
     spreadsheet_id: str
     google_sheet_gid: str
     google_sheet_name: str
@@ -90,6 +92,10 @@ class Lesson(ScheduleAssistantSchema):
     # > Main lesson info
     lesson_name: str
     "Name of the lesson"
+    color: str | None = None
+    "Opaque solid fill from the source subject cell as #RRGGBB"
+    color_count: int = Field(default=1, exclude=True, ge=1)
+    "Number of source cells represented by this lesson during merging"
     lesson_class_type: Literal["lec", "tut", "lab", "лек", "тут", "лаб"] | str | None = None
     "Type of the lesson"
     source_type: Literal["core_course", "elective"] | None = None

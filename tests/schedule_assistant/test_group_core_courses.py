@@ -1,6 +1,12 @@
 import datetime as dtm
+import io
+
+import pytest
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import GradientFill, PatternFill
 
 from src.schedule_assistant.core_courses.location_parser import Item
+from src.schedule_assistant.core_courses.parser import subject_cell_fill_color
 from src.schedule_assistant.modules.parser.core_courses_adapter import (
     _expand_nested_location_lessons,
     expand_grouped_core_course_lessons,
@@ -22,9 +28,11 @@ def _lesson(
     date_on: list[dtm.date] | None = None,
     date_except: list[dtm.date] | None = None,
     date_from: dtm.date | None = None,
+    color: str | None = None,
 ) -> Lesson:
     return Lesson(
         lesson_name=lesson_name,
+        color=color,
         lesson_class_type=lesson_class_type,
         weekday=weekday,
         start_time=start_time,
@@ -67,6 +75,54 @@ def test_group_merges_same_subject_slots_into_one_entry():
     assert len(grouped[0].components) == 2
     assert grouped[0].components[0].type == "lec"
     assert grouped[0].components[1].start_time == dtm.time(10, 40)
+
+
+def test_subject_cell_fill_color_handles_merged_and_missing_fills() -> None:
+    workbook = Workbook()
+    sheet = workbook.active
+    assert sheet is not None
+    sheet["B2"].fill = PatternFill("solid", fgColor="FFa1b2c3")
+    sheet.merge_cells("B2:C2")
+    sheet["D2"].fill = PatternFill("solid", fgColor="80112233")
+    sheet["E2"].fill = GradientFill(stop=("112233", "445566"))
+    sheet["G2"].fill = PatternFill("solid", fgColor="00abcdef")
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+    reloaded = load_workbook(buffer).active
+    assert reloaded is not None
+
+    assert subject_cell_fill_color(reloaded, "B2") == "#A1B2C3"
+    assert subject_cell_fill_color(reloaded, "C2") == "#A1B2C3"
+    assert subject_cell_fill_color(reloaded, "D2") is None
+    assert subject_cell_fill_color(reloaded, "E2") is None
+    assert subject_cell_fill_color(reloaded, "F2") is None
+    assert subject_cell_fill_color(reloaded, "G2") == "#ABCDEF"
+
+
+def test_group_uses_majority_non_null_course_color() -> None:
+    grouped = group_core_course_lessons(
+        [
+            _lesson(color="#112233"),
+            _lesson(start_time=dtm.time(10, 40), end_time=dtm.time(12, 10), color="#112233"),
+            _lesson(start_time=dtm.time(12, 40), end_time=dtm.time(14, 10), color="#AABBCC"),
+            _lesson(start_time=dtm.time(14, 20), end_time=dtm.time(15, 50)),
+        ],
+        term_dates=TERM_DATES,
+    )
+
+    assert grouped[0].color == "#112233"
+
+
+def test_group_rejects_tied_course_colors() -> None:
+    with pytest.raises(ValueError, match=r"History.*#112233.*#AABBCC"):
+        group_core_course_lessons(
+            [
+                _lesson(color="#112233"),
+                _lesson(start_time=dtm.time(10, 40), end_time=dtm.time(12, 10), color="#AABBCC"),
+            ],
+            term_dates=TERM_DATES,
+        )
 
 
 def test_group_splits_different_subjects_and_cohorts():
