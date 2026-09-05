@@ -81,6 +81,7 @@ def _section_payloads_from_stored(sections: object) -> list[Any]:
 def _course_row_payload(row: CourseRow) -> dict[str, Any]:
     return {
         "name": row.name,
+        "color": row.color,
         "section_code": row.section_code,
         "short_name": row.short_name,
         "name_ru": row.name_ru,
@@ -93,6 +94,7 @@ def _course_row_payload(row: CourseRow) -> dict[str, Any]:
 def _course_to_row(course: CourseConfig) -> CourseRow:
     return CourseRow(
         name=course.name,
+        color=course.color,
         section_code=course.section_code,
         short_name=course.short_name,
         name_ru=course.name_ru,
@@ -473,6 +475,7 @@ class ScheduleConfigRepository:
                 session.flush()
                 session.add(_course_to_row(course))
             else:
+                row.color = course.color
                 row.section_code = course.section_code
                 row.short_name = course.short_name
                 row.name_ru = course.name_ru

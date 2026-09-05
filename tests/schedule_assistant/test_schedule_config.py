@@ -127,6 +127,39 @@ async def test_entity_crud_and_assembled_get(
 
 
 @pytest.mark.asyncio
+async def test_course_color_crud_and_history(
+    authenticated_client: AsyncClient,
+    schedule_config_repo: ScheduleConfigRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    schedule_config_repo.set_term(_minimal_term_settings(), saved_by="test@test.com")
+    schedule_config_repo.set_sections(_core_sections(), saved_by="test@test.com")
+
+    create_response = await authenticated_client.post(
+        "/schedule-config/courses",
+        json={"name": "Algorithms", "color": "#a1b2c3", "section_code": "core", "components": []},
+    )
+    assert create_response.status_code == 201
+    assert create_response.json()["color"] == "#A1B2C3"
+
+    update_response = await authenticated_client.put(
+        "/schedule-config/courses/Algorithms",
+        json={"name": "Algorithms", "color": "#445566", "section_code": "core", "components": []},
+    )
+    assert update_response.status_code == 200
+    stored_course = schedule_config_repo.get_course("Algorithms")
+    assert stored_course is not None
+    assert stored_course.color == "#445566"
+
+    history = (await authenticated_client.get("/schedule-config/history")).json()
+    event = (await authenticated_client.get(f"/schedule-config/history/{history[0]['id']}")).json()
+    snapshot = (await authenticated_client.get(f"/schedule-config/history/{history[0]['id']}/snapshot")).json()
+    assert any(change.get("path") == "/courses/0/color" for change in event["patch"])
+    assert snapshot["courses"][0]["color"] == "#445566"
+
+
+@pytest.mark.asyncio
 async def test_put_term_appends_history_and_snapshot(
     authenticated_client: AsyncClient,
     schedule_config_repo: ScheduleConfigRepository,

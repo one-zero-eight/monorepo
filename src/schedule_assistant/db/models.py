@@ -37,6 +37,7 @@ class CourseRow(Base):
     __tablename__ = "courses"
 
     name: Mapped[str] = mapped_column(String, primary_key=True)
+    color: Mapped[str | None] = mapped_column(String(7), nullable=True)
     section_code: Mapped[str] = mapped_column(String, nullable=False)
     short_name: Mapped[str | None] = mapped_column(String, nullable=True)
     name_ru: Mapped[str | None] = mapped_column(String, nullable=True)

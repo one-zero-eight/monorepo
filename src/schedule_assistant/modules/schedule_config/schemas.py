@@ -1,10 +1,11 @@
 import datetime as dtm
+import re
 from enum import StrEnum
 from pathlib import Path
 from typing import Literal, Self
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src.schedule_assistant.weekday import Weekday
 
@@ -303,6 +304,8 @@ class CourseConfig(SettingBaseModel):
 
     name: str
     "Course name"
+    color: str | None = None
+    "Optional display color in #RRGGBB format"
     section_code: str
     "Exactly one timetable section this course belongs to (term.sections[].code)"
     short_name: str | None = None
@@ -315,6 +318,16 @@ class CourseConfig(SettingBaseModel):
     "Subject-level staff with roles; preferred in event instructor pickers"
     components: list[Component]
     "Course subparts (lec/tut/lab/…) to schedule"
+
+    @field_validator("color")
+    @classmethod
+    def normalize_color(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.upper()
+        if not re.fullmatch(r"#[0-9A-F]{6}", normalized):
+            raise ValueError("color must match #RRGGBB")
+        return normalized
 
 
 class SectionsConfig(SettingBaseModel):

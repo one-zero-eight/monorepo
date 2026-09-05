@@ -2,6 +2,7 @@ import datetime as dtm
 
 import pytest
 from httpx import AsyncClient
+from pydantic import ValidationError
 
 from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
 from src.schedule_assistant.modules.schedule_config.schemas import (
@@ -69,6 +70,14 @@ def test_validate_courses_rejects_duplicate_names() -> None:
     )
     errors = validate_courses(courses, ctx)
     assert any("Duplicate course name" in error for error in errors)
+
+
+def test_course_color_normalizes_and_validates_hex() -> None:
+    course = CourseConfig(name="Algorithms", color="#a1b2c3", section_code="core", components=[])
+    assert course.color == "#A1B2C3"
+
+    with pytest.raises(ValidationError, match="color must match #RRGGBB"):
+        CourseConfig(name="Algorithms", color="A1B2C3", section_code="core", components=[])
 
 
 def test_validate_courses_rejects_unknown_student_group() -> None:
