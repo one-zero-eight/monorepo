@@ -15,6 +15,35 @@ def test_scenes_endpoint_returns_data(maps_client: TestClient):
     assert "scene_id" in payload[0]
 
 
+def test_scenes_endpoint_returns_geo_reference(maps_client: TestClient):
+    response = maps_client.get("/scenes/")
+    assert response.status_code == 200
+    scenes = {scene["scene_id"]: scene for scene in response.json()}
+
+    university_floor = scenes["university-floor-1"]
+    geo_reference = university_floor["geo_reference"]
+    assert geo_reference is not None
+    assert geo_reference["accuracy_threshold_m"] == 150
+    control_points = geo_reference["control_points"]
+    assert len(control_points) == 6
+    for point in control_points:
+        assert set(point) == {"label", "lat", "lon", "x", "y"}
+
+    # Every university floor shares the same calibration.
+    for scene_id in (
+        "university-floor-0",
+        "university-floor-2",
+        "university-floor-3",
+        "university-floor-4",
+        "university-floor-5",
+    ):
+        assert scenes[scene_id]["geo_reference"] == geo_reference
+
+    # Scenes without calibration have no location dot.
+    assert scenes["sport-complex"]["geo_reference"] is None
+    assert scenes["campus"]["geo_reference"] is None
+
+
 def test_search_endpoint_validation(maps_client: TestClient):
     response = maps_client.get("/scenes/areas/search")
     assert response.status_code == 422

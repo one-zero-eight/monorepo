@@ -29,6 +29,26 @@ class PdfExport(BaseSchema):
     "Orientation of the PDF page (horizontal or vertical)"
 
 
+class GeoControlPoint(BaseSchema):
+    label: str
+    "Human-readable note, e.g. 'garage entrance, NE corner'"
+    lat: float
+    "Real-world latitude (WGS84)"
+    lon: float
+    "Real-world longitude (WGS84)"
+    x: float
+    "Position of the same spot in the SVG user-space (viewBox units)"
+    y: float
+    "Position of the same spot in the SVG user-space (viewBox units)"
+
+
+class GeoReference(BaseSchema):
+    control_points: list[GeoControlPoint] = Field(default_factory=list)
+    "At least 2 spread-out, non-collinear points to fit a 2D affine transform; fewer means no location dot"
+    accuracy_threshold_m: float = 150
+    "Hide the location dot when the browser's reported accuracy is worse than this (meters)"
+
+
 class Scene(BaseSchema):
     scene_id: str
     "ID of the scene"
@@ -40,6 +60,8 @@ class Scene(BaseSchema):
     "PDF export layout settings"
     areas: list[Area] = Field(default_factory=list)
     "Areas of the scene"
+    geo_reference: GeoReference | None = None
+    "GPS-to-SVG calibration for the 'you are here' dot; null if the scene isn't georeferenced"
 
 
 class SearchResult(BaseModel):
