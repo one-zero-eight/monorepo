@@ -4,6 +4,7 @@ import datetime as dtm
 import json
 import time as tm
 from collections.abc import AsyncIterator
+from typing import cast
 
 from exchangelib.recurrence import Recurrence
 from fastapi import APIRouter, HTTPException, Query
@@ -18,8 +19,14 @@ from src.room_booking.modules.bmp.repository import (
     CancelAllAutoBookingsResult,
     bmp_repository,
 )
-from src.room_booking.modules.bookings.exchange_repository import exchange_booking_repository
-from src.room_booking.modules.bookings.schemas import Booking, CancelExtraBookingRequest, CreateBookingRequest
+from src.room_booking.modules.bookings.schemas import (
+    Booking,
+    CancelExtraBookingRequest,
+    CreateBookingRequest,
+    ReconcileBookingEntry,
+    ReconcileBookingResult,
+    ScopedCancelBookingRequest,
+)
 from src.room_booking.modules.bookings.tz_utils import msk_timezone
 from src.room_booking.modules.rooms.repository import room_repository
 
@@ -58,6 +65,20 @@ class BmpBatchCancelRequest(BaseModel):
     outlook_booking_ids: list[str]
 
 
+class BmpReconcileRequest(BaseModel):
+    entries: list[ReconcileBookingEntry]
+
+
+@router.post("/auto-bookings/reconcile")
+async def reconcile_auto_bookings(_: ApiKeyDep, request: BmpReconcileRequest) -> list[ReconcileBookingResult]:
+    return [await bmp_repository.reconcile_booking(entry) for entry in request.entries]
+
+
+@router.post("/auto-bookings/cancel")
+async def cancel_scoped_auto_booking(_: ApiKeyDep, request: ScopedCancelBookingRequest) -> ReconcileBookingResult:
+    return await bmp_repository.cancel_scoped_booking(request)
+
+
 def _parse_bmp_batch_entry(request: CreateBookingRequest) -> BmpBatchCreateEntry:
     if request.start >= request.end:
         raise HTTPException(400, "Start must be before end")
@@ -79,6 +100,7 @@ def _parse_bmp_batch_entry(request: CreateBookingRequest) -> BmpBatchCreateEntry
         recurrence=ews_recurrence,
         categories=request.categories,
         description=request.description,
+        operation_id=request.operation_id,
     )
 
 
@@ -93,6 +115,7 @@ async def _create_bmp_booking(request: CreateBookingRequest) -> Booking:
         recurrence=entry.recurrence,
         categories=entry.categories,
         description=entry.description,
+        operation_id=entry.operation_id,
     )
 
 
@@ -143,7 +166,7 @@ async def get_auto_booking(
 async def cancel_all_auto_bookings(
     _: ApiKeyDep,
 ) -> CancelAllAutoBookingsResult:
-    return await bmp_repository.cancel_all_auto_bookings()
+    raise HTTPException(409, "Unscoped cancellation is disabled; use /bmp/auto-bookings/cancel")
 
 
 @router.delete("/auto-bookings/batch")
@@ -151,19 +174,7 @@ async def batch_cancel_auto_bookings(
     _: ApiKeyDep,
     request: BmpBatchCancelRequest,
 ) -> CancelAllAutoBookingsResult:
-    actor_email = bmp_repository.account_email
-    t_route = tm.monotonic()
-    logger.info(f"BMP batch cancel auto bookings started: user={actor_email} count={len(request.outlook_booking_ids)}")
-    result = await bmp_repository.cancel_bookings_batch(
-        request.outlook_booking_ids,
-        email=actor_email,
-    )
-    logger.info(
-        f"BMP batch cancel auto bookings finished: user={actor_email} "
-        f"cancelled={len(result.cancelled)} failed={len(result.failed)} "
-        f"took {tm.monotonic() - t_route:.3f}s"
-    )
-    return result
+    raise HTTPException(409, "Unscoped cancellation is disabled; use /bmp/auto-bookings/cancel")
 
 
 @router.delete(
@@ -174,10 +185,7 @@ async def delete_auto_booking(
     _: ApiKeyDep,
     outlook_booking_id: str,
 ) -> None:
-    calendar_item = await bmp_repository.get_booking(outlook_booking_id)
-    if calendar_item is None:
-        raise HTTPException(404, "Booking not found")
-    await bmp_repository.cancel_booking(calendar_item, email=bmp_repository.account_email)
+    raise HTTPException(409, "Unscoped cancellation is disabled; use /bmp/auto-bookings/cancel")
 
 
 @router.post(
@@ -189,50 +197,7 @@ async def delete_auto_booking(
     },
 )
 async def cancel_extra_auto_booking(_: ApiKeyDep, request: CancelExtraBookingRequest) -> None:
-    """Cancel an unmatched schedule-assistant auto-booking (service callers only)."""
-    room = room_repository.get_by_id(room_id=request.room_id)
-    if room is None:
-        raise HTTPException(404, "Room not found")
-
-    actor_email = bmp_repository.account_email
-
-    if request.outlook_booking_id:
-        calendar_item = await exchange_booking_repository.get_booking(request.outlook_booking_id)
-        if calendar_item is None:
-            raise HTTPException(404, "Booking not found")
-        await exchange_booking_repository.cancel_booking(calendar_item, email=actor_email)
-        return
-
-    if await bmp_repository.cancel_auto_booking_by_slot(
-        room_id=request.room_id,
-        start=request.start,
-        end=request.end,
-        title=request.title,
-        email=actor_email,
-    ):
-        return
-
-    calendar_item = None
-    if request.outlook_entry_id:
-        calendar_item = await exchange_booking_repository.get_calendar_item_by_entry_id(
-            outlook_entry_id=request.outlook_entry_id,
-            room=room,
-        )
-
-    if calendar_item is None:
-        calendar_item = await exchange_booking_repository.find_calendar_item_for_room_slot(
-            room=room,
-            start=request.start,
-            end=request.end,
-            title=request.title,
-        )
-
-    if calendar_item is None:
-        raise HTTPException(404, "Booking not found")
-
-    canceled = await exchange_booking_repository.cancel_booking(calendar_item, email=actor_email)
-    if not canceled:
-        raise HTTPException(404, "Booking not found")
+    raise HTTPException(409, "Use /bmp/auto-bookings/cancel with organizer identity and explicit scope")
 
 
 @router.post(
@@ -298,13 +263,44 @@ async def iter_with_idle_pings[T](source: AsyncIterator[T], interval_s: float) -
                 pass
 
 
-def _item_event(*, index: str, title: str, result: BmpBatchItemResult) -> dict:
+def _item_event(
+    *,
+    index: str,
+    title: str,
+    result: BmpBatchItemResult,
+    operation_id: str | None = None,
+) -> dict:
     event: dict = {
         "event": "item",
         "index": index,
         "status": result.status,
         "title": title,
+        "operation_id": operation_id,
+        "outlook_booking_id": None,
+        "uid": None,
+        "organizer_mailbox": bmp_repository.account_email,
+        "room_response": "Unknown",
+        "room_presence": "unknown",
+        "checked_at": None,
     }
+    if result.booking is not None:
+        event["booking"] = result.booking.model_dump(mode="json")
+        event.update(
+            {
+                key: event["booking"][key]
+                for key in (
+                    "operation_id",
+                    "outlook_booking_id",
+                    "uid",
+                    "organizer_mailbox",
+                    "room_id",
+                    "room_response",
+                    "room_presence",
+                    "checked_at",
+                    "message_body",
+                )
+            }
+        )
     if result.error:
         event["error"] = result.error
     if result.message_body:
@@ -340,6 +336,7 @@ async def batch_auto_bookings(_: ApiKeyDep, request: BmpBatchRequest) -> Streami
                     _item_event(
                         index=key,
                         title=title,
+                        operation_id=req.operation_id,
                         result=BmpBatchItemResult(status="error", error=error),
                     )
                 )
@@ -350,6 +347,7 @@ async def batch_auto_bookings(_: ApiKeyDep, request: BmpBatchRequest) -> Streami
                     _item_event(
                         index=key,
                         title=title,
+                        operation_id=req.operation_id,
                         result=BmpBatchItemResult(status="error", error=str(e)),
                     )
                 )
@@ -368,6 +366,25 @@ async def batch_auto_bookings(_: ApiKeyDep, request: BmpBatchRequest) -> Streami
                         {
                             "event": "sent",
                             "indexes": [pending_keys[index] for index in sent_indexes],
+                            "items": [
+                                {
+                                    "index": pending_keys[index],
+                                    **(
+                                        cast(Booking, pending_entries[index].sent_booking).model_dump(mode="json")
+                                        if pending_entries[index].sent_booking is not None
+                                        else {
+                                            "operation_id": pending_entries[index].operation_id,
+                                            "room_id": pending_entries[index].room.id,
+                                            "outlook_booking_id": None,
+                                            "uid": None,
+                                            "organizer_mailbox": bmp_repository.account_email,
+                                            "room_response": "Unknown",
+                                            "room_presence": "unknown",
+                                        }
+                                    ),
+                                }
+                                for index in sent_indexes
+                            ],
                         }
                     )
                     continue
@@ -380,6 +397,7 @@ async def batch_auto_bookings(_: ApiKeyDep, request: BmpBatchRequest) -> Streami
                     _item_event(
                         index=pending_keys[entry_index],
                         title=pending_titles[entry_index],
+                        operation_id=pending_entries[entry_index].operation_id,
                         result=result,
                     )
                 )

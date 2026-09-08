@@ -1,5 +1,6 @@
 import datetime as dtm
 from enum import StrEnum
+from typing import Any, Literal
 
 from pydantic import Field
 
@@ -16,6 +17,36 @@ class ReviewKind(StrEnum):
     READY = "ready"
     BOOKED = "booked"
     CONFLICT = "conflict"
+    PENDING_APPROVAL = "pending_approval"
+    UNKNOWN = "unknown"
+    DECLINED = "declined"
+    CANCELLING = "cancelling"
+
+
+class BookingOutcome(StrEnum):
+    SUBMITTED = "submitted"
+    PENDING_APPROVAL = "pending_approval"
+    ACCEPTED = "accepted"
+    DECLINED = "declined"
+    UNKNOWN = "unknown"
+    CANCEL_REQUESTED = "cancel_requested"
+    CANCELLED = "cancelled"
+
+
+class BookingEvidence(ScheduleAssistantSchema):
+    operation_id: str | None = None
+    outlook_booking_id: str | None = None
+    uid: str | None = None
+    organizer_mailbox: str | None = None
+    room_id: str | None = None
+    room_response: Literal["Accept", "Tentative", "Decline", "Unknown", "NoResponseReceived"] | None = "Unknown"
+    room_presence: Literal["present", "absent", "unknown"] = "unknown"
+    organizer_presence: Literal["present", "absent", "unknown"] = "unknown"
+    checked_at: dtm.datetime | None = None
+    message_body: str | None = None
+    can_cancel: bool = False
+    evidence: list[str] = Field(default_factory=list)
+    cancellation_status: Literal["cancelling", "cancelled", "requires_review"] | None = None
 
 
 class BookingItemResultStatus(StrEnum):
@@ -80,6 +111,17 @@ class ReviewSlot(ScheduleAssistantSchema):
     "True when a weekly conflict can be booked around conflicting dates"
     conflicts: list[ConflictHit] = Field(default_factory=list)
     "Overlapping foreign Outlook bookings"
+    room_response: str = "Unknown"
+    room_presence: Literal["present", "absent", "unknown"] = "unknown"
+    checked_at: dtm.datetime | None = None
+    message_body: str | None = None
+    booking_ids: list[str] = Field(default_factory=list)
+    recurrence_start: str | None = None
+    recurrence_end: str | None = None
+    occurrence_dates: list[str] = Field(default_factory=list)
+    covered_dates: list[str] = Field(default_factory=list)
+    missing_dates: list[str] = Field(default_factory=list)
+    can_cancel: bool = False
 
 
 class ReviewComponent(ScheduleAssistantSchema):
@@ -106,7 +148,7 @@ class ReviewProgram(ScheduleAssistantSchema):
     courses: list[ReviewCourse]
 
 
-class ExtraAutoBooking(ScheduleAssistantSchema):
+class ExtraAutoBooking(BookingEvidence):
     extra_id: str
     "Stable id used to cancel this extra booking"
     label: str
@@ -137,9 +179,10 @@ class BatchBookRequest(ScheduleAssistantSchema):
     "Per-slot action for conflict rows: skip, book, or split"
 
 
-class BatchBookItemResult(ScheduleAssistantSchema):
+class BatchBookItemResult(BookingEvidence):
     index: str
     "Index in the submitted batch"
+    outcome: BookingOutcome = BookingOutcome.UNKNOWN
     status: BookingItemResultStatus
     title: str | None = None
     "Booking title that was submitted"
@@ -154,6 +197,8 @@ class BatchBookResponse(ScheduleAssistantSchema):
 
 
 class CancelExtraRequest(ScheduleAssistantSchema):
+    scope: Literal["series", "occurrence"]
+    occurrence_date: dtm.date | None = None
     extra_ids: list[str]
     "Extra auto-booking ids from the review tree"
 
@@ -163,15 +208,31 @@ class CancelExtraResponse(ScheduleAssistantSchema):
     "Successfully cancelled extra ids or outlook ids"
     failed: dict[str, str]
     "Map of extra id → error"
+    cancel_requested: list[str] = Field(default_factory=list)
+    "Cancellation requests awaiting verified removal"
 
 
-class BookingTaskItem(ScheduleAssistantSchema):
+class CancelBookingRequest(ScheduleAssistantSchema):
+    operation_ids: list[str] = Field(default_factory=list)
+    booking_ids: list[str] = Field(default_factory=list)
+    scope: Literal["series", "occurrence"]
+    occurrence_date: dtm.date | None = None
+
+
+class BookingTaskItem(BookingEvidence):
     index: str
     "Index in the submitted batch, or extra_id for cancel"
     title: str | None = None
     "Human-readable slot or extra label"
     status: BookingTaskItemStatus
-    "pending → sent (invite left) → ok (Accept) / error"
+    "Transport progress only; room outcome is independent"
+    outcome: BookingOutcome = BookingOutcome.UNKNOWN
+    slot_ids: list[str] = Field(default_factory=list)
+    payload: dict[str, Any] = Field(default_factory=dict)
+    history: list[dict[str, Any]] = Field(default_factory=list)
+    cancellation_scope: Literal["series", "occurrence"] | None = None
+    occurrence_date: dtm.date | None = None
+    source_operation_id: str | None = None
     error: str | None = None
     "Error message when status is error"
 
@@ -181,7 +242,7 @@ class BookingTask(ScheduleAssistantSchema):
     kind: BookingTaskKind
     status: BookingTaskStatus
     sent: int = 0
-    "Invites sent, waiting for room Accept"
+    "Invites sent; room outcome is tracked separately"
     done: int = 0
     "Items that already finished (ok or error)"
     total: int = 0

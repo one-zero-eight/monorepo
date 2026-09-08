@@ -162,7 +162,10 @@ def test_bmp_batch_valid_entry_streams_sent_then_item(
     assert response.status_code == 200
     events = _ndjson_events(response)
     assert events[0] == {"event": "started", "total": 1}
-    assert events[1] == {"event": "sent", "indexes": ["0"]}
+    assert events[1]["event"] == "sent"
+    assert events[1]["indexes"] == ["0"]
+    assert events[1]["items"][0]["index"] == "0"
+    assert events[2]["booking"]["outlook_booking_id"] == "auto-1"
     assert events[2]["event"] == "item"
     assert events[2]["index"] == "0"
     assert events[2]["status"] == "ok"
@@ -376,8 +379,8 @@ def mock_cancel_extra_by_booking_id(monkeypatch: pytest.MonkeyPatch):
     calendar_item = _calendar_item_with_user("test-user-1@innopolis.university")
     get_booking = AsyncMock(return_value=calendar_item)
     cancel_booking = AsyncMock(return_value=True)
-    monkeypatch.setattr(bmp_routes.exchange_booking_repository, "get_booking", get_booking)
-    monkeypatch.setattr(bmp_routes.exchange_booking_repository, "cancel_booking", cancel_booking)
+    monkeypatch.setattr(bmp_routes.bmp_repository, "get_booking", get_booking)
+    monkeypatch.setattr(bmp_routes.bmp_repository, "cancel_booking", cancel_booking)
     return get_booking, cancel_booking
 
 
@@ -407,9 +410,9 @@ def test_cancel_extra_auto_booking_by_outlook_id(
             "outlook_booking_id": "booking-1",
         },
     )
-    assert response.status_code == 200
-    get_booking.assert_awaited_once_with("booking-1")
-    cancel_booking.assert_awaited_once()
+    assert response.status_code == 409
+    get_booking.assert_not_awaited()
+    cancel_booking.assert_not_awaited()
 
 
 def test_cancel_extra_auto_booking_requires_api_key(
@@ -446,5 +449,5 @@ def test_cancel_extra_auto_booking_by_slot(
             "title": "Auto booking",
         },
     )
-    assert response.status_code == 200
-    mock_cancel_extra_by_bmp_slot.assert_awaited_once()
+    assert response.status_code == 409
+    mock_cancel_extra_by_bmp_slot.assert_not_awaited()

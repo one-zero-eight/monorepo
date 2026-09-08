@@ -130,10 +130,13 @@ async def test_no_unbooked_issue_when_booking_matches() -> None:
                 "start": "2026-06-08T14:20:00+03:00",
                 "end": "2026-06-08T15:50:00+03:00",
                 "categories": ["Auto", "core", "G1", "Algorithms"],
+                "uid": "algorithms-lecture",
+                "organizer_mailbox": "bmp@example.org",
+                "outlook_booking_id": "organizer-lecture",
             },
         ),
     ]
-    mock_client.get_auto_bookings.return_value = []
+    mock_client.get_auto_bookings.return_value = mock_client.get_all_bookings.return_value
 
     with patch("src.schedule_assistant.modules.issues.checker.booking_client", mock_client):
         bookings = await checker._load_booking_snapshot(

@@ -21,9 +21,15 @@ from src.schedule_assistant.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from src.schedule_assistant.modules.bookings.service import start_recovery, stop_background_tasks
+
     await inh_accounts.update_key_set()
-    yield
-    await inh_accounts.aclose()
+    start_recovery()
+    try:
+        yield
+    finally:
+        await stop_background_tasks()
+        await inh_accounts.aclose()
 
 
 app = FastAPI(

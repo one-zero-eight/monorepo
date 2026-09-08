@@ -341,7 +341,13 @@ def _slots_from_weekly_pattern(
     slots: list[BookableSlot] = []
     excluded_week_starts: set[dtm.date] = set()
 
-    for meeting_date in _weekly_meeting_dates_in_window(window, day_label):
+    meeting_dates = set(_weekly_meeting_dates_in_window(window, day_label))
+    for edit in edits:
+        if edit.date is None or not window.start_date <= edit.date <= window.end_date:
+            continue
+        week_start = week_start_for_date(edit.select_week, term.starting_day)
+        meeting_dates.add(week_start + dtm.timedelta(days=(pattern.weekday.index - week_start.weekday()) % 7))
+    for meeting_date in sorted(meeting_dates):
         edit = _edit_for_meeting_date(meeting_date, edits, term)
         if edit is None or not _edit_changes_meeting(edit):
             continue
@@ -349,6 +355,8 @@ def _slots_from_weekly_pattern(
         if edit.cancel:
             continue
         resolved_date = edit.date if edit.date else meeting_date
+        if not window.start_date <= resolved_date <= window.end_date:
+            continue
         resolved_start = (edit.start_time if edit.start_time else pattern.start_time).strftime("%H:%M:%S")
         resolved_end = (edit.end_time if edit.end_time else pattern.end_time).strftime("%H:%M:%S")
         resolved_room = _normalize_room(edit.room if edit.room else pattern.room)
@@ -458,6 +466,8 @@ def build_bookable_slots(
                     instructor = session.weekly_pattern[0].instructor
 
                 for occurrence_index, occurrence in enumerate(session.dates_pattern or []):
+                    if not window.start_date <= occurrence.date <= window.end_date:
+                        continue
                     start_time = occurrence.start_time.strftime("%H:%M:%S")
                     end_time = occurrence.end_time.strftime("%H:%M:%S")
                     room = _normalize_room(occurrence.room)

@@ -107,6 +107,10 @@ def _calendar_item(
     item.recurrence = None
     item.account.version = SimpleNamespace(build="15.0.0")
     item.my_response_type = "Accept"
+    item.uid = "uid-1"
+    item.organizer.email_address = "organizer@innopolis.ru"
+    item.legacy_free_busy_status = "Busy"
+    item.changekey = "change-1"
     return item
 
 

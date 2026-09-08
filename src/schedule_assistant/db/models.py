@@ -116,6 +116,17 @@ class DistributionUploadRow(Base):
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
+class BookingOperationRow(Base):
+    __tablename__ = "booking_operations"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    reservation_key: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
+    task_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    item: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class BookingTaskRow(Base):
     __tablename__ = "booking_tasks"
 

@@ -40,7 +40,7 @@ def test_booking_matches_payload_by_categories_and_time() -> None:
     assert booking_matches_payload(booking, payload)
 
 
-def test_slot_has_matching_booking_from_room_calendar() -> None:
+def test_room_title_without_stable_identity_does_not_prove_ownership() -> None:
     payload = _payload()
     existing = [
         {
@@ -51,7 +51,7 @@ def test_slot_has_matching_booking_from_room_calendar() -> None:
             "categories": ["Auto", "core", "BS_Y1", "Algorithms"],
         },
     ]
-    assert slot_has_matching_booking(payload, auto_bookings=[], existing_bookings=existing)
+    assert not slot_has_matching_booking(payload, auto_bookings=[], existing_bookings=existing)
 
 
 def test_slot_has_no_matching_booking() -> None:
@@ -117,6 +117,7 @@ def test_cyrillic_course_category_removed_by_exchange_still_matches() -> None:
             "<t:StartDate>2026-08-24</t:StartDate><t:EndDate>2026-12-21</t:EndDate>"
         ),
         "outlook_booking_id": "booking-1",
+        "recurrence_complete": True,
     }
 
     assert payload_matches_auto_booking(payload, booking)
@@ -148,6 +149,7 @@ def test_sanitized_categories_require_exact_title() -> None:
             "<t:StartDate>2026-08-24</t:StartDate><t:EndDate>2026-12-21</t:EndDate>"
         ),
         "outlook_booking_id": "booking-1",
+        "recurrence_complete": True,
     }
 
     assert not payload_matches_auto_booking(payload, booking)

@@ -8,7 +8,7 @@ import httpx
 from pydantic import Field
 
 from src.schedule_assistant.config import settings
-from src.schedule_assistant.modules.bookings.schemas import BookingItemResultStatus
+from src.schedule_assistant.modules.bookings.schemas import BookingEvidence, BookingItemResultStatus
 from src.schedule_assistant.schema_base import ScheduleAssistantSchema
 
 HTTP_TIMEOUT_SECONDS = 300.0
@@ -17,7 +17,7 @@ HTTP_TIMEOUT_SECONDS = 300.0
 STREAM_TIMEOUT = httpx.Timeout(connect=30.0, read=3600.0, write=120.0, pool=30.0)
 
 
-class BookingDTO(ScheduleAssistantSchema):
+class BookingDTO(BookingEvidence):
     """Booking description"""
 
     room_id: str
@@ -38,6 +38,14 @@ class BookingDTO(ScheduleAssistantSchema):
     "ID of outlook booking in service account calendar. Only set if we can manage the booking."
     outlook_entry_id: str | None = None
     "Hex Entry Id from Outlook free/busy. Set when we cannot manage the booking."
+    busy_type: str | None = None
+    source: Literal["organizer", "room", "free_busy"] = "organizer"
+    source_item_id: str | None = None
+    change_key: str | None = None
+    attendees: list[dict[str, Any]] | None = None
+    recurrence_complete: bool = Field(default_factory=lambda data: not bool(data.get("recurrence")))
+    deleted_occurrences: list[str] = Field(default_factory=list)
+    modified_occurrences: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class RoomDTO(ScheduleAssistantSchema):
@@ -67,7 +75,7 @@ class BmpStreamEventKind(StrEnum):
     PING = "ping"
 
 
-class BmpStreamEvent(ScheduleAssistantSchema):
+class BmpStreamEvent(BookingEvidence):
     event: BmpStreamEventKind
     total: int | None = None
     indexes: list[str] | None = None
@@ -75,7 +83,8 @@ class BmpStreamEvent(ScheduleAssistantSchema):
     status: BookingItemResultStatus | None = None
     title: str | None = None
     error: str | None = None
-    message_body: str | None = None
+    booking: BookingEvidence | None = None
+    items: list[BookingEvidence] = Field(default_factory=list)
 
 
 class CancelAutoBookingsResult(ScheduleAssistantSchema):
@@ -156,6 +165,26 @@ class BookingClient:
                 if not line.strip():
                     continue
                 yield BmpStreamEvent.model_validate_json(line)
+
+    async def reconcile_auto_bookings(self, entries: list[dict[str, Any]]) -> list[BookingEvidence]:
+        async with httpx.AsyncClient(headers=self._headers) as client:
+            response = await client.post(
+                urljoin(self.url, "bmp/auto-bookings/reconcile"),
+                json={"entries": entries},
+                timeout=HTTP_TIMEOUT_SECONDS,
+            )
+            response.raise_for_status()
+            return [BookingEvidence.model_validate(entry) for entry in response.json()]
+
+    async def cancel_booking_intent(self, payload: dict[str, Any]) -> BookingEvidence:
+        async with httpx.AsyncClient(headers=self._headers) as client:
+            response = await client.post(
+                urljoin(self.url, "bmp/auto-bookings/cancel"),
+                json=payload,
+                timeout=HTTP_TIMEOUT_SECONDS,
+            )
+            response.raise_for_status()
+            return BookingEvidence.model_validate(response.json())
 
     async def cancel_auto_booking(self, outlook_booking_id: str) -> None:
         async with httpx.AsyncClient(headers=self._headers) as client:

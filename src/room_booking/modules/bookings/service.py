@@ -101,7 +101,28 @@ def calendar_item_to_booking(
             version=calendar_item.account.version,
         )
 
+    organizer = cast(Mailbox | None, calendar_item.organizer)
+    organizer_mailbox = organizer.email_address if organizer else None
+    operation_id = next(
+        (
+            category.removeprefix("InnoHassleOperation:")
+            for category in (categories or [])
+            if category.startswith("InnoHassleOperation:")
+        ),
+        None,
+    )
+    room_response = next((attendee.status for attendee in attendees if attendee.assosiated_room_id == room.id), None)
     return Booking(
+        operation_id=operation_id,
+        uid=cast(str | None, calendar_item.uid),
+        organizer_mailbox=cast(str | None, organizer_mailbox),
+        room_response=room_response,
+        room_presence="present" if was_fetched_from_room_calendar else "unknown",
+        checked_at=dtm.datetime.now(dtm.UTC),
+        busy_type=cast(str | None, calendar_item.legacy_free_busy_status),
+        source="room" if was_fetched_from_room_calendar else "organizer",
+        source_item_id=str(calendar_item.id),
+        change_key=cast(str | None, calendar_item.changekey),
         room_id=room.id,
         title=cast(str, calendar_item.subject) or "Busy",
         start=to_msk(cast(dtm.datetime, calendar_item.start)),

@@ -13,7 +13,7 @@ from src.schedule_assistant.modules.bookings.review import (
     slot_label,
     split_payloads_around_conflicts,
 )
-from src.schedule_assistant.modules.bookings.schemas import BookingItemResultStatus, ConflictMode
+from src.schedule_assistant.modules.bookings.schemas import BookingEvidence, BookingItemResultStatus, ConflictMode
 from src.schedule_assistant.modules.issues.booking_slots import build_bookable_slots
 from src.schedule_assistant.modules.issues.booking_window import (
     BOOKING_FETCH_MAX_DAYS,
@@ -174,8 +174,49 @@ def _booking(
             "categories": categories,
             "recurrence": recurrence,
             "outlook_booking_id": outlook_booking_id,
+            "organizer_mailbox": "bmp@test.invalid",
+            "room_response": "Accept",
+            "room_presence": "present",
+            "checked_at": "2026-06-01T09:00:00Z",
+            "can_cancel": bool(outlook_booking_id),
         }
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("scope", ["series", "occurrence"])
+async def test_extra_series_retaining_teaching_dates_cannot_be_cancelled(
+    authenticated_client, bookings_repo, mock_booking_client, monkeypatch, scope
+):
+    from tests.schedule_assistant.test_booking_recurrence_coverage import as_dto
+
+    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    _seed(bookings_repo, courses=_weekly_courses())
+    slot = build_bookable_slots(_weekly_courses(), _sections(), _term(), {"107"})[0]
+    booking = as_dto(
+        {
+            **slot.payload,
+            "title": f"Auto: {slot.payload['title']}",
+            "recurrence": {**slot.payload["recurrence"], "until_date": "2026-08-31"},
+            "uid": "retained-series",
+            "outlook_booking_id": "retained-master",
+            "organizer_mailbox": "bmp@test.invalid",
+            "can_cancel": True,
+            "recurrence_complete": True,
+        }
+    )
+    mock_booking_client.get_all_bookings.return_value = []
+    mock_booking_client.get_auto_bookings.return_value = [booking]
+    response = await authenticated_client.get("/bookings/review")
+    assert response.status_code == 200
+    extra = response.json()["extra_auto_bookings"][0]
+    assert extra["can_cancel"] is False
+    cancellation = await authenticated_client.post(
+        "/bookings/cancel-extra",
+        json={"extra_ids": [extra["extra_id"]], "scope": scope, "occurrence_date": "2026-06-08"},
+    )
+    assert cancellation.status_code == 409
+    mock_booking_client.cancel_booking_intent.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -202,7 +243,7 @@ async def test_review_classifies_ready_booked_conflict_and_unbookable(
             title="Schedule Assistant IU Auto: Algorithms (lec)",
             start="2026-06-08T14:20:00+03:00",
             end="2026-06-08T15:50:00+03:00",
-            categories=["Auto", "core", "BS", "Algorithms"],
+            categories=["Auto", "core", "G1", "Algorithms"],
             outlook_booking_id="own-1",
         )
     ]
@@ -359,7 +400,7 @@ async def test_review_lists_extra_auto_bookings(
     assert response.status_code == 200
     extras = response.json()["extra_auto_bookings"]
     assert len(extras) == 1
-    assert extras[0]["extra_id"] == "id:extra-1"
+    assert extras[0]["extra_id"] == "id:bmp@test.invalid:extra-1"
     assert extras[0]["outlook_booking_id"] == "extra-1"
 
 
@@ -448,16 +489,29 @@ async def test_batch_and_cancel_proxy_room_booking(
     ]
     extra_review = (await authenticated_client.get("/bookings/review")).json()
     extra_id = extra_review["extra_auto_bookings"][0]["extra_id"]
-    cancel_response = await authenticated_client.post("/bookings/cancel-extra", json={"extra_ids": [extra_id]})
+    mock_booking_client.cancel_booking_intent.return_value = BookingEvidence(
+        outlook_booking_id="extra-1",
+        organizer_mailbox="bmp@test.invalid",
+        room_id="107",
+        organizer_presence="absent",
+        room_presence="present",
+        checked_at=dtm.datetime.now(dtm.UTC),
+    )
+    mock_booking_client.reconcile_auto_bookings.return_value = []
+    cancel_response = await authenticated_client.post(
+        "/bookings/cancel-extra", json={"extra_ids": [extra_id], "scope": "series"}
+    )
     assert cancel_response.status_code == 200
     cancel_body = await _wait_task(authenticated_client, cancel_response.json()["task_id"])
     assert cancel_body["status"] == "done"
-    assert extra_id in cancel_body["cancel"]["cancelled"]
-    mock_booking_client.cancel_auto_booking.assert_awaited_once_with("extra-1")
+    assert cancel_body["cancel"]["cancelled"] == []
+    assert cancel_body["items"][0]["outcome"] == "cancel_requested"
+    assert mock_booking_client.cancel_booking_intent.await_args.args[0]["outlook_booking_id"] == "extra-1"
+    assert mock_booking_client.cancel_booking_intent.await_args.args[0]["scope"] == "series"
 
 
 @pytest.mark.asyncio
-async def test_batch_marks_ok_when_stream_drops_after_outlook_create(
+async def test_batch_stays_unknown_when_only_title_time_match_after_stream_drop(
     authenticated_client: AsyncClient,
     bookings_repo: ScheduleConfigRepository,
     mock_booking_client: AsyncMock,
@@ -498,8 +552,9 @@ async def test_batch_marks_ok_when_stream_drops_after_outlook_create(
     assert response.status_code == 200
     body = await _wait_task(authenticated_client, response.json()["task_id"])
     assert body["status"] == "done"
-    assert body["error"] is None
-    assert body["items"][0]["status"] == "ok"
+    assert "incomplete chunked read" in body["error"]
+    assert body["items"][0]["status"] == "error"
+    assert body["items"][0]["outcome"] == "unknown"
 
 
 @pytest.mark.asyncio
