@@ -63,6 +63,7 @@ def expand_weekly_slot(
                 end_time=edit.end_time if edit is not None and edit.end_time is not None else slot.end_time,
                 room=edit.room if edit is not None and edit.room is not None else slot.room,
                 instructor=edit.instructor if edit is not None and edit.instructor is not None else slot.instructor,
+                notes=edit.notes if edit is not None else None,
             )
         result.append(WeeklyOccurrence(source_date=source_date, occurrence=occurrence, edit=edit))
     return result

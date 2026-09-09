@@ -41,6 +41,8 @@ class ScheduledMeeting(ScheduleAssistantSchema):
     instructor: str | list[str] | None = None
     groups: tuple[str, ...] = ()
     students_number: int | None = None
+    notes: str = ""
+    "Resolved public meeting notes, including series inheritance."
 
     @model_validator(mode="after")
     def validate_time(self) -> Self:

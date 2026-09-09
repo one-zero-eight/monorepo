@@ -102,6 +102,7 @@ from src.schedule_assistant.modules.distributions import routes as distributions
 from src.schedule_assistant.modules.instructor_preferences import routes as instructor_preferences_routes  # noqa: E402
 from src.schedule_assistant.modules.issues import routes as issues_routes  # noqa: E402
 from src.schedule_assistant.modules.parser import routes as parser_routes  # noqa: E402
+from src.schedule_assistant.modules.public_timetable import routes as public_timetable_routes  # noqa: E402
 from src.schedule_assistant.modules.schedule import routes as schedule_routes  # noqa: E402
 from src.schedule_assistant.modules.schedule_config import routes as schedule_config_routes  # noqa: E402
 from src.schedule_assistant.modules.users import routes as users_routes  # noqa: E402
@@ -116,6 +117,8 @@ app.include_router(issues_routes.router)
 popule_openapi_tags(app, issues_routes)
 app.include_router(parser_routes.router)
 popule_openapi_tags(app, parser_routes)
+app.include_router(public_timetable_routes.router)
+popule_openapi_tags(app, public_timetable_routes)
 app.include_router(schedule_routes.router)
 app.include_router(schedule_routes.integration_router)
 popule_openapi_tags(app, schedule_routes)

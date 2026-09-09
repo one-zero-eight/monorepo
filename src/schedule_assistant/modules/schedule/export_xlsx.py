@@ -96,6 +96,7 @@ class ExportMeeting:
     room: str
     instructors: tuple[str, ...]
     alternation_anchor: dtm.date | None = None
+    notes: str = ""
 
 
 @dataclass(frozen=True)
@@ -218,7 +219,7 @@ def meeting_title(meeting: ExportMeeting) -> str:
     course = meeting.course.strip() or "—"
     tag = meeting.tag.strip()
     title = f"{course} ({tag})" if tag else course
-    return f"{title}\n{alternation_label(meeting)}" if meeting.alternation_anchor else title
+    return "\n".join(part for part in (title, alternation_label(meeting), meeting.notes) if part)
 
 
 def alternation_label(meeting: ExportMeeting) -> str:
@@ -232,7 +233,7 @@ def pattern_signature(meeting: ExportMeeting) -> str:
     instructors = "|".join(meeting.instructors)
     return (
         f"{meeting.course}|{meeting.tag}|{_hhmm(meeting.start)}|{groups}|{instructors}|{meeting.room}"
-        f"|{meeting.alternation_anchor}"
+        f"|{meeting.alternation_anchor}|{meeting.notes}"
     )
 
 
@@ -270,6 +271,7 @@ def expand_meetings(config: ScheduleConfig) -> list[ExportMeeting]:
                             end=occurrence.end_time,
                             room=(occurrence.room or "").strip(),
                             instructors=_instructor_ids(occurrence.instructor),
+                            notes=occurrence.notes if occurrence.notes is not None else session.notes,
                         )
                     )
 
@@ -295,6 +297,7 @@ def expand_meetings(config: ScheduleConfig) -> list[ExportMeeting]:
                                 end=occurrence.end_time,
                                 room=(occurrence.room or "").strip(),
                                 instructors=_instructor_ids(occurrence.instructor),
+                                notes=occurrence.notes if occurrence.notes is not None else session.notes,
                                 alternation_anchor=alternation.anchor_week if alternation else None,
                             )
                         )
@@ -792,7 +795,9 @@ def _write_compact_groups_sheet(
                 meeting = meetings[0]
                 title = meeting.course_short_name or meeting.course
                 instructors = format_instructors(meeting.instructors, instructor_labels)
-                details = [part for part in (instructors, meeting.room, alternation_label(meeting)) if part]
+                details = [
+                    part for part in (instructors, meeting.room, alternation_label(meeting), meeting.notes) if part
+                ]
                 text = "\n".join((title, *details))
                 fill = PatternFill(
                     "solid",
@@ -844,6 +849,8 @@ def _compact_meeting_label(meeting: ExportMeeting, slot: TermTimeSlot) -> str:
     time_suffix = ""
     if meeting.start != slot.start_time or meeting.end != slot.end_time:
         time_suffix = f" ({_slot_label(meeting.start, meeting.end)})"
+    if meeting.notes:
+        time_suffix += f"\n{meeting.notes}"
     name = (meeting.course_short_name or meeting.course).strip() or "—"
     tag = meeting.tag.strip().lower()
     if tag and tag not in name.casefold() and tag not in {"class"}:

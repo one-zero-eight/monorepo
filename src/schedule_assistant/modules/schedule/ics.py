@@ -102,6 +102,8 @@ def _add_event_details(
         description.append(f"Instructor: {instructors}")
     if meeting.groups:
         description.append(f"Groups: {', '.join(meeting.groups)}")
+    if meeting.notes:
+        description.append(meeting.notes)
     if description:
         event.add("description", "\n".join(description))
 
@@ -130,6 +132,7 @@ def _apply_edit(meeting: ScheduledMeeting, edit: WeeklyPatternSlotEdit) -> Sched
             "end_time": edit.end_time or meeting.end_time,
             "room": edit.room if edit.room is not None else meeting.room,
             "instructor": edit.instructor if edit.instructor is not None else meeting.instructor,
+            "notes": edit.notes if edit.notes is not None else meeting.notes,
         }
     )
 

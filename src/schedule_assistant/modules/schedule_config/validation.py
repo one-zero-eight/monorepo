@@ -245,7 +245,8 @@ def _validate_weekly_slot_edits(
 
         if edit.cancel:
             has_override = any(
-                value is not None for value in (edit.date, edit.start_time, edit.end_time, edit.room, edit.instructor)
+                value is not None
+                for value in (edit.date, edit.start_time, edit.end_time, edit.room, edit.instructor, edit.notes)
             )
             if has_override:
                 errors.append(f"{edit_path}: cancel cannot be combined with field overrides")
@@ -257,6 +258,7 @@ def _validate_weekly_slot_edits(
             and edit.end_time is None
             and edit.room is None
             and edit.instructor is None
+            and edit.notes is None
         )
         if is_noop:
             errors.append(f"{edit_path}: edit must cancel or override at least one field")

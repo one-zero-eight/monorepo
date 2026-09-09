@@ -54,6 +54,7 @@ def _base_meeting(
     end_time: dtm.time,
     room: str | None,
     instructor: str | list[str] | None,
+    notes: str,
 ) -> ScheduledMeeting:
     return ScheduledMeeting(
         course_name=course.name,
@@ -65,6 +66,7 @@ def _base_meeting(
         instructor=instructor,
         groups=group_codes,
         students_number=students_number,
+        notes=notes,
     )
 
 
@@ -74,6 +76,7 @@ def _meeting_from_occurrence(
     group_codes: tuple[str, ...],
     students_number: int | None,
     occurrence: SessionOccurrence,
+    series_notes: str,
 ) -> ScheduledMeeting:
     return _base_meeting(
         course=course,
@@ -85,6 +88,7 @@ def _meeting_from_occurrence(
         end_time=occurrence.end_time,
         room=occurrence.room,
         instructor=occurrence.instructor,
+        notes=occurrence.notes if occurrence.notes is not None else series_notes,
     )
 
 
@@ -94,6 +98,7 @@ def _meeting_from_weekly_slot(
     group_codes: tuple[str, ...],
     students_number: int | None,
     slot: WeeklyPatternSlot,
+    series_notes: str,
     *,
     term: TermConfig | None = None,
     audiences: list[str] | None = None,
@@ -116,6 +121,7 @@ def _meeting_from_weekly_slot(
         end_time=slot.end_time,
         room=slot.room,
         instructor=slot.instructor,
+        notes=series_notes,
     )
 
 
@@ -125,6 +131,7 @@ def _meetings_from_weekly_slot_concrete(
     group_codes: tuple[str, ...],
     students_number: int | None,
     slot: WeeklyPatternSlot,
+    series_notes: str,
     *,
     term: TermConfig,
     audiences: list[str],
@@ -134,7 +141,7 @@ def _meetings_from_weekly_slot_concrete(
         return []
 
     return [
-        _meeting_from_occurrence(course, component_tag, group_codes, students_number, resolved.occurrence)
+        _meeting_from_occurrence(course, component_tag, group_codes, students_number, resolved.occurrence, series_notes)
         for resolved in expand_weekly_slot(slot, window, term.starting_day)
         if resolved.occurrence is not None
     ]
@@ -171,6 +178,7 @@ def meetings_from_schedule_config(
                             group_codes,
                             students_number,
                             occurrence,
+                            session.notes,
                         )
                     )
                 for slot in session.weekly_pattern or []:
@@ -187,6 +195,7 @@ def meetings_from_schedule_config(
                                 group_codes,
                                 students_number,
                                 slot,
+                                session.notes,
                                 term=term,
                                 audiences=audiences,
                             )
@@ -199,6 +208,7 @@ def meetings_from_schedule_config(
                                 group_codes,
                                 students_number,
                                 slot,
+                                session.notes,
                                 term=term,
                                 audiences=audiences,
                             )

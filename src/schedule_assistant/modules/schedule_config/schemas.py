@@ -215,6 +215,8 @@ class WeeklyPatternSlotEdit(SettingBaseModel):
     "Optional room id; defaults to the pattern room"
     instructor: str | list[str] | None = None
     "Optional instructor id(s); defaults to the pattern instructor"
+    notes: str | None = None
+    "Public notes: None inherits series notes; an empty string suppresses them"
 
 
 class WeeklyAlternation(SettingBaseModel):
@@ -256,6 +258,8 @@ class SessionOccurrence(SettingBaseModel):
     "Room id (None or empty if unknown)"
     instructor: str | list[str] | None = None
     "Instructor id(s) for this meeting"
+    notes: str | None = None
+    "Public notes: None inherits series notes; an empty string suppresses them"
 
 
 class ComponentSessionSeries(SettingBaseModel):
@@ -267,6 +271,8 @@ class ComponentSessionSeries(SettingBaseModel):
     "Fixed weekly slots for core courses"
     dates_pattern: list[SessionOccurrence] | None = None
     "Concrete placed meetings (for electives and other calendar-date series)"
+    notes: str = ""
+    "Public notes inherited by occurrences without their own override"
 
 
 class CourseConfig(SettingBaseModel):

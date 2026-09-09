@@ -218,6 +218,7 @@ def _teacher_weekly_meetings(meeting: ScheduledMeeting, identity: set[str]) -> l
                     "placement": OccurrencePlacement(date=occurrence.date),
                     "start_time": occurrence.start_time,
                     "end_time": occurrence.end_time,
+                    "notes": occurrence.notes if occurrence.notes is not None else meeting.notes,
                     "room": occurrence.room,
                     "instructor": occurrence.instructor,
                 }

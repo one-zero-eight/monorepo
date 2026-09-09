@@ -45,6 +45,7 @@ class _Occurrence:
     end_time: dtm.time | None
     room: str | None
     instructor: str | list[str] | None
+    notes: str | None
 
     @property
     def cancelled(self) -> bool:
@@ -107,6 +108,7 @@ def _expand_slot(slot: WeeklyPatternSlot, term: TermConfig, audiences: list[str]
             end_time=resolved.occurrence.end_time if resolved.occurrence else None,
             room=resolved.occurrence.room if resolved.occurrence else None,
             instructor=resolved.occurrence.instructor if resolved.occurrence else None,
+            notes=resolved.occurrence.notes if resolved.occurrence else None,
         )
         for resolved in expand_weekly_slot(slot, window, term.starting_day)
     ]
@@ -164,6 +166,8 @@ def _rebuild_slot(
             edit_payload["room"] = occurrence.room
         if _instructor_key(occurrence.instructor) != _instructor_key(candidate.instructor):
             edit_payload["instructor"] = occurrence.instructor
+        if occurrence.notes is not None:
+            edit_payload["notes"] = occurrence.notes
         if len(edit_payload) > 1:
             edits.append(WeeklyPatternSlotEdit.model_validate(edit_payload))
 
@@ -185,6 +189,7 @@ def _semantic_key(occurrences: list[_Occurrence]) -> Counter[tuple[Any, ...]]:
             occurrence.end_time,
             occurrence.room,
             _instructor_key(occurrence.instructor),
+            occurrence.notes,
         )
         for occurrence in occurrences
         if not occurrence.cancelled
