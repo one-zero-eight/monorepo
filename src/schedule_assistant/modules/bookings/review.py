@@ -113,6 +113,8 @@ def slot_label(payload: dict[str, Any], *, room: str | None, disabled_reason: st
     if isinstance(recurrence, dict):
         start_time, end_time = _slot_times(payload)
         label = _weekly_when(str(recurrence.get("weekday") or ""), start_time, end_time, room)
+        if int(recurrence.get("interval", 1)) == 2:
+            label += f" · Every other week (first: {recurrence['start_date']})"
     else:
         start = parse_booking_datetime(str(payload["start"]))
         end = parse_booking_datetime(str(payload["end"]))

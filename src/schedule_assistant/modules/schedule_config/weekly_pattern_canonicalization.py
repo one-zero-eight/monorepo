@@ -9,9 +9,11 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     WeeklyPatternSlot,
     WeeklyPatternSlotEdit,
 )
-from src.schedule_assistant.modules.schedule_config.semester_windows import (
-    meeting_dates_in_window,
-    resolve_audience_semester,
+from src.schedule_assistant.modules.schedule_config.semester_windows import resolve_audience_semester
+from src.schedule_assistant.modules.schedule_config.weekly_dates import (
+    active_weekly_dates,
+    expand_weekly_slot,
+    normalize_alternation,
 )
 from src.schedule_assistant.weekday import Weekday, week_start_for_date
 
@@ -90,38 +92,24 @@ def _pattern_dates(slot: WeeklyPatternSlot, term: TermConfig, audiences: list[st
     window = resolve_audience_semester(term, audiences)
     if window is None or (term.days and slot.weekday not in term.days):
         return []
-    return meeting_dates_in_window(window, slot.weekday.index)
+    return active_weekly_dates(window, slot.weekday, term.starting_day, slot.alternation)
 
 
 def _expand_slot(slot: WeeklyPatternSlot, term: TermConfig, audiences: list[str]) -> list[_Occurrence]:
-    edits_by_week = {week_start_for_date(edit.select_week, term.starting_day): edit for edit in (slot.edits or [])}
-    occurrences: list[_Occurrence] = []
-    for pattern_date in _pattern_dates(slot, term, audiences):
-        source_week = week_start_for_date(pattern_date, term.starting_day)
-        edit = edits_by_week.get(source_week)
-        if edit is not None and edit.cancel:
-            occurrences.append(
-                _Occurrence(
-                    source_week=source_week,
-                    date=None,
-                    start_time=None,
-                    end_time=None,
-                    room=None,
-                    instructor=None,
-                )
-            )
-            continue
-        occurrences.append(
-            _Occurrence(
-                source_week=source_week,
-                date=edit.date if edit is not None and edit.date is not None else pattern_date,
-                start_time=(edit.start_time if edit is not None and edit.start_time is not None else slot.start_time),
-                end_time=edit.end_time if edit is not None and edit.end_time is not None else slot.end_time,
-                room=edit.room if edit is not None and edit.room is not None else slot.room,
-                instructor=(edit.instructor if edit is not None and edit.instructor is not None else slot.instructor),
-            )
+    window = resolve_audience_semester(term, audiences)
+    if window is None or (term.days and slot.weekday not in term.days):
+        return []
+    return [
+        _Occurrence(
+            source_week=week_start_for_date(resolved.source_date, term.starting_day),
+            date=resolved.occurrence.date if resolved.occurrence else None,
+            start_time=resolved.occurrence.start_time if resolved.occurrence else None,
+            end_time=resolved.occurrence.end_time if resolved.occurrence else None,
+            room=resolved.occurrence.room if resolved.occurrence else None,
+            instructor=resolved.occurrence.instructor if resolved.occurrence else None,
         )
-    return occurrences
+        for resolved in expand_weekly_slot(slot, window, term.starting_day)
+    ]
 
 
 def _slot_from_signature(signature: _BaseSignature) -> WeeklyPatternSlot:
@@ -147,8 +135,9 @@ def _rebuild_slot(
     occurrences: list[_Occurrence],
     term: TermConfig,
     audiences: list[str],
+    original: WeeklyPatternSlot,
 ) -> WeeklyPatternSlot | None:
-    candidate = _slot_from_signature(signature)
+    candidate = _slot_from_signature(signature).model_copy(update={"alternation": original.alternation})
     candidate_dates = _pattern_dates(candidate, term, audiences)
     dates_by_week = {
         week_start_for_date(pattern_date, term.starting_day): pattern_date for pattern_date in candidate_dates
@@ -178,6 +167,13 @@ def _rebuild_slot(
         if len(edit_payload) > 1:
             edits.append(WeeklyPatternSlotEdit.model_validate(edit_payload))
 
+    # Dormant edits remain available if the user switches phase or disables alternation.
+    active_weeks = {occurrence.source_week for occurrence in occurrences}
+    edits.extend(
+        edit
+        for edit in original.edits or []
+        if week_start_for_date(edit.select_week, term.starting_day) not in active_weeks
+    )
     return candidate.model_copy(update={"edits": edits or None})
 
 
@@ -200,6 +196,7 @@ def canonicalize_weekly_slot(
     term: TermConfig,
     audiences: list[str],
 ) -> WeeklyPatternSlot:
+    slot = slot.model_copy(update={"alternation": normalize_alternation(slot.alternation, term.starting_day)})
     occurrences = _expand_slot(slot, term, audiences)
     if not occurrences:
         return slot
@@ -220,7 +217,7 @@ def canonicalize_weekly_slot(
     candidates: list[tuple[int, bool, int, str, WeeklyPatternSlot]] = []
     before_key = _semantic_key(occurrences)
     for signature in candidate_signatures:
-        candidate = _rebuild_slot(signature, occurrences, term, audiences)
+        candidate = _rebuild_slot(signature, occurrences, term, audiences, slot)
         if candidate is None:
             continue
         if _semantic_key(_expand_slot(candidate, term, audiences)) != before_key:

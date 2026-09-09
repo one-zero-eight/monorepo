@@ -217,6 +217,13 @@ class WeeklyPatternSlotEdit(SettingBaseModel):
     "Optional instructor id(s); defaults to the pattern instructor"
 
 
+class WeeklyAlternation(SettingBaseModel):
+    """An active week and every second week in both directions, not a start date."""
+
+    anchor_week: dtm.date
+    "Date identifying an active week, normalized using term.starting_day"
+
+
 class WeeklyPatternSlot(SettingBaseModel):
     """Fixed weekly day/time for one meeting in a recurring core-course component."""
 
@@ -230,6 +237,8 @@ class WeeklyPatternSlot(SettingBaseModel):
     "Room id from spreadsheet (for example, 460 or ONLINE)"
     instructor: str | list[str] | None = None
     "Instructor id, or list of ids for co-teaching"
+    alternation: WeeklyAlternation | None = None
+    "None means weekly; otherwise every two weeks in the anchor phase for the whole semester"
     edits: list[WeeklyPatternSlotEdit] | None = None
     "Per-week overrides or cancellations keyed by ``select_week``"
 

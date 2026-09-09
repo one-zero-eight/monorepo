@@ -8,10 +8,10 @@ import icalendar
 from src.schedule_assistant.modules.issues.schemas import (
     OccurrencePlacement,
     ScheduledMeeting,
-    WeeklyPatternPlacement,
 )
-from src.schedule_assistant.modules.schedule_config.schemas import WeeklyPatternSlotEdit
-from src.schedule_assistant.weekday import week_start_for_date, weekday_index
+from src.schedule_assistant.modules.schedule_config.schemas import TermConfig, WeeklyPatternSlot, WeeklyPatternSlotEdit
+from src.schedule_assistant.modules.schedule_config.weekly_dates import active_weekly_dates, expand_weekly_slot
+from src.schedule_assistant.weekday import week_start_for_date
 
 from .course_colors import course_color, ics_color_name
 
@@ -67,6 +67,11 @@ def _uid(alias: str, meeting: ScheduledMeeting) -> str:
                 meeting.placement.weekday.value,
                 str(meeting.placement.start_date),
                 str(meeting.placement.end_date),
+                str(
+                    week_start_for_date(meeting.placement.alternation.anchor_week, meeting.placement.starting_day)
+                    if meeting.placement.alternation
+                    else None
+                ),
             ]
         )
     identity = "\x1f".join(
@@ -118,19 +123,6 @@ def _event(
     return event
 
 
-def _weekly_occurrence_date(placement: WeeklyPatternPlacement, selected_week: dtm.date) -> dtm.date:
-    week_start = week_start_for_date(selected_week, placement.starting_day)
-    day_offset = (weekday_index(placement.weekday.value) - placement.starting_day.index) % 7
-    return week_start + dtm.timedelta(days=day_offset)
-
-
-def _first_weekly_date(placement: WeeklyPatternPlacement) -> dtm.date:
-    if placement.start_date is None:
-        raise TypeError("Weekly ICS generation requires a start date")
-    day_offset = (weekday_index(placement.weekday.value) - placement.start_date.weekday()) % 7
-    return placement.start_date + dtm.timedelta(days=day_offset)
-
-
 def _apply_edit(meeting: ScheduledMeeting, edit: WeeklyPatternSlotEdit) -> ScheduledMeeting:
     return meeting.model_copy(
         update={
@@ -156,29 +148,42 @@ def add_meeting(
         return
 
     placement = meeting.placement
-    if placement.end_date is None:
-        raise TypeError("Weekly ICS generation requires an end date")
-    first_date = _first_weekly_date(placement)
-    if first_date > placement.end_date:
+    if placement.start_date is None or placement.end_date is None:
+        raise TypeError("Weekly ICS generation requires start and end dates")
+    window = TermConfig.DateRange(start_date=placement.start_date, end_date=placement.end_date)
+    dates = active_weekly_dates(window, placement.weekday, placement.starting_day, placement.alternation)
+    if not dates:
         return
+    first_date = dates[0]
 
     event = _event(uid, meeting, first_date, instructor_names, color)
     event.add(
         "rrule",
         {
             "freq": "weekly",
+            **({"interval": 2} if placement.alternation else {}),
             "until": dtm.datetime.combine(
                 placement.end_date,
                 dtm.time(23, 59, 59),
                 tzinfo=TIMEZONE,
-            ),
+            ).astimezone(dtm.UTC),
         },
     )
 
-    for edit in placement.edits:
-        original_date = _weekly_occurrence_date(placement, edit.select_week)
-        if original_date < first_date or original_date > placement.end_date:
+    slot = WeeklyPatternSlot(
+        weekday=placement.weekday,
+        alternation=placement.alternation,
+        edits=placement.edits,
+        start_time=meeting.start_time,
+        end_time=meeting.end_time,
+        room=meeting.room,
+        instructor=meeting.instructor,
+    )
+    for resolved in expand_weekly_slot(slot, window, placement.starting_day):
+        edit = resolved.edit
+        if edit is None:
             continue
+        original_date = resolved.source_date
         original_start = dtm.datetime.combine(original_date, _clock_time(meeting.start_time), tzinfo=TIMEZONE)
         if edit.cancel:
             event.add("exdate", original_start)

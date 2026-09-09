@@ -15,10 +15,6 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
 from src.schedule_assistant.modules.distributions.mapping import iter_section_group_codes
-from src.schedule_assistant.modules.issues.booking_slots import (
-    _edit_for_meeting_date,
-    _weekly_meeting_dates_in_window,
-)
 from src.schedule_assistant.modules.schedule_config.schemas import (
     CourseConfig,
     ScheduleConfig,
@@ -32,6 +28,7 @@ from src.schedule_assistant.modules.schedule_config.semester_windows import (
     union_semester_window,
 )
 from src.schedule_assistant.modules.schedule_config.validation import build_selector_map, expand_group_tokens
+from src.schedule_assistant.modules.schedule_config.weekly_dates import expand_weekly_slot, normalize_alternation
 from src.schedule_assistant.weekday import Weekday, week_start_for_date
 
 from .course_colors import course_color
@@ -98,6 +95,7 @@ class ExportMeeting:
     end: dtm.time
     room: str
     instructors: tuple[str, ...]
+    alternation_anchor: dtm.date | None = None
 
 
 @dataclass(frozen=True)
@@ -219,15 +217,23 @@ def format_instructors(ids: tuple[str, ...], labels: dict[str, str]) -> str:
 def meeting_title(meeting: ExportMeeting) -> str:
     course = meeting.course.strip() or "—"
     tag = meeting.tag.strip()
-    if tag:
-        return f"{course} ({tag})"
-    return course
+    title = f"{course} ({tag})" if tag else course
+    return f"{title}\n{alternation_label(meeting)}" if meeting.alternation_anchor else title
+
+
+def alternation_label(meeting: ExportMeeting) -> str:
+    if meeting.alternation_anchor is None:
+        return ""
+    return f"Every other week (active week: {meeting.alternation_anchor.isoformat()})"
 
 
 def pattern_signature(meeting: ExportMeeting) -> str:
     groups = "|".join(sorted(meeting.groups))
     instructors = "|".join(meeting.instructors)
-    return f"{meeting.course}|{meeting.tag}|{_hhmm(meeting.start)}|{groups}|{instructors}|{meeting.room}"
+    return (
+        f"{meeting.course}|{meeting.tag}|{_hhmm(meeting.start)}|{groups}|{instructors}|{meeting.room}"
+        f"|{meeting.alternation_anchor}"
+    )
 
 
 def cell_signature(meetings: list[ExportMeeting]) -> str:
@@ -273,32 +279,23 @@ def expand_meetings(config: ScheduleConfig) -> list[ExportMeeting]:
                     window = resolve_audience_semester(term, list(tokens))
                     if window is None:
                         continue
-                    for meeting_date in _weekly_meeting_dates_in_window(window, slot.weekday):
-                        edit = _edit_for_meeting_date(meeting_date, slot.edits or [], term)
-                        if edit is not None and edit.cancel:
+                    alternation = normalize_alternation(slot.alternation, term.starting_day)
+                    for resolved in expand_weekly_slot(slot, window, term.starting_day):
+                        occurrence = resolved.occurrence
+                        if occurrence is None:
                             continue
-                        resolved_date = edit.date if edit is not None and edit.date is not None else meeting_date
-                        resolved_start = (
-                            edit.start_time if edit is not None and edit.start_time is not None else slot.start_time
-                        )
-                        resolved_end = (
-                            edit.end_time if edit is not None and edit.end_time is not None else slot.end_time
-                        )
-                        resolved_room = edit.room if edit is not None and edit.room is not None else slot.room
-                        resolved_instructor = (
-                            edit.instructor if edit is not None and edit.instructor is not None else slot.instructor
-                        )
                         meetings.append(
                             ExportMeeting(
                                 course=course.name,
                                 course_short_name=short_name,
                                 tag=str(component.tag),
                                 groups=groups,
-                                date=resolved_date,
-                                start=resolved_start,
-                                end=resolved_end,
-                                room=(resolved_room or "").strip(),
-                                instructors=_instructor_ids(resolved_instructor),
+                                date=occurrence.date,
+                                start=occurrence.start_time,
+                                end=occurrence.end_time,
+                                room=(occurrence.room or "").strip(),
+                                instructors=_instructor_ids(occurrence.instructor),
+                                alternation_anchor=alternation.anchor_week if alternation else None,
                             )
                         )
     return meetings
@@ -795,7 +792,7 @@ def _write_compact_groups_sheet(
                 meeting = meetings[0]
                 title = meeting.course_short_name or meeting.course
                 instructors = format_instructors(meeting.instructors, instructor_labels)
-                details = [part for part in (instructors, meeting.room) if part]
+                details = [part for part in (instructors, meeting.room, alternation_label(meeting)) if part]
                 text = "\n".join((title, *details))
                 fill = PatternFill(
                     "solid",
@@ -980,7 +977,9 @@ def _write_calendar_sheet(
         week_cell = ws.cell(row, 1, f"Week {week_number}")
         _apply_fill(week_cell, WEEK_HEADER_FILL, TITLE_FONT, CENTER)
         for i, day in enumerate(days):
-            day_date = week_start_for_date(week_start, term.starting_day) + dtm.timedelta(days=day.index)
+            day_date = week_start_for_date(week_start, term.starting_day) + dtm.timedelta(
+                days=(day.index - term.starting_day.index) % 7
+            )
             label = day_date.strftime("%B ") + str(day_date.day)
             cell = ws.cell(row, i + 2, label)
             _apply_fill(cell, WEEK_HEADER_FILL, TITLE_FONT, CENTER)
@@ -990,7 +989,9 @@ def _write_calendar_sheet(
             time_cell = ws.cell(row, 1, _slot_label(slot.start_time, slot.end_time))
             _apply_fill(time_cell, WHITE_FILL, NORMAL_FONT, CENTER)
             for i, day in enumerate(days):
-                day_date = week_start_for_date(week_start, term.starting_day) + dtm.timedelta(days=day.index)
+                day_date = week_start_for_date(week_start, term.starting_day) + dtm.timedelta(
+                    days=(day.index - term.starting_day.index) % 7
+                )
                 cell_meetings = by_key.get((day_date, slot.start_time), [])
                 unique: dict[str, ExportMeeting] = {}
                 for meeting in cell_meetings:

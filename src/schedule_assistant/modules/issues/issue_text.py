@@ -68,7 +68,8 @@ def format_meeting_when(meeting: ScheduledMeeting, *, include_time: bool = True)
         return f"{_format_date(placement.date)}{time_suffix}"
 
     assert isinstance(placement, WeeklyPatternPlacement)
-    return f"{_WEEKDAY_WHEN_RU[placement.weekday]}{time_suffix}"
+    recurrence_suffix = " через неделю" if placement.alternation else ""
+    return f"{_WEEKDAY_WHEN_RU[placement.weekday]}{time_suffix}{recurrence_suffix}"
 
 
 def _quoted_course_names(meetings: list[ScheduledMeeting]) -> str:

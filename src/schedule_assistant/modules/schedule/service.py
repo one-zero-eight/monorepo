@@ -1,5 +1,3 @@
-import datetime as dtm
-
 from fastapi import HTTPException, status
 
 from src.schedule_assistant.modules.distributions.mapping import section_target_groups
@@ -19,7 +17,8 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     InstructorConfig,
     SectionsConfig,
     StudentsGroups,
-    WeeklyPatternSlotEdit,
+    TermConfig,
+    WeeklyPatternSlot,
 )
 from src.schedule_assistant.modules.schedule_config.visibility import (
     filter_courses_for_instructor,
@@ -29,7 +28,7 @@ from src.schedule_assistant.modules.schedule_config.visibility import (
     instructor_identity_values,
     meeting_instructor_matches,
 )
-from src.schedule_assistant.weekday import week_start_for_date, weekday_index
+from src.schedule_assistant.modules.schedule_config.weekly_dates import expand_weekly_slot, normalize_alternation
 
 
 def _normalize_email(email: str) -> str:
@@ -182,12 +181,6 @@ def _instructor_identities_by_group(
     return identities
 
 
-def _weekly_edit_date(placement: WeeklyPatternPlacement, edit: WeeklyPatternSlotEdit) -> dtm.date:
-    week_start = week_start_for_date(edit.select_week, placement.starting_day)
-    day_offset = (weekday_index(placement.weekday.value) - placement.starting_day.index) % 7
-    return edit.date or week_start + dtm.timedelta(days=day_offset)
-
-
 def _teacher_weekly_meetings(meeting: ScheduledMeeting, identity: set[str]) -> list[ScheduledMeeting]:
     placement = meeting.placement
     if not isinstance(placement, WeeklyPatternPlacement):
@@ -202,18 +195,31 @@ def _teacher_weekly_meetings(meeting: ScheduledMeeting, identity: set[str]) -> l
         ]
         return [meeting.model_copy(update={"placement": placement.model_copy(update={"edits": edits})})]
 
+    if placement.start_date is None or placement.end_date is None:
+        raise TypeError("Teacher calendar generation requires start and end dates")
+    slot = WeeklyPatternSlot(
+        weekday=placement.weekday,
+        alternation=placement.alternation,
+        edits=placement.edits,
+        start_time=meeting.start_time,
+        end_time=meeting.end_time,
+        room=meeting.room,
+        instructor=meeting.instructor,
+    )
+    window = TermConfig.DateRange(start_date=placement.start_date, end_date=placement.end_date)
     occurrences: list[ScheduledMeeting] = []
-    for edit in placement.edits:
-        if edit.cancel or not meeting_instructor_matches(edit.instructor, identity):
+    for resolved in expand_weekly_slot(slot, window, placement.starting_day):
+        occurrence = resolved.occurrence
+        if occurrence is None or not meeting_instructor_matches(occurrence.instructor, identity):
             continue
         occurrences.append(
             meeting.model_copy(
                 update={
-                    "placement": OccurrencePlacement(date=_weekly_edit_date(placement, edit)),
-                    "start_time": edit.start_time or meeting.start_time,
-                    "end_time": edit.end_time or meeting.end_time,
-                    "room": edit.room if edit.room is not None else meeting.room,
-                    "instructor": edit.instructor,
+                    "placement": OccurrencePlacement(date=occurrence.date),
+                    "start_time": occurrence.start_time,
+                    "end_time": occurrence.end_time,
+                    "room": occurrence.room,
+                    "instructor": occurrence.instructor,
                 }
             )
         )
@@ -235,7 +241,13 @@ def _meetings_for_group(
 
 def _meeting_identity(meeting: ScheduledMeeting) -> tuple[object, ...]:
     placement = meeting.placement
+    alternation = (
+        normalize_alternation(placement.alternation, placement.starting_day)
+        if isinstance(placement, WeeklyPatternPlacement)
+        else None
+    )
     return (
+        alternation.anchor_week if alternation else None,
         meeting.course_name,
         meeting.component_tag,
         getattr(placement, "date", None),

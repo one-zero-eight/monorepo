@@ -386,7 +386,7 @@ def test_repair_reports_excess_series_without_allowing_live_apply() -> None:
     assert series["requires_exchange_validation"] is True
 
 
-def test_edit_moved_from_outside_window_into_teaching_window_is_kept() -> None:
+def test_edit_without_source_in_teaching_window_does_not_create_meeting() -> None:
     revised, _ = prepare_repair(_fall_config(), {"electives/Y3": 3}, [])
     sessions = revised.courses[0].components[0].sessions
     assert sessions is not None
@@ -398,7 +398,7 @@ def test_edit_moved_from_outside_window_into_teaching_window_is_kept() -> None:
         CoursesConfig(courses=revised.courses), SectionsConfig(sections=revised.term.sections), revised.term, {"209"}
     )
     dates = {start.date().isoformat() for slot in slots for start, _ in iter_payload_occurrences(slot.payload)}
-    assert "2026-12-07" in dates
+    assert "2026-12-07" not in dates
     assert "2026-12-11" not in dates
 
 

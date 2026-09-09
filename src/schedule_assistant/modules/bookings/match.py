@@ -300,7 +300,25 @@ def booking_matches_payload_identity(booking: dict[str, Any], payload: dict[str,
     return not booking_program
 
 
+def _recurrence_cadence_matches(payload: dict[str, Any], booking: dict[str, Any]) -> bool:
+    requested = auto_recurrence_fields(payload.get("recurrence"))
+    actual = auto_recurrence_fields(booking.get("recurrence"))
+    if requested is None or actual is None:
+        return requested is None and actual is None
+    interval = int(requested.get("interval", 1))
+    if interval != int(actual.get("interval", 1)) or requested["weekday"] != actual["weekday"]:
+        return False
+    target = _API_WEEKDAY_TO_PYTHON[requested["weekday"]]
+    requested_start = dtm.date.fromisoformat(str(requested["start_date"]))
+    actual_start = dtm.date.fromisoformat(str(actual["start_date"]))
+    requested_first = requested_start + dtm.timedelta(days=(target - requested_start.weekday()) % 7)
+    actual_first = actual_start + dtm.timedelta(days=(target - actual_start.weekday()) % 7)
+    return (requested_first - actual_first).days % (7 * interval) == 0
+
+
 def payload_matches_auto_booking(payload: dict[str, Any], auto_booking: dict[str, Any]) -> bool:
+    if not _recurrence_cadence_matches(payload, auto_booking):
+        return False
     if not _auto_booking_matches_weekly_payload_identity(payload, auto_booking):
         return False
     if not auto_booking.get("recurrence_complete", not bool(auto_booking.get("recurrence"))):
@@ -378,6 +396,8 @@ def find_matching_auto_booking(
     expected = set(iter_payload_occurrences(payload))
     for booking in auto_bookings:
         if not _auto_booking_matches_weekly_payload_identity(payload, booking):
+            continue
+        if not _recurrence_cadence_matches(payload, booking):
             continue
         if not booking.get("recurrence_complete", not bool(booking.get("recurrence"))):
             continue
@@ -555,7 +575,14 @@ def booking_coverage(
         incomplete = not booking.get("recurrence_complete", not bool(booking.get("recurrence"))) or bool(
             booking.get("recurrence") and not occurrences
         )
-        result.uncertain |= incomplete
+        cadence_mismatch = bool(
+            payload.get("recurrence")
+            and booking.get("recurrence")
+            and not _recurrence_cadence_matches(payload, booking)
+        )
+        # Keep known coverage/reservations to prevent duplicate bookings, but do
+        # not present a different cadence as an equivalent, completed series.
+        result.uncertain |= incomplete or cadence_mismatch
         if not incomplete:
             result.covered.update(matching)
     for booking in existing_bookings or []:

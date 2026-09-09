@@ -1,57 +1,51 @@
 import datetime as dtm
 from collections.abc import Iterator
 
-from src.schedule_assistant.modules.issues.schemas import (
-    OccurrencePlacement,
-    ScheduledMeeting,
-    WeeklyPatternPlacement,
-)
-from src.schedule_assistant.modules.schedule_config.schemas import WeeklyPatternSlotEdit
-from src.schedule_assistant.weekday import Weekday, week_start_for_date, weekday_index
+from src.schedule_assistant.modules.issues.schemas import OccurrencePlacement, ScheduledMeeting, WeeklyPatternPlacement
+from src.schedule_assistant.modules.schedule_config.schemas import TermConfig, WeeklyPatternSlot
+from src.schedule_assistant.modules.schedule_config.weekly_dates import expand_weekly_slot
+from src.schedule_assistant.weekday import Weekday, week_start_for_date
 
 
-def _edit_for_date(
-    check_date: dtm.date,
-    edits: list[WeeklyPatternSlotEdit],
-    *,
-    starting_day: Weekday = Weekday.MONDAY,
-) -> WeeklyPatternSlotEdit | None:
-    week_key = week_start_for_date(check_date, starting_day)
-    for edit in edits:
-        if week_start_for_date(edit.select_week, starting_day) == week_key:
-            return edit
-    return None
+def _concrete_meetings(
+    meeting: ScheduledMeeting,
+    start_date: dtm.date,
+    end_date: dtm.date,
+    starting_day: Weekday,
+) -> Iterator[ScheduledMeeting]:
+    placement = meeting.placement
+    if isinstance(placement, OccurrencePlacement):
+        if start_date <= placement.date <= end_date:
+            yield meeting
+        return
 
-
-def _is_week_cancelled(
-    check_date: dtm.date,
-    edits: list[WeeklyPatternSlotEdit],
-    *,
-    starting_day: Weekday = Weekday.MONDAY,
-) -> bool:
-    edit = _edit_for_date(check_date, edits, starting_day=starting_day)
-    return bool(edit and edit.cancel)
-
-
-def _resolved_occurrence_date(
-    pattern_date: dtm.date,
-    edits: list[WeeklyPatternSlotEdit],
-    *,
-    starting_day: Weekday = Weekday.MONDAY,
-) -> dtm.date | None:
-    edit = _edit_for_date(pattern_date, edits, starting_day=starting_day)
-    if edit and edit.cancel:
-        return None
-    if edit and edit.date is not None:
-        return edit.date
-    return pattern_date
-
-
-def _iter_term_dates(start_date: dtm.date, end_date: dtm.date) -> Iterator[dtm.date]:
-    current = start_date
-    while current <= end_date:
-        yield current
-        current += dtm.timedelta(days=1)
+    # A destination query must still see moves originating outside that query.
+    selected_weeks = [week_start_for_date(edit.select_week, starting_day) for edit in placement.edits]
+    source_start = placement.start_date or min([start_date, *selected_weeks])
+    source_end = placement.end_date or max([end_date, *(week + dtm.timedelta(days=6) for week in selected_weeks)])
+    slot = WeeklyPatternSlot(
+        weekday=placement.weekday,
+        alternation=placement.alternation,
+        edits=placement.edits,
+        start_time=meeting.start_time,
+        end_time=meeting.end_time,
+        room=meeting.room,
+        instructor=meeting.instructor,
+    )
+    window = TermConfig.DateRange(start_date=source_start, end_date=source_end)
+    for resolved in expand_weekly_slot(slot, window, starting_day):
+        occurrence = resolved.occurrence
+        if occurrence is None or not start_date <= occurrence.date <= end_date:
+            continue
+        yield meeting.model_copy(
+            update={
+                "placement": OccurrencePlacement(date=occurrence.date),
+                "start_time": occurrence.start_time,
+                "end_time": occurrence.end_time,
+                "room": occurrence.room,
+                "instructor": occurrence.instructor,
+            }
+        )
 
 
 def iter_concrete_dates(
@@ -59,49 +53,14 @@ def iter_concrete_dates(
     *,
     start_date: dtm.date,
     end_date: dtm.date,
-    starting_day: Weekday = Weekday.MONDAY,
+    starting_day: Weekday | None = None,
 ) -> Iterator[dtm.date]:
-    placement = meeting.placement
-    if isinstance(placement, OccurrencePlacement):
-        if start_date <= placement.date <= end_date:
-            yield placement.date
-        return
-
-    assert isinstance(placement, WeeklyPatternPlacement)
-    weekday_number = weekday_index(placement.weekday.value)
-    for check_date in _iter_term_dates(start_date, end_date):
-        if check_date.weekday() != weekday_number:
-            continue
-        resolved = _resolved_occurrence_date(
-            check_date,
-            placement.edits,
-            starting_day=starting_day,
-        )
-        if resolved is None:
-            continue
-        if start_date <= resolved <= end_date:
-            yield resolved
-
-
-def _occurrence_weekday(placement: OccurrencePlacement) -> int:
-    return placement.date.weekday()
-
-
-def _resolved_dates_for_meeting(
-    meeting: ScheduledMeeting,
-    *,
-    start_date: dtm.date,
-    end_date: dtm.date,
-    starting_day: Weekday,
-) -> set[dtm.date]:
-    return set(
-        iter_concrete_dates(
-            meeting,
-            start_date=start_date,
-            end_date=end_date,
-            starting_day=starting_day,
-        )
+    day = starting_day or (
+        meeting.placement.starting_day if isinstance(meeting.placement, WeeklyPatternPlacement) else Weekday.MONDAY
     )
+    for concrete in _concrete_meetings(meeting, start_date, end_date, day):
+        assert isinstance(concrete.placement, OccurrencePlacement)
+        yield concrete.placement.date
 
 
 def meetings_overlap(
@@ -111,60 +70,38 @@ def meetings_overlap(
     count_touching: bool = False,
     start_date: dtm.date | None = None,
     end_date: dtm.date | None = None,
-    starting_day: Weekday = Weekday.MONDAY,
+    starting_day: Weekday | None = None,
 ) -> bool:
-    placement1 = meeting1.placement
-    placement2 = meeting2.placement
-
-    # Concrete window: compare resolved dates and resolved times independently.
-    # For weekly overrides this uses edit date/time when present.
-    if start_date is not None and end_date is not None:
-        dates1 = _resolved_dates_for_meeting(
-            meeting1,
-            start_date=start_date,
-            end_date=end_date,
-            starting_day=starting_day,
+    # Without an explicit query, include both semester windows and moved dates.
+    # Unbounded patterns repeat within 14 days; sample a cycle beyond all edits.
+    bounds: list[dtm.date] = []
+    unbounded = False
+    for meeting in (meeting1, meeting2):
+        placement = meeting.placement
+        if isinstance(placement, OccurrencePlacement):
+            bounds.append(placement.date)
+            continue
+        bounds.extend(date for date in (placement.start_date, placement.end_date) if date is not None)
+        for edit in placement.edits:
+            bounds.append(edit.select_week)
+            if edit.date is not None:
+                bounds.append(edit.date)
+        unbounded |= placement.start_date is None or placement.end_date is None
+    if not bounds:
+        bounds = [dtm.date(2000, 1, 3)]
+    query_start = start_date or min(bounds)
+    query_end = end_date or (max(bounds) + dtm.timedelta(days=21) if unbounded else max(bounds))
+    concrete: list[list[ScheduledMeeting]] = []
+    for meeting in (meeting1, meeting2):
+        day = starting_day or (
+            meeting.placement.starting_day if isinstance(meeting.placement, WeeklyPatternPlacement) else Weekday.MONDAY
         )
-        dates2 = _resolved_dates_for_meeting(
-            meeting2,
-            start_date=start_date,
-            end_date=end_date,
-            starting_day=starting_day,
-        )
-        if not (dates1 & dates2):
-            return False
-        return _times_overlap(meeting1, meeting2, count_touching=count_touching)
-
-    if not _times_overlap(meeting1, meeting2, count_touching=count_touching):
-        return False
-
-    if isinstance(placement1, OccurrencePlacement) and isinstance(placement2, OccurrencePlacement):
-        return placement1.date == placement2.date
-
-    if isinstance(placement1, WeeklyPatternPlacement) and isinstance(placement2, WeeklyPatternPlacement):
-        return placement1.weekday == placement2.weekday
-
-    occurrence, weekly = (
-        (placement1, placement2) if isinstance(placement1, OccurrencePlacement) else (placement2, placement1)
+        concrete.append(list(_concrete_meetings(meeting, query_start, query_end, day)))
+    return any(
+        first.placement == second.placement and _times_overlap(first, second, count_touching=count_touching)
+        for first in concrete[0]
+        for second in concrete[1]
     )
-    assert isinstance(occurrence, OccurrencePlacement)
-    assert isinstance(weekly, WeeklyPatternPlacement)
-
-    if _is_week_cancelled(occurrence.date, weekly.edits, starting_day=starting_day):
-        return False
-
-    weekday_number = weekday_index(weekly.weekday.value)
-    # Occurrence may be a moved weekly date; match any pattern date in the same week.
-    week_key = week_start_for_date(occurrence.date, starting_day)
-    pattern_date = week_key + dtm.timedelta(days=(weekday_number - week_key.weekday()) % 7)
-    resolved = _resolved_occurrence_date(
-        pattern_date,
-        weekly.edits,
-        starting_day=starting_day,
-    )
-    if resolved == occurrence.date:
-        return True
-    return _occurrence_weekday(occurrence) == weekday_number and resolved == pattern_date
 
 
 def _times_overlap(
@@ -173,11 +110,8 @@ def _times_overlap(
     *,
     count_touching: bool = False,
 ) -> bool:
-    today = dtm.date.today()
-    start_a = dtm.datetime.combine(today, meeting1.start_time)
-    end_a = dtm.datetime.combine(today, meeting1.end_time)
-    start_b = dtm.datetime.combine(today, meeting2.start_time)
-    end_b = dtm.datetime.combine(today, meeting2.end_time)
+    start_a, end_a = meeting1.start_time, meeting1.end_time
+    start_b, end_b = meeting2.start_time, meeting2.end_time
     if count_touching:
         return start_a <= end_b and start_b <= end_a
     return start_a < end_b and start_b < end_a

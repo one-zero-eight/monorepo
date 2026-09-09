@@ -5,7 +5,7 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, model_validator
 
 from src.schedule_assistant.modules.bookings.client import BookingDTO
-from src.schedule_assistant.modules.schedule_config.schemas import WeeklyPatternSlotEdit
+from src.schedule_assistant.modules.schedule_config.schemas import WeeklyAlternation, WeeklyPatternSlotEdit
 from src.schedule_assistant.schema_base import ScheduleAssistantSchema
 from src.schedule_assistant.weekday import Weekday
 
@@ -18,6 +18,7 @@ class OccurrencePlacement(ScheduleAssistantSchema):
 class WeeklyPatternPlacement(ScheduleAssistantSchema):
     kind: Literal["weekly_pattern"] = "weekly_pattern"
     weekday: Weekday
+    alternation: WeeklyAlternation | None = None
     edits: list[WeeklyPatternSlotEdit] = Field(default_factory=list)
     start_date: dtm.date | None = None
     end_date: dtm.date | None = None

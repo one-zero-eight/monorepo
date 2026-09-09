@@ -14,12 +14,10 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     TermConfig,
     WeeklyPatternSlot,
 )
-from src.schedule_assistant.modules.schedule_config.semester_windows import (
-    meeting_dates_in_window,
-    resolve_audience_semester,
-)
+from src.schedule_assistant.modules.schedule_config.semester_windows import resolve_audience_semester
 from src.schedule_assistant.modules.schedule_config.validation import build_selector_map, expand_group_tokens
-from src.schedule_assistant.weekday import Weekday, week_start_for_date, weekday_index
+from src.schedule_assistant.modules.schedule_config.weekly_dates import expand_weekly_slot, normalize_alternation
+from src.schedule_assistant.weekday import Weekday
 
 
 def _group_codes_for_session(
@@ -108,6 +106,7 @@ def _meeting_from_weekly_slot(
         students_number=students_number,
         placement=WeeklyPatternPlacement(
             weekday=slot.weekday,
+            alternation=normalize_alternation(slot.alternation, term.starting_day if term else Weekday.MONDAY),
             edits=slot.edits or [],
             start_date=window.start_date if window is not None else None,
             end_date=window.end_date if window is not None else None,
@@ -134,28 +133,11 @@ def _meetings_from_weekly_slot_concrete(
     if window is None or (term.days and slot.weekday not in term.days):
         return []
 
-    edits_by_week = {week_start_for_date(edit.select_week, term.starting_day): edit for edit in (slot.edits or [])}
-    meetings: list[ScheduledMeeting] = []
-    for pattern_date in meeting_dates_in_window(window, weekday_index(slot.weekday.value)):
-        edit = edits_by_week.get(week_start_for_date(pattern_date, term.starting_day))
-        if edit is not None and edit.cancel:
-            continue
-        meetings.append(
-            _base_meeting(
-                course=course,
-                component_tag=component_tag,
-                group_codes=group_codes,
-                students_number=students_number,
-                placement=OccurrencePlacement(
-                    date=edit.date if edit is not None and edit.date is not None else pattern_date
-                ),
-                start_time=(edit.start_time if edit is not None and edit.start_time is not None else slot.start_time),
-                end_time=edit.end_time if edit is not None and edit.end_time is not None else slot.end_time,
-                room=edit.room if edit is not None and edit.room is not None else slot.room,
-                instructor=(edit.instructor if edit is not None and edit.instructor is not None else slot.instructor),
-            )
-        )
-    return meetings
+    return [
+        _meeting_from_occurrence(course, component_tag, group_codes, students_number, resolved.occurrence)
+        for resolved in expand_weekly_slot(slot, window, term.starting_day)
+        if resolved.occurrence is not None
+    ]
 
 
 def meetings_from_schedule_config(
@@ -192,6 +174,11 @@ def meetings_from_schedule_config(
                         )
                     )
                 for slot in session.weekly_pattern or []:
+                    if term is not None and (
+                        resolve_audience_semester(term, audiences) is None
+                        or (term.days and slot.weekday not in term.days)
+                    ):
+                        continue
                     if should_expand and term is not None:
                         meetings.extend(
                             _meetings_from_weekly_slot_concrete(

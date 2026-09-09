@@ -16,11 +16,9 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     WeeklyPatternSlot,
     WeeklyPatternSlotEdit,
 )
-from src.schedule_assistant.modules.schedule_config.semester_windows import (
-    meeting_dates_in_window,
-    resolve_audience_semester,
-)
-from src.schedule_assistant.weekday import Weekday, week_start_for_date
+from src.schedule_assistant.modules.schedule_config.semester_windows import resolve_audience_semester
+from src.schedule_assistant.modules.schedule_config.weekly_dates import expand_weekly_slot, normalize_alternation
+from src.schedule_assistant.weekday import Weekday
 
 VIRTUAL_ROOM_ID = "ONLINE"
 _DAY_NAME_TO_BYDAY = {
@@ -164,27 +162,6 @@ def _weekday_api_value(day: str | Weekday) -> str:
     return str(day).strip().lower()
 
 
-def _weekly_meeting_dates_in_window(
-    window: TermConfig.DateRange,
-    weekday: str | Weekday,
-) -> list[dtm.date]:
-    weekday_api = _weekday_api_value(weekday)
-    target = _API_WEEKDAY_TO_PYTHON[weekday_api]
-    return meeting_dates_in_window(window, target)
-
-
-def _edit_for_meeting_date(
-    meeting_date: dtm.date,
-    edits: list[WeeklyPatternSlotEdit],
-    term: TermConfig,
-) -> WeeklyPatternSlotEdit | None:
-    week_key = week_start_for_date(meeting_date, term.starting_day)
-    for edit in edits:
-        if week_start_for_date(edit.select_week, term.starting_day) == week_key:
-            return edit
-    return None
-
-
 def _edit_changes_meeting(edit: WeeklyPatternSlotEdit) -> bool:
     if edit.cancel:
         return True
@@ -192,28 +169,21 @@ def _edit_changes_meeting(edit: WeeklyPatternSlotEdit) -> bool:
 
 
 def _weekly_recurrence_for_segment(
-    day: str | Weekday, segment_start: dtm.date, segment_end: dtm.date
-) -> dict[str, str]:
+    day: str | Weekday, segment_start: dtm.date, segment_end: dtm.date, interval: int = 1
+) -> dict[str, Any]:
     return {
         "kind": "weekly_until",
         "weekday": _weekday_api_value(day),
         "start_date": segment_start.isoformat(),
         "until_date": segment_end.isoformat(),
+        **({"interval": interval} if interval != 1 else {}),
     }
 
 
 def _recurrence_segments_excluding_edit_weeks(
-    term: TermConfig,
-    window: TermConfig.DateRange,
-    weekday: str | Weekday,
-    excluded_week_starts: set[dtm.date],
+    active_dates: list[dtm.date],
+    interval: int,
 ) -> list[tuple[dtm.date, dtm.date]]:
-    meeting_dates = _weekly_meeting_dates_in_window(window, weekday)
-    active_dates = [
-        meeting_date
-        for meeting_date in meeting_dates
-        if week_start_for_date(meeting_date, term.starting_day) not in excluded_week_starts
-    ]
     if not active_dates:
         return []
 
@@ -221,7 +191,7 @@ def _recurrence_segments_excluding_edit_weeks(
     group_start = active_dates[0]
     previous = active_dates[0]
     for current in active_dates[1:]:
-        if (current - previous).days == 7:
+        if (current - previous).days == 7 * interval:
             previous = current
             continue
         segments.append((group_start, previous))
@@ -251,7 +221,7 @@ def _slot_datetimes(
     meeting_date: dtm.date | str,
     start_time: str,
     end_time: str,
-    recurrence: dict[str, str] | None,
+    recurrence: dict[str, Any] | None,
 ) -> tuple[dtm.datetime, dtm.datetime]:
     if recurrence:
         range_start = dtm.date.fromisoformat(str(recurrence["start_date"]))
@@ -286,7 +256,7 @@ def _build_payload(
     start_time: str,
     end_time: str,
     placement: OccurrencePlacement | WeeklyPatternPlacement,
-    recurrence: dict[str, str] | None = None,
+    recurrence: dict[str, Any] | None = None,
 ) -> tuple[ScheduledMeeting, dict[str, Any]]:
     start, end = _slot_datetimes(
         meeting_date=meeting_date,
@@ -333,34 +303,28 @@ def _slots_from_weekly_pattern(
     component_index: int,
     pattern_index: int,
 ) -> list[BookableSlot]:
-    edits = list(pattern.edits or [])
+    if term.days and pattern.weekday not in term.days:
+        return []
     day_label = pattern.weekday
     start_time = pattern.start_time.strftime("%H:%M:%S")
     end_time = pattern.end_time.strftime("%H:%M:%S")
     base_room = _normalize_room(pattern.room)
     slots: list[BookableSlot] = []
-    excluded_week_starts: set[dtm.date] = set()
-
-    meeting_dates = set(_weekly_meeting_dates_in_window(window, day_label))
-    for edit in edits:
-        if edit.date is None or not window.start_date <= edit.date <= window.end_date:
-            continue
-        week_start = week_start_for_date(edit.select_week, term.starting_day)
-        meeting_dates.add(week_start + dtm.timedelta(days=(pattern.weekday.index - week_start.weekday()) % 7))
-    for meeting_date in sorted(meeting_dates):
-        edit = _edit_for_meeting_date(meeting_date, edits, term)
+    unchanged_dates: list[dtm.date] = []
+    interval = 2 if pattern.alternation else 1
+    for resolved in expand_weekly_slot(pattern, window, term.starting_day):
+        edit = resolved.edit
         if edit is None or not _edit_changes_meeting(edit):
+            unchanged_dates.append(resolved.source_date)
             continue
-        excluded_week_starts.add(week_start_for_date(meeting_date, term.starting_day))
-        if edit.cancel:
+        occurrence = resolved.occurrence
+        if occurrence is None or not window.start_date <= occurrence.date <= window.end_date:
             continue
-        resolved_date = edit.date if edit.date else meeting_date
-        if not window.start_date <= resolved_date <= window.end_date:
-            continue
-        resolved_start = (edit.start_time if edit.start_time else pattern.start_time).strftime("%H:%M:%S")
-        resolved_end = (edit.end_time if edit.end_time else pattern.end_time).strftime("%H:%M:%S")
-        resolved_room = _normalize_room(edit.room if edit.room else pattern.room)
-        resolved_instructor = edit.instructor if edit.instructor is not None else instructor
+        resolved_date = occurrence.date
+        resolved_start = occurrence.start_time.strftime("%H:%M:%S")
+        resolved_end = occurrence.end_time.strftime("%H:%M:%S")
+        resolved_room = _normalize_room(occurrence.room)
+        resolved_instructor = occurrence.instructor if occurrence.instructor is not None else instructor
         bookable, reason = _slot_bookable(resolved_room, known_room_ids)
         meeting, payload = _build_payload(
             course=course,
@@ -388,9 +352,9 @@ def _slots_from_weekly_pattern(
         )
 
     for segment_index, (segment_start, segment_end) in enumerate(
-        _recurrence_segments_excluding_edit_weeks(term, window, day_label, excluded_week_starts)
+        _recurrence_segments_excluding_edit_weeks(unchanged_dates, interval)
     ):
-        recurrence = _weekly_recurrence_for_segment(day_label, segment_start, segment_end)
+        recurrence = _weekly_recurrence_for_segment(day_label, segment_start, segment_end, interval)
         bookable, reason = _slot_bookable(base_room, known_room_ids)
         meeting, payload = _build_payload(
             course=course,
@@ -402,7 +366,13 @@ def _slots_from_weekly_pattern(
             meeting_date=str(day_label),
             start_time=start_time,
             end_time=end_time,
-            placement=WeeklyPatternPlacement(weekday=pattern.weekday, edits=edits),
+            placement=WeeklyPatternPlacement(
+                weekday=pattern.weekday,
+                alternation=normalize_alternation(pattern.alternation, term.starting_day),
+                start_date=segment_start,
+                end_date=segment_end,
+                starting_day=term.starting_day,
+            ),
             recurrence=recurrence,
         )
         slots.append(
