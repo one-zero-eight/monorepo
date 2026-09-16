@@ -93,16 +93,29 @@ async def _apply_rttf_delta(
 
 async def _apply_tournament_bonuses(tournament: Tournament) -> None:
     """
-    change-val-top overwrites standings wholesale and may be called more than once
-    for the same tournament (e.g. to fix a mistake), so bonuses are granted at most once.
+    Bonuses for the final places 1-3 (qual_top). They are granted only once the standings
+    contain every participant, i.e. the tournament is fully played. change-qual-top may be
+    called more than once for the same tournament, so bonuses are granted at most once.
     """
-    if tournament.bonus_applied or not tournament.val_top or len(tournament.players or []) < 16:
+    players = tournament.players or []
+    if tournament.bonus_applied or not tournament.qual_top or len(players) < 16:
         return
 
-    top_places = sorted(tournament.val_top.items())
+    if set(tournament.qual_top.values()) != set(players):
+        return
+
+    top_places = sorted(tournament.qual_top.items())
     prize_players = [p_id for _, p_id in top_places[:3]]
     if len(prize_players) < 3:
         return
+
+    # claim the bonus atomically so two concurrent calls can't both grant it
+    claim = await Tournament.get_pymongo_collection().update_one(
+        {"tour_id": tournament.tour_id, "bonus_applied": {"$ne": True}}, {"$set": {"bonus_applied": True}}
+    )
+    if claim.modified_count == 0:
+        return
+    tournament.bonus_applied = True
 
     all_players = await Player.find({"innohassle_id": {"$in": tournament.players}}).to_list()
     players_by_id = {p.innohassle_id: p for p in all_players}
@@ -141,9 +154,6 @@ async def _apply_tournament_bonuses(tournament: Tournament) -> None:
                 player.rating += bonus
                 await player.save()
                 logger.info(f"Bonus +{bonus} for {player.nickname} (place {place}, tournament {tournament.tour_id})")
-
-    tournament.bonus_applied = True
-    await tournament.save()
 
 
 async def get_tour_top(tour_id: str) -> tuple[dict[int, str], dict[int, str]]:
@@ -266,6 +276,86 @@ def _validate_top(tournament: Tournament, top: dict[int, str]) -> None:
         )
 
 
+GAME_FIELDS = ("val_games", "cval_games")
+
+
+async def _set_tour_fields(tournament: Tournament, **fields: Any) -> None:
+    """
+    Atomic $set of selected tournament fields. A full `tournament.save()` would replace the whole
+    document and silently drop games that another admin registered in the meantime.
+    """
+    encoded: dict[str, Any] = {}
+    for name, value in fields.items():
+        setattr(tournament, name, value)
+        encoded[name] = {str(k): v for k, v in value.items()} if name in ("val_top", "qual_top") else value
+    await Tournament.get_pymongo_collection().update_one({"tour_id": tournament.tour_id}, {"$set": encoded})
+
+
+def _find_tour_game(tournament: Tournament, game_id: str) -> tuple[str, Game] | None:
+    for field in GAME_FIELDS:
+        for game in getattr(tournament, field) or []:
+            if game.game_id == game_id:
+                return field, game
+    return None
+
+
+def _embedded_game(game: Game) -> dict[str, Any]:
+    return game.model_dump(exclude={"id", "revision_id"}, exclude_none=True)
+
+
+def _apply_result_to_players(
+    p1: Player, p2: Player, s1: int, s2: int, delta_1: int, delta_2: int, *, undo: bool = False
+) -> None:
+    sign = -1 if undo else 1
+    p1.rating = max(1, p1.rating + sign * delta_1)
+    p2.rating = max(1, p2.rating + sign * delta_2)
+    winner, loser = (p1, p2) if s1 > s2 else (p2, p1)
+    winner.wins = max(0, winner.wins + sign)
+    loser.losses = max(0, loser.losses + sign)
+
+
+def _tour_stage_data(tour: Tournament) -> dict[str, Any]:
+    return {
+        "groups": tour.groups or {},
+        "groups_locked": tour.groups_locked,
+        "qual_seeding": tour.qual_seeding or [],
+    }
+
+
+def _find_player_group(tournament: Tournament, player_id: str) -> str | None:
+    for name, members in (tournament.groups or {}).items():
+        if player_id in members:
+            return name
+    return None
+
+
+def _validate_groups(tournament: Tournament, groups: dict[str, list[str]]) -> None:
+    empty_names = [name for name in groups if not name.strip()]
+    if empty_names:
+        raise HTTPException(status_code=400, detail="Group names must not be empty")
+
+    tour_players = set(tournament.players or [])
+    unknown_players = [p_id for members in groups.values() for p_id in members if p_id not in tour_players]
+    if unknown_players:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": f"These players are not participants of tournament {tournament.tour_id}",
+                "unknown": unknown_players,
+            },
+        )
+
+    seen: set[str] = set()
+    duplicates: set[str] = set()
+    for members in groups.values():
+        for p_id in members:
+            if p_id in seen:
+                duplicates.add(p_id)
+            seen.add(p_id)
+    if duplicates:
+        raise HTTPException(status_code=400, detail=f"A player cannot be in more than one group: {sorted(duplicates)}")
+
+
 @router.get("/isadmin")
 async def is_admin(auth: INH_TOKEN_AUTH) -> dict[str, bool]:
     admin = await is_tabletennis_admin(auth)
@@ -346,6 +436,7 @@ async def get_active_tours(auth: INH_TOKEN_AUTH) -> list[dict[str, Any]]:
                 },
                 "val_top": val_top,
                 "qual_top": qual_top,
+                **_tour_stage_data(tour),
             }
         )
 
@@ -380,6 +471,7 @@ async def get_tours(auth: INH_TOKEN_AUTH) -> list[dict[str, Any]]:
                 },
                 "val_top": val_top,
                 "qual_top": qual_top,
+                **_tour_stage_data(tour),
             }
         )
 
@@ -442,6 +534,9 @@ async def get_games_by_id(auth: INH_TOKEN_AUTH, ids: list[str] = Query(...)) -> 
                 "tour_id": game.tour_id,
                 "tournament_name": tournament.name if tournament else None,
                 "finished": game.finished,
+                # the ObjectId holds the creation time, so older games still get a date
+                "created_at": game.id.generation_time.isoformat() if game.id else None,
+                "finished_at": game.finished_at.isoformat() if game.finished_at else None,
                 "player1": {**player_summary(game.player1_id), "score": game.player1_score},
                 "player2": {**player_summary(game.player2_id), "score": game.player2_score},
             }
@@ -485,8 +580,8 @@ async def register_player(auth: INH_TOKEN_AUTH) -> Player:
     new_player = Player(
         innohassle_id=auth.innohassle_id,
         nickname=name_to_display,
-        rating=1000,
-        ratings={dtm.datetime.now(tz=dtm.UTC): 1000},
+        rating=RTTF_MIN_START_RATING,
+        ratings={dtm.datetime.now(tz=dtm.UTC): RTTF_MIN_START_RATING},
         wins=0,
         losses=0,
         last_game=ancient_date,
@@ -508,6 +603,37 @@ async def set_status(
 
     player.status = status.capitalize()
     await player.save()
+    return await format_player_data(player)
+
+
+RTTF_MIN_START_RATING = 100
+RTTF_START_RATING_STEP = 25
+
+
+@router.post("/set-rating")
+async def set_rating(auth: TABLETENNIS_ADMIN_AUTH, innohassle_id: str, rating: int) -> dict[str, Any]:
+    """
+    Admin endpoint to assign a player's starting RTTF rating, as the organizer does for a newcomer:
+    a multiple of 25 and at least 100. The change is added to the player's rating history.
+    """
+    if rating < RTTF_MIN_START_RATING or rating % RTTF_START_RATING_STEP != 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Starting rating must be a multiple of {RTTF_START_RATING_STEP} and at least {RTTF_MIN_START_RATING}",
+        )
+
+    player = await Player.find_one(Player.innohassle_id == innohassle_id)
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    old_rating = player.rating
+    player.rating = rating
+    if player.ratings is None:
+        player.ratings = {}
+    player.ratings[dtm.datetime.now(tz=dtm.UTC)] = rating
+    await player.save()
+
+    logger.info(f"Admin {auth.email} set rating of {player.nickname} ({innohassle_id}): {old_rating} -> {rating}")
     return await format_player_data(player)
 
 
@@ -600,6 +726,9 @@ async def add_player(
     if not tournament.active:
         raise HTTPException(status_code=400, detail="Cannot add players to an inactive/archived tournament!")
 
+    if tournament.groups_locked:
+        raise HTTPException(status_code=400, detail="Cannot add players: groups are already locked!")
+
     if tournament.players is None:
         tournament.players = []
 
@@ -630,7 +759,7 @@ async def add_player(
         await try_add(email, player, "User not found in InNoHassle Accounts or not registered via /reg")
 
     if added_players:
-        await tournament.save()
+        await _set_tour_fields(tournament, players=tournament.players)
         logger.info(
             f"Admin {auth.email} added {len(added_players)} players to tournament {tour_id}. "
             f"Skipped {len(failed_players)}."
@@ -664,6 +793,9 @@ async def remove_players(
 
     if not tournament.active:
         raise HTTPException(status_code=400, detail="Cannot remove players from an inactive/archived tournament!")
+
+    if tournament.groups_locked:
+        raise HTTPException(status_code=400, detail="Cannot remove players: groups are already locked!")
 
     if not tournament.players:
         tournament.players = []
@@ -705,6 +837,9 @@ async def remove_players(
             return
 
         tournament.players.remove(p_id)
+        for members in (tournament.groups or {}).values():
+            if p_id in members:
+                members.remove(p_id)
         removed_players.append(p_id)
 
     for p_id in player_ids:
@@ -716,7 +851,7 @@ async def remove_players(
         await try_remove(email, player, "User not found in InNoHassle Accounts or not registered via /reg")
 
     if removed_players:
-        await tournament.save()
+        await _set_tour_fields(tournament, players=tournament.players, groups=tournament.groups or {})
         logger.info(
             f"Admin {auth.email} removed {len(removed_players)} players from tournament {tour_id}. "
             f"Failed/Skipped: {len(failed_players)}."
@@ -755,10 +890,7 @@ async def change_val_top(
 
     _validate_top(tournament, top)
 
-    tournament.val_top = top
-    await tournament.save()
-
-    await _apply_tournament_bonuses(tournament)
+    await _set_tour_fields(tournament, val_top=top)
 
     logger.info(f"Admin {auth.email} set val_top for tournament {tour_id}: {top}")
 
@@ -784,12 +916,129 @@ async def change_qual_top(
 
     _validate_top(tournament, top)
 
-    tournament.qual_top = top
-    await tournament.save()
+    await _set_tour_fields(tournament, qual_top=top)
+
+    await _apply_tournament_bonuses(tournament)
 
     logger.info(f"Admin {auth.email} set qual_top for tournament {tour_id}: {top}")
 
     return {"status": "success", "tour_id": tour_id, "qual_top": await format_top(top)}
+
+
+@router.post("/reg-tour/set-groups")
+async def set_groups(
+    auth: TABLETENNIS_ADMIN_AUTH,
+    tour_id: str,
+    groups: dict[str, list[str]] = Body(  # noqa: B008
+        ...,
+        description="Full group name->innohassle_ids mapping, e.g. {'A': ['id1', 'id2']}. Overwrites completely.",
+    ),
+) -> dict[str, Any]:
+    """
+    Admin endpoint to fully overwrite the validation-stage groups of an ACTIVE tournament.
+    Groups can have any size and may be changed freely until they are locked.
+    """
+    tournament = await Tournament.find_one(Tournament.tour_id == tour_id)
+    if not tournament:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+
+    if not tournament.active:
+        raise HTTPException(status_code=400, detail="Cannot change groups of an inactive/archived tournament!")
+
+    if tournament.groups_locked:
+        raise HTTPException(status_code=400, detail="Groups are already locked!")
+
+    _validate_groups(tournament, groups)
+
+    await _set_tour_fields(tournament, groups=groups)
+
+    logger.info(f"Admin {auth.email} set groups for tournament {tour_id}: {groups}")
+    return {"status": "success", "tour_id": tour_id, **_tour_stage_data(tournament)}
+
+
+@router.post("/reg-tour/lock-groups")
+async def lock_groups(auth: TABLETENNIS_ADMIN_AUTH, tour_id: str) -> dict[str, Any]:
+    """
+    Admin endpoint to lock the groups. Every participant must be in a group and every
+    group must have at least 2 players. After locking, validation games can be started.
+    """
+    tournament = await Tournament.find_one(Tournament.tour_id == tour_id)
+    if not tournament:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+
+    if not tournament.groups:
+        raise HTTPException(status_code=400, detail="Create groups first")
+
+    _validate_groups(tournament, tournament.groups)
+
+    grouped = {p_id for members in tournament.groups.values() for p_id in members}
+    ungrouped = [p_id for p_id in tournament.players or [] if p_id not in grouped]
+    if ungrouped:
+        raise HTTPException(
+            status_code=400, detail={"message": "Some players are not in any group", "ungrouped": ungrouped}
+        )
+
+    small_groups = [name for name, members in tournament.groups.items() if len(members) < 2]
+    if small_groups:
+        raise HTTPException(status_code=400, detail=f"Every group needs at least 2 players: {small_groups}")
+
+    await _set_tour_fields(tournament, groups_locked=True)
+
+    logger.info(f"Admin {auth.email} locked groups for tournament {tour_id}")
+    return {"status": "success", "tour_id": tour_id, **_tour_stage_data(tournament)}
+
+
+@router.post("/reg-tour/unlock-groups")
+async def unlock_groups(auth: TABLETENNIS_ADMIN_AUTH, tour_id: str) -> dict[str, Any]:
+    """
+    Admin endpoint to unlock the groups again. Only possible while no validation games exist.
+    """
+    tournament = await Tournament.find_one(Tournament.tour_id == tour_id)
+    if not tournament:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+
+    if tournament.val_games:
+        raise HTTPException(status_code=400, detail="Cannot unlock groups: validation games have already started")
+
+    await _set_tour_fields(tournament, groups_locked=False)
+
+    logger.info(f"Admin {auth.email} unlocked groups for tournament {tour_id}")
+    return {"status": "success", "tour_id": tour_id, **_tour_stage_data(tournament)}
+
+
+@router.post("/reg-tour/set-qual-seeding")
+async def set_qual_seeding(
+    auth: TABLETENNIS_ADMIN_AUTH,
+    tour_id: str,
+    seeding: list[str] = Body(  # noqa: B008
+        ..., description="All participants' innohassle_ids ordered from the 1st seed to the last."
+    ),
+) -> dict[str, Any]:
+    """
+    Admin endpoint to fix the qualification bracket seeding, which starts the qualification.
+    The seeding must contain every participant exactly once and cannot be changed once
+    qualification games exist.
+    """
+    tournament = await Tournament.find_one(Tournament.tour_id == tour_id)
+    if not tournament:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+
+    if tournament.cval_games:
+        raise HTTPException(status_code=400, detail="Qualification games have already started")
+
+    if tournament.groups and not tournament.groups_locked:
+        raise HTTPException(status_code=400, detail="Lock the groups first")
+
+    if len(seeding) < 2:
+        raise HTTPException(status_code=400, detail="At least 2 players are needed for qualification")
+
+    if len(set(seeding)) != len(seeding) or set(seeding) != set(tournament.players or []):
+        raise HTTPException(status_code=400, detail="Seeding must contain every participant exactly once")
+
+    await _set_tour_fields(tournament, qual_seeding=seeding)
+
+    logger.info(f"Admin {auth.email} set qualification seeding for tournament {tour_id}: {seeding}")
+    return {"status": "success", "tour_id": tour_id, **_tour_stage_data(tournament)}
 
 
 @router.post("/finish-tour")
@@ -804,8 +1053,7 @@ async def finish_tournament(auth: TABLETENNIS_ADMIN_AUTH, tour_id: str) -> dict[
     if not tournament.active:
         return {"status": "warning", "message": "Tournament is already archived"}
 
-    tournament.active = False
-    await tournament.save()
+    await _set_tour_fields(tournament, active=False)
 
     logger.info(f"Tournament '{tournament.name}' ({tour_id}) has been archived by admin {auth.email}")
     return {"status": "success", "message": f"Tournament {tour_id} successfully closed"}
@@ -842,6 +1090,16 @@ async def register_game(
     if p1.innohassle_id not in tournament.players or p2.innohassle_id not in tournament.players:
         raise HTTPException(status_code=400, detail="One or both players are not in this tournament's player list")
 
+    if tip == "val" and tournament.groups:
+        if not tournament.groups_locked:
+            raise HTTPException(status_code=400, detail="Lock the groups before starting validation games")
+        if tournament.qual_seeding:
+            raise HTTPException(status_code=400, detail="Qualification has already started")
+        group1 = _find_player_group(tournament, p1.innohassle_id)
+        group2 = _find_player_group(tournament, p2.innohassle_id)
+        if group1 is None or group1 != group2:
+            raise HTTPException(status_code=400, detail="Validation games are played only inside one group")
+
     game_id = str(uuid.uuid4())[:8]
     new_game = Game(
         tour_id=tour_id,
@@ -852,18 +1110,20 @@ async def register_game(
         player2_score=0,
         finished=False,
     )
+    field = "val_games" if tip == "val" else "cval_games"
+    a, b = p1.innohassle_id, p2.innohassle_id
+    same_pair = {"$or": [{"player1_id": a, "player2_id": b}, {"player1_id": b, "player2_id": a}]}
+
+    # atomic push that also refuses a second game for the same pair in this stage
+    # (two admins pressing "start" at the same time must not create two games)
+    push = await Tournament.get_pymongo_collection().update_one(
+        {"tour_id": tour_id, field: {"$not": {"$elemMatch": same_pair}}},
+        {"$push": {field: _embedded_game(new_game)}},
+    )
+    if push.matched_count == 0:
+        raise HTTPException(status_code=409, detail="These players already have a game in this stage of the tournament")
+
     await new_game.insert()
-
-    if tip == "val":
-        if tournament.val_games is None:
-            tournament.val_games = []
-        tournament.val_games.append(new_game)
-    else:
-        if tournament.cval_games is None:
-            tournament.cval_games = []
-        tournament.cval_games.append(new_game)
-
-    await tournament.save()
     logger.info(f"Game between {p1.nickname} and {p2.nickname} registered in tournament {tour_id}")
 
     return {
@@ -887,20 +1147,10 @@ async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: i
     if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
 
-    target_game: Game | None = None
-
-    for list_name in ["val_games", "cval_games"]:
-        games_list = getattr(tournament, list_name)
-        if games_list:
-            for game in games_list:
-                if game.game_id == game_id:
-                    target_game = game
-                    break
-        if target_game:
-            break
-
-    if not target_game:
+    located = _find_tour_game(tournament, game_id)
+    if not located:
         raise HTTPException(status_code=404, detail="Game not found in this tournament")
+    field, target_game = located
 
     if target_game.finished:
         raise HTTPException(
@@ -917,21 +1167,32 @@ async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: i
     if not p1 or not p2:
         raise HTTPException(status_code=404, detail="One or both players from this game are not registered (/reg)")
 
-    target_game.player1_score = s1
-    target_game.player2_score = s2
-    target_game.finished = True
-
-    db_game = await Game.find_one(Game.game_id == game_id)
-    if db_game:
-        db_game.player1_score = s1
-        db_game.player2_score = s2
-        db_game.finished = True
-        await db_game.save()
-
     if s1 > s2:
         delta_1, delta_2 = await _apply_rttf_delta(p1, p2, s1, s2, tournament)
     else:
         delta_2, delta_1 = await _apply_rttf_delta(p2, p1, s2, s1, tournament)
+
+    # atomically claim the unfinished game: if two admins finish it at the same time,
+    # only one request gets here and the rating is changed once
+    result_fields = {
+        "finished": True,
+        "finished_at": dtm.datetime.now(tz=dtm.UTC),
+        "player1_score": s1,
+        "player2_score": s2,
+        "player1_delta": delta_1,
+        "player2_delta": delta_2,
+    }
+    claim = await Tournament.get_pymongo_collection().update_one(
+        {"tour_id": tour_id, field: {"$elemMatch": {"game_id": game_id, "finished": False}}},
+        {"$set": {f"{field}.$.{k}": v for k, v in result_fields.items()}},
+    )
+    if claim.modified_count == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="This game has already been finished. Recalculating rating is not allowed.",
+        )
+
+    await Game.get_pymongo_collection().update_one({"game_id": game_id}, {"$set": result_fields})
 
     p1.rating = max(1, p1.rating + delta_1)
     p2.rating = max(1, p2.rating + delta_2)
@@ -955,7 +1216,6 @@ async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: i
         p2.wins += 1
         p1.losses += 1
 
-    await tournament.save()
     await p1.save()
     await p2.save()
 
@@ -970,3 +1230,121 @@ async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: i
         "player1": {"nickname": p1.nickname, "new_rating": p1.rating, "delta": delta_1, "league": p1.status},
         "player2": {"nickname": p2.nickname, "new_rating": p2.rating, "delta": delta_2, "league": p2.status},
     }
+
+
+@router.post("/fix-game")
+async def fix_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: int, tour_id: str) -> dict[str, Any]:
+    """
+    Admin endpoint to correct the score of an already finished game in an ACTIVE tournament.
+    The rating change of the old result is rolled back and the new result is applied.
+    Group (val) games cannot be corrected once qualification has started, because the seeding is fixed.
+    """
+    if s1 == s2:
+        raise HTTPException(status_code=400, detail="Draws are not allowed in table tennis!")
+    if s1 < 0 or s2 < 0:
+        raise HTTPException(status_code=400, detail="Scores cannot be negative")
+
+    tournament = await Tournament.find_one(Tournament.tour_id == tour_id)
+    if not tournament:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+
+    if not tournament.active:
+        raise HTTPException(status_code=400, detail="Cannot correct games of an inactive/archived tournament!")
+
+    located = _find_tour_game(tournament, game_id)
+    if not located:
+        raise HTTPException(status_code=404, detail="Game not found in this tournament")
+    field, game = located
+
+    if not game.finished:
+        raise HTTPException(status_code=400, detail="This game is not finished yet")
+
+    if field == "val_games" and tournament.qual_seeding:
+        raise HTTPException(status_code=400, detail="Group games cannot be corrected after qualification started")
+
+    if game.player1_delta is None or game.player2_delta is None:
+        raise HTTPException(status_code=400, detail="This game was finished before score corrections were supported")
+
+    old_s1, old_s2 = game.player1_score, game.player2_score
+    if (old_s1, old_s2) == (s1, s2):
+        return {"status": "success", "game_id": game_id, "changed": False}
+
+    p1 = await Player.find_one(Player.innohassle_id == game.player1_id)
+    p2 = await Player.find_one(Player.innohassle_id == game.player2_id)
+    if not p1 or not p2:
+        raise HTTPException(status_code=404, detail="One or both players from this game are not registered (/reg)")
+
+    _apply_result_to_players(p1, p2, old_s1, old_s2, game.player1_delta, game.player2_delta, undo=True)
+
+    if s1 > s2:
+        delta_1, delta_2 = await _apply_rttf_delta(p1, p2, s1, s2, tournament)
+    else:
+        delta_2, delta_1 = await _apply_rttf_delta(p2, p1, s2, s1, tournament)
+
+    result_fields = {"player1_score": s1, "player2_score": s2, "player1_delta": delta_1, "player2_delta": delta_2}
+    # optimistic lock on the old score: a concurrent correction must not roll back the rating twice
+    claim = await Tournament.get_pymongo_collection().update_one(
+        {
+            "tour_id": tour_id,
+            field: {
+                "$elemMatch": {"game_id": game_id, "finished": True, "player1_score": old_s1, "player2_score": old_s2}
+            },
+        },
+        {"$set": {f"{field}.$.{k}": v for k, v in result_fields.items()}},
+    )
+    if claim.modified_count == 0:
+        raise HTTPException(status_code=409, detail="This game was changed by someone else, reload and try again")
+
+    await Game.get_pymongo_collection().update_one({"game_id": game_id}, {"$set": result_fields})
+
+    _apply_result_to_players(p1, p2, s1, s2, delta_1, delta_2)
+    current_time = dtm.datetime.now(tz=dtm.UTC)
+    for player in (p1, p2):
+        if player.ratings is None:
+            player.ratings = {}
+        player.ratings[current_time] = player.rating
+    await p1.save()
+    await p2.save()
+
+    logger.info(
+        f"Match {game_id} in tour {tour_id} corrected by admin {auth.email}: {old_s1}:{old_s2} -> {s1}:{s2}. "
+        f"New RTTF deltas: {p1.nickname} ({delta_1}), {p2.nickname} ({delta_2})"
+    )
+
+    return {
+        "status": "success",
+        "game_id": game_id,
+        "changed": True,
+        "player1": {"nickname": p1.nickname, "new_rating": p1.rating, "delta": delta_1},
+        "player2": {"nickname": p2.nickname, "new_rating": p2.rating, "delta": delta_2},
+    }
+
+
+@router.post("/cancel-game")
+async def cancel_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, tour_id: str) -> dict[str, Any]:
+    """
+    Admin endpoint to delete a game that was started by mistake. Only unfinished games can be
+    cancelled, so ratings are never affected.
+    """
+    tournament = await Tournament.find_one(Tournament.tour_id == tour_id)
+    if not tournament:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+
+    located = _find_tour_game(tournament, game_id)
+    if not located:
+        raise HTTPException(status_code=404, detail="Game not found in this tournament")
+    field, game = located
+
+    if game.finished:
+        raise HTTPException(status_code=400, detail="A finished game cannot be cancelled, correct its score instead")
+
+    pull = await Tournament.get_pymongo_collection().update_one(
+        {"tour_id": tour_id}, {"$pull": {field: {"game_id": game_id, "finished": False}}}
+    )
+    if pull.modified_count == 0:
+        raise HTTPException(status_code=400, detail="A finished game cannot be cancelled, correct its score instead")
+
+    await Game.get_pymongo_collection().delete_one({"game_id": game_id, "finished": False})
+
+    logger.info(f"Game {game_id} in tour {tour_id} cancelled by admin {auth.email}")
+    return {"status": "success", "game_id": game_id}
