@@ -39,10 +39,11 @@ async def list_with_submission_by_creator(creator_id: str) -> list[Event]:
     return await Event.find({"creator_id": creator_id, "submission": {"$ne": None}}).to_list()
 
 
-async def list_published(from_dt: dtm.datetime, to_dt: dtm.datetime) -> list[Event]:
-    return await Event.find(
-        {"public": {"$ne": None}, "public.data.starts_at": {"$gte": from_dt, "$lte": to_dt}}
-    ).to_list()
+async def list_published(from_dt: dtm.datetime, to_dt: dtm.datetime, club_id: str | None = None) -> list[Event]:
+    query = {"public": {"$ne": None}, "public.data.starts_at": {"$gte": from_dt, "$lte": to_dt}}
+    if club_id is not None:
+        query["public.data.hosts"] = {"$elemMatch": {"type": HostType.CLUB, "club_id": club_id}}
+    return await Event.find(query).to_list()
 
 
 async def list_all_published() -> list[Event]:

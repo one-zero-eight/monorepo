@@ -40,6 +40,7 @@ async def _get_published_or_404(id: PydanticObjectId) -> tuple[Event, PublicEven
 async def list_events(
     from_: Annotated[TZAwareDateTime | None, Query(alias="from")] = None,
     to_: Annotated[TZAwareDateTime | None, Query(alias="to")] = None,
+    club_id: Annotated[str | None, Query(alias="club")] = None,
     auth: OPTIONAL_INH_TOKEN_AUTH = None,
 ) -> list[EventListItem]:
     """List published events; defaults to the current month window."""
@@ -48,7 +49,7 @@ async def list_events(
     to_dt = to_ if to_ is not None else now + dtm.timedelta(days=30)
     if from_dt > to_dt:
         raise HTTPException(status_code=400, detail="from must not be later than to")
-    events = await events_repo.list_published(from_dt, to_dt)
+    events = await events_repo.list_published(from_dt, to_dt, club_id)
     published = [(event, event.public) for event in events if event.public is not None]
     all_hosts = [host for _, public in published for host in public.data.hosts]
     clubs = await load_clubs_for_hosts(all_hosts)
