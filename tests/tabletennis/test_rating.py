@@ -202,7 +202,7 @@ def test_tournament_bonus_requires_at_least_16_players(tabletennis_client: TestC
     portal.call(_mk_tournament("tour-small", ids).insert)
 
     response = tabletennis_client.post(
-        "/reg-tour/change-val-top",
+        "/reg-tour/change-qual-top",
         params={"tour_id": "tour-small"},
         json={"1": "s1", "2": "s2", "3": "s3"},
         headers=admin_headers,
@@ -219,7 +219,7 @@ def test_tournament_bonus_applies_once_even_for_below_average_prize_winners(
     """
     12 fillers rated 2000 set Rср12=2000. Prize winners rated 1000 are 1000 points
     BELOW that average - the "< 100" bracket has no lower bound, so they still get
-    the top bonus tier. Calling change-val-top again must not double the bonus.
+    the top bonus tier. Calling change-qual-top again must not double the bonus.
     """
     portal = tabletennis_client.portal
     assert portal is not None
@@ -235,9 +235,17 @@ def test_tournament_bonus_applies_once_even_for_below_average_prize_winners(
     all_ids = filler_ids + prize_ids
     portal.call(_mk_tournament("tour-bonus", all_ids).insert)
 
-    top = {"1": "first", "2": "second", "3": "third"}
+    partial_top = {"1": "first", "2": "second", "3": "third"}
     response = tabletennis_client.post(
-        "/reg-tour/change-val-top", params={"tour_id": "tour-bonus"}, json=top, headers=admin_headers
+        "/reg-tour/change-qual-top", params={"tour_id": "tour-bonus"}, json=partial_top, headers=admin_headers
+    )
+    assert response.status_code == 200
+    # standings are incomplete: the tournament is not over, no bonus yet
+    assert _get_player(portal, "first").rating == 1000
+
+    top = {str(place): uid for place, uid in enumerate(prize_ids + filler_ids, start=1)}
+    response = tabletennis_client.post(
+        "/reg-tour/change-qual-top", params={"tour_id": "tour-bonus"}, json=top, headers=admin_headers
     )
     assert response.status_code == 200
 
@@ -248,10 +256,10 @@ def test_tournament_bonus_applies_once_even_for_below_average_prize_winners(
     assert second.rating == 1015  # +1.5%
     assert third.rating == 1010  # +1%
 
-    # Re-sending the same standings (change-val-top is a full overwrite, not a patch)
+    # Re-sending the same standings (change-qual-top is a full overwrite, not a patch)
     # must not grant the bonus a second time.
     response = tabletennis_client.post(
-        "/reg-tour/change-val-top", params={"tour_id": "tour-bonus"}, json=top, headers=admin_headers
+        "/reg-tour/change-qual-top", params={"tour_id": "tour-bonus"}, json=top, headers=admin_headers
     )
     assert response.status_code == 200
 
