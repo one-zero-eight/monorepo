@@ -30,10 +30,9 @@ def test_event_update_keeps_missing_slots_unset():
     assert event_update.model_dump(exclude_unset=True) == {"name": "Renamed"}
 
 
-def test_event_update_accepts_explicit_null_slots():
-    event_update = EventUpdate(slots=None)
-
-    assert event_update.model_dump(exclude_unset=True) == {"slots": None}
+def test_event_update_rejects_explicit_null_slots():
+    with pytest.raises(ValidationError, match="Meeting must have at least one slot"):
+        EventUpdate(slots=None)
 
 
 def test_meeting_time_preserves_timezone_and_rejects_empty_interval():

@@ -26,6 +26,7 @@ from .schemas import (
     EventUpdate,
     EventView,
     MeetingStatus,
+    MeetingTime,
     ParticipantUpdate,
     ParticipantView,
     RoomBookingBooking,
@@ -632,6 +633,12 @@ def _ensure_active(event: Event) -> None:
         )
 
 
+def _same_meeting_time(first: MeetingTime | None, second: MeetingTime | None) -> bool:
+    if first is None or second is None:
+        return first is second
+    return (first.start_datetime, first.end_datetime) == (second.start_datetime, second.end_datetime)
+
+
 def _ensure_can_delete_participant(event: Event, participant: Participant, user_id: str) -> None:
     if event.owner_id == user_id or participant.user_id == user_id:
         return
@@ -706,7 +713,23 @@ async def get_meeting(meeting_ref: str, auth: INH_TOKEN_AUTH) -> EventView:
     "/{meeting_ref}",
     responses={
         status.HTTP_200_OK: {"description": "Meeting updated"},
-        status.HTTP_400_BAD_REQUEST: {"description": "Cannot clear selected meeting time while a room is booked"},
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Selected meeting start must be in the future; cannot clear selected time while a room is booked",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "selected_time_in_past": {
+                            "value": {
+                                "detail": {
+                                    "code": "selected_time_in_past",
+                                    "message": "Meeting start time must be in the future",
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+        },
         status.HTTP_403_FORBIDDEN: {"description": "Not an owner"},
         status.HTTP_404_NOT_FOUND: {"description": "Meeting not found"},
         status.HTTP_409_CONFLICT: {"description": "Meeting is archived or its room booking is being changed"},
@@ -724,7 +747,21 @@ async def update_meeting(
     _ensure_active(event)
 
     changed_fields = event_update.model_fields_set
-    updates_booking_time = "selected_time" in changed_fields and event_update.selected_time != event.selected_time
+    updates_booking_time = "selected_time" in changed_fields and not _same_meeting_time(
+        event_update.selected_time, event.selected_time
+    )
+    if (
+        updates_booking_time
+        and event_update.selected_time is not None
+        and event_update.selected_time.start_datetime <= dtm.datetime.now(dtm.UTC)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "selected_time_in_past",
+                "message": "Meeting start time must be in the future",
+            },
+        )
     updates_booking_title = "name" in changed_fields and event_update.name != event.name
     if event.booked_room is not None and (updates_booking_time or updates_booking_title):
         if event_update.selected_time is None and updates_booking_time:

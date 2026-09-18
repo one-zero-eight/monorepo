@@ -1,8 +1,9 @@
 import datetime as dtm
 from enum import StrEnum
+from typing import Annotated
 
 from beanie import PydanticObjectId
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from src.common_pydantic import BaseSchema
 
@@ -118,11 +119,16 @@ class EventUpdate(BaseSchema):
     selected_time: MeetingTime | None = None
     "Final selected meeting time"
 
+    @field_validator("slots", mode="before", json_schema_input_type=Annotated[list[dtm.datetime], Field(min_length=1)])
+    @classmethod
+    def reject_null_slots(cls, v: object) -> object:
+        if v is None:
+            raise ValueError("Meeting must have at least one slot")
+        return v
+
     @field_validator("slots", mode="after")
     @classmethod
-    def validate_slots(cls, v: list[dtm.datetime] | None) -> list[dtm.datetime] | None:
-        if v is None:
-            return None
+    def validate_slots(cls, v: list[dtm.datetime]) -> list[dtm.datetime]:
         if not v:
             raise ValueError("Meeting must have at least one slot")
         return _normalize_sorted_datetimes(v)

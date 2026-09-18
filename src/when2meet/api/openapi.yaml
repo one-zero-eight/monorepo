@@ -176,7 +176,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/EventView'
         '400':
-          description: Cannot clear selected meeting time while a room is booked
+          description: Selected meeting start must be in the future; cannot clear selected time while a room is booked
+          content:
+            application/json:
+              examples:
+                selected_time_in_past:
+                  value:
+                    detail:
+                      code: selected_time_in_past
+                      message: Meeting start time must be in the future
         '403':
           description: Not an owner
         '404':
@@ -691,12 +699,11 @@ components:
           title: Description
           description: Description of the event
         slots:
-          anyOf:
-          - items:
-              type: string
-              format: date-time
-            type: array
-          - type: 'null'
+          items:
+            type: string
+            format: date-time
+          type: array
+          minItems: 1
           title: Slots
           description: All possible slots for the event
         timezone:

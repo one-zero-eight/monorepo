@@ -2109,6 +2109,46 @@ def test_patch_event_not_found(when2meet_client: TestClient, user_headers):
     assert patch_resp.json()["detail"] == "Meeting not found"
 
 
+@pytest.mark.parametrize("slots", [None, []], ids=["null", "empty"])
+def test_patch_event_rejects_missing_intervals_without_changing_meeting(
+    when2meet_client: TestClient, user_headers, slots
+):
+    create_resp = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Slot Meeting", "slots": ["2027-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    assert create_resp.status_code == 201
+    meeting = create_resp.json()
+    url = f"/api/v0/meetings/{meeting['id']}"
+
+    response = when2meet_client.patch(url, json={"name": "Invalid rename", "slots": slots}, headers=user_headers)
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "slots"]
+    assert "Meeting must have at least one slot" in response.json()["detail"][0]["msg"]
+    assert when2meet_client.get(url, headers=user_headers).json() == meeting
+
+
+def test_patch_event_without_slots_preserves_intervals(when2meet_client: TestClient, user_headers):
+    create_resp = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Slot Meeting", "slots": ["2027-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    assert create_resp.status_code == 201
+    meeting = create_resp.json()
+
+    response = when2meet_client.patch(
+        f"/api/v0/meetings/{meeting['id']}", json={"name": "Renamed"}, headers=user_headers
+    )
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "Renamed"
+    assert response.json()["slots"] == meeting["slots"]
+    assert response.json()["archive_after"] == meeting["archive_after"]
+
+
 def test_patch_event_preserves_hidden_participant_slots(when2meet_client: TestClient, user_headers):
     """Verify removed event slots stay in participant availability."""
     create_resp = when2meet_client.post(
