@@ -51,6 +51,10 @@ class UpdateReservationStatus(BaseSchema):
     borrower_name: str | None
 
 
+class UpdateReturnDate(BaseSchema):
+    return_date: dtm.date
+
+
 async def create(data: CreateBoardGame) -> BoardGame:
     return await BoardGame.model_validate(data, from_attributes=True).create()
 
@@ -222,6 +226,15 @@ async def update_reservation_status(
     reservation.status = status
     if reservation.status == ReservationStatus.TAKEN and borrower_name is not None:
         reservation.borrower_name = borrower_name
+    await reservation.save()
+    return reservation
+
+
+async def update_return_date(id: PydanticObjectId, return_date: dtm.date) -> Reservation | None:
+    reservation = await Reservation.get(id)
+    if reservation is None:
+        return None
+    reservation.return_date = return_date
     await reservation.save()
     return reservation
 

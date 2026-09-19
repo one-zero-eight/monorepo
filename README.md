@@ -138,6 +138,12 @@ our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CON
    ```
    > It will be available at http://localhost:8015
 
+   For board games service:
+   ```bash
+   uv run -m src.board_games --reload
+   ```
+   > It will be available at http://localhost:8016
+
    For forms service:
    ```bash
    uv run -m src.forms --reload
