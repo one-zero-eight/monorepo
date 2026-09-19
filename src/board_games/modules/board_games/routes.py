@@ -122,25 +122,13 @@ async def get_reservations(
 #     return reservation
 
 
-@router.patch("/admin/reservations/{id}/status")
-async def edit_reservation_status(
+@router.patch("/admin/reservations/{id}")
+async def edit_reservation(
     id: PydanticObjectId,
-    body: board_games_repo.UpdateReservationStatus,
+    body: board_games_repo.UpdateReservationAdmin,
     _: BOARD_GAMES_ADMIN_AUTH,
 ) -> Reservation:
-    reservation = await board_games_repo.update_reservation_status(id, body.status, body.borrower_name)
-    if reservation is None:
-        raise HTTPException(status_code=404, detail="Reservation not found")
-    return reservation
-
-
-@router.patch("/admin/reservations/{id}/return_date")
-async def edit_reservation_return_date(
-    id: PydanticObjectId,
-    body: board_games_repo.UpdateReturnDate,
-    _: BOARD_GAMES_ADMIN_AUTH,
-) -> Reservation:
-    reservation = await board_games_repo.update_return_date(id, body.return_date)
+    reservation = await board_games_repo.update_reservation_admin(id, body.status, body.borrower_name, body.return_date)
     if reservation is None:
         raise HTTPException(status_code=404, detail="Reservation not found")
     return reservation

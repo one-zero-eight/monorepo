@@ -46,13 +46,10 @@ class UpdateReservation(BaseSchema):
     comments: str | None = None
 
 
-class UpdateReservationStatus(BaseSchema):
-    status: ReservationStatus
-    borrower_name: str | None
-
-
-class UpdateReturnDate(BaseSchema):
-    return_date: dtm.date
+class UpdateReservationAdmin(BaseSchema):
+    status: ReservationStatus | None = None
+    borrower_name: str | None = None
+    return_date: dtm.date | None = None
 
 
 async def create(data: CreateBoardGame) -> BoardGame:
@@ -217,24 +214,21 @@ async def delete_reservation(id: PydanticObjectId) -> bool:
     return bool(result and result.deleted_count > 0)
 
 
-async def update_reservation_status(
-    id: PydanticObjectId, status: ReservationStatus, borrower_name: str | None
+async def update_reservation_admin(
+    id: PydanticObjectId, status: ReservationStatus | None, borrower_name: str | None, return_date: dtm.date | None
 ) -> Reservation | None:
     reservation = await Reservation.get(id)
     if reservation is None:
         return None
-    reservation.status = status
-    if reservation.status == ReservationStatus.TAKEN and borrower_name is not None:
-        reservation.borrower_name = borrower_name
-    await reservation.save()
-    return reservation
 
+    if status:
+        reservation.status = status
+        if reservation.status == ReservationStatus.TAKEN and borrower_name is not None:
+            reservation.borrower_name = borrower_name
 
-async def update_return_date(id: PydanticObjectId, return_date: dtm.date) -> Reservation | None:
-    reservation = await Reservation.get(id)
-    if reservation is None:
-        return None
-    reservation.return_date = return_date
+    if return_date:
+        reservation.return_date = return_date
+
     await reservation.save()
     return reservation
 
