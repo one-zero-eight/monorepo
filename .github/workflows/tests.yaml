@@ -172,6 +172,6 @@ jobs:
           comment_title: |
             Coverage
 
-            ${{ steps.coverage.outputs.coverage_md }}
+            ${{ steps.tests.outputs.coverage_md }}
 
             ## Tests
