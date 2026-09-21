@@ -24,11 +24,9 @@ DO NOT USE response_model= in route decorator, use type hints instead:
 
 If you need to scaffold a new service, use the [NEW_SERVICE.md](NEW_SERVICE.md) guide.
 
-For parallel branches via git worktrees, see [WORKTREE.md](WORKTREE.md).
-
 ### Migrations
 
-- Use versioned Beanie/Alembic migrations for stored schema/data changes, not runtime legacy compatibility. See [README migration workflow](README.md#database-migrations).
+- Use versioned Beanie/Alembic migrations for stored schema/data changes, not runtime legacy compatibility. See [database migration workflow](DATABASE.md#migrations).
 - Keep published revisions, frozen historical models, and existing migration histories intact; do not rewrite history or blindly stamp databases to head.
 - Run migrations before API startup through Compose `pre_start` or locally with `uv run -m src.migrations <service>`, never from workers or app lifespan. Provision the target database first and serialize migrations against it.
 - Beanie records history after the data transaction commits: migrations must be idempotent and preserve unrelated fields, IDs, and existing timestamps.

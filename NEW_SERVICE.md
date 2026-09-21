@@ -471,7 +471,7 @@ def clean_up_stores_per_test(request: pytest.FixtureRequest):
 
 ### Database migrations (database-backed services only)
 
-Follow the [migration workflow](README.md#database-migrations). The shared CLI is a thin, settings-aware adapter over stock Beanie/Alembic and applies forward migrations only.
+Follow the [migration workflow](DATABASE.md#migrations). The shared CLI is a thin, settings-aware adapter over stock Beanie/Alembic and applies forward migrations only.
 
 - Register the service identifier and database settings in `src/migrations/__init__.py`, alongside the existing `board_games`, `clubs`, `events`, `forms`, `guard`, `tabletennis`, `when2meet`, `schedule`, and `schedule_assistant` services. Unknown, unconfigured, and non-database services are errors, not successful no-ops.
 - For MongoDB, add `src/my_service/migrations/__init__.py` and create versioned revisions using stock Beanie tools. Use transactions on a replica set and frozen historical models rather than importing mutable application models. Make migrations idempotent: Beanie saves history after committing the data transaction, so a retry can execute the data change again. Preserve unrelated fields, IDs, and existing timestamps.

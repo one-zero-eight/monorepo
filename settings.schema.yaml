@@ -614,7 +614,6 @@ $defs:
         description: Room Booking API integration settings
     required:
     - api_key
-    - db_url
     - booking
     title: ScheduleAssistantSettings
     type: object
@@ -641,8 +640,8 @@ $defs:
       db_url:
         description: PostgreSQL database connection URL
         examples:
-        - postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/postgres
-        - postgresql+asyncpg://postgres:postgres@postgres:5432/postgres
+        - postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/schedule
+        - postgresql+asyncpg://postgres:postgres@postgres:5432/schedule
         format: password
         title: Db Url
         type: string
@@ -680,8 +679,6 @@ $defs:
         - type: 'null'
         default: null
         description: Schedule Assistant integration settings
-    required:
-    - db_url
     title: ScheduleSettings
     type: object
   SportSettings:

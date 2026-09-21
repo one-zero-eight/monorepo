@@ -70,6 +70,11 @@ def default_mongo_uri() -> SecretStr:
         )
 
 
+def default_postgres_url(*, driver: str, database: str) -> SecretStr:
+    host = "postgres" if is_running_in_docker() else "127.0.0.1"
+    return SecretStr(f"postgresql+{driver}://postgres:postgres@{host}:5432/{database}")
+
+
 def default_minio_endpoint() -> str:
     in_docker = is_running_in_docker()
     if in_docker:

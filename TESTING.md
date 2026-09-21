@@ -73,7 +73,7 @@ When parallel test execution is enabled, assume multiple workers may run tests a
 
 `schedule` and `schedule_assistant` fixtures provision isolated PostgreSQL databases **before** applying the existing Alembic history to head, then start the API. Do not use `create_all()` as a substitute for upgrades or blindly `stamp head`. Keep published revisions and migration histories unchanged.
 
-See [Database migrations](README.md#database-migrations) for startup, serialization, and rollback rules.
+See [Database migrations](DATABASE.md#migrations) for startup, serialization, and rollback rules.
 
 ### Mocking
 

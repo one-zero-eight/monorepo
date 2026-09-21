@@ -29,8 +29,8 @@ services:
       MONGO_REPLICA_HOST: mongodb:27017
 
   minio:
-    # See more: https://hub.docker.com/r/minio/minio
-    image: "minio/minio:RELEASE.2024-05-10T01-41-38Z"
+    # See more: https://quay.io/repository/minio/minio
+    image: "quay.io/minio/minio:RELEASE.2024-05-10T01-41-38Z"
     restart: no
     ports:
       - "9000:9000"

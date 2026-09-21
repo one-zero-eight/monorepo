@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pydantic import Field, SecretStr
 
-from src.common_config import ServiceSettingsBase
+from src.common_config import ServiceSettingsBase, default_postgres_url
 from src.common_pydantic import BaseSchema
 
 
@@ -54,9 +54,10 @@ class ScheduleSettings(ServiceSettingsBase):
 
     app_root_path: str = "/schedule/v0"
     db_url: SecretStr = Field(
+        default_factory=lambda: default_postgres_url(driver="asyncpg", database="schedule"),
         examples=[
-            "postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/postgres",
-            "postgresql+asyncpg://postgres:postgres@postgres:5432/postgres",
+            "postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/schedule",
+            "postgresql+asyncpg://postgres:postgres@postgres:5432/schedule",
         ],
     )
     "PostgreSQL database connection URL"
