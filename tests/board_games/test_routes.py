@@ -185,7 +185,7 @@ def test_admin_can_lend_reservation_and_see_borrower(
     assert current.json()[0]["id"] == reservation_id
 
     lent = board_games_client.patch(
-        f"/admin/reservations/{reservation_id}/status",
+        f"/admin/reservations/{reservation_id}",
         json={"status": "taken", "borrower_name": "Test User One"},
         headers=user_headers,
     )
@@ -214,7 +214,7 @@ def test_admin_can_lend_reservation_and_see_borrower(
     assert listed_admin_after_lend.json()[0]["available_in_storage"] == 0
 
     returned = board_games_client.patch(
-        f"/admin/reservations/{reservation_id}/status",
+        f"/admin/reservations/{reservation_id}",
         json={"status": "returned", "borrower_name": None},
         headers=user_headers,
     )
