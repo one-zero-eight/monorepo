@@ -56,7 +56,7 @@ class CleanErrorFilter(logging.Filter):
             )
 
             while tb:
-                filename = tb.tb_frame.f_code.co_filename if tb.tb_frame else None
+                filename = tb.tb_frame.f_code.co_filename
                 if filename and filename.endswith(top_skip_suffixes):
                     tb = tb.tb_next
                     continue
@@ -64,7 +64,7 @@ class CleanErrorFilter(logging.Filter):
 
             current = tb
             while current and current.tb_next:
-                next_filename = current.tb_next.tb_frame.f_code.co_filename if current.tb_next.tb_frame else None
+                next_filename = current.tb_next.tb_frame.f_code.co_filename
                 if next_filename and next_filename.endswith(tail_cut_suffixes):
                     current.tb_next = None
                     break
