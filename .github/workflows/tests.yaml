@@ -24,8 +24,6 @@ jobs:
     timeout-minutes: 30
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      COVERAGE_FILE: reports/coverage-data
-
     permissions:
       contents: read
       checks: write
@@ -106,6 +104,7 @@ jobs:
         run: uv sync --frozen
 
       - name: 🧪 Run tests
+        id: tests
         env:
           PYTHONUNBUFFERED: "1"
         run: |
@@ -117,8 +116,16 @@ jobs:
             --memray \
             --junitxml=reports/junit.xml \
             --cov-report=xml:reports/coverage.xml \
-            --cov-report=term-missing \
+            --cov-report=markdown:reports/coverage.md \
             2>&1 | tee reports/pytest.log
+
+          grep -v "100% |" reports/coverage.md > reports/coverage-skip-covered.md || cp reports/coverage.md reports/coverage-skip-covered.md
+          delimiter="$(openssl rand -hex 16)"
+          {
+            echo "coverage_md<<$delimiter"
+            cat reports/coverage-skip-covered.md
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Test infrastructure logs
         if: failure()
@@ -131,31 +138,20 @@ jobs:
           docker logs "$MONGO_CONTAINER"
           docker logs "$MINIO_CONTAINER"
 
-      - name: Coverage summary
-        id: coverage
-        if: ${{ !cancelled() && hashFiles('reports/coverage-data') != '' }}
-        run: |
-          set -o pipefail
-          uv run -m coverage report --skip-covered --show-missing | tee reports/coverage.md
-
-          delimiter="$(openssl rand -hex 16)"
-          {
-            echo "coverage_md<<$delimiter"
-            cat reports/coverage.md
-            echo "$delimiter"
-          } >> "$GITHUB_OUTPUT"
-
       - name: 📤 Upload reports
         uses: actions/upload-artifact@v7
         if: (!cancelled())
         with:
           name: pytest-reports
-          path: reports/
+          path: |
+            reports/junit.xml
+            reports/coverage.xml
+            reports/pytest.log
           retention-days: 30
           if-no-files-found: ignore
 
       - name: 📋 pytest log
-        if: ${{ !cancelled() && hashFiles('reports/pytest.log') != '' }}
+        if: (!cancelled()) && hashFiles('reports/pytest.log') != ''
         run: |
           {
             echo "<details>"
