@@ -502,3 +502,155 @@ def test_edit_club_by_slug_returns_400_when_revision_conflicts(
     )
     assert response.status_code == 400
     assert response.json()["detail"] == "Slug already exists"
+
+
+def _pending_logo_club(
+    clubs_client: TestClient,
+    admin_headers: dict[str, str],
+    leader_headers: dict[str, str],
+    slug: str,
+) -> tuple[str, str]:
+    """Create a club led by the leader and upload a leader logo awaiting approval."""
+    create_response = clubs_client.post(
+        "/clubs/",
+        json={**_club_payload(slug), "leader_innohassle_id": "507f1f77bcf86cd799439012"},
+        headers=admin_headers,
+    )
+    assert create_response.status_code == 200
+    club_id = create_response.json()["id"]
+
+    upload_response = clubs_client.post(
+        f"/clubs/by-id/{club_id}/logo",
+        files={"logo_file": ("x.png", _white_png(), "image/png")},
+        headers=leader_headers,
+    )
+    assert upload_response.status_code == 200
+    payload = upload_response.json()
+    assert payload["logo_file_id"] is None
+    pending_logo_file_id = payload["pending_update"]["logo_file_id"]
+    assert pending_logo_file_id
+
+    return club_id, pending_logo_file_id
+
+
+def test_get_pending_logo_requires_auth(clubs_client: TestClient):
+    response = clubs_client.get("/clubs/by-id/64b7de000000000000000001/pending-logo", follow_redirects=False)
+    assert response.status_code == 401
+
+
+def test_get_pending_logo_returns_404_for_missing_club(
+    clubs_client: TestClient,
+    superadmin_headers: dict[str, str],
+    user_headers: dict[str, str],
+):
+    admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
+    response = clubs_client.get(
+        "/clubs/by-id/64b7de000000000000000001/pending-logo",
+        headers=admin_headers,
+        follow_redirects=False,
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Club not found"
+
+
+def test_get_pending_logo_forbidden_for_outsider(
+    clubs_client: TestClient,
+    superadmin_headers: dict[str, str],
+    user_headers: dict[str, str],
+    auth_header_factory,
+):
+    admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
+    leader_headers = auth_header_factory("507f1f77bcf86cd799439012", "guard-other@innopolis.university")
+    club_id, _ = _pending_logo_club(clubs_client, admin_headers, leader_headers, "pending-logo-forbidden")
+
+    outsider_headers = auth_header_factory("507f1f77bcf86cd799439011", "guard-author@innopolis.university")
+    response = clubs_client.get(
+        f"/clubs/by-id/{club_id}/pending-logo",
+        headers=outsider_headers,
+        follow_redirects=False,
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Only admin or leader can view the pending club logo"
+
+
+def test_get_pending_logo_returns_404_without_pending_update(
+    clubs_client: TestClient,
+    superadmin_headers: dict[str, str],
+    user_headers: dict[str, str],
+):
+    admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
+    create_response = clubs_client.post("/clubs/", json=_club_payload("no-pending-logo"), headers=admin_headers)
+    assert create_response.status_code == 200
+    club_id = create_response.json()["id"]
+
+    response = clubs_client.get(
+        f"/clubs/by-id/{club_id}/pending-logo",
+        headers=admin_headers,
+        follow_redirects=False,
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "No pending logo available"
+
+
+def test_get_pending_logo_returns_404_when_pending_logo_matches_current(
+    clubs_client: TestClient,
+    superadmin_headers: dict[str, str],
+    user_headers: dict[str, str],
+    auth_header_factory,
+):
+    admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
+    leader_headers = auth_header_factory("507f1f77bcf86cd799439012", "guard-other@innopolis.university")
+    create_response = clubs_client.post(
+        "/clubs/",
+        json={
+            **_club_payload("pending-logo-same"),
+            "leader_innohassle_id": "507f1f77bcf86cd799439012",
+            "logo_file_id": "logo-same",
+        },
+        headers=admin_headers,
+    )
+    assert create_response.status_code == 200
+    club_id = create_response.json()["id"]
+
+    edit_response = clubs_client.post(
+        f"/clubs/by-id/{club_id}",
+        json={**_club_payload("pending-logo-same", title="Leader title"), "logo_file_id": "logo-same"},
+        headers=leader_headers,
+    )
+    assert edit_response.status_code == 200
+    assert edit_response.json()["pending_update"]["logo_file_id"] == "logo-same"
+
+    response = clubs_client.get(
+        f"/clubs/by-id/{club_id}/pending-logo",
+        headers=leader_headers,
+        follow_redirects=False,
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "No pending logo available"
+
+
+@pytest.mark.parametrize("requester", ["leader", "admin"])
+def test_get_pending_logo_redirects_when_pending_logo_exists(
+    clubs_client: TestClient,
+    superadmin_headers: dict[str, str],
+    user_headers: dict[str, str],
+    auth_header_factory,
+    requester: str,
+):
+    admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
+    leader_headers = auth_header_factory("507f1f77bcf86cd799439012", "guard-other@innopolis.university")
+    club_id, pending_logo_file_id = _pending_logo_club(
+        clubs_client, admin_headers, leader_headers, f"pending-logo-{requester}"
+    )
+
+    headers = leader_headers if requester == "leader" else admin_headers
+    response = clubs_client.get(
+        f"/clubs/by-id/{club_id}/pending-logo",
+        headers=headers,
+        follow_redirects=False,
+    )
+    assert response.status_code == 307
+    loc = response.headers["location"]
+    parsed = urlparse(loc)
+    assert parsed.scheme in {"http", "https"}
+    assert f"{pending_logo_file_id}-512" in loc

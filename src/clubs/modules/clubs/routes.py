@@ -234,6 +234,22 @@ async def delete_club(id: PydanticObjectId, _: CLUBS_ADMIN_AUTH) -> None:
         raise HTTPException(status_code=404, detail="Club not found")
 
 
+CLUB_LOGO_SIZE = 512
+"Logo variant served by the logo endpoints."
+
+
+def _club_logo_redirect(logo_file_id: str) -> RedirectResponse:
+    return RedirectResponse(url=logos_repo.get_club_logo_url(logo_file_id, CLUB_LOGO_SIZE))
+
+
+async def _resolve_club_access(club: Club, innohassle_id: str) -> tuple[bool, bool]:
+    """Return (is_admin, is_leader) for the given user and club."""
+    clubs_user = await users_repo.read_by_innohassle_id(innohassle_id)
+    is_admin = bool(clubs_user and clubs_user.role == UserRole.ADMIN)
+    is_leader = club.leader_innohassle_id == innohassle_id
+    return is_admin, is_leader
+
+
 @router.get(
     "/by-id/{id}/logo",
     responses={
@@ -251,7 +267,40 @@ async def get_club_logo(id: PydanticObjectId) -> RedirectResponse:
     if not club.logo_file_id:
         raise HTTPException(status_code=404, detail="No logo available")
 
-    return RedirectResponse(url=logos_repo.get_club_logo_url(club.logo_file_id, 512))
+    return _club_logo_redirect(club.logo_file_id)
+
+
+@router.get(
+    "/by-id/{id}/pending-logo",
+    summary="Get pending club logo",
+    responses={
+        status.HTTP_307_TEMPORARY_REDIRECT: {"description": "Redirect to the pending club logo"},
+        status.HTTP_401_UNAUTHORIZED: {"description": "Credentials not provided or invalid"},
+        status.HTTP_403_FORBIDDEN: {"description": "Only admin or leader can view the pending club logo"},
+        status.HTTP_404_NOT_FOUND: {"description": "Club not found or no pending logo available"},
+    },
+    response_class=RedirectResponse,
+)
+async def get_pending_club_logo(id: PydanticObjectId, auth: INH_TOKEN_AUTH) -> RedirectResponse:
+    """Get the logo from a club pending update, waiting for admin approval.
+
+    Behaves exactly like the approved logo endpoint, but serves
+    `pending_update.logo_file_id`. Unapproved content is not public: only the
+    club leader and admins can read it.
+    """
+    club = await clubs_repo.read(id)
+    if not club:
+        raise HTTPException(status_code=404, detail="Club not found")
+
+    is_admin, is_leader = await _resolve_club_access(club, auth.innohassle_id)
+    if not is_admin and not is_leader:
+        raise HTTPException(status_code=403, detail="Only admin or leader can view the pending club logo")
+
+    pending_logo_file_id = club.pending_update.logo_file_id if club.pending_update else None
+    if not pending_logo_file_id or pending_logo_file_id == club.logo_file_id:
+        raise HTTPException(status_code=404, detail="No pending logo available")
+
+    return _club_logo_redirect(pending_logo_file_id)
 
 
 @router.post(
@@ -269,9 +318,7 @@ async def set_club_logo(id: PydanticObjectId, logo_file: UploadFile, auth: INH_T
     if club is None:
         raise HTTPException(status_code=404, detail="Club not found")
 
-    clubs_user = await users_repo.read_by_innohassle_id(auth.innohassle_id)
-    is_admin = clubs_user and clubs_user.role == UserRole.ADMIN
-    is_leader = club.leader_innohassle_id == auth.innohassle_id
+    is_admin, is_leader = await _resolve_club_access(club, auth.innohassle_id)
 
     if not is_admin and not is_leader:
         raise HTTPException(status_code=403, detail="Only admin or leader can change club logo")
@@ -307,7 +354,7 @@ async def set_club_logo(id: PydanticObjectId, logo_file: UploadFile, auth: INH_T
         club.logo_file_id = logo_file_id
     else:
         if not club.pending_update:
-            club.pending_update = PendingClubUpdate(**club.model_dump(exclude={"pending_update"}))
+            club.pending_update = PendingClubUpdate(**club.model_dump(include=set(PendingClubUpdate.model_fields)))
         club.pending_update.logo_file_id = logo_file_id
 
     await club.save()
