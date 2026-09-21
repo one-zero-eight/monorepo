@@ -49,7 +49,7 @@ When finishing a task with code changes:
 
 Follow the repository testing guidelines in [TESTING.md](TESTING.md).
 
-Run pytest from the repository root in a separate process for each service (e.g. `uv run -m pytest tests/clubs/`). Do not combine multiple Beanie services in one pytest process: shared document class state can break tests.
+Run pytest from the repository root: `uv run -m pytest` for all tests, or select relevant suites (e.g. `uv run -m pytest tests/clubs/ tests/events/`). Multiple services can run in one process. Shared MongoDB fields/settings belong in the non-Document `BeanieDocumentMixin`; concrete models inherit from it and `Document` directly to avoid shared Beanie initialization state.
 
 `prek` checks can modify files through fixers and formatters. Review the existing diff before running them and the resulting diff afterward; preserve unrelated changes.
 

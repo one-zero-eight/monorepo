@@ -84,11 +84,10 @@ Back up data before migrations, stop incompatible writers, and do not run migrat
 
 ### Verification
 
-Run service suites separately against the shared test stack:
+Run the relevant service suites together against the shared test stack:
 
 ```bash
-uv run -m pytest tests/schedule/
-uv run -m pytest tests/schedule_assistant/
+uv run -m pytest tests/schedule/ tests/schedule_assistant/
 ```
 
 See [TESTING.md](TESTING.md) for infrastructure setup and service test commands.

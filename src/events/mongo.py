@@ -20,9 +20,10 @@ __all__ = [
 import datetime as dtm
 from enum import StrEnum
 
+from beanie import Document
 from pydantic import Field, model_validator
 
-from src.common_beanie import BeanieDocument
+from src.common_beanie import BeanieDocumentMixin
 from src.common_pydantic import BaseSchema
 
 
@@ -179,7 +180,7 @@ class PublicEvent(BaseSchema):
     data: SubmissionData
 
 
-class Event(BeanieDocument):
+class Event(BeanieDocumentMixin, Document):
     """One MongoDB document holding draft, submission, and public stages."""
 
     creator_id: str

@@ -12,10 +12,10 @@ __all__ = [
 import datetime as dtm
 from typing import ClassVar, Literal
 
-from beanie import PydanticObjectId
+from beanie import Document, PydanticObjectId
 from pymongo import IndexModel
 
-from src.common_beanie import BeanieDocument
+from src.common_beanie import BeanieDocumentMixin
 from src.common_pydantic import BaseSchema
 
 type UserID = PydanticObjectId
@@ -54,8 +54,8 @@ class GoogleFileSchema(BaseSchema):
     sso_banned: list[GoogleFileSSOBan]
 
 
-class GoogleFile(GoogleFileSchema, BeanieDocument):
-    class Settings(BeanieDocument.Settings):
+class GoogleFile(GoogleFileSchema, BeanieDocumentMixin, Document):
+    class Settings(BeanieDocumentMixin.Settings):
         indexes: ClassVar = [
             IndexModel("slug", unique=True),
             IndexModel("file_id"),

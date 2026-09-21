@@ -2,10 +2,11 @@ __all__ = ["Event", "Participant", "document_models"]
 import datetime as dtm
 from typing import Any, ClassVar
 
-from beanie import Document, PydanticObjectId
-from pydantic import ConfigDict, Field
+from beanie import Document
+from pydantic import Field
 from pymongo import IndexModel
 
+from src.common_beanie import BeanieDocumentMixin
 from src.common_pydantic import BaseSchema
 from src.when2meet.modules.events.schemas import BookedRoom, MeetingTime, TimeRange
 
@@ -17,12 +18,7 @@ class Participant(BaseSchema):
     "List of slots the participant is available for"
 
 
-class Event(Document):
-    model_config = ConfigDict(
-        populate_by_name=True,
-        json_schema_serialization_defaults_required=True,
-    )
-
+class Event(BeanieDocumentMixin, Document):
     name: str
     "Name of the event"
     description: str | None = None
@@ -55,18 +51,8 @@ class Event(Document):
     room_booking_in_progress: bool = False
     "Internal guard preventing concurrent room bookings for one meeting"
 
-    # Define id field locally to avoid issues with shared BeanieDocument
-    id: PydanticObjectId | None = Field(
-        default=None,
-        alias="_id",
-        serialization_alias="id",
-        description="MongoDB document ObjectID",
-    )
-
-    class Settings:
+    class Settings(BeanieDocumentMixin.Settings):
         name = "events"
-        keep_nulls = False
-        max_nesting_depth = 1
         indexes: ClassVar[list[Any]] = [
             IndexModel("slug", unique=True),
             "owner_id",

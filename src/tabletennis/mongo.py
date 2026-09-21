@@ -3,13 +3,14 @@ __all__ = ["Player", "document_models"]
 import datetime as dtm
 from typing import ClassVar
 
+from beanie import Document
 from pydantic import Field
 from pymongo import IndexModel
 
-from src.common_beanie import BeanieDocument
+from src.common_beanie import BeanieDocumentMixin
 
 
-class Player(BeanieDocument):
+class Player(BeanieDocumentMixin, Document):
     innohassle_id: str
     nickname: str = Field(default="nouname", min_length=2, max_length=20)
 
@@ -21,11 +22,11 @@ class Player(BeanieDocument):
     last_game: dtm.datetime
     status: str = "Beginner"
 
-    class Settings(BeanieDocument.Settings):
+    class Settings(BeanieDocumentMixin.Settings):
         indexes: ClassVar[list[IndexModel]] = [IndexModel("innohassle_id", unique=True)]
 
 
-class Game(BeanieDocument):
+class Game(BeanieDocumentMixin, Document):
     tour_id: str
     game_id: str
 
@@ -37,11 +38,11 @@ class Game(BeanieDocument):
 
     finished: bool = False
 
-    class Settings(BeanieDocument.Settings):
+    class Settings(BeanieDocumentMixin.Settings):
         indexes: ClassVar[list[IndexModel]] = [IndexModel("tour_id")]
 
 
-class Tournament(BeanieDocument):
+class Tournament(BeanieDocumentMixin, Document):
     tour_id: str
     name: str
 
@@ -55,7 +56,7 @@ class Tournament(BeanieDocument):
     val_top: dict[int, str] = Field(default={})
     qual_top: dict[int, str] = Field(default={})
 
-    class Settings(BeanieDocument.Settings):
+    class Settings(BeanieDocumentMixin.Settings):
         name = "Tournament_v2"
         indexes: ClassVar[list[IndexModel]] = [IndexModel("tour_id", unique=True)]
 

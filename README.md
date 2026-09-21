@@ -217,16 +217,20 @@ docker compose -f docker-compose.test.yaml up --wait
 
 The local lazytainer stack stops after one hour of inactivity. Tests and fixtures never launch Docker internally. CI uses native GitHub Actions `services` with the same images, test credentials, and host ports, without Compose/lazytainer setup or teardown steps.
 
-Run each suite in a **separate process** from the repository root, not a single pytest invocation across Beanie services:
+Run all tests from the repository root in one invocation:
 
 ```bash
-uv run -m pytest tests/clubs/
-uv run -m pytest tests/when2meet/
-uv run -m pytest tests/schedule/
-uv run -m pytest tests/schedule_assistant/
+uv run -m pytest
 ```
 
-For another service, replace the suite path. Shared Beanie document state can break combined suites. To rerun only failed tests within a suite:
+You can also select multiple suites or enable parallel workers:
+
+```bash
+uv run -m pytest tests/clubs/ tests/when2meet/
+uv run -m pytest -n auto --dist=loadscope
+```
+
+For another service, replace the suite path. To rerun only failed tests within a suite:
 
 ```bash
 uv run -m pytest tests/clubs/ --lf

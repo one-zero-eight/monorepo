@@ -1,18 +1,25 @@
-__all__ = ["BeanieDocument", "BeanieStore", "setup_beanie"]
+__all__ = ["BeanieDocumentMixin", "BeanieStore", "setup_beanie"]
 
 import os
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, cast
 
 from beanie import Document, PydanticObjectId, UnionDoc, View, init_beanie
-from pydantic import ConfigDict, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 from pymongo import AsyncMongoClient, timeout
 from pymongo.errors import ConnectionFailure
 
 from src.logging_ import logger
 
 
-class BeanieDocument(Document):
+class BeanieDocumentMixin(BaseModel):
+    """Shared fields/settings without Beanie's mutable Document class state.
+
+    Concrete models must inherit from ``BeanieDocumentMixin, Document``.
+    Beanie recursively initializes Document bases, replacing their field defaults
+    with query expressions that would corrupt models imported afterward.
+    """
+
     model_config = ConfigDict(json_schema_serialization_defaults_required=True)
 
     if TYPE_CHECKING:

@@ -16,23 +16,26 @@ docker compose -f docker-compose.test.yaml up --wait
 
 Note that the test infrastructure will be stopped after 1 hour of inactivity. If the developer already started it, reuse it rather than starting another stack.
 
-Run tests for one service (preferred; matches CI):
+Run all tests in one process:
+
+```bash
+uv run -m pytest
+```
+
+For focused changes, select one or more service suites:
 
 ```bash
 uv run -m pytest tests/clubs/
+uv run -m pytest tests/schedule/ tests/schedule_assistant/
 ```
 
-CI runs each suite in a separate job/process. Do not rely on a single
-`uv run -m pytest` across multiple Beanie services — shared `BeanieDocument`
-class state in one process can break inserts.
-
-Run each service suite separately:
+CI runs the full suite in one job and one pytest process, with shared infrastructure and combined test/coverage reports. To run the full suite locally with parallel workers:
 
 ```bash
-uv run -m pytest tests/when2meet/
-uv run -m pytest tests/schedule/
-uv run -m pytest tests/schedule_assistant/
+uv run -m pytest -n auto --dist=loadscope
 ```
+
+Shared MongoDB fields and settings belong in `BeanieDocumentMixin`, which is not a Beanie `Document`. Concrete models inherit from the mixin and `Document` directly so initializing one service cannot mutate a shared document base and corrupt models imported later.
 
 Useful variants (replace `clubs` with the service under test):
 
@@ -61,7 +64,7 @@ Avoid tests that depend on hidden global state, production services, arbitrary s
 
 Use shared test infrastructure and existing fixtures. Tests and fixtures must not launch Docker or start databases, object stores, or service containers internally. The developer starts `docker-compose.test.yaml`; CI uses native GitHub Actions `services` for PostgreSQL, MongoDB, and MinIO, without Compose or lazytainer. GitHub manages CI service startup and cleanup.
 
-The local stack uses lazytainer. Both environments expose MongoDB `37017`, MinIO API `19000`, MinIO console `19001`, and PostgreSQL `35432`. These differ from the development stack ports, so both local stacks can run together. Locally, reuse the shared stack across service suites; in CI, each suite job gets its own service containers.
+The local stack uses lazytainer. Both environments expose MongoDB `37017`, MinIO API `19000`, MinIO console `19001`, and PostgreSQL `35432`. These differ from the development stack ports, so both local stacks can run together. Locally, reuse the shared stack across service suites; in CI, the full-suite job shares one set of service containers.
 
 MongoDB runs as an authenticated single-node replica set `rs0` locally and in CI so Beanie migration transactions work. Locally, `scripts/mongodb/entrypoint.sh` generates an authentication key in the persistent `/data/configdb` volume. CI creates an ephemeral key in the service command because containers start before checkout. Both use `scripts/mongodb/ready.js` to bootstrap an uninitialized replica set once and report readiness only after it is a writable primary; CI copies the script into its MongoDB container after checkout and waits up to 180 seconds before pytest. Host connections use `directConnection=true&replicaSet=rs0`. Preserve existing local data/config volumes; never delete them to work around migration or readiness failures.
 

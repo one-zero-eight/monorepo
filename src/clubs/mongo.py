@@ -14,10 +14,11 @@ __all__ = [
 from enum import StrEnum
 from typing import ClassVar
 
+from beanie import Document
 from pydantic import Field
 from pymongo import IndexModel
 
-from src.common_beanie import BeanieDocument
+from src.common_beanie import BeanieDocumentMixin
 from src.common_pydantic import BaseSchema
 
 
@@ -77,8 +78,8 @@ class ClubSchema(BaseSchema):
     "Pending update proposed by the club leader, waiting for admin approval"
 
 
-class Club(ClubSchema, BeanieDocument):
-    class Settings(BeanieDocument.Settings):
+class Club(ClubSchema, BeanieDocumentMixin, Document):
+    class Settings(BeanieDocumentMixin.Settings):
         indexes: ClassVar = [IndexModel("slug", unique=True)]
 
 
@@ -94,8 +95,8 @@ class UserSchema(BaseSchema):
     "System role of the user"
 
 
-class User(UserSchema, BeanieDocument):
-    class Settings(BeanieDocument.Settings):
+class User(UserSchema, BeanieDocumentMixin, Document):
+    class Settings(BeanieDocumentMixin.Settings):
         indexes: ClassVar = [IndexModel("innohassle_id", unique=True)]
 
 

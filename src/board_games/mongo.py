@@ -14,10 +14,11 @@ import datetime as dtm
 from enum import StrEnum
 from typing import ClassVar
 
+from beanie import Document
 from pydantic import Field
 from pymongo import IndexModel
 
-from src.common_beanie import BeanieDocument
+from src.common_beanie import BeanieDocumentMixin
 from src.common_pydantic import BaseSchema
 
 
@@ -33,8 +34,8 @@ class UserSchema(BaseSchema):
     "System role of the user"
 
 
-class User(UserSchema, BeanieDocument):
-    class Settings(BeanieDocument.Settings):
+class User(UserSchema, BeanieDocumentMixin, Document):
+    class Settings(BeanieDocumentMixin.Settings):
         indexes: ClassVar = [IndexModel("innohassle_id", unique=True)]
 
 
@@ -49,8 +50,8 @@ class BoardGameSchema(BaseSchema):
     "Number of copies available for reservation"
 
 
-class BoardGame(BoardGameSchema, BeanieDocument):
-    class Settings(BeanieDocument.Settings):
+class BoardGame(BoardGameSchema, BeanieDocumentMixin, Document):
+    class Settings(BeanieDocumentMixin.Settings):
         indexes: ClassVar = [IndexModel("title", unique=True)]
 
 
@@ -83,8 +84,8 @@ class ReservationSchema(BaseSchema):
     "Reservation creation time"
 
 
-class Reservation(ReservationSchema, BeanieDocument):
-    class Settings(BeanieDocument.Settings):
+class Reservation(ReservationSchema, BeanieDocumentMixin, Document):
+    class Settings(BeanieDocumentMixin.Settings):
         indexes: ClassVar = [
             IndexModel("board_game_id"),
             IndexModel("user_innohassle_id"),

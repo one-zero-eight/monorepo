@@ -19,33 +19,17 @@ concurrency:
 
 jobs:
   test:
-    name: pytest (${{ matrix.suite }})
+    name: pytest
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-    strategy:
-      fail-fast: false
-      matrix:
-        # One suite per job so Beanie services do not share a Python process
-        # (BeanieDocument class state breaks inserts across services otherwise).
-        suite:
-          - board_games
-          - clubs
-          - events
-          - forms
-          - guard
-          - maps
-          - room_booking
-          - schedule
-          - schedule_assistant
-          - student_affairs
-          - tabletennis
-          - when2meet
-          - shared
+      COVERAGE_FILE: reports/coverage-data
 
     permissions:
       contents: read
+      checks: write
+      pull-requests: write
 
     # Host ports match docker-compose.test.yaml; GitHub manages container startup and cleanup.
     services:
@@ -122,31 +106,19 @@ jobs:
         run: uv sync --frozen
 
       - name: 🧪 Run tests
-        id: tests
         env:
           PYTHONUNBUFFERED: "1"
-          COVERAGE_FILE: .coverage.${{ matrix.suite }}
         run: |
           set -o pipefail
           mkdir -p reports
 
-          if [ "${{ matrix.suite }}" = "shared" ]; then
-            set -- \
-              tests/test_common_fastapi.py \
-              tests/test_dependencies.py \
-              tests/test_inh_accounts_sdk.py \
-              tests/test_settings_schema.py
-          else
-            set -- "tests/${{ matrix.suite }}/"
-          fi
-
-          uv run -m pytest "$@" \
+          uv run -m pytest \
             --color=no \
             --memray \
-            --junitxml=reports/junit-${{ matrix.suite }}.xml \
-            --cov-report=xml:reports/coverage-${{ matrix.suite }}.xml \
+            --junitxml=reports/junit.xml \
+            --cov-report=xml:reports/coverage.xml \
             --cov-report=term-missing \
-            2>&1 | tee "reports/pytest-${{ matrix.suite }}.log"
+            2>&1 | tee reports/pytest.log
 
       - name: Test infrastructure logs
         if: failure()
@@ -159,109 +131,47 @@ jobs:
           docker logs "$MONGO_CONTAINER"
           docker logs "$MINIO_CONTAINER"
 
+      - name: Coverage summary
+        id: coverage
+        if: ${{ !cancelled() && hashFiles('reports/coverage-data') != '' }}
+        run: |
+          set -o pipefail
+          uv run -m coverage report --skip-covered --show-missing | tee reports/coverage.md
+
+          delimiter="$(openssl rand -hex 16)"
+          {
+            echo "coverage_md<<$delimiter"
+            cat reports/coverage.md
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
+
       - name: 📤 Upload reports
         uses: actions/upload-artifact@v7
         if: (!cancelled())
         with:
-          name: pytest-${{ matrix.suite }}
-          path: |
-            reports/junit-${{ matrix.suite }}.xml
-            reports/coverage-${{ matrix.suite }}.xml
-            reports/pytest-${{ matrix.suite }}.log
-            .coverage.${{ matrix.suite }}
+          name: pytest-reports
+          path: reports/
           retention-days: 30
           if-no-files-found: ignore
 
       - name: 📋 pytest log
-        if: ${{ !cancelled() && hashFiles(format('reports/pytest-{0}.log', matrix.suite)) != '' }}
+        if: ${{ !cancelled() && hashFiles('reports/pytest.log') != '' }}
         run: |
           {
             echo "<details>"
-            echo "<summary>pytest (${{ matrix.suite }}) output</summary>"
+            echo "<summary>pytest output</summary>"
             echo ""
             echo '```text'
-            cat "reports/pytest-${{ matrix.suite }}.log"
+            cat reports/pytest.log
             echo '```'
             echo "</details>"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  report:
-    name: Test report
-    needs: test
-    if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
-    permissions:
-      contents: read
-      checks: write
-      pull-requests: write
-
-    steps:
-      - name: 👾 Check out repository
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref }}
-
-      - name: 📦 Set up uv
-        uses: astral-sh/setup-uv@v10.0.1
-        with:
-          enable-cache: true
-          activate-environment: true
-
-      - name: 📦 Install the project
-        run: uv sync --frozen
-
-      - name: 📥 Download suite reports
-        uses: actions/download-artifact@v8
-        with:
-          pattern: pytest-*
-          merge-multiple: true
-          path: .
-
-      - name: 📊 Combine coverage
-        id: coverage
-        run: |
-          set -o pipefail
-          mkdir -p reports
-          shopt -s nullglob
-          coverage_files=(.coverage.*)
-          if [ ${#coverage_files[@]} -eq 0 ]; then
-            echo "coverage_md=" >> "$GITHUB_OUTPUT"
-            echo "No coverage data files found" >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-
-          uv run -m coverage combine "${coverage_files[@]}"
-          uv run -m coverage xml -o coverage.xml
-          uv run -m coverage report --skip-covered --show-missing | tee coverage.md
-
-          grep -v "100% |" coverage.md > coverage-skip-covered.md || cp coverage.md coverage-skip-covered.md
-          delimiter="$(openssl rand -hex 16)"
-          {
-            echo "coverage_md<<$delimiter"
-            cat coverage-skip-covered.md
-            echo "$delimiter"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: 📤 Upload combined reports
-        uses: actions/upload-artifact@v7
-        if: (!cancelled())
-        with:
-          name: pytest-reports
-          path: |
-            reports/junit-*.xml
-            coverage.xml
-          retention-days: 30
-          if-no-files-found: ignore
-
       - name: 📋 Publish test results
         uses: EnricoMi/publish-unit-test-result-action@v2
-        if: (!cancelled()) && hashFiles('reports/junit-*.xml') != ''
+        if: (!cancelled()) && hashFiles('reports/junit.xml') != ''
         with:
-          files: reports/junit-*.xml
+          files: reports/junit.xml
           check_run: false
           comment_title: |
             Coverage
