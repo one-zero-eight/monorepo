@@ -13,24 +13,24 @@ dependencies = [
     "cryptography>=50.0.1", # ~13.7 MiB
     "fastapi>=0.141.1", # ~737 KiB
     "fastapi-derive-responses>=0.1.7", # ~25 KiB
-    "fastapi-swagger>=0.4.58", # ~1.6 MiB
+    "fastapi-swagger>=0.4.59", # ~1.6 MiB
     "filetype>=1.2.0", # ~71 KiB
     "gunicorn>=26.2.0", # ~761 KiB
     "httpx>=0.28.1", # ~288 KiB
-    "joserfc>=1.7.4", # ~212 KiB
+    "joserfc>=1.7.5", # ~212 KiB
     "minio>=7.2.20", # ~381 KiB
-    "pydantic>=2.13.4", # ~1.8 MiB
+    "pydantic>=2.13.5", # ~1.8 MiB
     "pydantic-settings>=2.15.0", # ~225 KiB
     "prometheus-fastapi-instrumentator>=8.1.0", # ~19 KiB
     "python-multipart>=0.0.32", # ~101 KiB
     "pytz>=2026.3.post1", # ~988 KiB
     "pyyaml>=6.0.3", # ~2.7 MiB
-    "uvicorn>=0.52.4", # ~229 KiB
+    "uvicorn>=0.53.0", # ~229 KiB
 ]
 
 [dependency-groups]
 dev = [
-    "prek>=0.4.14", # ~14.0 MiB
+    "prek>=0.5.3", # ~14.0 MiB
     "pytest>=9.1.1", # ~1.3 MiB
     "pytest-asyncio>=1.4.0", # ~45 KiB
     "pytest-cov>=7.1.0", # ~71 KiB
@@ -39,22 +39,22 @@ dev = [
     "pytest-socket>=0.8.1", # ~8 KiB
     "pytest-xdist>=3.8.0", # ~142 KiB
     "respx>=0.23.1", # ~87 KiB
-    "ruff>=0.16.4", # ~27.0 MiB
-    "ty>=0.0.74", # ~25.0 MiB
-    "types-pyyaml>=6.0.12.20260815", # ~65 KiB
+    "ruff>=0.16.7", # ~27.0 MiB
+    "ty>=0.0.80", # ~25.0 MiB
+    "types-pyyaml>=6.0.12.20260906", # ~65 KiB
 ]
 schedule = [
-    "alembic>=1.19.1", # ~258 KiB
+    "alembic>=1.20.0", # ~258 KiB
     "asyncpg>=0.31.0", # ~3.4 MiB
     "icalendar>=7.3.0", # ~460 KiB
     "sqlalchemy[postgresql-asyncpg]>=2.0.52", # ~3.4 MiB
 ]
 schedule-assistant = [
-    "alembic>=1.19.1", # ~258 KiB
-    "numpy>=2.5.2", # ~17.8 MiB
+    "alembic>=1.20.0", # ~258 KiB
+    "numpy>=2.5.3", # ~17.8 MiB
     "openpyxl>=3.1.5", # ~245 KiB
     "pandas>=3.0.5", # ~11.8 MiB
-    "psycopg[binary]>=3.3.4", # ~4.2 MiB
+    "psycopg[binary]>=3.3.5", # ~4.2 MiB
     "sqlalchemy[postgresql-psycopg]>=2.0.52", # ~3.4 MiB
 ]
 room-booking = [
@@ -63,9 +63,9 @@ room-booking = [
     "requests-curl", # ~27 KiB
 ]
 maps = [
-    "cairosvg>=2.9.0", # ~156 KiB
-    "pypdf>=6.16.2", # ~1.4 MiB
-    "rapidfuzz>=3.14.5", # ~11.5 MiB
+    "cairosvg>=2.9.1", # ~156 KiB
+    "pypdf>=6.18.1", # ~1.4 MiB
+    "rapidfuzz>=3.14.6", # ~11.5 MiB
 ]
 clubs = [
     "pillow>=12.3.0", # ~18.6 MiB
@@ -74,7 +74,7 @@ events = [
     "pillow>=12.3.0", # ~18.6 MiB
 ]
 #workshops = [
-#    "alembic>=1.19.1", # ~258 KiB
+#    "alembic>=1.20.0", # ~258 KiB
 #    "asyncpg>=0.31.0", # ~3.4 MiB
 #    "sqlalchemy>=2.0.49", # ~3.4 MiB
 #    "sqlmodel>=0.0.38", # ~27 KiB
@@ -83,8 +83,8 @@ forms = [
     "nanoid>=2.0.0", # ~9 KiB
 ]
 guard = [
-    "google-api-python-client>=2.199.0", # ~95.4 MiB
-    "google-auth>=2.57.0", # ~871 KiB
+    "google-api-python-client>=2.200.0", # ~95.4 MiB
+    "google-auth>=2.58.0", # ~871 KiB
     "google-auth-oauthlib>=1.4.1", # ~52 KiB
 ]
 #search = [
