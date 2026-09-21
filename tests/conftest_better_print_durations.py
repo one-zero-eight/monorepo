@@ -20,7 +20,7 @@ def pytest_configure(config):
         return f"{seconds:.3f}s"
 
     @classmethod
-    def from_time_value(cls, time_value, format_seconds=format_seconds):
+    def from_time_value(cls, time_value, **_kwargs):
         return cls(
             total=format_seconds(time_value.sum),
             name=time_value.name,
