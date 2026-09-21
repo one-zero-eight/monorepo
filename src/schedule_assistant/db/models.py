@@ -84,18 +84,6 @@ class ConfigMetaRow(Base):
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
-class ConfigHistoryEventRow(Base):
-    __tablename__ = "config_history_events"
-
-    id: Mapped[str] = mapped_column(String, primary_key=True)
-    revision: Mapped[int] = mapped_column(Integer, nullable=False)
-    resources: Mapped[list[str]] = mapped_column(JSON, nullable=False)
-    saved_at: Mapped[str] = mapped_column(String, nullable=False)
-    saved_by: Mapped[str] = mapped_column(String, nullable=False)
-    patch: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
-    snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
-
-
 class DistributionUploadRow(Base):
     __tablename__ = "distribution_uploads"
 

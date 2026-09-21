@@ -407,7 +407,6 @@ async def apply_distribution(
     uploaded_by = _moderator_email(moderator)
     revision = schedule_config_repository.replace_student_group_students(
         updates,
-        saved_by=uploaded_by,
     )
     mapped_label_count = sum(1 for label in emails_by_label_map if label_mapping.get(label))
     upload = distribution_upload_repository.create(

@@ -34,8 +34,7 @@ def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@t
                 start_date=dtm.date(2026, 6, 1),
                 end_date=dtm.date(2026, 8, 2),
             ),
-        ),
-        saved_by="mod@innopolis.university",
+        )
     )
     repo.set_sections(
         SectionsConfig(
@@ -83,8 +82,7 @@ def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@t
                 ),
                 StudentsGroups(code="CORE-ONLY", name="CORE-ONLY"),
             ],
-        ),
-        saved_by="mod@innopolis.university",
+        )
     )
     repo.set_instructors(
         InstructorConfig(
@@ -105,8 +103,7 @@ def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@t
                     name_en="Unscheduled Teacher",
                 ),
             ],
-        ),
-        saved_by="mod@innopolis.university",
+        )
     )
     repo.set_courses(
         CoursesConfig(
@@ -167,8 +164,7 @@ def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@t
                     ],
                 ),
             ],
-        ),
-        saved_by="mod@innopolis.university",
+        )
     )
 
 
@@ -347,7 +343,7 @@ async def test_missing_english_section_publishes_no_student_groups(
     _seed_config(schedule_data_repo)
     sections = schedule_data_repo.get_sections()
     sections.sections = [section for section in sections.sections if section.code != "english"]
-    schedule_data_repo.set_sections(sections, saved_by="test")
+    schedule_data_repo.set_sections(sections)
 
     response = await fastapi_test_client.get("/integration/event-groups", headers=_service_headers())
     assert response.status_code == 200
@@ -502,7 +498,7 @@ def test_group_ics_handles_database_times_with_mixed_timezone_awareness(
     assert algorithms_session.weekly_pattern is not None
     slot = algorithms_session.weekly_pattern[0]
     slot.start_time = slot.start_time.replace(tzinfo=dtm.timezone(dtm.timedelta(hours=3)))
-    schedule_data_repo.set_courses(courses, saved_by="test")
+    schedule_data_repo.set_courses(courses)
 
     calendar = icalendar.Calendar.from_ical(service.get_group_ics("english-b25-cse-01"))
     events = [cast(icalendar.Event, component) for component in calendar.walk("VEVENT")]
@@ -535,7 +531,7 @@ def test_weekly_ics_uses_rrule_exdate_and_recurrence_override(
             instructor="other@innopolis.ru",
         ),
     ]
-    schedule_data_repo.set_courses(courses, saved_by="test")
+    schedule_data_repo.set_courses(courses)
 
     calendar = icalendar.Calendar.from_ical(service.get_group_ics("english-b25-cse-01"))
     events = [cast(icalendar.Event, component) for component in calendar.walk("VEVENT")]

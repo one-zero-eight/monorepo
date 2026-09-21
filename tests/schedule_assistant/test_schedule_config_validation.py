@@ -429,7 +429,7 @@ async def test_put_courses_returns_422_for_invalid_references(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
-    schedule_config_repo.set_term(_minimal_term(), saved_by="test@test.com")
+    schedule_config_repo.set_term(_minimal_term())
     schedule_config_repo.set_sections(
         SectionsConfig(
             sections=[
@@ -444,8 +444,7 @@ async def test_put_courses_returns_422_for_invalid_references(
                     code="SUM26-AAI",
                 )
             ],
-        ),
-        saved_by="test@test.com",
+        )
     )
 
     response = await authenticated_client.post(

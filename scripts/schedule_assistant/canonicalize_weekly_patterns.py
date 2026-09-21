@@ -53,7 +53,6 @@ def run(*, apply: bool, course_names: set[str] | None) -> int:
 
     _, revision = repository.set_courses(
         CoursesConfig(courses=normalized),
-        saved_by="script:canonicalize-weekly-patterns",
     )
     print(f"Saved revision: {revision}")
     return 0

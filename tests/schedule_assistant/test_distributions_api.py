@@ -76,8 +76,7 @@ def _seed_config(repo: ScheduleConfigRepository) -> None:
             courses=[],
             rooms=[],
             instructors=[],
-        ),
-        saved_by="test@test.com",
+        )
     )
 
 

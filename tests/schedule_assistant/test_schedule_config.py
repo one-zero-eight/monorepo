@@ -101,7 +101,7 @@ async def test_entity_crud_and_assembled_get(
             json=_minimal_term_settings().model_dump(mode="json"),
         )
     ).status_code == 200
-    schedule_config_repo.set_sections(_core_sections(), saved_by="test@test.com")
+    schedule_config_repo.set_sections(_core_sections())
     assert (
         await authenticated_client.post(
             "/schedule-config/rooms",
@@ -127,14 +127,15 @@ async def test_entity_crud_and_assembled_get(
 
 
 @pytest.mark.asyncio
-async def test_course_color_crud_and_history(
+async def test_course_color_crud_updates_revision(
     authenticated_client: AsyncClient,
     schedule_config_repo: ScheduleConfigRepository,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
-    schedule_config_repo.set_term(_minimal_term_settings(), saved_by="test@test.com")
-    schedule_config_repo.set_sections(_core_sections(), saved_by="test@test.com")
+    schedule_config_repo.set_term(_minimal_term_settings())
+    schedule_config_repo.set_sections(_core_sections())
+    baseline = schedule_config_repo.get_revision()
 
     create_response = await authenticated_client.post(
         "/schedule-config/courses",
@@ -142,6 +143,7 @@ async def test_course_color_crud_and_history(
     )
     assert create_response.status_code == 201
     assert create_response.json()["color"] == "#A1B2C3"
+    assert _revision(create_response.headers["etag"]) == baseline + 1
 
     update_response = await authenticated_client.put(
         "/schedule-config/courses/Algorithms",
@@ -151,16 +153,11 @@ async def test_course_color_crud_and_history(
     stored_course = schedule_config_repo.get_course("Algorithms")
     assert stored_course is not None
     assert stored_course.color == "#445566"
-
-    history = (await authenticated_client.get("/schedule-config/history")).json()
-    event = (await authenticated_client.get(f"/schedule-config/history/{history[0]['id']}")).json()
-    snapshot = (await authenticated_client.get(f"/schedule-config/history/{history[0]['id']}/snapshot")).json()
-    assert any(change.get("path") == "/courses/0/color" for change in event["patch"])
-    assert snapshot["courses"][0]["color"] == "#445566"
+    assert _revision(update_response.headers["etag"]) == baseline + 2
 
 
 @pytest.mark.asyncio
-async def test_put_term_appends_history_and_snapshot(
+async def test_put_term_bumps_revision_and_persists_value(
     authenticated_client: AsyncClient,
     schedule_config_repo: ScheduleConfigRepository,
     monkeypatch: pytest.MonkeyPatch,
@@ -179,45 +176,98 @@ async def test_put_term_appends_history_and_snapshot(
     )
     assert second_response.status_code == 200
     assert _revision(second_response.headers["etag"]) == 2
-
-    history_response = await authenticated_client.get("/schedule-config/history")
-    assert history_response.status_code == 200
-    history = history_response.json()
-    assert len(history) == 2
-    assert history[0]["revision"] == 2
-    assert history[0]["saved_by"] == "test@test.com"
-    assert history[0]["resources"] == ["term"]
-
-    event_response = await authenticated_client.get(f"/schedule-config/history/{history[0]['id']}")
-    assert event_response.status_code == 200
-    event = event_response.json()
-    assert any(change.get("path") == "/term/name" for change in event["patch"])
-
-    snapshot_response = await authenticated_client.get(f"/schedule-config/history/{history[0]['id']}/snapshot")
-    assert snapshot_response.status_code == 200
-    assert snapshot_response.json()["term"]["name"] == "Summer 2026"
+    term = schedule_config_repo.get_term()
+    assert term is not None
+    assert term.name == "Summer 2026"
+    assert schedule_config_repo.get_revision() == 2
 
 
 @pytest.mark.asyncio
-async def test_identical_put_does_not_append_history(
+async def test_identical_put_does_not_bump_revision(
     authenticated_client: AsyncClient,
     schedule_config_repo: ScheduleConfigRepository,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
-    schedule_config_repo.set_term(_minimal_term_settings(), saved_by="test@test.com")
-    room = RoomConfig.Room(id="108", name="Lecture Room 108", capacity=312)
+    schedule_config_repo.set_term(_minimal_term_settings())
+    baseline = schedule_config_repo.get_revision()
+    term = _minimal_term_settings()
 
-    first_response = await authenticated_client.post("/schedule-config/rooms", json=room.model_dump(mode="json"))
-    assert first_response.status_code == 201
-    assert _revision(first_response.headers["etag"]) == 2
+    first_response = await authenticated_client.put("/schedule-config/term", json=term.model_dump(mode="json"))
+    assert first_response.status_code == 200
+    assert _revision(first_response.headers["etag"]) == baseline
 
-    second_response = await authenticated_client.post("/schedule-config/rooms", json=room.model_dump(mode="json"))
-    assert second_response.status_code == 409
+    second_response = await authenticated_client.put("/schedule-config/term", json=term.model_dump(mode="json"))
+    assert second_response.status_code == 200
+    assert _revision(second_response.headers["etag"]) == baseline
+    assert schedule_config_repo.get_revision() == baseline
 
-    history_response = await authenticated_client.get("/schedule-config/history")
-    assert history_response.status_code == 200
-    assert len(history_response.json()) == 2
+
+@pytest.mark.asyncio
+async def test_empty_config_update_and_failed_write_keep_revision(
+    authenticated_client: AsyncClient,
+    schedule_config_repo: ScheduleConfigRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    schedule_config_repo.set_term(_minimal_term_settings())
+    schedule_config_repo.set_sections(_core_sections())
+    baseline = schedule_config_repo.get_revision()
+
+    empty_response = await authenticated_client.put("/schedule-config/", json={})
+    assert empty_response.status_code == 200
+    assert _revision(empty_response.headers["etag"]) == baseline
+    assert schedule_config_repo.get_revision() == baseline
+
+    failed_response = await authenticated_client.post(
+        "/schedule-config/courses",
+        json={"name": "Algorithms", "section_code": "missing", "components": []},
+    )
+    assert failed_response.status_code == 422
+    assert schedule_config_repo.get_revision() == baseline
+    assert schedule_config_repo.get_course("Algorithms") is None
+
+
+@pytest.mark.asyncio
+async def test_multi_resource_put_bumps_revision_once(
+    authenticated_client: AsyncClient,
+    schedule_config_repo: ScheduleConfigRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    schedule_config_repo.set_term(_minimal_term_settings())
+    schedule_config_repo.set_sections(_core_sections())
+    baseline = schedule_config_repo.get_revision()
+
+    response = await authenticated_client.put(
+        "/schedule-config/",
+        json={
+            "rooms": [{"id": "108", "name": "Lecture Room 108", "capacity": 312}],
+            "courses": [{"name": "Algorithms", "section_code": "core", "components": []}],
+        },
+    )
+    assert response.status_code == 200
+    assert _revision(response.headers["etag"]) == baseline + 1
+    assert schedule_config_repo.get_revision() == baseline + 1
+    assert len(schedule_config_repo.list_rooms()) == 1
+    assert schedule_config_repo.get_course("Algorithms") is not None
+
+
+@pytest.mark.asyncio
+async def test_history_routes_and_schemas_are_removed(authenticated_client: AsyncClient) -> None:
+    for path in (
+        "/schedule-config/history",
+        "/schedule-config/history/example",
+        "/schedule-config/history/example/snapshot",
+    ):
+        response = await authenticated_client.get(path)
+        assert response.status_code == 404
+
+    openapi = (await authenticated_client.get("/openapi.json")).json()
+    assert not any(path.startswith("/schedule-config/history") for path in openapi["paths"])
+    schema_names = openapi.get("components", {}).get("schemas", {})
+    assert "ConfigChangeEvent" not in schema_names
+    assert "ConfigChangeEventSummary" not in schema_names
 
 
 @pytest.mark.asyncio
@@ -227,15 +277,10 @@ async def test_update_course_leaves_other_resources_unchanged(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
-    schedule_config_repo.set_term(_minimal_term_settings(), saved_by="test@test.com")
-    schedule_config_repo.set_sections(_core_sections(), saved_by="test@test.com")
-    schedule_config_repo.create_room(
-        RoomConfig.Room(id="108", name="Lecture Room 108", capacity=312),
-        saved_by="test@test.com",
-    )
-    schedule_config_repo.create_course(
-        CourseConfig(name="Algorithms", section_code="core", components=[]), saved_by="test@test.com"
-    )
+    schedule_config_repo.set_term(_minimal_term_settings())
+    schedule_config_repo.set_sections(_core_sections())
+    schedule_config_repo.create_room(RoomConfig.Room(id="108", name="Lecture Room 108", capacity=312))
+    schedule_config_repo.create_course(CourseConfig(name="Algorithms", section_code="core", components=[]))
 
     response = await authenticated_client.put(
         "/schedule-config/courses/Algorithms",
@@ -256,7 +301,7 @@ async def test_non_moderator_sees_only_scheduled_instructors(
     monkeypatch.setattr(
         "src.schedule_assistant.dependencies.settings.moderator_emails", ["moderator@innopolis.university"]
     )
-    schedule_config_repo.set_term(_minimal_term_settings(), saved_by="mod@test.com")
+    schedule_config_repo.set_term(_minimal_term_settings())
     schedule_config_repo.set_sections(
         SectionsConfig(
             sections=[
@@ -271,16 +316,13 @@ async def test_non_moderator_sees_only_scheduled_instructors(
                     code="SUM26-AAI",
                 )
             ],
-        ),
-        saved_by="mod@test.com",
+        )
     )
     schedule_config_repo.create_instructor(
-        InstructorConfig.Instructor(id="teacher@innopolis.ru", email="teacher@innopolis.ru", name_en="Teacher"),
-        saved_by="mod@test.com",
+        InstructorConfig.Instructor(id="teacher@innopolis.ru", email="teacher@innopolis.ru", name_en="Teacher")
     )
     schedule_config_repo.create_instructor(
-        InstructorConfig.Instructor(id="pool@innopolis.ru", email="pool@innopolis.ru", name_en="Pool Only"),
-        saved_by="mod@test.com",
+        InstructorConfig.Instructor(id="pool@innopolis.ru", email="pool@innopolis.ru", name_en="Pool Only")
     )
     schedule_config_repo.create_course(
         CourseConfig(
@@ -306,8 +348,7 @@ async def test_non_moderator_sees_only_scheduled_instructors(
                     ],
                 ),
             ],
-        ),
-        saved_by="mod@test.com",
+        )
     )
 
     assembled_response = await authenticated_client.get("/schedule-config/")
@@ -323,11 +364,9 @@ async def test_delete_course(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
-    schedule_config_repo.set_term(_minimal_term_settings(), saved_by="test@test.com")
-    schedule_config_repo.set_sections(_core_sections(), saved_by="test@test.com")
-    schedule_config_repo.create_course(
-        CourseConfig(name="Algorithms", section_code="core", components=[]), saved_by="test@test.com"
-    )
+    schedule_config_repo.set_term(_minimal_term_settings())
+    schedule_config_repo.set_sections(_core_sections())
+    schedule_config_repo.create_course(CourseConfig(name="Algorithms", section_code="core", components=[]))
 
     response = await authenticated_client.delete("/schedule-config/courses/Algorithms")
     assert response.status_code == 204
@@ -341,7 +380,7 @@ async def test_moderator_sees_all_instructors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
-    schedule_config_repo.set_term(_minimal_term_settings(), saved_by="test@test.com")
+    schedule_config_repo.set_term(_minimal_term_settings())
     schedule_config_repo.set_sections(
         SectionsConfig(
             sections=[
@@ -356,16 +395,13 @@ async def test_moderator_sees_all_instructors(
                     code="SUM26-AAI",
                 )
             ],
-        ),
-        saved_by="test@test.com",
+        )
     )
     schedule_config_repo.create_instructor(
-        InstructorConfig.Instructor(id="teacher@innopolis.ru", email="teacher@innopolis.ru"),
-        saved_by="test@test.com",
+        InstructorConfig.Instructor(id="teacher@innopolis.ru", email="teacher@innopolis.ru")
     )
     schedule_config_repo.create_instructor(
-        InstructorConfig.Instructor(id="pool@innopolis.ru", email="pool@innopolis.ru"),
-        saved_by="test@test.com",
+        InstructorConfig.Instructor(id="pool@innopolis.ru", email="pool@innopolis.ru")
     )
     schedule_config_repo.create_course(
         CourseConfig(
@@ -390,8 +426,7 @@ async def test_moderator_sees_all_instructors(
                     ],
                 ),
             ],
-        ),
-        saved_by="test@test.com",
+        )
     )
 
     assembled_response = await authenticated_client.get("/schedule-config/")
@@ -499,7 +534,7 @@ async def test_put_yaml_file_strips_legacy_section_kind(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
-    schedule_config_repo.set_term(_minimal_term_settings(), saved_by="test@test.com")
+    schedule_config_repo.set_term(_minimal_term_settings())
     with schedule_config_repo._session() as session:
         row = session.get(TermRow, 1)
         assert row is not None
@@ -550,11 +585,8 @@ async def test_partial_put_leaves_unspecified_resources_unchanged(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
-    schedule_config_repo.set_term(_minimal_term_settings(), saved_by="test@test.com")
-    schedule_config_repo.create_room(
-        RoomConfig.Room(id="108", name="Lecture Room 108", capacity=312),
-        saved_by="test@test.com",
-    )
+    schedule_config_repo.set_term(_minimal_term_settings())
+    schedule_config_repo.create_room(RoomConfig.Room(id="108", name="Lecture Room 108", capacity=312))
 
     response = await authenticated_client.put(
         "/schedule-config/",
@@ -605,7 +637,7 @@ async def test_instructor_meetings_counts_endpoint(
             ],
         }
     )
-    schedule_config_repo.set_term(term, saved_by="mod@test.com")
+    schedule_config_repo.set_term(term)
     schedule_config_repo.set_sections(
         SectionsConfig(
             sections=[
@@ -620,17 +652,10 @@ async def test_instructor_meetings_counts_endpoint(
                     code="G1",
                 )
             ],
-        ),
-        saved_by="mod@test.com",
+        )
     )
-    schedule_config_repo.create_instructor(
-        InstructorConfig.Instructor(id="a@iu.ru"),
-        saved_by="mod@test.com",
-    )
-    schedule_config_repo.create_instructor(
-        InstructorConfig.Instructor(id="b@iu.ru"),
-        saved_by="mod@test.com",
-    )
+    schedule_config_repo.create_instructor(InstructorConfig.Instructor(id="a@iu.ru"))
+    schedule_config_repo.create_instructor(InstructorConfig.Instructor(id="b@iu.ru"))
     schedule_config_repo.create_course(
         CourseConfig(
             name="Course",
@@ -654,8 +679,7 @@ async def test_instructor_meetings_counts_endpoint(
                     ],
                 ),
             ],
-        ),
-        saved_by="mod@test.com",
+        )
     )
 
     list_response = await authenticated_client.get("/schedule-config/instructors")

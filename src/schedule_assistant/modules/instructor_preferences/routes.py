@@ -36,8 +36,6 @@ def _preference_form(instructor: InstructorConfig.Instructor) -> InstructorPrefe
 def _save_slot_preferences(
     instructor: InstructorConfig.Instructor,
     slot_preferences: list[InstructorSlotPreferenceEntry],
-    *,
-    saved_by: str,
 ) -> InstructorConfig.Instructor:
     term = schedule_config_repository.get_term()
     if term is None:
@@ -56,7 +54,6 @@ def _save_slot_preferences(
     saved, _revision = schedule_config_repository.update_instructor(
         instructor.id,
         updated,
-        saved_by=saved_by,
     )
     return saved
 
@@ -107,7 +104,6 @@ async def update_my_preferences(
     saved = _save_slot_preferences(
         instructor,
         body.slot_preferences,
-        saved_by=user.email,
     )
     return _preference_form(saved)
 
@@ -146,6 +142,5 @@ async def update_preferences_by_token(
     saved = _save_slot_preferences(
         instructor,
         body.slot_preferences,
-        saved_by=f"preference-link:{instructor.id}",
     )
     return _preference_form(saved)

@@ -152,8 +152,7 @@ def seed_timetable(repo) -> ScheduleConfig:
             instructors=config.instructors,
             students_groups=config.students_groups,
             courses=config.courses,
-        ),
-        saved_by="moderator@innopolis.ru",
+        )
     )
     return stored
 

@@ -1,8 +1,6 @@
-import uuid
 from dataclasses import replace
-from typing import Any, cast
+from typing import Any, Literal
 
-import jsonpatch
 from fastapi import HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import delete, select
@@ -10,7 +8,6 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from src.schedule_assistant.config import settings
 from src.schedule_assistant.db.models import (
-    ConfigHistoryEventRow,
     ConfigMetaRow,
     CourseRow,
     InstructorRow,
@@ -19,11 +16,6 @@ from src.schedule_assistant.db.models import (
     TermRow,
 )
 from src.schedule_assistant.db.session import get_engine
-from src.schedule_assistant.modules.schedule_config.event_log import (
-    ConfigChangeEvent,
-    ConfigChangeEventSummary,
-    ConfigResource,
-)
 from src.schedule_assistant.modules.schedule_config.schemas import (
     CourseConfig,
     CoursesConfig,
@@ -59,10 +51,11 @@ from src.schedule_assistant.modules.schedule_config.validation import (
 from src.schedule_assistant.modules.schedule_config.weekly_pattern_canonicalization import (
     canonicalize_courses,
 )
-from src.schedule_assistant.utcnow import utcnow
 
 TERM_SINGLETON_ID = 1
 META_SINGLETON_ID = 1
+
+ConfigResource = Literal["term", "sections", "courses", "rooms", "instructors"]
 
 
 def _section_payloads_from_stored(sections: object) -> list[Any]:
@@ -208,37 +201,18 @@ class ScheduleConfigRepository:
             return dump
         return self._assembled_dump(session)
 
-    def _append_history(
+    def _bump_revision_if_changed(
         self,
         session: Session,
         old_dump: dict[str, Any],
         new_dump: dict[str, Any],
-        *,
-        saved_by: str,
-        resources: list[ConfigResource],
     ) -> int:
         if old_dump == new_dump:
             return self._get_revision_row(session).revision
 
-        patch = jsonpatch.make_patch(old_dump, new_dump).patch
-        if not patch:
-            return self._get_revision_row(session).revision
-
         meta = self._get_revision_row(session)
-        new_revision = meta.revision + 1
-        meta.revision = new_revision
-        session.add(
-            ConfigHistoryEventRow(
-                id=str(uuid.uuid4()),
-                revision=new_revision,
-                resources=resources,
-                saved_at=utcnow().isoformat(),
-                saved_by=saved_by,
-                patch=patch,
-                snapshot=new_dump,
-            )
-        )
-        return new_revision
+        meta.revision += 1
+        return meta.revision
 
     def _load_term_config(self, session: Session) -> TermConfig | None:
         row = session.get(TermRow, TERM_SINGLETON_ID)
@@ -370,7 +344,7 @@ class ScheduleConfigRepository:
                 return None
             return self._term_row_to_term(row)
 
-    def set_term(self, term: TermConfig, *, saved_by: str) -> tuple[TermConfig, int]:
+    def set_term(self, term: TermConfig) -> tuple[TermConfig, int]:
         with self._session() as session:
             old_dump = self._assembled_dump_if_possible(session)
             ctx = self._validation_context(session)
@@ -378,12 +352,10 @@ class ScheduleConfigRepository:
             row = session.get(TermRow, TERM_SINGLETON_ID)
             session.add(self._term_to_row(term, row))
             session.flush()
-            revision = self._append_history(
+            revision = self._bump_revision_if_changed(
                 session,
                 old_dump,
                 self._assembled_dump_if_possible(session),
-                saved_by=saved_by,
-                resources=["term"],
             )
             session.commit()
             return self._term_row_to_term(self._load_term_row(session)), revision
@@ -392,7 +364,7 @@ class ScheduleConfigRepository:
         with self._session() as session:
             return self._load_sections_config(session)
 
-    def set_sections(self, config: SectionsConfig, *, saved_by: str) -> tuple[SectionsConfig, int]:
+    def set_sections(self, config: SectionsConfig) -> tuple[SectionsConfig, int]:
         with self._session() as session:
             term_row = session.get(TermRow, TERM_SINGLETON_ID)
             if term_row is None:
@@ -413,12 +385,10 @@ class ScheduleConfigRepository:
                     )
                 )
             session.flush()
-            revision = self._append_history(
+            revision = self._bump_revision_if_changed(
                 session,
                 old_dump,
                 self._assembled_dump_if_possible(session),
-                saved_by=saved_by,
-                resources=["sections"],
             )
             session.commit()
             return self._load_sections_config(session), revision
@@ -433,7 +403,7 @@ class ScheduleConfigRepository:
                 return None
             return CourseConfig.model_validate(_course_row_payload(row))
 
-    def create_course(self, course: CourseConfig, *, saved_by: str) -> tuple[CourseConfig, int]:
+    def create_course(self, course: CourseConfig) -> tuple[CourseConfig, int]:
         with self._session() as session:
             if session.get(CourseRow, course.name) is not None:
                 raise HTTPException(
@@ -446,17 +416,15 @@ class ScheduleConfigRepository:
             self._raise_validation_errors(validate_course(course, ctx))
             session.add(_course_to_row(course))
             session.flush()
-            revision = self._append_history(
+            revision = self._bump_revision_if_changed(
                 session,
                 old_dump,
                 self._assembled_dump_if_possible(session),
-                saved_by=saved_by,
-                resources=["courses"],
             )
             session.commit()
             return course, revision
 
-    def update_course(self, name: str, course: CourseConfig, *, saved_by: str) -> tuple[CourseConfig, int]:
+    def update_course(self, name: str, course: CourseConfig) -> tuple[CourseConfig, int]:
         with self._session() as session:
             row = session.get(CourseRow, name)
             if row is None:
@@ -483,17 +451,15 @@ class ScheduleConfigRepository:
                 row.instructors = [item.model_dump(mode="json") for item in course.instructors]
                 row.components = [component.model_dump(mode="json") for component in course.components]
             session.flush()
-            revision = self._append_history(
+            revision = self._bump_revision_if_changed(
                 session,
                 old_dump,
                 self._assembled_dump_if_possible(session),
-                saved_by=saved_by,
-                resources=["courses"],
             )
             session.commit()
             return course, revision
 
-    def delete_course(self, name: str, *, saved_by: str) -> int:
+    def delete_course(self, name: str) -> int:
         with self._session() as session:
             row = session.get(CourseRow, name)
             if row is None:
@@ -501,12 +467,10 @@ class ScheduleConfigRepository:
             old_dump = self._assembled_dump_if_possible(session)
             session.delete(row)
             session.flush()
-            revision = self._append_history(
+            revision = self._bump_revision_if_changed(
                 session,
                 old_dump,
                 self._assembled_dump_if_possible(session),
-                saved_by=saved_by,
-                resources=["courses"],
             )
             session.commit()
             return revision
@@ -515,7 +479,7 @@ class ScheduleConfigRepository:
         with self._session() as session:
             return self._load_courses_config(session)
 
-    def set_courses(self, config: CoursesConfig, *, saved_by: str) -> tuple[CoursesConfig, int]:
+    def set_courses(self, config: CoursesConfig) -> tuple[CoursesConfig, int]:
         with self._session() as session:
             old_dump = self._assembled_dump_if_possible(session)
             ctx = ValidationContext(
@@ -532,12 +496,10 @@ class ScheduleConfigRepository:
             for course in config.courses:
                 session.add(_course_to_row(course))
             session.flush()
-            revision = self._append_history(
+            revision = self._bump_revision_if_changed(
                 session,
                 old_dump,
                 self._assembled_dump_if_possible(session),
-                saved_by=saved_by,
-                resources=["courses"],
             )
             session.commit()
             return self._load_courses_config(session), revision
@@ -552,9 +514,7 @@ class ScheduleConfigRepository:
                 return None
             return _instructor_row_to_model(row)
 
-    def create_instructor(
-        self, instructor: InstructorConfig.Instructor, *, saved_by: str
-    ) -> tuple[InstructorConfig.Instructor, int]:
+    def create_instructor(self, instructor: InstructorConfig.Instructor) -> tuple[InstructorConfig.Instructor, int]:
         with self._session() as session:
             if session.get(InstructorRow, instructor.id) is not None:
                 raise HTTPException(
@@ -570,12 +530,10 @@ class ScheduleConfigRepository:
             )
             session.add(_new_instructor_row(instructor))
             session.flush()
-            revision = self._append_history(
+            revision = self._bump_revision_if_changed(
                 session,
                 old_dump,
                 self._assembled_dump_if_possible(session),
-                saved_by=saved_by,
-                resources=["instructors"],
             )
             session.commit()
             return instructor, revision
@@ -584,8 +542,6 @@ class ScheduleConfigRepository:
         self,
         instructor_id: str,
         instructor: InstructorConfig.Instructor,
-        *,
-        saved_by: str,
     ) -> tuple[InstructorConfig.Instructor, int]:
         with self._session() as session:
             row = session.get(InstructorRow, instructor_id)
@@ -615,17 +571,15 @@ class ScheduleConfigRepository:
                 session.add(row)
             _apply_instructor_fields(row, instructor)
             session.flush()
-            revision = self._append_history(
+            revision = self._bump_revision_if_changed(
                 session,
                 old_dump,
                 self._assembled_dump_if_possible(session),
-                saved_by=saved_by,
-                resources=["instructors"],
             )
             session.commit()
             return instructor, revision
 
-    def delete_instructor(self, instructor_id: str, *, saved_by: str) -> int:
+    def delete_instructor(self, instructor_id: str) -> int:
         with self._session() as session:
             row = session.get(InstructorRow, instructor_id)
             if row is None:
@@ -637,12 +591,10 @@ class ScheduleConfigRepository:
             self._raise_validation_errors(validate_instructor_delete(instructor_id, ctx))
             session.delete(row)
             session.flush()
-            revision = self._append_history(
+            revision = self._bump_revision_if_changed(
                 session,
                 old_dump,
                 self._assembled_dump_if_possible(session),
-                saved_by=saved_by,
-                resources=["instructors"],
             )
             session.commit()
             return revision
@@ -651,7 +603,7 @@ class ScheduleConfigRepository:
         with self._session() as session:
             return self._load_instructor_config(session)
 
-    def set_instructors(self, config: InstructorConfig, *, saved_by: str) -> tuple[InstructorConfig, int]:
+    def set_instructors(self, config: InstructorConfig) -> tuple[InstructorConfig, int]:
         with self._session() as session:
             old_dump = self._assembled_dump_if_possible(session)
             self._raise_validation_errors(
@@ -661,12 +613,10 @@ class ScheduleConfigRepository:
             for instructor in config.instructors:
                 session.add(_new_instructor_row(instructor))
             session.flush()
-            revision = self._append_history(
+            revision = self._bump_revision_if_changed(
                 session,
                 old_dump,
                 self._assembled_dump_if_possible(session),
-                saved_by=saved_by,
-                resources=["instructors"],
             )
             session.commit()
             return self._load_instructor_config(session), revision
@@ -686,7 +636,7 @@ class ScheduleConfigRepository:
                 students=row.students,
             )
 
-    def create_student_group(self, group: StudentsGroups, *, saved_by: str) -> tuple[StudentsGroups, int]:
+    def create_student_group(self, group: StudentsGroups) -> tuple[StudentsGroups, int]:
         with self._session() as session:
             if session.get(StudentGroupRow, group.code) is not None:
                 raise HTTPException(
@@ -704,17 +654,15 @@ class ScheduleConfigRepository:
                 )
             )
             session.flush()
-            revision = self._append_history(
+            revision = self._bump_revision_if_changed(
                 session,
                 old_dump,
                 self._assembled_dump_if_possible(session),
-                saved_by=saved_by,
-                resources=["sections"],
             )
             session.commit()
             return group, revision
 
-    def update_student_group(self, code: str, group: StudentsGroups, *, saved_by: str) -> tuple[StudentsGroups, int]:
+    def update_student_group(self, code: str, group: StudentsGroups) -> tuple[StudentsGroups, int]:
         with self._session() as session:
             row = session.get(StudentGroupRow, code)
             if row is None:
@@ -735,17 +683,15 @@ class ScheduleConfigRepository:
             row.estimated_size = group.estimated_size
             row.students = group.students
             session.flush()
-            revision = self._append_history(
+            revision = self._bump_revision_if_changed(
                 session,
                 old_dump,
                 self._assembled_dump_if_possible(session),
-                saved_by=saved_by,
-                resources=["sections"],
             )
             session.commit()
             return group, revision
 
-    def delete_student_group(self, code: str, *, saved_by: str) -> int:
+    def delete_student_group(self, code: str) -> int:
         with self._session() as session:
             row = session.get(StudentGroupRow, code)
             if row is None:
@@ -755,12 +701,10 @@ class ScheduleConfigRepository:
             self._raise_validation_errors(validate_student_group_delete(code, ctx))
             session.delete(row)
             session.flush()
-            revision = self._append_history(
+            revision = self._bump_revision_if_changed(
                 session,
                 old_dump,
                 self._assembled_dump_if_possible(session),
-                saved_by=saved_by,
-                resources=["sections"],
             )
             session.commit()
             return revision
@@ -768,10 +712,8 @@ class ScheduleConfigRepository:
     def replace_student_group_students(
         self,
         updates: dict[str, list[str]],
-        *,
-        saved_by: str,
     ) -> int:
-        """Replace ``students`` lists for the given group codes in one history revision."""
+        """Replace ``students`` lists for the given group codes in one config revision."""
         if not updates:
             return self.get_revision()
 
@@ -786,12 +728,10 @@ class ScheduleConfigRepository:
                     )
                 row.students = list(students)
             session.flush()
-            revision = self._append_history(
+            revision = self._bump_revision_if_changed(
                 session,
                 old_dump,
                 self._assembled_dump_if_possible(session),
-                saved_by=saved_by,
-                resources=["sections"],
             )
             session.commit()
             return revision
@@ -806,7 +746,7 @@ class ScheduleConfigRepository:
                 return None
             return _room_row_to_model(row)
 
-    def create_room(self, room: RoomConfig.Room, *, saved_by: str) -> tuple[RoomConfig.Room, int]:
+    def create_room(self, room: RoomConfig.Room) -> tuple[RoomConfig.Room, int]:
         with self._session() as session:
             if session.get(RoomRow, room.id) is not None:
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Room already exists: {room.id!r}")
@@ -821,17 +761,15 @@ class ScheduleConfigRepository:
             )
             session.add(_new_room_row(room))
             session.flush()
-            revision = self._append_history(
+            revision = self._bump_revision_if_changed(
                 session,
                 old_dump,
                 self._assembled_dump_if_possible(session),
-                saved_by=saved_by,
-                resources=["rooms"],
             )
             session.commit()
             return room, revision
 
-    def update_room(self, room_id: str, room: RoomConfig.Room, *, saved_by: str) -> tuple[RoomConfig.Room, int]:
+    def update_room(self, room_id: str, room: RoomConfig.Room) -> tuple[RoomConfig.Room, int]:
         with self._session() as session:
             row = session.get(RoomRow, room_id)
             if row is None:
@@ -858,17 +796,15 @@ class ScheduleConfigRepository:
             else:
                 _apply_room_fields(row, room)
             session.flush()
-            revision = self._append_history(
+            revision = self._bump_revision_if_changed(
                 session,
                 old_dump,
                 self._assembled_dump_if_possible(session),
-                saved_by=saved_by,
-                resources=["rooms"],
             )
             session.commit()
             return room, revision
 
-    def delete_room(self, room_id: str, *, saved_by: str) -> int:
+    def delete_room(self, room_id: str) -> int:
         with self._session() as session:
             row = session.get(RoomRow, room_id)
             if row is None:
@@ -878,12 +814,10 @@ class ScheduleConfigRepository:
             self._raise_validation_errors(validate_room_delete(room_id, ctx))
             session.delete(row)
             session.flush()
-            revision = self._append_history(
+            revision = self._bump_revision_if_changed(
                 session,
                 old_dump,
                 self._assembled_dump_if_possible(session),
-                saved_by=saved_by,
-                resources=["rooms"],
             )
             session.commit()
             return revision
@@ -892,7 +826,7 @@ class ScheduleConfigRepository:
         with self._session() as session:
             return self._load_room_config(session)
 
-    def set_rooms(self, config: RoomConfig, *, saved_by: str) -> tuple[RoomConfig, int]:
+    def set_rooms(self, config: RoomConfig) -> tuple[RoomConfig, int]:
         with self._session() as session:
             old_dump = self._assembled_dump_if_possible(session)
             ctx = ValidationContext(
@@ -908,53 +842,13 @@ class ScheduleConfigRepository:
             for room in config.rooms:
                 session.add(_new_room_row(room))
             session.flush()
-            revision = self._append_history(
+            revision = self._bump_revision_if_changed(
                 session,
                 old_dump,
                 self._assembled_dump_if_possible(session),
-                saved_by=saved_by,
-                resources=["rooms"],
             )
             session.commit()
             return self._load_room_config(session), revision
-
-    def list_history(self) -> list[ConfigChangeEventSummary]:
-        with self._session() as session:
-            rows = session.scalars(select(ConfigHistoryEventRow).order_by(ConfigHistoryEventRow.revision.desc())).all()
-            return [
-                ConfigChangeEventSummary(
-                    id=row.id,
-                    revision=row.revision,
-                    resources=cast(list[ConfigResource], row.resources),
-                    saved_at=row.saved_at,
-                    saved_by=row.saved_by,
-                    change_count=len(row.patch),
-                )
-                for row in rows
-            ]
-
-    def get_history_event(self, event_id: str) -> ConfigChangeEvent:
-        with self._session() as session:
-            row = session.get(ConfigHistoryEventRow, event_id)
-            if row is None:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="History event not found")
-            return ConfigChangeEvent(
-                id=row.id,
-                revision=row.revision,
-                resources=cast(list[ConfigResource], row.resources),
-                saved_at=row.saved_at,
-                saved_by=row.saved_by,
-                patch=row.patch,
-                snapshot="",
-            )
-
-    def get_history_snapshot(self, event_id: str) -> ScheduleConfig:
-        with self._session() as session:
-            row = session.get(ConfigHistoryEventRow, event_id)
-            if row is None:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="History event not found")
-            snapshot = row.snapshot if isinstance(row.snapshot, dict) else {}
-            return ScheduleConfig.model_validate(snapshot)
 
     def _resources_to_update(self, update: ScheduleConfigUpdate) -> set[ConfigResource]:
         resources: set[ConfigResource] = set()
@@ -1017,8 +911,6 @@ class ScheduleConfigRepository:
     def set_config(
         self,
         update: ScheduleConfigUpdate,
-        *,
-        saved_by: str,
     ) -> tuple[ScheduleConfig, int]:
         resources = self._resources_to_update(update)
         if not resources:
@@ -1109,12 +1001,10 @@ class ScheduleConfigRepository:
                 self._apply_courses_update(session, new_courses.courses)
 
             session.flush()
-            revision = self._append_history(
+            revision = self._bump_revision_if_changed(
                 session,
                 old_dump,
                 self._assembled_dump_if_possible(session),
-                saved_by=saved_by,
-                resources=changed_resources,
             )
             session.commit()
             return self._assemble_config(session), revision

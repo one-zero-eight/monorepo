@@ -56,7 +56,6 @@ schedule-assistant = [
     "pandas>=3.0.5", # ~11.8 MiB
     "psycopg[binary]>=3.3.4", # ~4.2 MiB
     "sqlalchemy[postgresql-psycopg]>=2.0.52", # ~3.4 MiB
-    "jsonpatch>=1.33", # ~13 KiB
 ]
 room-booking = [
     "exchangelib>=5.6.0", # ~871 KiB

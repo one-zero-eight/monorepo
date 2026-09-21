@@ -485,8 +485,7 @@ async def test_issues_check_endpoint_missing_room_and_instructor(
                 start_date=dtm.date(2026, 6, 1),
                 end_date=dtm.date(2026, 8, 2),
             ),
-        ),
-        saved_by="test@test.com",
+        )
     )
     issues_repo.set_sections(
         SectionsConfig(
@@ -498,14 +497,10 @@ async def test_issues_check_endpoint_missing_room_and_instructor(
                 )
             ],
             students_groups=[StudentsGroups(code="G1", estimated_size=10)],
-        ),
-        saved_by="test@test.com",
+        )
     )
-    issues_repo.set_rooms(
-        RoomConfig(rooms=[RoomConfig.Room(id="107", name="Room 107", capacity=20)]),
-        saved_by="test@test.com",
-    )
-    issues_repo.set_instructors(InstructorConfig(), saved_by="test@test.com")
+    issues_repo.set_rooms(RoomConfig(rooms=[RoomConfig.Room(id="107", name="Room 107", capacity=20)]))
+    issues_repo.set_instructors(InstructorConfig())
     issues_repo.set_courses(
         CoursesConfig(
             courses=[
@@ -532,8 +527,7 @@ async def test_issues_check_endpoint_missing_room_and_instructor(
                     ],
                 ),
             ],
-        ),
-        saved_by="test@test.com",
+        )
     )
 
     response = await authenticated_client.post(
@@ -560,8 +554,7 @@ async def test_issues_check_endpoint(
                 start_date=dtm.date(2026, 6, 1),
                 end_date=dtm.date(2026, 8, 2),
             ),
-        ),
-        saved_by="test@test.com",
+        )
     )
     issues_repo.set_sections(
         SectionsConfig(
@@ -573,21 +566,16 @@ async def test_issues_check_endpoint(
                 )
             ],
             students_groups=[StudentsGroups(code="G1", estimated_size=10)],
-        ),
-        saved_by="test@test.com",
+        )
     )
-    issues_repo.set_rooms(
-        RoomConfig(rooms=[RoomConfig.Room(id="107", name="Room 107", capacity=20)]),
-        saved_by="test@test.com",
-    )
+    issues_repo.set_rooms(RoomConfig(rooms=[RoomConfig.Room(id="107", name="Room 107", capacity=20)]))
     issues_repo.set_instructors(
         InstructorConfig(
             instructors=[
                 InstructorConfig.Instructor(id="t1@innopolis.ru"),
                 InstructorConfig.Instructor(id="t2@innopolis.ru"),
             ],
-        ),
-        saved_by="test@test.com",
+        )
     )
     issues_repo.set_courses(
         CoursesConfig(
@@ -641,8 +629,7 @@ async def test_issues_check_endpoint(
                     ],
                 ),
             ],
-        ),
-        saved_by="test@test.com",
+        )
     )
 
     mock_client = AsyncMock()

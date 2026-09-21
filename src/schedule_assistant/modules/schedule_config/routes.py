@@ -5,7 +5,6 @@ from fastapi import APIRouter, Body, File, HTTPException, Query, Response, Uploa
 from pydantic import ValidationError
 
 from src.schedule_assistant.dependencies import ModeratorDep, VerifyTokenDep, is_moderator_email
-from src.schedule_assistant.modules.schedule_config.event_log import ConfigChangeEvent, ConfigChangeEventSummary
 from src.schedule_assistant.modules.schedule_config.instructor_meetings import count_meetings_by_instructor
 from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
 from src.schedule_assistant.modules.schedule_config.schemas import (
@@ -56,11 +55,6 @@ def _parse_yaml_schedule_config_update(text: str) -> ScheduleConfigUpdate:
             ) from exc
 
 
-def _moderator_email(moderator: ModeratorDep) -> str:
-    user, _token = moderator
-    return user.email
-
-
 def _set_revision_etag(response: Response, revision: int) -> None:
     response.headers["ETag"] = f'"{revision}"'
 
@@ -72,15 +66,6 @@ def _assembled_for_user(user_and_token: VerifyTokenDep) -> ScheduleConfig:
         return config
     filtered = filter_scheduled_instructors(InstructorConfig(instructors=config.instructors), config.courses)
     return config.model_copy(update={"instructors": filtered.instructors})
-
-
-def _history_snapshot_for_user(event_id: str, user_and_token: VerifyTokenDep) -> ScheduleConfig:
-    snapshot = schedule_config_repository.get_history_snapshot(event_id)
-    user, _token = user_and_token
-    if is_moderator_email(user.email):
-        return snapshot
-    filtered = filter_scheduled_instructors(InstructorConfig(instructors=snapshot.instructors), snapshot.courses)
-    return snapshot.model_copy(update={"instructors": filtered.instructors})
 
 
 @router.get("/")
@@ -95,10 +80,7 @@ async def put_schedule_config(
     moderator: ModeratorDep,
     config: ScheduleConfigUpdate,
 ) -> ScheduleConfig:
-    saved_config, revision = schedule_config_repository.set_config(
-        config,
-        saved_by=_moderator_email(moderator),
-    )
+    saved_config, revision = schedule_config_repository.set_config(config)
     _set_revision_etag(response, revision)
     return saved_config
 
@@ -110,10 +92,7 @@ async def put_schedule_config_yaml(
     yaml_text: YamlBody,
 ) -> ScheduleConfig:
     config = _parse_yaml_schedule_config_update(yaml_text)
-    saved_config, revision = schedule_config_repository.set_config(
-        config,
-        saved_by=_moderator_email(moderator),
-    )
+    saved_config, revision = schedule_config_repository.set_config(config)
     _set_revision_etag(response, revision)
     return saved_config
 
@@ -133,10 +112,7 @@ async def put_schedule_config_yaml_file(
             detail="File must be UTF-8 text",
         ) from exc
     config = _parse_yaml_schedule_config_update(yaml_text)
-    saved_config, revision = schedule_config_repository.set_config(
-        config,
-        saved_by=_moderator_email(moderator),
-    )
+    saved_config, revision = schedule_config_repository.set_config(config)
     _set_revision_etag(response, revision)
     return saved_config
 
@@ -148,10 +124,7 @@ async def get_term(_user_and_token: VerifyTokenDep) -> TermConfig | None:
 
 @router.put("/term")
 async def put_term(response: Response, moderator: ModeratorDep, term: TermConfig) -> TermConfig:
-    saved, revision = schedule_config_repository.set_term(
-        term,
-        saved_by=_moderator_email(moderator),
-    )
+    saved, revision = schedule_config_repository.set_term(term)
     _set_revision_etag(response, revision)
     return saved
 
@@ -163,7 +136,7 @@ async def list_courses(_user_and_token: VerifyTokenDep) -> list[CourseConfig]:
 
 @router.post("/courses", status_code=status.HTTP_201_CREATED)
 async def create_course(response: Response, moderator: ModeratorDep, course: CourseConfig) -> CourseConfig:
-    saved, revision = schedule_config_repository.create_course(course, saved_by=_moderator_email(moderator))
+    saved, revision = schedule_config_repository.create_course(course)
     _set_revision_etag(response, revision)
     return saved
 
@@ -183,18 +156,14 @@ async def update_course(
     course_name: str,
     course: CourseConfig,
 ) -> CourseConfig:
-    saved, revision = schedule_config_repository.update_course(
-        course_name,
-        course,
-        saved_by=_moderator_email(moderator),
-    )
+    saved, revision = schedule_config_repository.update_course(course_name, course)
     _set_revision_etag(response, revision)
     return saved
 
 
 @router.delete("/courses/{course_name:path}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_course(response: Response, moderator: ModeratorDep, course_name: str) -> None:
-    revision = schedule_config_repository.delete_course(course_name, saved_by=_moderator_email(moderator))
+    revision = schedule_config_repository.delete_course(course_name)
     _set_revision_etag(response, revision)
 
 
@@ -232,10 +201,7 @@ async def create_instructor(
     moderator: ModeratorDep,
     instructor: InstructorConfig.Instructor,
 ) -> InstructorConfig.Instructor:
-    saved, revision = schedule_config_repository.create_instructor(
-        instructor,
-        saved_by=_moderator_email(moderator),
-    )
+    saved, revision = schedule_config_repository.create_instructor(instructor)
     _set_revision_etag(response, revision)
     return saved
 
@@ -255,18 +221,14 @@ async def update_instructor(
     instructor_id: str,
     instructor: InstructorConfig.Instructor,
 ) -> InstructorConfig.Instructor:
-    saved, revision = schedule_config_repository.update_instructor(
-        instructor_id,
-        instructor,
-        saved_by=_moderator_email(moderator),
-    )
+    saved, revision = schedule_config_repository.update_instructor(instructor_id, instructor)
     _set_revision_etag(response, revision)
     return saved
 
 
 @router.delete("/instructors/{instructor_id:path}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_instructor(response: Response, moderator: ModeratorDep, instructor_id: str) -> None:
-    revision = schedule_config_repository.delete_instructor(instructor_id, saved_by=_moderator_email(moderator))
+    revision = schedule_config_repository.delete_instructor(instructor_id)
     _set_revision_etag(response, revision)
 
 
@@ -277,7 +239,7 @@ async def list_student_groups(_user_and_token: VerifyTokenDep) -> list[StudentsG
 
 @router.post("/student-groups", status_code=status.HTTP_201_CREATED)
 async def create_student_group(response: Response, moderator: ModeratorDep, group: StudentsGroups) -> StudentsGroups:
-    saved, revision = schedule_config_repository.create_student_group(group, saved_by=_moderator_email(moderator))
+    saved, revision = schedule_config_repository.create_student_group(group)
     _set_revision_etag(response, revision)
     return saved
 
@@ -297,18 +259,14 @@ async def update_student_group(
     code: str,
     group: StudentsGroups,
 ) -> StudentsGroups:
-    saved, revision = schedule_config_repository.update_student_group(
-        code,
-        group,
-        saved_by=_moderator_email(moderator),
-    )
+    saved, revision = schedule_config_repository.update_student_group(code, group)
     _set_revision_etag(response, revision)
     return saved
 
 
 @router.delete("/student-groups/{code:path}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_student_group(response: Response, moderator: ModeratorDep, code: str) -> None:
-    revision = schedule_config_repository.delete_student_group(code, saved_by=_moderator_email(moderator))
+    revision = schedule_config_repository.delete_student_group(code)
     _set_revision_etag(response, revision)
 
 
@@ -319,7 +277,7 @@ async def list_rooms(_user_and_token: VerifyTokenDep) -> list[RoomConfig.Room]:
 
 @router.post("/rooms", status_code=status.HTTP_201_CREATED)
 async def create_room(response: Response, moderator: ModeratorDep, room: RoomConfig.Room) -> RoomConfig.Room:
-    saved, revision = schedule_config_repository.create_room(room, saved_by=_moderator_email(moderator))
+    saved, revision = schedule_config_repository.create_room(room)
     _set_revision_etag(response, revision)
     return saved
 
@@ -339,27 +297,12 @@ async def update_room(
     room_id: str,
     room: RoomConfig.Room,
 ) -> RoomConfig.Room:
-    saved, revision = schedule_config_repository.update_room(room_id, room, saved_by=_moderator_email(moderator))
+    saved, revision = schedule_config_repository.update_room(room_id, room)
     _set_revision_etag(response, revision)
     return saved
 
 
 @router.delete("/rooms/{room_id:path}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_room(response: Response, moderator: ModeratorDep, room_id: str) -> None:
-    revision = schedule_config_repository.delete_room(room_id, saved_by=_moderator_email(moderator))
+    revision = schedule_config_repository.delete_room(room_id)
     _set_revision_etag(response, revision)
-
-
-@router.get("/history/{event_id}/snapshot")
-async def get_history_snapshot(event_id: str, user_and_token: VerifyTokenDep) -> ScheduleConfig:
-    return _history_snapshot_for_user(event_id, user_and_token)
-
-
-@router.get("/history/{event_id}")
-async def get_history_event(event_id: str, _user_and_token: VerifyTokenDep) -> ConfigChangeEvent:
-    return schedule_config_repository.get_history_event(event_id)
-
-
-@router.get("/history")
-async def list_history(_user_and_token: VerifyTokenDep) -> list[ConfigChangeEventSummary]:
-    return schedule_config_repository.list_history()

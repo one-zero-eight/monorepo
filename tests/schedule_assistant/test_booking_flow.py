@@ -146,13 +146,10 @@ def _seed(
     courses: CoursesConfig,
     rooms: list[str] | None = None,
 ) -> None:
-    repo.set_term(_term(), saved_by="test@test.com")
-    repo.set_sections(_sections(), saved_by="test@test.com")
-    repo.set_rooms(
-        RoomConfig(rooms=[RoomConfig.Room(id=room_id, name=room_id) for room_id in (rooms or ["107"])]),
-        saved_by="test@test.com",
-    )
-    repo.set_courses(courses, saved_by="test@test.com")
+    repo.set_term(_term())
+    repo.set_sections(_sections())
+    repo.set_rooms(RoomConfig(rooms=[RoomConfig.Room(id=room_id, name=room_id) for room_id in (rooms or ["107"])]))
+    repo.set_courses(courses)
 
 
 def _booking(
@@ -290,8 +287,7 @@ async def test_review_caps_booking_fetch_to_ews_limit(
                 start_date=dtm.date(2026, 8, 24),
                 end_date=dtm.date(2026, 12, 24),
             ),
-        ),
-        saved_by="test@test.com",
+        )
     )
     mock_booking_client.get_all_bookings.return_value = []
     mock_booking_client.get_auto_bookings.return_value = []

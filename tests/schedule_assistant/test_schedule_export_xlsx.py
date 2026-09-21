@@ -624,17 +624,14 @@ def test_compact_groups_export_keeps_all_groups_and_only_occupied_slots() -> Non
 def _seed_export_config(repo: ScheduleConfigRepository) -> None:
     config = _sample_config()
     term_without_sections = config.term.model_copy(update={"sections": []})
-    repo.set_term(term_without_sections, saved_by="mod@innopolis.university")
-    repo.set_instructors(InstructorConfig(instructors=config.instructors), saved_by="mod@innopolis.university")
+    repo.set_term(term_without_sections)
+    repo.set_instructors(InstructorConfig(instructors=config.instructors))
     from src.schedule_assistant.modules.schedule_config.schemas import RoomConfig, SectionsConfig
 
-    repo.create_room(RoomConfig.Room(id="108", name="108", capacity=100), saved_by="mod@innopolis.university")
-    repo.create_room(RoomConfig.Room(id="209", name="209", capacity=40), saved_by="mod@innopolis.university")
-    repo.set_sections(
-        SectionsConfig(sections=config.term.sections, students_groups=config.students_groups),
-        saved_by="mod@innopolis.university",
-    )
-    repo.set_courses(CoursesConfig(courses=config.courses), saved_by="mod@innopolis.university")
+    repo.create_room(RoomConfig.Room(id="108", name="108", capacity=100))
+    repo.create_room(RoomConfig.Room(id="209", name="209", capacity=40))
+    repo.set_sections(SectionsConfig(sections=config.term.sections, students_groups=config.students_groups))
+    repo.set_courses(CoursesConfig(courses=config.courses))
 
 
 @pytest.mark.asyncio
