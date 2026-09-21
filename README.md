@@ -260,7 +260,6 @@ The local lazytainer stack stops after one hour of inactivity. Tests and fixture
 Run each suite in a **separate process** from the repository root, not a single pytest invocation across Beanie services:
 
 ```bash
-uv run -m pytest tests/migrations/
 uv run -m pytest tests/clubs/
 uv run -m pytest tests/when2meet/
 uv run -m pytest tests/schedule/

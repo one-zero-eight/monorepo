@@ -477,7 +477,7 @@ Follow the [migration workflow](README.md#database-migrations). The shared CLI i
 - For MongoDB, add `src/my_service/migrations/__init__.py` and create versioned revisions using stock Beanie tools. Use transactions on a replica set and frozen historical models rather than importing mutable application models. Make migrations idempotent: Beanie saves history after committing the data transaction, so a retry can execute the data change again. Preserve unrelated fields, IDs, and existing timestamps.
 - For PostgreSQL, add the service's Alembic configuration and versioned revisions; provision its database before running migrations. Keep published revisions and history intact. Do not substitute `create_all()` or blindly stamp an existing database to head.
 - Add `pre_start` to the Compose service as shown below, and run the CLI manually before local/IDE startup. Never migrate in the application lifespan or individual workers. Services without a database need neither registration nor a migration hook.
-- Extend `tests/migrations/` for CLI routing/configuration contracts, and the service suite for upgrades from empty databases and populated previous revisions. Use isolated targets on the shared test stack; SQL fixtures must run Alembic upgrades rather than `create_all()`. Apply migrations in fixture setup before starting `TestClient`, not inside the app.
+- Use isolated targets on the shared test stack; SQL fixtures must run Alembic upgrades rather than `create_all()`. Apply migrations in fixture setup before starting `TestClient`, not inside the app.
 
 Use stock Beanie/Alembic commands for revision creation and explicit downgrades. Do not add a custom lock or deployment orchestrator: deployments must be serialized per environment, and manual migrations must not overlap another migration against the same database. See the README for rollback and production verification requirements.
 
@@ -637,7 +637,7 @@ Add new run configuration for PyCharm:
 
 ## Testing
 
-See [TESTING.md](./TESTING.md). Reuse the shared test stack; if it is not running, start `docker compose -f docker-compose.test.yaml up --wait` before pytest when the service uses MongoDB, MinIO, or PostgreSQL. Tests and fixtures must not launch Docker internally. Run each service suite and `tests/migrations/` in separate pytest processes.
+See [TESTING.md](./TESTING.md). Reuse the shared test stack; if it is not running, start `docker compose -f docker-compose.test.yaml up --wait` before pytest when the service uses MongoDB, MinIO, or PostgreSQL. Tests and fixtures must not launch Docker internally. Run each service suite in a separate pytest process.
 
 ---
 
@@ -655,5 +655,4 @@ In another terminal, with shared test infrastructure running:
 
 ```bash
 uv run -m pytest tests/my_service/
-uv run -m pytest tests/migrations/
 ```

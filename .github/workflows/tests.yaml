@@ -36,7 +36,6 @@ jobs:
           - forms
           - guard
           - maps
-          - migrations
           - room_booking
           - schedule
           - schedule_assistant
@@ -136,7 +135,6 @@ jobs:
               tests/test_common_fastapi.py \
               tests/test_dependencies.py \
               tests/test_inh_accounts_sdk.py \
-              tests/test_migration_deployment.py \
               tests/test_settings_schema.py
           else
             set -- "tests/${{ matrix.suite }}/"

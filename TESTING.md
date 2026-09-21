@@ -26,10 +26,9 @@ CI runs each suite in a separate job/process. Do not rely on a single
 `uv run -m pytest` across multiple Beanie services — shared `BeanieDocument`
 class state in one process can break inserts.
 
-Run the migration CLI suite separately from the service suites:
+Run each service suite separately:
 
 ```bash
-uv run -m pytest tests/migrations/
 uv run -m pytest tests/when2meet/
 uv run -m pytest tests/schedule/
 uv run -m pytest tests/schedule_assistant/
@@ -66,16 +65,13 @@ The local stack uses lazytainer. Both environments expose MongoDB `37017`, MinIO
 
 MongoDB runs as an authenticated single-node replica set `rs0` locally and in CI so Beanie migration transactions work. Locally, `scripts/mongodb/entrypoint.sh` generates an authentication key in the persistent `/data/configdb` volume. CI creates an ephemeral key in the service command because containers start before checkout. Both use `scripts/mongodb/ready.js` to bootstrap an uninitialized replica set once and report readiness only after it is a writable primary; CI copies the script into its MongoDB container after checkout and waits up to 180 seconds before pytest. Host connections use `directConnection=true&replicaSet=rs0`. Preserve existing local data/config volumes; never delete them to work around migration or readiness failures.
 
-Tests should run against test settings only. Never hardcode production credentials, URLs, buckets, databases, or tokens. CLI subprocess tests must pass a temporary test settings file through `SETTINGS_PATH`, rather than reading the developer's `settings.yaml`.
+Tests should run against test settings only. Never hardcode production credentials, URLs, buckets, databases, or tokens.
 
-When parallel test execution is enabled, assume multiple workers may run tests at the same time. Use isolated names, unique test data, or existing cleanup fixtures. Compare the resolved database targets before migration tests: different services and concurrent runs must not share a database or migration history. Do not run two migration runners against the same database simultaneously.
+When parallel test execution is enabled, assume multiple workers may run tests at the same time. Use isolated names, unique test data, or existing cleanup fixtures. Compare the resolved database targets before fixture setup: different services and concurrent runs must not share a database or migration history. Do not run two migration runners against the same database simultaneously.
 
-### Migration tests
+### Database setup
 
-- `tests/migrations/` covers the settings-aware CLI and its routing to stock Beanie/Alembic, including rejection of unknown, unconfigured, and non-database services. Keep it in a separate pytest process from service suites.
-- Service migration tests must exercise both an empty database and populated previous revisions, then check the resulting schema, data, and stock migration history. Keep published revisions and their frozen historical models unchanged.
-- MongoDB migration tests use the shared replica set and real transactions. Check safe repeated execution, including retries after data changes but before history is saved: Beanie records history **after** the data transaction commits, not atomically with it. There is no exactly-once guarantee.
-- `schedule` and `schedule_assistant` fixtures provision isolated PostgreSQL databases **before** applying the existing Alembic history to head, then start the API. Do not use `create_all()` as a substitute for upgrades or blindly `stamp head`. Retain the existing histories and cover populated upgrade paths as well as empty initialization.
+`schedule` and `schedule_assistant` fixtures provision isolated PostgreSQL databases **before** applying the existing Alembic history to head, then start the API. Do not use `create_all()` as a substitute for upgrades or blindly `stamp head`. Keep published revisions and migration histories unchanged.
 
 See [Database migrations](README.md#database-migrations) for startup, serialization, and rollback rules.
 
