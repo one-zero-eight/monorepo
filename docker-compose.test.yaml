@@ -38,12 +38,22 @@ services:
       - lazytainer
     labels:
       - "lazytainer.group=test-infra"
-    command: ["mongod", "--port", "37017"]
+    entrypoint: ["bash", "/opt/mongodb/entrypoint.sh"]
     volumes:
       - mongodb_test:/data/db
+      - mongodb_test_config:/data/configdb
+      - ./scripts/mongodb:/opt/mongodb:ro
     environment:
       MONGO_INITDB_ROOT_USERNAME: test
       MONGO_INITDB_ROOT_PASSWORD: test
+      MONGO_PORT: "37017"
+      MONGO_REPLICA_HOST: localhost:37017
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--nodb", "/opt/mongodb/ready.js"]
+      timeout: 10s
+      start_period: 30s
+      interval: 10s
+      retries: 12
 
   test-minio:
     image: "minio/minio:RELEASE.2024-05-10T01-41-38Z"
@@ -76,5 +86,6 @@ services:
 
 volumes:
   mongodb_test:
+  mongodb_test_config:
   minio_test:
   postgres_test:

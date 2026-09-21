@@ -30,7 +30,7 @@ class GoogleFileSSOJoin(BaseSchema):
     innomail: str
     role: GoogleFileUserRole
     joined_at: dtm.datetime
-    permission_id: str | None
+    permission_id: str | None = None
 
 
 class GoogleFileSSOBan(BaseSchema):

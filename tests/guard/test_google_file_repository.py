@@ -14,7 +14,8 @@ def test_create_file_and_get_by_slug(guard_portal, create_google_file):
     assert loaded.slug == created.slug
 
 
-def test_join_user_to_file(guard_portal, create_google_file):
+@pytest.mark.parametrize("permission_id", ["perm-join-1", None])
+def test_join_user_to_file(guard_portal, create_google_file, permission_id):
     created = create_google_file()
     other_id = PydanticObjectId(GUARD_OTHER_OBJECT_ID)
 
@@ -25,7 +26,7 @@ def test_join_user_to_file(guard_portal, create_google_file):
             gmail="joiner@gmail.com",
             innomail="joiner@innopolis.university",
             role="writer",
-            permission_id="perm-join-1",
+            permission_id=permission_id,
         )
 
     updated = guard_portal.call(_join)
@@ -33,6 +34,13 @@ def test_join_user_to_file(guard_portal, create_google_file):
     assert len(updated.sso_joins) == 1
     assert updated.sso_joins[0].gmail == "joiner@gmail.com"
     assert updated.sso_joins[0].role == "writer"
+    assert updated.sso_joins[0].permission_id == permission_id
+
+    loaded = guard_portal.call(google_file_repository.get_by_slug, created.slug)
+    assert loaded is not None
+    assert len(loaded.sso_joins) == 1
+    assert loaded.sso_joins[0].user_id == other_id
+    assert loaded.sso_joins[0].permission_id == permission_id
 
 
 def test_join_duplicate_gmail_is_idempotent(guard_portal, create_google_file):

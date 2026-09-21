@@ -79,7 +79,7 @@ settings: MyServiceSettings = require_not_none(
 
 ### `src/my_service/app.py`
 
-Same file for every tier. Drop unused lifespan steps, imports, `StaticFiles` mount, and extra router blocks when the service does not need them.
+Same file for every tier. Drop unused lifespan steps, imports, `StaticFiles` mount, and extra router blocks when the service does not need them. Lifespan initializes runtime clients only: never apply migrations from lifespan or worker startup; the database must be migrated before starting the API.
 
 ```python
 __all__ = ["app"]
@@ -417,7 +417,10 @@ files_repo = FilesRepo()
 
 ### `tests/my_service/conftest.py` (tier 3 — DB/MinIO isolation)
 
+Register the new service with the migration runner before using this fixture. It migrates the isolated test database before starting the app; it does not start Docker. SQL-backed services should instead follow the `schedule` or `schedule_assistant` fixtures: provision the database, then run the existing Alembic history to head.
+
 ```python
+import asyncio
 from typing import cast
 
 import pytest
@@ -426,11 +429,16 @@ from fastapi.testclient import TestClient
 
 from src.common_beanie import BeanieStore
 from src.common_minio import MinioStore
+from src.migrations import migrate_mongo
 
 
 @pytest.fixture(scope="session")
 def my_service_client(request: pytest.FixtureRequest):
     request.getfixturevalue("mock_inh_accounts_http")
+    from src.my_service.config import settings
+
+    asyncio.run(migrate_mongo("my_service", settings.mongo.uri.get_secret_value(), "my_service"))
+
     from src.my_service import app as my_service_module
 
     with TestClient(my_service_module.app) as client:
@@ -460,6 +468,18 @@ def clean_up_stores_per_test(request: pytest.FixtureRequest):
 ---
 
 ## Monorepo wiring
+
+### Database migrations (database-backed services only)
+
+Follow the [migration workflow](README.md#database-migrations). The shared CLI is a thin, settings-aware adapter over stock Beanie/Alembic and applies forward migrations only.
+
+- Register the service identifier and database settings in `src/migrations/__init__.py`, alongside the existing `board_games`, `clubs`, `events`, `forms`, `guard`, `tabletennis`, `when2meet`, `schedule`, and `schedule_assistant` services. Unknown, unconfigured, and non-database services are errors, not successful no-ops.
+- For MongoDB, add `src/my_service/migrations/__init__.py` and create versioned revisions using stock Beanie tools. Use transactions on a replica set and frozen historical models rather than importing mutable application models. Make migrations idempotent: Beanie saves history after committing the data transaction, so a retry can execute the data change again. Preserve unrelated fields, IDs, and existing timestamps.
+- For PostgreSQL, add the service's Alembic configuration and versioned revisions; provision its database before running migrations. Keep published revisions and history intact. Do not substitute `create_all()` or blindly stamp an existing database to head.
+- Add `pre_start` to the Compose service as shown below, and run the CLI manually before local/IDE startup. Never migrate in the application lifespan or individual workers. Services without a database need neither registration nor a migration hook.
+- Extend `tests/migrations/` for CLI routing/configuration contracts, and the service suite for upgrades from empty databases and populated previous revisions. Use isolated targets on the shared test stack; SQL fixtures must run Alembic upgrades rather than `create_all()`. Apply migrations in fixture setup before starting `TestClient`, not inside the app.
+
+Use stock Beanie/Alembic commands for revision creation and explicit downgrades. Do not add a custom lock or deployment orchestrator: deployments must be serialized per environment, and manual migrations must not overlap another migration against the same database. See the README for rollback and production verification requirements.
 
 ### `src/config_root_schema.py` (add service field)
 
@@ -521,7 +541,7 @@ my-service = [
 
 ### `docker-compose.yaml`
 
-Add a service block so the API runs with the rest of the dev stack (`docker compose up --build --wait`). The image is built from `api.Dockerfile`; the container always listens on port `8000` (gunicorn), so map the **host** port to `8000` — use the same host port as in `src/my_service/__main__.py` (existing services: maps `8009`, clubs `8014`, student-affairs `8015`).
+Add a service block so the API runs with the rest of the dev stack (`docker compose up --build --wait`). Use Docker Compose **5.3.1** (minimum **5.3.0**) for `pre_start`. The image is built from `api.Dockerfile`; the container always listens on port `8000` (gunicorn), so map the **host** port to `8000` — use the same host port as in `src/my_service/__main__.py` (existing services: maps `8009`, clubs `8014`, student-affairs `8015`).
 
 ```yaml
   my-service:
@@ -535,6 +555,8 @@ Add a service block so the API runs with the rest of the dev stack (`docker comp
       - "8020:8000"  # host port from __main__.py → container 8000
     volumes:
       - "./settings.yaml:/app/settings.yaml:ro"
+    pre_start:  # omit for services without a database
+      - command: ["python", "-m", "src.migrations", "my_service"]
     deploy:
       resources:
         limits:
@@ -549,9 +571,11 @@ Add a service block so the API runs with the rest of the dev stack (`docker comp
 ```
 
 - **`APP_MODULE`** must point at `src.<package>.app:app` (the FastAPI instance in `app.py`).
-- **`settings.yaml`** is mounted read-only; ensure `my_service_service` is configured there with correct `mongo` / `minio` endpoints (`mongodb:27017`, `minio:9000` when talking to the compose network, not `localhost`).
+- **`settings.yaml`** is mounted read-only; ensure `my_service_service` is configured there with correct `mongo` / `minio` endpoints (`mongodb:27017`, `minio:9000` when talking to the compose network, not `localhost`). The migration hook uses the same settings loader as the API, including `SETTINGS_PATH` when overridden for both.
+- **`pre_start`** uses the Python package identifier (`my_service`, not `my-service`). Failure must block API startup. Hooks run on container creation/recreation or a new image, not as a migration trigger on normal restart/scale. Do not add a separate migration service or worker/lifespan migration calls.
+- **Database readiness** must precede the hook. For PostgreSQL, depend on its health check and provision the configured database/users separately before migrations. For MongoDB, use the shared replica-set primary health check; local/test `rs0` is not a production topology template. Preserve existing data/config volumes.
 
-`docker-compose.test.yaml` only runs shared test infra (Mongo/MinIO via lazytainer); API services are not added there — tests use `TestClient` and fixtures from [TESTING.md](./TESTING.md).
+`docker-compose.test.yaml` only runs shared test infra (MongoDB/MinIO/PostgreSQL via lazytainer); API services are not added there — tests use `TestClient` and fixtures from [TESTING.md](./TESTING.md). Reuse its ports (`37017`, `19000`, `19001`, `35432`) and isolate test databases/buckets rather than creating new container stacks.
 
 ### `.vscode/launch.json`
 
@@ -613,14 +637,23 @@ Add new run configuration for PyCharm:
 
 ## Testing
 
-See [TESTING.md](./TESTING.md). Do not start Docker from tests — run `docker compose -f docker-compose.test.yaml up --wait` before pytest when the service uses Mongo or MinIO.
+See [TESTING.md](./TESTING.md). Reuse the shared test stack; if it is not running, start `docker compose -f docker-compose.test.yaml up --wait` before pytest when the service uses MongoDB, MinIO, or PostgreSQL. Tests and fixtures must not launch Docker internally. Run each service suite and `tests/migrations/` in separate pytest processes.
 
 ---
 
 ## Run
 
+Prepare `settings.yaml` using `uv run scripts/prepare.py` if it does not exist; preserve existing settings and add `my_service_service`. For a database-backed service, register it with the migration CLI and provision its target database first, then run:
+
 ```bash
-cp settings.example.yaml settings.yaml   # once
-uv run -m src.my_service --reload
+uv run -m src.migrations my_service && uv run -m src.my_service --reload
+```
+
+For a service without a database, run `uv run -m src.my_service --reload` directly. For a database-backed service in VSCode/Cursor or PyCharm, run `uv run -m src.migrations my_service` manually in the terminal before starting the debugger; no migration-specific IDE configuration is needed. After pulling new migrations, stop the server, apply migrations, and restart it: `--reload` does not migrate the database.
+
+In another terminal, with shared test infrastructure running:
+
+```bash
 uv run -m pytest tests/my_service/
+uv run -m pytest tests/migrations/
 ```

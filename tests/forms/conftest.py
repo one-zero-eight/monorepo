@@ -12,6 +12,9 @@ from src.common_beanie import BeanieStore
 @pytest.fixture(scope="session")
 def forms_client(request: pytest.FixtureRequest):
     request.getfixturevalue("mock_inh_accounts_http")
+    from src.migrations import migrate_service
+
+    migrate_service("forms")
     from src.forms import app as forms_app
 
     with TestClient(forms_app.app) as client:

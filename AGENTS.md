@@ -26,6 +26,13 @@ If you need to scaffold a new service, use the [NEW_SERVICE.md](NEW_SERVICE.md) 
 
 For parallel branches via git worktrees, see [WORKTREE.md](WORKTREE.md).
 
+### Migrations
+
+- Use versioned Beanie/Alembic migrations for stored schema/data changes, not runtime legacy compatibility. See [README migration workflow](README.md#database-migrations).
+- Keep published revisions, frozen historical models, and existing migration histories intact; do not rewrite history or blindly stamp databases to head.
+- Run migrations before API startup through Compose `pre_start` or locally with `uv run -m src.migrations <service>`, never from workers or app lifespan. Provision the target database first and serialize migrations against it.
+- Beanie records history after the data transaction commits: migrations must be idempotent and preserve unrelated fields, IDs, and existing timestamps.
+- Test upgrades from both an empty database and populated previous revisions using shared test infrastructure.
 
 ### Git
 
@@ -43,6 +50,10 @@ When finishing a task with code changes:
 ### Testing
 
 Follow the repository testing guidelines in [TESTING.md](TESTING.md).
+
+Run pytest from the repository root in a separate process for each service (e.g. `uv run -m pytest tests/clubs/`). Do not combine multiple Beanie services in one pytest process: shared document class state can break tests.
+
+`prek` checks can modify files through fixers and formatters. Review the existing diff before running them and the resulting diff afterward; preserve unrelated changes.
 
 ! Assume that the test infrastructure is already running by developer (using `docker compose -f docker-compose.test.yaml up --wait`).
 

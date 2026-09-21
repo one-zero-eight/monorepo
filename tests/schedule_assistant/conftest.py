@@ -2,20 +2,30 @@
 
 import asyncio
 from collections.abc import AsyncGenerator, Iterator
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
+from alembic import command
+from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from tests.conftest_runtime_settings import (
-    SUITE_POSTGRES_NETLOC,
-    schedule_assistant_test_database_name,
-)
+from tests import conftest_runtime_settings
+from tests.conftest_runtime_settings import SUITE_POSTGRES_NETLOC, get_worker_id
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_configure(config: pytest.Config) -> None:
+    database_name = f"worker-{get_worker_id()}-sa-{uuid4().hex[:12]}"
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(conftest_runtime_settings, "schedule_assistant_test_database_name", lambda: database_name)
+    config.add_cleanup(monkeypatch.undo)
 
 
 async def _ensure_postgres_database(admin_dsn: str, database_name: str) -> None:
@@ -37,19 +47,21 @@ def _schedule_assistant_admin_dsn() -> str:
 
 
 def schedule_assistant_db_url() -> str:
-    return f"postgresql+psycopg://postgres:test@{SUITE_POSTGRES_NETLOC}/{schedule_assistant_test_database_name()}"
+    return f"postgresql+psycopg://postgres:test@{SUITE_POSTGRES_NETLOC}/{conftest_runtime_settings.schedule_assistant_test_database_name()}"
 
 
 def _prepare_schedule_assistant_schema() -> None:
-    import src.schedule_assistant.db.models  # noqa: F401
     from src.schedule_assistant.config import settings
-    from src.schedule_assistant.db.base import Base
     from src.schedule_assistant.db.session import get_engine
 
     engine = get_engine(settings.db_url.get_secret_value())
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
-    engine.dispose()
+    try:
+        with engine.begin() as connection:
+            config = Config(Path(__file__).parents[2] / "src/schedule_assistant/alembic.ini")
+            config.attributes["connection"] = connection
+            command.upgrade(config, "head")
+    finally:
+        engine.dispose()
 
 
 async def _truncate_schedule_assistant_tables() -> None:
@@ -67,11 +79,37 @@ async def _truncate_schedule_assistant_tables() -> None:
     engine.dispose()
 
 
+async def _drop_postgres_database(admin_dsn: str, database_name: str) -> None:
+    engine = create_async_engine(admin_dsn, isolation_level="AUTOCOMMIT")
+    try:
+        async with engine.connect() as connection:
+            await connection.execute(text(f'DROP DATABASE "{database_name}" WITH (FORCE)'))
+    finally:
+        await engine.dispose()
+
+
+@pytest.fixture
+def migration_database_url() -> Iterator[str]:
+    database_name = f"sa-alembic-{uuid4().hex}"
+    asyncio.run(_ensure_postgres_database(_schedule_assistant_admin_dsn(), database_name))
+    try:
+        yield f"postgresql+psycopg://postgres:test@{SUITE_POSTGRES_NETLOC}/{database_name}"
+    finally:
+        asyncio.run(_drop_postgres_database(_schedule_assistant_admin_dsn(), database_name))
+
+
 @pytest.fixture(scope="session")
-def schedule_assistant_postgres(request: pytest.FixtureRequest) -> Iterator[None]:
-    asyncio.run(_ensure_postgres_database(_schedule_assistant_admin_dsn(), schedule_assistant_test_database_name()))
-    _prepare_schedule_assistant_schema()
-    yield
+def schedule_assistant_postgres() -> Iterator[None]:
+    database_name = conftest_runtime_settings.schedule_assistant_test_database_name()
+    asyncio.run(_ensure_postgres_database(_schedule_assistant_admin_dsn(), database_name))
+    try:
+        _prepare_schedule_assistant_schema()
+        yield
+    finally:
+        from src.schedule_assistant.db.session import get_engine
+
+        get_engine(schedule_assistant_db_url()).dispose()
+        asyncio.run(_drop_postgres_database(_schedule_assistant_admin_dsn(), database_name))
 
 
 @pytest.fixture

@@ -1,17 +1,30 @@
 import asyncio
 import datetime as dtm
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import pytest
+from alembic import command
+from alembic.config import Config
 from fastapi.testclient import TestClient
 from joserfc import jwt
 from joserfc.jwk import RSAKey
-from sqlalchemy import text
+from sqlalchemy import Connection, text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from tests.conftest_runtime_settings import SUITE_POSTGRES_NETLOC, schedule_test_database_name
+from tests import conftest_runtime_settings
+from tests.conftest_runtime_settings import SUITE_POSTGRES_NETLOC, get_worker_id
 from tests.schedule.constants import SAMPLE_EVENT_GROUP, SAMPLE_TAG
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_configure(config: pytest.Config) -> None:
+    database_name = f"worker-{get_worker_id()}-schedule-{uuid4().hex[:12]}"
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(conftest_runtime_settings, "schedule_test_database_name", lambda: database_name)
+    config.add_cleanup(monkeypatch.undo)
 
 
 async def _ensure_postgres_database(admin_dsn: str, database_name: str) -> None:
@@ -28,6 +41,32 @@ async def _ensure_postgres_database(admin_dsn: str, database_name: str) -> None:
         await engine.dispose()
 
 
+async def _drop_postgres_database(admin_dsn: str, database_name: str) -> None:
+    engine = create_async_engine(admin_dsn, isolation_level="AUTOCOMMIT")
+    try:
+        async with engine.connect() as connection:
+            await connection.execute(text(f'DROP DATABASE "{database_name}" WITH (FORCE)'))
+    finally:
+        await engine.dispose()
+
+
+@pytest.fixture
+def migration_database_url() -> Iterator[str]:
+    database_name = f"schedule-alembic-{uuid4().hex}"
+    admin_dsn = f"postgresql+asyncpg://postgres:test@{SUITE_POSTGRES_NETLOC}/postgres"
+    asyncio.run(_ensure_postgres_database(admin_dsn, database_name))
+    try:
+        yield f"postgresql+asyncpg://postgres:test@{SUITE_POSTGRES_NETLOC}/{database_name}"
+    finally:
+        asyncio.run(_drop_postgres_database(admin_dsn, database_name))
+
+
+def _upgrade_schedule_schema(connection: Connection) -> None:
+    config = Config(Path(__file__).parents[2] / "src/schedule/alembic.ini")
+    config.attributes["connection"] = connection
+    command.upgrade(config, "head")
+
+
 @pytest.fixture(scope="session")
 def schedule_client(request: pytest.FixtureRequest) -> Iterator[TestClient]:
     request.getfixturevalue("mock_inh_accounts_http")
@@ -35,24 +74,28 @@ def schedule_client(request: pytest.FixtureRequest) -> Iterator[TestClient]:
     from src.schedule.config import settings
     from src.schedule.storages.sql import SQLAlchemyStorage
 
+    database_name = conftest_runtime_settings.schedule_test_database_name()
+    admin_dsn = f"postgresql+asyncpg://postgres:test@{SUITE_POSTGRES_NETLOC}/postgres"
+
     async def prepare_schema() -> None:
-        admin_dsn = f"postgresql+asyncpg://postgres:test@{SUITE_POSTGRES_NETLOC}/postgres"
-        await _ensure_postgres_database(admin_dsn, schedule_test_database_name())
         settings.predefined_dir.mkdir(parents=True, exist_ok=True)
         storage = SQLAlchemyStorage.from_url(settings.db_url.get_secret_value())
-        from src.schedule.storages.sql.models import Base
+        try:
+            async with storage.engine.begin() as conn:
+                await conn.run_sync(_upgrade_schedule_schema)
+        finally:
+            await storage.close_connection()
 
-        async with storage.engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
-            await conn.run_sync(Base.metadata.create_all)
-        await storage.close_connection()
+    asyncio.run(_ensure_postgres_database(admin_dsn, database_name))
+    try:
+        asyncio.run(prepare_schema())
 
-    asyncio.run(prepare_schema())
+        from src.schedule import app as schedule_app
 
-    from src.schedule import app as schedule_app
-
-    with TestClient(schedule_app.app) as client:
-        yield client
+        with TestClient(schedule_app.app) as client:
+            yield client
+    finally:
+        asyncio.run(_drop_postgres_database(admin_dsn, database_name))
 
 
 @pytest.fixture

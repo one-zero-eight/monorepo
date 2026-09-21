@@ -63,7 +63,7 @@ class BeanieStore:
 
     async def clear_database(self) -> None:
         """
-        Remove data but keep collections and indexes. Used for testing.
+        Remove application data but keep collections, indexes, and migration history. Used for testing.
         """
         if "PYTEST_CURRENT_TEST" not in os.environ:
             raise RuntimeError("Cannot clear database outside of a test")
@@ -76,7 +76,7 @@ class BeanieStore:
             collection_name = cast(str, info["name"])
             collection_type = info.get("type")
 
-            if collection_name.startswith("system."):
+            if collection_name.startswith("system.") or collection_name == "migrations_log":
                 continue
 
             if collection_type != "collection":

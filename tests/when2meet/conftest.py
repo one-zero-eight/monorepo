@@ -10,6 +10,9 @@ from src.common_beanie import BeanieStore
 
 @pytest.fixture(scope="session")
 def when2meet_client() -> Generator[TestClient, Any]:
+    from src.migrations import migrate_service
+
+    migrate_service("when2meet")
     from src.when2meet import app as when2meet_app
 
     with TestClient(when2meet_app.app) as client:

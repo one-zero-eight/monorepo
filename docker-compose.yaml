@@ -1,4 +1,4 @@
-# This is a Docker Compose configuration for local use.
+# This is a Docker Compose configuration for local use (Compose >= 5.3.0).
 
 # Run all services:
 # docker compose up --build --wait
@@ -10,18 +10,23 @@ services:
     # 8.2+ runs on those kernels (verified on 7.1.x).
     image: "mongo:8.2"
     restart: no
+    entrypoint: ["bash", "/opt/mongodb/entrypoint.sh"]
     ports:
       - "27017:27017"
     volumes:
       - "mongodb:/data/db"
+      - "mongodb_config:/data/configdb"
+      - "./scripts/mongodb:/opt/mongodb:ro"
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh 127.0.0.1:27017/local --quiet
-      timeout: 5s
+      test: ["CMD", "mongosh", "--quiet", "--nodb", "/opt/mongodb/ready.js"]
+      timeout: 10s
       start_period: 30s
-      interval: 1m
+      interval: 10s
+      retries: 12
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-onezeroeight}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-herewethinkbig}
+      MONGO_REPLICA_HOST: mongodb:27017
 
   minio:
     # See more: https://hub.docker.com/r/minio/minio
@@ -62,6 +67,8 @@ services:
       dockerfile: api.Dockerfile
       args:
         APP_MODULE: src.clubs.app:app
+    pre_start:
+      - command: ["python", "-m", "src.migrations", "clubs"]
     restart: no
     ports:
       - "8014:8000"
@@ -101,10 +108,12 @@ services:
 
   board-games:
     build:
-        context: .
-        dockerfile: api.Dockerfile
-        args:
-            APP_MODULE: src.board_games.app:app
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.board_games.app:app
+    pre_start:
+      - command: ["python", "-m", "src.migrations", "board_games"]
     restart: no
     ports:
       - "8016:8000"
@@ -126,6 +135,11 @@ services:
       dockerfile: api.Dockerfile
       args:
         APP_MODULE: src.when2meet.app:app
+    pre_start:
+      - command: ["python", "-m", "src.migrations", "when2meet"]
+    depends_on:
+      mongodb:
+        condition: service_healthy
     restart: no
     ports:
       - "8020:8000"
@@ -144,6 +158,8 @@ services:
       dockerfile: api.Dockerfile
       args:
         APP_MODULE: src.events.app:app
+    pre_start:
+      - command: ["python", "-m", "src.migrations", "events"]
     restart: no
     ports:
       - "8021:8000"
@@ -167,6 +183,11 @@ services:
       dockerfile: api.Dockerfile
       args:
         APP_MODULE: src.tabletennis.app:app
+    pre_start:
+      - command: ["python", "-m", "src.migrations", "tabletennis"]
+    depends_on:
+      mongodb:
+        condition: service_healthy
     restart: no
     ports:
       - "8023:8000"
@@ -185,6 +206,8 @@ services:
       dockerfile: api.Dockerfile
       args:
         APP_MODULE: src.guard.app:app
+    pre_start:
+      - command: ["python", "-m", "src.migrations", "guard"]
     restart: no
     ports:
       - "8013:8000"
@@ -207,6 +230,8 @@ services:
       dockerfile: api.Dockerfile
       args:
         APP_MODULE: src.forms.app:app
+    pre_start:
+      - command: ["python", "-m", "src.migrations", "forms"]
     restart: no
     ports:
       - "8017:8000"
@@ -255,26 +280,14 @@ services:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
 
-  schedule-alembic-migrate:
-    build:
-      context: .
-      dockerfile: api.Dockerfile
-      args:
-        APP_MODULE: src.schedule.app:app
-    restart: no
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - "./settings.yaml:/app/settings.yaml:ro"
-    command: alembic -c src/schedule/alembic.ini upgrade head
-
   schedule:
     build:
       context: .
       dockerfile: api.Dockerfile
       args:
         APP_MODULE: src.schedule.app:app
+    pre_start:
+      - command: ["python", "-m", "src.migrations", "schedule"]
     restart: no
     ports:
       - "8024:8000"
@@ -292,22 +305,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      schedule-alembic-migrate:
-        condition: service_completed_successfully
-
-  schedule-assistant-alembic-migrate:
-    build:
-      context: .
-      dockerfile: api.Dockerfile
-      args:
-        APP_MODULE: src.schedule_assistant.app:app
-    restart: no
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - "./settings.yaml:/app/settings.yaml:ro"
-    command: alembic -c src/schedule_assistant/alembic.ini upgrade head
 
   schedule-assistant:
     build:
@@ -315,6 +312,8 @@ services:
       dockerfile: api.Dockerfile
       args:
         APP_MODULE: src.schedule_assistant.app:app
+    pre_start:
+      - command: ["python", "-m", "src.migrations", "schedule_assistant"]
     restart: no
     ports:
       - "8012:8000"
@@ -331,10 +330,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      schedule-assistant-alembic-migrate:
-        condition: service_completed_successfully
 
 volumes:
   mongodb:
+  mongodb_config:
   minio:
   postgres:

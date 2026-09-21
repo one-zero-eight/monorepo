@@ -19,6 +19,9 @@ from tests.guard.constants import (
 @pytest.fixture(scope="session")
 def guard_client(request: pytest.FixtureRequest):
     request.getfixturevalue("mock_inh_accounts_http")
+    from src.migrations import migrate_service
+
+    migrate_service("guard")
     from src.guard import app as guard_app
 
     with TestClient(guard_app.app) as client:

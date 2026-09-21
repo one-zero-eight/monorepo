@@ -36,6 +36,7 @@ jobs:
           - forms
           - guard
           - maps
+          - migrations
           - room_booking
           - schedule
           - schedule_assistant
@@ -47,7 +48,7 @@ jobs:
     permissions:
       contents: read
 
-    # Host ports match docker-compose.test.yaml (37017, 19000, 35432); service containers use default listen ports inside.
+    # Host ports match docker-compose.test.yaml; GitHub manages container startup and cleanup.
     services:
       postgres:
         image: postgres:17.1
@@ -68,6 +69,16 @@ jobs:
         env:
           MONGO_INITDB_ROOT_USERNAME: test
           MONGO_INITDB_ROOT_PASSWORD: test
+          MONGO_REPLICA_HOST: localhost:27017
+        # Services start before checkout, so the ephemeral CI key must be created inline.
+        entrypoint: bash
+        command: >-
+          -ec "umask 077;
+          openssl rand -base64 756 > /data/configdb/replica-set.key;
+          chown mongodb:mongodb /data/configdb/replica-set.key;
+          chmod 400 /data/configdb/replica-set.key;
+          exec /usr/local/bin/docker-entrypoint.sh mongod
+          --replSet rs0 --keyFile /data/configdb/replica-set.key --bind_ip_all"
 
       minio:
         image: minio/minio:RELEASE.2024-05-10T01-41-38Z
@@ -84,6 +95,17 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref }}
+
+      - name: Initialize MongoDB replica set
+        env:
+          MONGO_CONTAINER: ${{ job.services.mongodb.id }}
+        run: |
+          docker cp scripts/mongodb/ready.js "$MONGO_CONTAINER:/tmp/replica-set-ready.js"
+          timeout 180s bash -c '
+            until docker exec "$MONGO_CONTAINER" mongosh --quiet --nodb /tmp/replica-set-ready.js; do
+              sleep 2
+            done
+          '
 
       - name: 📦 Install native libraries
         uses: awalsh128/cache-apt-pkgs-action@v1
@@ -114,6 +136,7 @@ jobs:
               tests/test_common_fastapi.py \
               tests/test_dependencies.py \
               tests/test_inh_accounts_sdk.py \
+              tests/test_migration_deployment.py \
               tests/test_settings_schema.py
           else
             set -- "tests/${{ matrix.suite }}/"
@@ -126,6 +149,17 @@ jobs:
             --cov-report=xml:reports/coverage-${{ matrix.suite }}.xml \
             --cov-report=term-missing \
             2>&1 | tee "reports/pytest-${{ matrix.suite }}.log"
+
+      - name: Test infrastructure logs
+        if: failure()
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+          MONGO_CONTAINER: ${{ job.services.mongodb.id }}
+          MINIO_CONTAINER: ${{ job.services.minio.id }}
+        run: |
+          docker logs "$POSTGRES_CONTAINER"
+          docker logs "$MONGO_CONTAINER"
+          docker logs "$MINIO_CONTAINER"
 
       - name: 📤 Upload reports
         uses: actions/upload-artifact@v7
@@ -141,7 +175,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: 📋 pytest log
-        if: (!cancelled()) && hashFiles('reports/pytest-${{ matrix.suite }}.log') != ''
+        if: ${{ !cancelled() && hashFiles(format('reports/pytest-{0}.log', matrix.suite)) != '' }}
         run: |
           {
             echo "<details>"

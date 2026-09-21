@@ -63,6 +63,9 @@ def mock_clubs_service(clubs_owned_by: dict[str, list[dict]], clubs_by_id: dict[
 def events_client(request: pytest.FixtureRequest):
     request.getfixturevalue("mock_inh_accounts_http")
     request.getfixturevalue("mock_clubs_service")
+    from src.migrations import migrate_service
+
+    migrate_service("events")
     from src.events import app as events_module
 
     with TestClient(events_module.app) as client:

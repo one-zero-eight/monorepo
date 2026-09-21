@@ -13,6 +13,9 @@ from src.common_minio import MinioStore
 @pytest.fixture(scope="session")
 def clubs_client(request: pytest.FixtureRequest):
     request.getfixturevalue("mock_inh_accounts_http")
+    from src.migrations import migrate_service
+
+    migrate_service("clubs")
     from src.clubs import app as clubs_module
 
     with TestClient(clubs_module.app) as client:

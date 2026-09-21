@@ -21,9 +21,14 @@ from pathlib import Path  # noqa: E402
 
 from yaml import safe_load  # noqa: E402
 
-app_settings_path = os.getenv("SETTINGS_PATH", "settings.yaml")
-app_settings = safe_load(Path(app_settings_path).read_text())
-config.set_main_option("sqlalchemy.url", app_settings["schedule_service"]["db_url"])
+# Programmatic callers may supply a connection or URL without reading local settings.
+if config.attributes.get("connection") is None:
+    db_url = config.attributes.get("sqlalchemy.url")
+    if db_url is None:
+        app_settings_path = os.getenv("SETTINGS_PATH", "settings.yaml")
+        app_settings = safe_load(Path(app_settings_path).read_text())
+        db_url = app_settings["schedule_service"]["db_url"]
+    config.set_main_option("sqlalchemy.url", db_url.replace("%", "%%"))
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -68,6 +73,7 @@ def do_run_migrations(connection: Connection) -> None:
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
+        compare_server_default=True,
         process_revision_directives=process_revision_directives,
     )
     with context.begin_transaction():

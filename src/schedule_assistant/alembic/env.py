@@ -4,18 +4,25 @@ from pathlib import Path
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
+from sqlalchemy.engine import Connection
 from yaml import safe_load
+
+import src.schedule_assistant.db.models  # noqa: F401
+from src.schedule_assistant.db.base import Base
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-app_settings_path = os.getenv("SETTINGS_PATH", "settings.yaml")
-app_settings = safe_load(Path(app_settings_path).read_text())
-config.set_main_option("sqlalchemy.url", app_settings["schedule_assistant_service"]["db_url"])
-
-from src.schedule_assistant.db.base import Base  # noqa: E402
+# Programmatic callers may supply a connection or URL without reading local settings.
+if config.attributes.get("connection") is None:
+    db_url = config.attributes.get("sqlalchemy.url")
+    if db_url is None:
+        app_settings_path = os.getenv("SETTINGS_PATH", "settings.yaml")
+        app_settings = safe_load(Path(app_settings_path).read_text())
+        db_url = app_settings["schedule_assistant_service"]["db_url"]
+    config.set_main_option("sqlalchemy.url", db_url.replace("%", "%%"))
 
 target_metadata = Base.metadata
 
@@ -33,17 +40,28 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
+def do_run_migrations(connection: Connection) -> None:
+    context.configure(connection=connection, target_metadata=target_metadata, compare_server_default=True)
+    with context.begin_transaction():
+        context.run_migrations()
+
+
 def run_migrations_online() -> None:
+    connection = config.attributes.get("connection")
+    if connection is not None:
+        do_run_migrations(connection)
+        return
+
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
-
-    with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
-        with context.begin_transaction():
-            context.run_migrations()
+    try:
+        with connectable.connect() as connection:
+            do_run_migrations(connection)
+    finally:
+        connectable.dispose()
 
 
 if context.is_offline_mode():

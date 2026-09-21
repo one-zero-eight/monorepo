@@ -30,6 +30,7 @@ on:
           - maps
           - board-games
           - clubs
+          - events
           - student-affairs
           - when2meet
           - guard
@@ -102,6 +103,7 @@ jobs:
     permissions: {}
     environment:
       name: ${{ github.event.inputs.environment || 'staging' }}
+    # Beanie has no migration lock: targeted and all-service deployments must serialize together.
     concurrency:
       group: deploy-${{ github.event.inputs.environment || 'staging' }}
       cancel-in-progress: false

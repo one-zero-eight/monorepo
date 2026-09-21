@@ -11,6 +11,9 @@ from src.common_minio import MinioStore
 @pytest.fixture(scope="session")
 def board_games_client(request: pytest.FixtureRequest):
     request.getfixturevalue("mock_inh_accounts_http")
+    from src.migrations import migrate_service
+
+    migrate_service("board_games")
     from src.board_games import app as board_games_module
 
     with TestClient(board_games_module.app) as client:

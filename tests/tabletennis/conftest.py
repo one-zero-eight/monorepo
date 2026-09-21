@@ -10,6 +10,9 @@ from src.common_beanie import BeanieStore
 @pytest.fixture(scope="session")
 def tabletennis_client(request: pytest.FixtureRequest):
     request.getfixturevalue("mock_inh_accounts_http")
+    from src.migrations import migrate_service
+
+    migrate_service("tabletennis")
     from src.tabletennis import app as tabletennis_app
 
     with TestClient(tabletennis_app.app) as client:

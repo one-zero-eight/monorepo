@@ -61,9 +61,13 @@ def is_running_in_docker() -> bool:  # pragma: no cover
 def default_mongo_uri() -> SecretStr:
     in_docker = is_running_in_docker()
     if in_docker:
-        return SecretStr("mongodb://onezeroeight:herewethinkbig@mongodb:27017/?authSource=admin")
+        return SecretStr(
+            "mongodb://onezeroeight:herewethinkbig@mongodb:27017/?authSource=admin&replicaSet=rs0&directConnection=true"
+        )
     else:
-        return SecretStr("mongodb://onezeroeight:herewethinkbig@127.0.0.1:27017/?authSource=admin")
+        return SecretStr(
+            "mongodb://onezeroeight:herewethinkbig@127.0.0.1:27017/?authSource=admin&replicaSet=rs0&directConnection=true"
+        )
 
 
 def default_minio_endpoint() -> str:
@@ -78,8 +82,8 @@ class MongoDatabaseSettings(BaseSchema):
     uri: SecretStr = Field(
         default_factory=default_mongo_uri,
         examples=[
-            "mongodb://onezeroeight:herewethinkbig@127.0.0.1:27017/?authSource=admin",
-            "mongodb://onezeroeight:herewethinkbig@mongodb:27017/?authSource=admin",
+            "mongodb://onezeroeight:herewethinkbig@127.0.0.1:27017/?authSource=admin&replicaSet=rs0&directConnection=true",
+            "mongodb://onezeroeight:herewethinkbig@mongodb:27017/?authSource=admin&replicaSet=rs0&directConnection=true",
         ],
     )
     "MongoDB database settings, if you do not specify database name in the uri, it will use the service name (f.e. 'clubs')"

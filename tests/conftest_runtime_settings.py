@@ -11,7 +11,7 @@ from minio import Minio
 from minio.error import MinioException
 from pydantic import SecretStr
 from pymongo import MongoClient
-from pymongo.errors import PyMongoError
+from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
 from urllib3.exceptions import HTTPError
 
 from src.board_games.config_schema import BoardGamesSettings
@@ -66,7 +66,7 @@ def schedule_assistant_test_database_name() -> str:
 
 
 def load_root_settings() -> Settings:
-    mongo_uri = f"mongodb://{SUITE_MONGO_USER}:{SUITE_MONGO_AUTH}@{SUITE_MONGO_NETLOC}/worker-{get_worker_id()}-<service_name>?authSource=admin"
+    mongo_uri = f"mongodb://{SUITE_MONGO_USER}:{SUITE_MONGO_AUTH}@{SUITE_MONGO_NETLOC}/worker-{get_worker_id()}-<service_name>?authSource=admin&replicaSet=rs0&directConnection=true"
     minio_bucket = f"worker-{get_worker_id()}-<service_name>"
 
     return Settings(
@@ -192,7 +192,9 @@ def load_root_settings() -> Settings:
 def _wait_mongo_ready(uri: str, timeout_s: float = 1) -> None:
     client = MongoClient(uri, serverSelectionTimeoutMS=int(timeout_s * 1000))
     try:
-        client.admin.command("ping")
+        hello = client.admin.command("hello")
+        if hello.get("setName") != "rs0" or not hello.get("isWritablePrimary"):
+            raise ServerSelectionTimeoutError("Test MongoDB must be a writable primary in replica set rs0")
     finally:
         client.close()
 
@@ -254,7 +256,7 @@ def pytest_configure(config: pytest.Config) -> None:
         t0 = tm.perf_counter()
         try:
             _wait_mongo_ready(
-                f"mongodb://{SUITE_MONGO_USER}:{SUITE_MONGO_AUTH}@{SUITE_MONGO_NETLOC}/admin?authSource=admin"
+                f"mongodb://{SUITE_MONGO_USER}:{SUITE_MONGO_AUTH}@{SUITE_MONGO_NETLOC}/admin?authSource=admin&replicaSet=rs0&directConnection=true"
             )
         except PyMongoError as exc:
             pytest.exit(
