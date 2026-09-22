@@ -1,5 +1,6 @@
 import datetime as dtm
 
+import pytest
 from fastapi.testclient import TestClient
 
 from src.tabletennis.mongo import Game, Player, Tournament
@@ -229,3 +230,78 @@ def test_bonus_is_not_granted_through_val_top(tabletennis_client: TestClient, ad
     )
     assert response.status_code == 200
     assert _get_player(portal, "v0").rating == 1000
+
+
+def test_finish_game_rejects_invalid_scores(tabletennis_client: TestClient, admin_headers: dict[str, str]):
+    portal = tabletennis_client.portal
+    for uid in ["a", "b"]:
+        _player(portal, uid)
+    _tour(portal, "bad", ["a", "b"])
+
+    game_id = _reg(tabletennis_client, admin_headers, "bad", "a", "b").json()["game_id"]
+    for s1, s2 in [(-1, 3), (3, -2), (10, 0), (3, 10), (2, 2)]:
+        assert _finish(tabletennis_client, admin_headers, "bad", game_id, s1, s2).status_code == 400, (s1, s2)
+
+    game = (_get_tour(portal, "bad").val_games or [])[0]
+    assert not game.finished
+    assert _get_player(portal, "a").rating == 500
+    assert _get_player(portal, "b").rating == 500
+    # the game can still be finished with a valid score
+    assert _finish(tabletennis_client, admin_headers, "bad", game_id, 9, 0).status_code == 200
+
+
+def test_fix_game_rejects_invalid_scores(tabletennis_client: TestClient, admin_headers: dict[str, str]):
+    portal = tabletennis_client.portal
+    for uid in ["a", "b"]:
+        _player(portal, uid)
+    _tour(portal, "badfix", ["a", "b"])
+
+    game_id = _reg(tabletennis_client, admin_headers, "badfix", "a", "b").json()["game_id"]
+    _finish(tabletennis_client, admin_headers, "badfix", game_id, 3, 1)
+    rating_a = _get_player(portal, "a").rating
+
+    for s1, s2 in [(-1, 3), (1, -3), (12, 1), (1, 12)]:
+        fixed = tabletennis_client.post(
+            "/fix-game", params={"game_id": game_id, "s1": s1, "s2": s2, "tour_id": "badfix"}, headers=admin_headers
+        )
+        assert fixed.status_code == 400, (s1, s2)
+
+    game = (_get_tour(portal, "badfix").val_games or [])[0]
+    assert (game.player1_score, game.player2_score) == (3, 1)
+    assert _get_player(portal, "a").rating == rating_a
+
+
+def test_failed_rating_save_leaves_game_unfinished(
+    tabletennis_client: TestClient, admin_headers: dict[str, str], monkeypatch: pytest.MonkeyPatch
+):
+    """Ratings and the game result are saved together: a crash in between must not finish the game."""
+    portal = tabletennis_client.portal
+    assert portal is not None
+    for uid in ["a", "b"]:
+        _player(portal, uid)
+    _tour(portal, "crash", ["a", "b"])
+    game_id = _reg(tabletennis_client, admin_headers, "crash", "a", "b").json()["game_id"]
+
+    original_save = Player.save
+    calls = 0
+
+    async def failing_save(self, *args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 2:  # the first player is already saved when the second one fails
+            raise RuntimeError("database is gone")
+        return await original_save(self, *args, **kwargs)
+
+    monkeypatch.setattr(Player, "save", failing_save)
+    with pytest.raises(RuntimeError):
+        _finish(tabletennis_client, admin_headers, "crash", game_id, 3, 0)
+    monkeypatch.setattr(Player, "save", original_save)
+
+    assert not (_get_tour(portal, "crash").val_games or [])[0].finished
+    assert not portal.call(Game.find_one, Game.game_id == game_id).finished
+    a, b = _get_player(portal, "a"), _get_player(portal, "b")
+    assert (a.rating, a.wins, b.rating, b.losses) == (500, 0, 500, 0)
+
+    # nothing was half-saved, so the game can be finished again
+    assert _finish(tabletennis_client, admin_headers, "crash", game_id, 3, 0).status_code == 200
+    assert _get_player(portal, "a").wins == 1

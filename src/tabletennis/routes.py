@@ -3,11 +3,13 @@ __all__ = ["router"]
 import asyncio
 import datetime as dtm
 import uuid
-from typing import Any, Literal
+from collections.abc import Awaitable, Callable
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Body, HTTPException, Query
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 from pydantic import EmailStr
+from pymongo.asynchronous.client_session import AsyncClientSession
 
 from src.dependencies import INH_TOKEN_AUTH
 from src.inh_accounts_sdk import inh_accounts
@@ -303,6 +305,29 @@ def _embedded_game(game: Game) -> dict[str, Any]:
     return game.model_dump(exclude={"id", "revision_id"}, exclude_none=True)
 
 
+MAX_SCORE = 9
+"Sets won by one player in a match. Matches the score steppers on the frontend (ScoreSheet)."
+
+
+def _validate_score(s1: int, s2: int) -> None:
+    if s1 < 0 or s2 < 0:
+        raise HTTPException(status_code=400, detail="Scores cannot be negative")
+    if s1 > MAX_SCORE or s2 > MAX_SCORE:
+        raise HTTPException(status_code=400, detail=f"Scores cannot be greater than {MAX_SCORE}")
+    if s1 == s2:
+        raise HTTPException(status_code=400, detail="Draws are not allowed in table tennis!")
+
+
+async def _in_transaction[T](callback: Callable[[AsyncClientSession], Awaitable[T]]) -> T:
+    """
+    Runs all writes of the callback atomically: either every write is saved or none.
+    The callback may be retried on a transient conflict, so it must read what it changes itself.
+    """
+    client = Tournament.get_pymongo_collection().database.client
+    async with client.start_session() as session:
+        return await session.with_transaction(callback)
+
+
 def _apply_result_to_players(
     p1: Player, p2: Player, s1: int, s2: int, delta_1: int, delta_2: int, *, undo: bool = False
 ) -> None:
@@ -500,7 +525,7 @@ async def get_games(auth: INH_TOKEN_AUTH) -> list[dict[str, Any]]:
 
 
 @router.get("/get-games-by-id")
-async def get_games_by_id(auth: INH_TOKEN_AUTH, ids: list[str] = Query(...)) -> dict[str, Any]:  # noqa: B008
+async def get_games_by_id(auth: INH_TOKEN_AUTH, ids: Annotated[list[str], Query()]) -> dict[str, Any]:
     """
     Returns detailed info for a list of games by their game_id: scores, finished status,
     both players' current nicknames and ratings, and the tournament they belong to.
@@ -873,10 +898,12 @@ async def remove_players(
 async def change_val_top(
     auth: TABLETENNIS_ADMIN_AUTH,
     tour_id: str,
-    top: dict[int, str] = Body(  # noqa: B008
-        ...,
-        description="Full place->innohassle_id mapping, e.g. {1: 'id_1st_place', 2: 'id_2nd_place'}. Overwrites completely.",
-    ),
+    top: Annotated[
+        dict[int, str],
+        Body(
+            description="Full place->innohassle_id mapping, e.g. {1: 'id_1st_place', 2: 'id_2nd_place'}. Overwrites completely."
+        ),
+    ],
 ) -> dict[str, Any]:
     """
     Admin endpoint to fully overwrite a tournament's val_top (final-stage standings).
@@ -901,10 +928,12 @@ async def change_val_top(
 async def change_qual_top(
     auth: TABLETENNIS_ADMIN_AUTH,
     tour_id: str,
-    top: dict[int, str] = Body(  # noqa: B008
-        ...,
-        description="Full place->innohassle_id mapping, e.g. {1: 'id_1st_place', 2: 'id_2nd_place'}. Overwrites completely.",
-    ),
+    top: Annotated[
+        dict[int, str],
+        Body(
+            description="Full place->innohassle_id mapping, e.g. {1: 'id_1st_place', 2: 'id_2nd_place'}. Overwrites completely."
+        ),
+    ],
 ) -> dict[str, Any]:
     """
     Admin endpoint to fully overwrite a tournament's qual_top (qualification-stage standings).
@@ -929,10 +958,10 @@ async def change_qual_top(
 async def set_groups(
     auth: TABLETENNIS_ADMIN_AUTH,
     tour_id: str,
-    groups: dict[str, list[str]] = Body(  # noqa: B008
-        ...,
-        description="Full group name->innohassle_ids mapping, e.g. {'A': ['id1', 'id2']}. Overwrites completely.",
-    ),
+    groups: Annotated[
+        dict[str, list[str]],
+        Body(description="Full group name->innohassle_ids mapping, e.g. {'A': ['id1', 'id2']}. Overwrites completely."),
+    ],
 ) -> dict[str, Any]:
     """
     Admin endpoint to fully overwrite the validation-stage groups of an ACTIVE tournament.
@@ -1010,9 +1039,9 @@ async def unlock_groups(auth: TABLETENNIS_ADMIN_AUTH, tour_id: str) -> dict[str,
 async def set_qual_seeding(
     auth: TABLETENNIS_ADMIN_AUTH,
     tour_id: str,
-    seeding: list[str] = Body(  # noqa: B008
-        ..., description="All participants' innohassle_ids ordered from the 1st seed to the last."
-    ),
+    seeding: Annotated[
+        list[str], Body(description="All participants' innohassle_ids ordered from the 1st seed to the last.")
+    ],
 ) -> dict[str, Any]:
     """
     Admin endpoint to fix the qualification bracket seeding, which starts the qualification.
@@ -1140,8 +1169,7 @@ async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: i
     Calculates Elo, updates player stats, and synchronizes scores inside the tournament.
     Refuses to recalculate rating for a game that was already finished.
     """
-    if s1 == s2:
-        raise HTTPException(status_code=400, detail="Draws are not allowed in table tennis!")
+    _validate_score(s1, s2)
 
     tournament = await Tournament.find_one(Tournament.tour_id == tour_id)
     if not tournament:
@@ -1158,66 +1186,53 @@ async def finish_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: i
             detail="This game has already been finished. Recalculating rating is not allowed.",
         )
 
-    p1_id = target_game.player1_id
-    p2_id = target_game.player2_id
+    async def record(session: AsyncClientSession) -> tuple[Player, Player, int, int]:
+        # players are read inside the transaction: a concurrent game of the same player
+        # makes it retry with the fresh rating instead of overwriting it
+        p1 = await Player.find_one(Player.innohassle_id == target_game.player1_id, session=session)
+        p2 = await Player.find_one(Player.innohassle_id == target_game.player2_id, session=session)
+        if not p1 or not p2:
+            raise HTTPException(status_code=404, detail="One or both players from this game are not registered (/reg)")
 
-    p1 = await Player.find_one(Player.innohassle_id == p1_id)
-    p2 = await Player.find_one(Player.innohassle_id == p2_id)
+        if s1 > s2:
+            delta_1, delta_2 = await _apply_rttf_delta(p1, p2, s1, s2, tournament)
+        else:
+            delta_2, delta_1 = await _apply_rttf_delta(p2, p1, s2, s1, tournament)
 
-    if not p1 or not p2:
-        raise HTTPException(status_code=404, detail="One or both players from this game are not registered (/reg)")
+        current_time = dtm.datetime.now(tz=dtm.UTC)
+        _apply_result_to_players(p1, p2, s1, s2, delta_1, delta_2)
+        for player in (p1, p2):
+            player.last_game = current_time
+            if player.ratings is None:
+                player.ratings = {}
+            player.ratings[current_time] = player.rating
+        await p1.save(session=session)
+        await p2.save(session=session)
 
-    if s1 > s2:
-        delta_1, delta_2 = await _apply_rttf_delta(p1, p2, s1, s2, tournament)
-    else:
-        delta_2, delta_1 = await _apply_rttf_delta(p2, p1, s2, s1, tournament)
-
-    # atomically claim the unfinished game: if two admins finish it at the same time,
-    # only one request gets here and the rating is changed once
-    result_fields = {
-        "finished": True,
-        "finished_at": dtm.datetime.now(tz=dtm.UTC),
-        "player1_score": s1,
-        "player2_score": s2,
-        "player1_delta": delta_1,
-        "player2_delta": delta_2,
-    }
-    claim = await Tournament.get_pymongo_collection().update_one(
-        {"tour_id": tour_id, field: {"$elemMatch": {"game_id": game_id, "finished": False}}},
-        {"$set": {f"{field}.$.{k}": v for k, v in result_fields.items()}},
-    )
-    if claim.modified_count == 0:
-        raise HTTPException(
-            status_code=400,
-            detail="This game has already been finished. Recalculating rating is not allowed.",
+        # claim the unfinished game last: if two admins finish it at the same time, only one
+        # transaction commits, the other one is rolled back together with its rating changes
+        result_fields = {
+            "finished": True,
+            "finished_at": current_time,
+            "player1_score": s1,
+            "player2_score": s2,
+            "player1_delta": delta_1,
+            "player2_delta": delta_2,
+        }
+        claim = await Tournament.get_pymongo_collection().update_one(
+            {"tour_id": tour_id, field: {"$elemMatch": {"game_id": game_id, "finished": False}}},
+            {"$set": {f"{field}.$.{k}": v for k, v in result_fields.items()}},
+            session=session,
         )
+        if claim.modified_count == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="This game has already been finished. Recalculating rating is not allowed.",
+            )
+        await Game.get_pymongo_collection().update_one({"game_id": game_id}, {"$set": result_fields}, session=session)
+        return p1, p2, delta_1, delta_2
 
-    await Game.get_pymongo_collection().update_one({"game_id": game_id}, {"$set": result_fields})
-
-    p1.rating = max(1, p1.rating + delta_1)
-    p2.rating = max(1, p2.rating + delta_2)
-
-    current_time = dtm.datetime.now(tz=dtm.UTC)
-    p1.last_game = current_time
-    p2.last_game = current_time
-
-    if p1.ratings is None:
-        p1.ratings = {}
-    if p2.ratings is None:
-        p2.ratings = {}
-
-    p1.ratings[current_time] = p1.rating
-    p2.ratings[current_time] = p2.rating
-
-    if s1 > s2:
-        p1.wins += 1
-        p2.losses += 1
-    else:
-        p2.wins += 1
-        p1.losses += 1
-
-    await p1.save()
-    await p2.save()
+    p1, p2, delta_1, delta_2 = await _in_transaction(record)
 
     logger.info(
         f"Match {game_id} in tour {tour_id} saved by admin {auth.email}: {p1.nickname} ({s1}) vs {p2.nickname} ({s2}). "
@@ -1239,10 +1254,7 @@ async def fix_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: int,
     The rating change of the old result is rolled back and the new result is applied.
     Group (val) games cannot be corrected once qualification has started, because the seeding is fixed.
     """
-    if s1 == s2:
-        raise HTTPException(status_code=400, detail="Draws are not allowed in table tennis!")
-    if s1 < 0 or s2 < 0:
-        raise HTTPException(status_code=400, detail="Scores cannot be negative")
+    _validate_score(s1, s2)
 
     tournament = await Tournament.find_one(Tournament.tour_id == tour_id)
     if not tournament:
@@ -1269,42 +1281,53 @@ async def fix_game(auth: TABLETENNIS_ADMIN_AUTH, game_id: str, s1: int, s2: int,
     if (old_s1, old_s2) == (s1, s2):
         return {"status": "success", "game_id": game_id, "changed": False}
 
-    p1 = await Player.find_one(Player.innohassle_id == game.player1_id)
-    p2 = await Player.find_one(Player.innohassle_id == game.player2_id)
-    if not p1 or not p2:
-        raise HTTPException(status_code=404, detail="One or both players from this game are not registered (/reg)")
+    old_delta_1, old_delta_2 = game.player1_delta, game.player2_delta
 
-    _apply_result_to_players(p1, p2, old_s1, old_s2, game.player1_delta, game.player2_delta, undo=True)
+    async def correct(session: AsyncClientSession) -> tuple[Player, Player, int, int]:
+        p1 = await Player.find_one(Player.innohassle_id == game.player1_id, session=session)
+        p2 = await Player.find_one(Player.innohassle_id == game.player2_id, session=session)
+        if not p1 or not p2:
+            raise HTTPException(status_code=404, detail="One or both players from this game are not registered (/reg)")
 
-    if s1 > s2:
-        delta_1, delta_2 = await _apply_rttf_delta(p1, p2, s1, s2, tournament)
-    else:
-        delta_2, delta_1 = await _apply_rttf_delta(p2, p1, s2, s1, tournament)
+        _apply_result_to_players(p1, p2, old_s1, old_s2, old_delta_1, old_delta_2, undo=True)
 
-    result_fields = {"player1_score": s1, "player2_score": s2, "player1_delta": delta_1, "player2_delta": delta_2}
-    # optimistic lock on the old score: a concurrent correction must not roll back the rating twice
-    claim = await Tournament.get_pymongo_collection().update_one(
-        {
-            "tour_id": tour_id,
-            field: {
-                "$elemMatch": {"game_id": game_id, "finished": True, "player1_score": old_s1, "player2_score": old_s2}
+        if s1 > s2:
+            delta_1, delta_2 = await _apply_rttf_delta(p1, p2, s1, s2, tournament)
+        else:
+            delta_2, delta_1 = await _apply_rttf_delta(p2, p1, s2, s1, tournament)
+
+        _apply_result_to_players(p1, p2, s1, s2, delta_1, delta_2)
+        current_time = dtm.datetime.now(tz=dtm.UTC)
+        for player in (p1, p2):
+            if player.ratings is None:
+                player.ratings = {}
+            player.ratings[current_time] = player.rating
+        await p1.save(session=session)
+        await p2.save(session=session)
+
+        result_fields = {"player1_score": s1, "player2_score": s2, "player1_delta": delta_1, "player2_delta": delta_2}
+        # optimistic lock on the old score: a concurrent correction must not roll back the rating twice
+        claim = await Tournament.get_pymongo_collection().update_one(
+            {
+                "tour_id": tour_id,
+                field: {
+                    "$elemMatch": {
+                        "game_id": game_id,
+                        "finished": True,
+                        "player1_score": old_s1,
+                        "player2_score": old_s2,
+                    }
+                },
             },
-        },
-        {"$set": {f"{field}.$.{k}": v for k, v in result_fields.items()}},
-    )
-    if claim.modified_count == 0:
-        raise HTTPException(status_code=409, detail="This game was changed by someone else, reload and try again")
+            {"$set": {f"{field}.$.{k}": v for k, v in result_fields.items()}},
+            session=session,
+        )
+        if claim.modified_count == 0:
+            raise HTTPException(status_code=409, detail="This game was changed by someone else, reload and try again")
+        await Game.get_pymongo_collection().update_one({"game_id": game_id}, {"$set": result_fields}, session=session)
+        return p1, p2, delta_1, delta_2
 
-    await Game.get_pymongo_collection().update_one({"game_id": game_id}, {"$set": result_fields})
-
-    _apply_result_to_players(p1, p2, s1, s2, delta_1, delta_2)
-    current_time = dtm.datetime.now(tz=dtm.UTC)
-    for player in (p1, p2):
-        if player.ratings is None:
-            player.ratings = {}
-        player.ratings[current_time] = player.rating
-    await p1.save()
-    await p2.save()
+    p1, p2, delta_1, delta_2 = await _in_transaction(correct)
 
     logger.info(
         f"Match {game_id} in tour {tour_id} corrected by admin {auth.email}: {old_s1}:{old_s2} -> {s1}:{s2}. "
