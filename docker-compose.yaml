@@ -42,7 +42,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-onezeroeight}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-herewethinkbig}
 
-  maps:
+  maps-api:
     build:
       context: .
       dockerfile: api.Dockerfile
@@ -61,7 +61,7 @@ services:
         reservations:
           memory: 500m
 
-  clubs:
+  clubs-api:
     build:
       context: .
       dockerfile: api.Dockerfile
@@ -87,7 +87,7 @@ services:
       minio:
         condition: service_started
 
-  student-affairs:
+  student-affairs-api:
     build:
       context: .
       dockerfile: api.Dockerfile
@@ -106,7 +106,7 @@ services:
         reservations:
           memory: 500m
 
-  board-games:
+  board-games-api:
     build:
       context: .
       dockerfile: api.Dockerfile
@@ -129,7 +129,7 @@ services:
       mongodb:
         condition: service_healthy
 
-  when2meet:
+  when2meet-api:
     build:
       context: .
       dockerfile: api.Dockerfile
@@ -152,7 +152,7 @@ services:
         reservations:
           memory: 500m
 
-  events:
+  events-api:
     build:
       context: .
       dockerfile: api.Dockerfile
@@ -177,7 +177,7 @@ services:
       minio:
         condition: service_started
 
-  tabletennis:
+  tabletennis-api:
     build:
       context: .
       dockerfile: api.Dockerfile
@@ -200,7 +200,7 @@ services:
         reservations:
           memory: 500m
 
-  guard:
+  guard-api:
     build:
       context: .
       dockerfile: api.Dockerfile
@@ -224,7 +224,7 @@ services:
       mongodb:
         condition: service_healthy
 
-  forms:
+  forms-api:
     build:
       context: .
       dockerfile: api.Dockerfile
@@ -247,7 +247,7 @@ services:
       mongodb:
         condition: service_healthy
 
-  room-booking:
+  room-booking-api:
     build:
       context: .
       dockerfile: api.Dockerfile
@@ -280,7 +280,7 @@ services:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
 
-  schedule:
+  schedule-api:
     build:
       context: .
       dockerfile: api.Dockerfile
@@ -306,7 +306,7 @@ services:
       postgres:
         condition: service_healthy
 
-  schedule-assistant:
+  schedule-assistant-api:
     build:
       context: .
       dockerfile: api.Dockerfile
