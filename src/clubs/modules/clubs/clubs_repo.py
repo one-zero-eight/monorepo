@@ -64,7 +64,7 @@ async def approve_update(id: PydanticObjectId) -> Club | None:
     if not club or not club.pending_update:
         return club
 
-    update_data = club.pending_update.model_dump(exclude_unset=True)
+    update_data = club.pending_update.model_dump(include=CLUB_SCHEMA_FIELDS, exclude_unset=True)
     for k, v in update_data.items():
         setattr(club, k, v)
 

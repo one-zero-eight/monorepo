@@ -1,3 +1,4 @@
+import datetime as dtm
 from io import BytesIO
 from urllib.parse import urlparse
 
@@ -151,6 +152,8 @@ def test_club_leader_edit_creates_pending_update(
     assert payload["title"] == "Test Club"
     assert payload["is_active"] is True
     assert payload["pending_update"]["title"] == "Leader proposed title"
+    submitted_at = dtm.datetime.fromisoformat(payload["pending_update"]["submitted_at"])
+    assert submitted_at.tzinfo is not None
 
 
 def test_clubs_edit_and_delete_flow(

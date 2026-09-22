@@ -11,6 +11,7 @@ __all__ = [
     "document_models",
 ]
 
+import datetime as dtm
 from enum import StrEnum
 from typing import ClassVar
 
@@ -43,6 +44,8 @@ class ClubType(StrEnum):
 
 
 class PendingClubUpdate(BaseSchema):
+    submitted_at: dtm.datetime
+    "Time of the latest leader submission in UTC"
     title: str | None = None
     short_description: str | None = None
     description: str | None = None

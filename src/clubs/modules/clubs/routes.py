@@ -2,6 +2,7 @@
 Clubs list and management.
 """
 
+import datetime as dtm
 from io import BytesIO
 
 import beanie.exceptions
@@ -164,7 +165,8 @@ async def edit_club_info(id: PydanticObjectId, club_info: clubs_repo.UpdateClub,
         return updated_club
     else:
         club.pending_update = PendingClubUpdate(
-            **club_info.model_dump(exclude={"new_leader_email", "pending_update", "slug", "is_active"})
+            submitted_at=dtm.datetime.now(dtm.UTC),
+            **club_info.model_dump(exclude={"new_leader_email", "pending_update", "slug", "is_active"}),
         )
         await club.save()
         return club
@@ -213,7 +215,8 @@ async def edit_club_info_by_slug(slug: str, update_club: clubs_repo.UpdateClub, 
             raise HTTPException(status_code=400, detail="Slug already exists")
     else:
         club.pending_update = PendingClubUpdate(
-            **update_club.model_dump(exclude={"new_leader_email", "pending_update", "slug", "is_active"})
+            submitted_at=dtm.datetime.now(dtm.UTC),
+            **update_club.model_dump(exclude={"new_leader_email", "pending_update", "slug", "is_active"}),
         )
         await club.save()
         return club
@@ -354,8 +357,12 @@ async def set_club_logo(id: PydanticObjectId, logo_file: UploadFile, auth: INH_T
         club.logo_file_id = logo_file_id
     else:
         if not club.pending_update:
-            club.pending_update = PendingClubUpdate(**club.model_dump(include=set(PendingClubUpdate.model_fields)))
+            club.pending_update = PendingClubUpdate(
+                submitted_at=dtm.datetime.now(dtm.UTC),
+                **club.model_dump(include=set(PendingClubUpdate.model_fields)),
+            )
         club.pending_update.logo_file_id = logo_file_id
+        club.pending_update.submitted_at = dtm.datetime.now(dtm.UTC)
 
     await club.save()
     return club
