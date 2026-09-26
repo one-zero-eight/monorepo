@@ -48,6 +48,8 @@ jobs:
         ports:
           - 37017:27017
         env:
+          # Disable TCMalloc's per-CPU rseq path on affected kernels (SERVER-121912).
+          GLIBC_TUNABLES: glibc.pthread.rseq=1
           MONGO_INITDB_ROOT_USERNAME: test
           MONGO_INITDB_ROOT_PASSWORD: test
           MONGO_REPLICA_HOST: localhost:27017
