@@ -30,7 +30,7 @@ services:
 
   minio:
     # See more: https://quay.io/repository/minio/minio
-    image: "quay.io/minio/minio:RELEASE.2024-05-10T01-41-38Z"
+    image: "docker.io/pgsty/silo:RELEASE.2026-09-16T00-00-00Z"
     restart: no
     ports:
       - "9000:9000"
