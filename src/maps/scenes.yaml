@@ -506,7 +506,6 @@ scenes:
           - "Гасников Александр Владимирович"
       - title: "425"
         svg_polygon_id: "425"
-        room_booking_id: "425"
       - title: "426"
         svg_polygon_id: "426"
       - title: "427"

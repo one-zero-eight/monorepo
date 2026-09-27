@@ -297,10 +297,3 @@ rooms:
     access_level: "special"
     capacity: 12
   # Red Access Rooms (meeting rooms) ^
-
-  - id: "425"
-    short_name: "425"
-    title: "Meeting Room 425"
-    resource_email: "iu.resource.room425@innopolis.ru"
-    access_level: "special"
-    capacity: 30
