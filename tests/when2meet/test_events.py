@@ -964,6 +964,52 @@ def test_available_rooms_forwards_selected_time_timezone_to_room_booking(
     assert can_book_route.calls.last.request.url.params["end"] == "2027-06-15T11:00:00+03:00"
 
 
+def test_available_rooms_excludes_rooms_with_upstream_errors(
+    when2meet_client: TestClient,
+    user_headers,
+):
+    """Verify one unavailable room does not break availability for healthy rooms."""
+    create_resp = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Partial Room Search", "slots": ["2027-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_resp.json()["id"]
+    when2meet_client.patch(
+        f"/api/v0/meetings/{event_id}",
+        json={"selected_time": {"start": "2027-06-15T10:00:00Z", "end": "2027-06-15T11:00:00Z"}},
+        headers=user_headers,
+    )
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.get(f"{ROOM_BOOKING_API_URL}/rooms/").mock(
+            return_value=httpx.Response(
+                200,
+                json=[
+                    {"id": "3.1", "title": "Meeting Room 3.1", "short_name": "3.1", "capacity": 8},
+                    {"id": "3.2", "title": "Meeting Room 3.2", "short_name": "3.2", "capacity": 12},
+                    {"id": "3.3", "title": "Meeting Room 3.3", "short_name": "3.3", "capacity": 10},
+                ],
+            )
+        )
+        respx_mock.get(f"{ROOM_BOOKING_API_URL}/bookings/").mock(
+            side_effect=lambda request: (
+                httpx.Response(502)
+                if "3.1" in request.url.params.get_list("room_ids")
+                else httpx.Response(200, json=[])
+            )
+        )
+        respx_mock.get(f"{ROOM_BOOKING_API_URL}/room/3.2/can-book").mock(return_value=httpx.Response(503))
+        respx_mock.get(f"{ROOM_BOOKING_API_URL}/room/3.3/can-book").mock(
+            return_value=httpx.Response(200, json={"can_book": True, "reason_why_cannot": ""})
+        )
+
+        response = when2meet_client.get(f"/api/v0/meetings/{event_id}/available-rooms", headers=user_headers)
+
+    assert response.status_code == 200
+    assert response.json() == [{"id": "3.3", "name": "Meeting Room 3.3", "capacity": 10, "location": "3.3"}]
+
+
 def test_available_rooms_returns_bad_gateway_when_room_booking_fails(
     when2meet_client: TestClient,
     user_headers,
@@ -979,7 +1025,13 @@ def test_available_rooms_returns_bad_gateway_when_room_booking_fails(
     when2meet_client.patch(f"/api/v0/meetings/{event_id}", json={"selected_time": selected_time}, headers=user_headers)
 
     with respx.mock(assert_all_called=True) as respx_mock:
-        respx_mock.get(f"{ROOM_BOOKING_API_URL}/rooms/").mock(return_value=httpx.Response(503))
+        respx_mock.get(f"{ROOM_BOOKING_API_URL}/rooms/").mock(
+            return_value=httpx.Response(
+                200,
+                json=[{"id": "3.1", "title": "Meeting Room 3.1", "short_name": "3.1", "capacity": 8}],
+            )
+        )
+        respx_mock.get(f"{ROOM_BOOKING_API_URL}/bookings/").mock(return_value=httpx.Response(502))
         response = when2meet_client.get(f"/api/v0/meetings/{event_id}/available-rooms", headers=user_headers)
 
     assert response.status_code == 502

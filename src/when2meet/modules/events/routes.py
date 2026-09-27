@@ -302,29 +302,70 @@ async def _get_room_can_book(
     return RoomBookingCanBook.model_validate(can_book)
 
 
-async def _can_book_room(room_id: str, start: dtm.datetime, end: dtm.datetime, user_auth_header: str) -> bool:
-    return (await _get_room_can_book(room_id, start, end, user_auth_header)).can_book
-
-
 async def _get_available_rooms_for_time(
     start: dtm.datetime,
     end: dtm.datetime,
     user_auth_header: str,
 ) -> list[AvailableRoom]:
     rooms = await _get_rooms(user_auth_header)
-    bookings = await _get_room_bookings(
-        room_ids=[room.id for room in rooms],
-        start=start,
-        end=end,
-        user_auth_header=user_auth_header,
-    )
-    busy_room_ids = {booking.room_id for booking in bookings if _booking_overlaps(booking, start, end)}
-    free_rooms = [room for room in rooms if room.id not in busy_room_ids]
+    rooms_with_bookings = await _get_rooms_with_bookings(rooms, start, end, user_auth_header)
+    if rooms and not rooms_with_bookings:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Room Booking API returned an error")
 
-    can_book_flags = await asyncio.gather(
-        *[_can_book_room(room.id, start, end, user_auth_header) for room in free_rooms]
+    free_rooms = [
+        room
+        for room, bookings in rooms_with_bookings
+        if not any(_booking_overlaps(booking, start, end) for booking in bookings)
+    ]
+
+    can_book_results = await asyncio.gather(
+        *[_get_room_can_book(room.id, start, end, user_auth_header) for room in free_rooms],
+        return_exceptions=True,
     )
-    return [_room_view(room) for room, can_book in zip(free_rooms, can_book_flags) if can_book]
+    if free_rooms and all(isinstance(result, BaseException) for result in can_book_results):
+        first_result = can_book_results[0]
+        if isinstance(first_result, BaseException):
+            raise first_result
+        raise AssertionError("Room Booking returned no permission results")
+
+    return [
+        _room_view(room)
+        for room, result in zip(free_rooms, can_book_results, strict=True)
+        if isinstance(result, RoomBookingCanBook) and result.can_book
+    ]
+
+
+async def _get_rooms_with_bookings(
+    rooms: list[RoomBookingRoom],
+    start: dtm.datetime,
+    end: dtm.datetime,
+    user_auth_header: str,
+) -> list[tuple[RoomBookingRoom, list[RoomBookingBooking]]]:
+    if not rooms:
+        return []
+
+    try:
+        bookings = await _get_room_bookings(
+            [room.id for room in rooms],
+            start=start,
+            end=end,
+            user_auth_header=user_auth_header,
+        )
+    except HTTPException as exc:
+        upstream_error = exc.__cause__
+        if not isinstance(upstream_error, httpx.HTTPStatusError) or upstream_error.response.status_code != 502:
+            raise
+        if len(rooms) == 1:
+            return []
+        middle = len(rooms) // 2
+        left, right = await asyncio.gather(
+            _get_rooms_with_bookings(rooms[:middle], start, end, user_auth_header),
+            _get_rooms_with_bookings(rooms[middle:], start, end, user_auth_header),
+        )
+        return [*left, *right]
+
+    bookings_by_room = {room.id: [booking for booking in bookings if booking.room_id == room.id] for room in rooms}
+    return [(room, bookings_by_room[room.id]) for room in rooms]
 
 
 async def _book_room(event: Event, room_id: str, user_auth_header: str) -> BookedRoom:
