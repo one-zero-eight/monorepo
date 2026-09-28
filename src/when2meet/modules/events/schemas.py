@@ -231,6 +231,18 @@ class AvailableRoom(BaseSchema):
 class BookRoomRequest(BaseSchema):
     room_id: str
     "Room ID to book"
+    title: str | None = None
+    "Optional booking title; defaults to the meeting name"
+
+    @field_validator("title", mode="after")
+    @classmethod
+    def validate_title(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            raise ValueError("Booking title must not be empty")
+        return value
 
 
 class RoomBookingRoom(BaseModel):

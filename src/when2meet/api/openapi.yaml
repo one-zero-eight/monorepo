@@ -550,6 +550,12 @@ components:
           type: string
           title: Room Id
           description: Room ID to book
+        title:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Title
+          description: Optional booking title; defaults to the meeting name
       additionalProperties: false
       type: object
       required:

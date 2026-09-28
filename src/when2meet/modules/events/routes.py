@@ -368,7 +368,12 @@ async def _get_rooms_with_bookings(
     return [(room, bookings_by_room[room.id]) for room in rooms]
 
 
-async def _book_room(event: Event, room_id: str, user_auth_header: str) -> BookedRoom:
+async def _book_room(
+    event: Event,
+    room_id: str,
+    booking_title: str | None,
+    user_auth_header: str,
+) -> BookedRoom:
     start, end = _selected_time_for_room_booking(event)
 
     can_book = await _get_room_can_book(room_id, start, end, user_auth_header)
@@ -383,7 +388,7 @@ async def _book_room(event: Event, room_id: str, user_auth_header: str) -> Booke
             "/bookings/",
             json_body={
                 "room_id": room_id,
-                "title": event.name,
+                "title": booking_title if booking_title is not None else event.name,
                 "start": start.isoformat(),
                 "end": end.isoformat(),
                 "participant_emails": None,
@@ -422,7 +427,13 @@ async def _cancel_room_booking(booked_room: BookedRoom, user_auth_header: str) -
             raise
 
 
-async def _update_room_booking(event: Event, selected_time: bool, title: bool, user_auth_header: str) -> BookedRoom:
+async def _update_room_booking(
+    event: Event,
+    *,
+    selected_time: bool,
+    booking_title: str | None,
+    user_auth_header: str,
+) -> BookedRoom:
     if event.booked_room is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room is not booked for this meeting")
     start, end = _selected_time_for_room_booking(event)
@@ -431,9 +442,9 @@ async def _update_room_booking(event: Event, selected_time: bool, title: bool, u
         await _room_booking_patch(
             _manageable_booking_path(event.booked_room),
             json_body={
-                "title": event.name,
-                "start": start.isoformat(),
-                "end": end.isoformat(),
+                "title": booking_title,
+                "start": start.isoformat() if selected_time else None,
+                "end": end.isoformat() if selected_time else None,
             },
             user_auth_header=user_auth_header,
         )
@@ -526,8 +537,7 @@ async def _update_meeting_room_booking(
     event: Event,
     event_update: EventUpdate,
     *,
-    updates_booking_time: bool,
-    updates_booking_title: bool,
+    update_booking_time: bool,
     user_auth_header: str,
 ) -> Event:
     await _require_room_booking_lock(
@@ -541,17 +551,18 @@ async def _update_meeting_room_booking(
         for field_name in event_update.model_fields_set:
             setattr(locked_event, field_name, getattr(event_update, field_name))
         locked_event.archive_after = calculate_archive_after(locked_event.slots, locked_event.selected_time)
-        try:
-            locked_event.booked_room = await _update_room_booking(
-                locked_event,
-                selected_time=updates_booking_time,
-                title=updates_booking_title,
-                user_auth_header=user_auth_header,
-            )
-        except HTTPException as exc:
-            if exc.status_code != status.HTTP_404_NOT_FOUND:
-                raise
-            locked_event.booked_room = None
+        if update_booking_time:
+            try:
+                locked_event.booked_room = await _update_room_booking(
+                    locked_event,
+                    selected_time=True,
+                    booking_title=None,
+                    user_auth_header=user_auth_header,
+                )
+            except HTTPException as exc:
+                if exc.status_code != status.HTTP_404_NOT_FOUND:
+                    raise
+                locked_event.booked_room = None
         locked_event.room_booking_in_progress = False
         return await locked_event.save()
     except Exception:
@@ -559,7 +570,12 @@ async def _update_meeting_room_booking(
         raise
 
 
-async def _book_meeting_room(event: Event, room_id: str, user_auth_header: str) -> Event:
+async def _book_meeting_room(
+    event: Event,
+    room_id: str,
+    booking_title: str | None,
+    user_auth_header: str,
+) -> Event:
     await _require_room_booking_lock(
         event,
         require_unbooked=True,
@@ -567,7 +583,7 @@ async def _book_meeting_room(event: Event, room_id: str, user_auth_header: str) 
     )
 
     try:
-        booked_room = await _book_room(event, room_id, user_auth_header)
+        booked_room = await _book_room(event, room_id, booking_title, user_auth_header)
     except Exception:
         await _release_room_booking_lock(event)
         raise
@@ -575,7 +591,12 @@ async def _book_meeting_room(event: Event, room_id: str, user_auth_header: str) 
     return await _save_booked_room(event, booked_room)
 
 
-async def _change_meeting_room(event: Event, room_id: str, user_auth_header: str) -> Event:
+async def _change_meeting_room(
+    event: Event,
+    room_id: str,
+    booking_title: str | None,
+    user_auth_header: str,
+) -> Event:
     await _require_room_booking_lock(
         event,
         require_unbooked=False,
@@ -586,7 +607,7 @@ async def _change_meeting_room(event: Event, room_id: str, user_auth_header: str
     try:
         locked_event = await _locked_event_with_booked_room(event)
         old_booked_room = cast(BookedRoom, locked_event.booked_room)
-        new_booked_room = await _book_room(locked_event, room_id, user_auth_header)
+        new_booked_room = await _book_room(locked_event, room_id, booking_title, user_auth_header)
         await _cancel_room_booking(old_booked_room, user_auth_header)
         return await _replace_booked_room(locked_event, new_booked_room)
     except Exception:
@@ -595,6 +616,33 @@ async def _change_meeting_room(event: Event, room_id: str, user_auth_header: str
                 await _cancel_room_booking(new_booked_room, user_auth_header)
             except HTTPException:
                 logger.warning("Failed to roll back newly created Room Booking reservation", exc_info=True)
+        await _release_room_booking_lock(event)
+        raise
+
+
+async def _update_meeting_room_booking_title(event: Event, booking_title: str, user_auth_header: str) -> Event:
+    await _require_room_booking_lock(
+        event,
+        require_unbooked=False,
+        detail="Room booking is already being changed for this meeting",
+    )
+
+    try:
+        locked_event = await _locked_event_with_booked_room(event)
+        try:
+            locked_event.booked_room = await _update_room_booking(
+                locked_event,
+                selected_time=False,
+                booking_title=booking_title,
+                user_auth_header=user_auth_header,
+            )
+        except HTTPException as exc:
+            if exc.status_code != status.HTTP_404_NOT_FOUND:
+                raise
+            locked_event.booked_room = None
+        locked_event.room_booking_in_progress = False
+        return await locked_event.save()
+    except Exception:
         await _release_room_booking_lock(event)
         raise
 
@@ -803,8 +851,8 @@ async def update_meeting(
                 "message": "Meeting start time must be in the future",
             },
         )
-    updates_booking_title = "name" in changed_fields and event_update.name != event.name
-    if event.booked_room is not None and (updates_booking_time or updates_booking_title):
+    updates_meeting_name = "name" in changed_fields and event_update.name != event.name
+    if event.booked_room is not None and (updates_booking_time or updates_meeting_name):
         if event_update.selected_time is None and updates_booking_time:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -813,8 +861,7 @@ async def update_meeting(
         event = await _update_meeting_room_booking(
             event,
             event_update,
-            updates_booking_time=updates_booking_time,
-            updates_booking_title=updates_booking_title,
+            update_booking_time=updates_booking_time,
             user_auth_header=request.headers["authorization"],
         )
         return await _event_view(event)
@@ -938,7 +985,12 @@ async def book_room_for_meeting(
             detail="Room is already booked for this meeting",
         )
 
-    event = await _book_meeting_room(event, request_body.room_id, request.headers["authorization"])
+    event = await _book_meeting_room(
+        event,
+        request_body.room_id,
+        request_body.title,
+        request.headers["authorization"],
+    )
     return await _event_view(event)
 
 
@@ -969,9 +1021,20 @@ async def change_room_for_meeting(
     if event.selected_time is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selected meeting time is not set")
     if event.booked_room.room_id == request_body.room_id:
+        if request_body.title is not None:
+            event = await _update_meeting_room_booking_title(
+                event,
+                request_body.title,
+                request.headers["authorization"],
+            )
         return await _event_view(event)
 
-    event = await _change_meeting_room(event, request_body.room_id, request.headers["authorization"])
+    event = await _change_meeting_room(
+        event,
+        request_body.room_id,
+        request_body.title,
+        request.headers["authorization"],
+    )
     return await _event_view(event)
 
 

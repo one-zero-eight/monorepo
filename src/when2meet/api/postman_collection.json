@@ -245,7 +245,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"room_id\": \"3.2\"\n}"
+              "raw": "{\n  \"room_id\": \"3.2\",\n  \"title\": \"Weekly frontend sync\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/meetings/:meeting_ref/book-room",
@@ -279,7 +279,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"room_id\": \"3.3\"\n}"
+              "raw": "{\n  \"room_id\": \"3.3\",\n  \"title\": \"Weekly frontend sync\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/meetings/:meeting_ref/book-room",

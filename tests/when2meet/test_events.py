@@ -1,4 +1,5 @@
 import json
+from functools import partial
 from typing import Any
 from urllib.parse import quote
 
@@ -1141,6 +1142,49 @@ def test_book_room_forwards_selected_time_timezone_to_room_booking(
     assert booking_payload["end"] == "2027-06-15T11:00:00+03:00"
 
 
+def test_book_room_forwards_custom_title_to_room_booking(when2meet_client: TestClient, user_headers):
+    create_resp = when2meet_client.post(
+        "/api/v0/meetings",
+        json={"name": "Meeting Name", "slots": ["2027-06-15T10:00:00Z"]},
+        headers=user_headers,
+    )
+    event_id = create_resp.json()["id"]
+    when2meet_client.patch(
+        f"/api/v0/meetings/{event_id}",
+        json={"selected_time": {"start": "2027-06-15T10:00:00Z", "end": "2027-06-15T11:00:00Z"}},
+        headers=user_headers,
+    )
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.get(f"{ROOM_BOOKING_API_URL}/room/3.2/can-book").mock(
+            return_value=httpx.Response(200, json={"can_book": True, "reason_why_cannot": ""})
+        )
+        booking_route = respx_mock.post(f"{ROOM_BOOKING_API_URL}/bookings/").mock(
+            return_value=httpx.Response(200, json=_created_booking("3.2"))
+        )
+        response = when2meet_client.post(
+            f"/api/v0/meetings/{event_id}/book-room",
+            json={"room_id": "3.2", "title": "  Custom booking title  "},
+            headers=user_headers,
+        )
+
+    assert response.status_code == 200
+    assert booking_route.calls.last is not None
+    assert json.loads(booking_route.calls.last.request.content)["title"] == "Custom booking title"
+
+
+@pytest.mark.parametrize("title", ["", "   "])
+def test_book_room_rejects_empty_title(when2meet_client: TestClient, user_headers, title):
+    response = when2meet_client.post(
+        "/api/v0/meetings/missing-event/book-room",
+        json={"room_id": "3.2", "title": title},
+        headers=user_headers,
+    )
+
+    assert response.status_code == 422
+    assert "Booking title must not be empty" in response.json()["detail"][0]["msg"]
+
+
 def test_non_owner_cannot_book_room_for_meeting(
     when2meet_client: TestClient,
     user_headers,
@@ -1202,7 +1246,7 @@ def test_book_room_helper_requires_selected_meeting_time(when2meet_client: TestC
     assert event is not None
 
     with pytest.raises(HTTPException) as exc_info:
-        portal.call(routes._book_room, event, "3.2", "Bearer user-token")
+        portal.call(routes._book_room, event, "3.2", None, "Bearer user-token")
 
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == "Selected meeting time is not set"
@@ -1271,7 +1315,15 @@ def test_update_room_booking_requires_booked_room(when2meet_client: TestClient, 
     assert event is not None
 
     with pytest.raises(HTTPException) as exc_info:
-        portal.call(routes._update_room_booking, event, True, False, "Bearer user-token")
+        portal.call(
+            partial(
+                routes._update_room_booking,
+                event,
+                selected_time=True,
+                booking_title=None,
+                user_auth_header="Bearer user-token",
+            )
+        )
 
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == "Room is not booked for this meeting"
@@ -1292,7 +1344,15 @@ def test_update_room_booking_requires_selected_time(when2meet_client: TestClient
     event.booked_room = routes.BookedRoom(room_id="3.2", outlook_booking_id="booking-1")
 
     with pytest.raises(HTTPException) as exc_info:
-        portal.call(routes._update_room_booking, event, True, False, "Bearer user-token")
+        portal.call(
+            partial(
+                routes._update_room_booking,
+                event,
+                selected_time=True,
+                booking_title=None,
+                user_auth_header="Bearer user-token",
+            )
+        )
 
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == "Selected meeting time is not set"
@@ -1466,16 +1526,59 @@ def test_owner_changes_selected_time_updates_room_booking(when2meet_client: Test
     patch_request = patch_route.calls.last.request
     assert patch_request.headers["Authorization"] == user_headers["Authorization"]
     assert json.loads(patch_request.content) == {
-        "title": "Move Time",
+        "title": None,
         "start": "2027-06-15T12:00:00+03:00",
         "end": "2027-06-15T13:00:00+03:00",
+    }
+
+
+def test_owner_renames_meeting_without_updating_room_booking(when2meet_client: TestClient, user_headers):
+    event_id = _book_meeting_room(when2meet_client, user_headers, name="Original meeting name")
+
+    with respx.mock(assert_all_called=False):
+        response = when2meet_client.patch(
+            f"/api/v0/meetings/{event_id}",
+            json={"name": "Renamed meeting"},
+            headers=user_headers,
+        )
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "Renamed meeting"
+    assert response.json()["booked_room"]["outlook_booking_id"] == "booking/1"
+
+
+def test_owner_renames_and_reschedules_meeting_without_updating_booking_title(
+    when2meet_client: TestClient,
+    user_headers,
+):
+    event_id = _book_meeting_room(when2meet_client, user_headers, name="Original meeting name")
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        patch_route = respx_mock.patch(_booking_url("booking/1")).mock(
+            return_value=httpx.Response(200, json=_created_booking("3.2", outlook_booking_id="booking/1"))
+        )
+        response = when2meet_client.patch(
+            f"/api/v0/meetings/{event_id}",
+            json={
+                "name": "Renamed meeting",
+                "selected_time": {"start": "2027-06-15T12:00:00Z", "end": "2027-06-15T13:00:00Z"},
+            },
+            headers=user_headers,
+        )
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "Renamed meeting"
+    assert patch_route.calls.last is not None
+    assert json.loads(patch_route.calls.last.request.content) == {
+        "title": None,
+        "start": "2027-06-15T12:00:00+00:00",
+        "end": "2027-06-15T13:00:00+00:00",
     }
 
 
 @pytest.mark.parametrize(
     ("event_update", "expected_field", "expected_value"),
     [
-        ({"name": "Updated Without Room"}, "name", "Updated Without Room"),
         (
             {"selected_time": {"start": "2027-06-15T12:00:00Z", "end": "2027-06-15T13:00:00Z"}},
             "selected_time",
@@ -1551,7 +1654,14 @@ def test_owner_cannot_clear_selected_time_while_room_is_booked(when2meet_client:
     assert response.json()["detail"] == "Cannot clear selected meeting time while a room is booked"
 
 
-def test_update_booked_room_lock_conflict_returns_conflict(when2meet_client: TestClient, user_headers):
+@pytest.mark.parametrize(
+    "event_update",
+    [
+        {"name": "Still Locked"},
+        {"selected_time": {"start": "2027-06-15T12:00:00Z", "end": "2027-06-15T13:00:00Z"}},
+    ],
+)
+def test_update_booked_room_lock_conflict_returns_conflict(when2meet_client: TestClient, user_headers, event_update):
     """Verify meeting updates that would touch room booking respect the booking lock."""
     event_id = _book_meeting_room(when2meet_client, user_headers, name="Locked Update")
     portal = when2meet_client.portal
@@ -1563,7 +1673,7 @@ def test_update_booked_room_lock_conflict_returns_conflict(when2meet_client: Tes
 
     response = when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
-        json={"name": "Still Locked"},
+        json=event_update,
         headers=user_headers,
     )
 
@@ -1609,7 +1719,7 @@ def test_update_booked_room_returns_bad_request_if_locked_booking_disappears(
 
     response = when2meet_client.patch(
         f"/api/v0/meetings/{event_id}",
-        json={"name": "Updated After Lost Room"},
+        json={"selected_time": {"start": "2027-06-15T12:00:00Z", "end": "2027-06-15T13:00:00Z"}},
         headers=user_headers,
     )
 
@@ -1654,7 +1764,7 @@ def test_owner_changes_booked_room(when2meet_client: TestClient, user_headers):
         old_delete_route = respx_mock.delete(_booking_url("booking/1")).mock(return_value=httpx.Response(200))
         response = when2meet_client.patch(
             f"/api/v0/meetings/{event_id}/book-room",
-            json={"room_id": "3.3"},
+            json={"room_id": "3.3", "title": "Replacement booking"},
             headers=user_headers,
         )
 
@@ -1665,6 +1775,8 @@ def test_owner_changes_booked_room(when2meet_client: TestClient, user_headers):
         "outlook_entry_id": "entry-1",
     }
     assert new_booking_route.called
+    assert new_booking_route.calls.last is not None
+    assert json.loads(new_booking_route.calls.last.request.content)["title"] == "Replacement booking"
     assert old_delete_route.called
 
 
@@ -1898,6 +2010,28 @@ def test_change_booked_room_same_room_is_noop(when2meet_client: TestClient, user
     assert response.status_code == 200
     assert response.json()["booked_room"]["room_id"] == "3.2"
     assert can_book_route.called is False
+
+
+def test_change_booked_room_same_room_updates_title(when2meet_client: TestClient, user_headers):
+    event_id = _book_meeting_room(when2meet_client, user_headers, name="Same Room Title")
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        patch_route = respx_mock.patch(_booking_url("booking/1")).mock(
+            return_value=httpx.Response(200, json=_created_booking("3.2", outlook_booking_id="booking/1"))
+        )
+        response = when2meet_client.patch(
+            f"/api/v0/meetings/{event_id}/book-room",
+            json={"room_id": "3.2", "title": "Updated booking title"},
+            headers=user_headers,
+        )
+
+    assert response.status_code == 200
+    assert patch_route.calls.last is not None
+    assert json.loads(patch_route.calls.last.request.content) == {
+        "title": "Updated booking title",
+        "start": None,
+        "end": None,
+    }
 
 
 def test_owner_cancels_booked_room(when2meet_client: TestClient, user_headers):
