@@ -190,7 +190,7 @@ class SqlUserRepository:
                         "music_room_hidden": hide if target == TargetForExport.MUSIC_ROOM else User.music_room_hidden,
                         "sports_hidden": hide if target == TargetForExport.SPORT else User.sports_hidden,
                         "moodle_hidden": hide if target == TargetForExport.MOODLE else User.moodle_hidden,
-                        "workshops_hidden": hide if target == TargetForExport.WORKSHOPS else User.workshops_hidden,
+                        "events_hidden": hide if target == TargetForExport.EVENTS else User.events_hidden,
                         "room_bookings_hidden": hide
                         if target == TargetForExport.ROOM_BOOKINGS
                         else User.room_bookings_hidden,

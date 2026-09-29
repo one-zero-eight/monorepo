@@ -173,76 +173,6 @@ $defs:
     - production
     title: Environment
     type: string
-  EventsSettings:
-    additionalProperties: false
-    description: Settings for the Events service.
-    properties:
-      environment:
-        $ref: '#/$defs/Environment'
-        default: development
-        description: App environment flag
-      app_root_path:
-        default: ''
-        description: Prefix for the API path (e.g. "/api/v0")
-        title: App Root Path
-        type: string
-      cors_allow_origin_regex:
-        default: .*
-        description: 'Allowed origins for CORS: from which domains requests to the
-          API are allowed.
-
-          Specify as a regex: `https://.*.innohassle.ru`'
-        title: Cors Allow Origin Regex
-        type: string
-      mongo:
-        $ref: '#/$defs/MongoDatabaseSettings'
-        description: Configuration for MongoDB
-      minio:
-        $ref: '#/$defs/MinioSettings'
-        description: Configuration for S3 object storage
-      images_prefix:
-        default: events-images/
-        description: Prefix for event images in MinIO
-        title: Images Prefix
-        type: string
-      innohassle_url:
-        default: https://innohassle.ru
-        description: Base URL of the InNoHassle frontend (used for club host links
-          and ICS event URLs)
-        title: Innohassle Url
-        type: string
-      event_manager_emails:
-        description: Innomails of users who can act as event managers (can use any
-          external host)
-        items:
-          type: string
-        title: Event Manager Emails
-        type: array
-      moderator_emails:
-        description: Innomails of users who can review and publish events
-        items:
-          type: string
-        title: Moderator Emails
-        type: array
-      club_moderator_emails:
-        description: Innomails of users who can act on behalf of any club
-        items:
-          type: string
-        title: Club Moderator Emails
-        type: array
-      locales:
-        description: Allowed event locales
-        items:
-          type: string
-        title: Locales
-        type: array
-      clubs:
-        $ref: '#/$defs/ClubsIntegrationSettings'
-        description: Clubs service integration settings
-    required:
-    - clubs
-    title: EventsSettings
-    type: object
   Exchange:
     additionalProperties: false
     description: Exchange (Outlook) integration settings
@@ -661,12 +591,12 @@ $defs:
       sport:
         $ref: '#/$defs/SportSettings'
         description: Innopolis Sport integration settings
-      workshops:
+      events:
         anyOf:
-        - $ref: '#/$defs/WorkshopsSettings'
+        - $ref: '#/$defs/src__schedule__config_schema__EventsSettings'
         - type: 'null'
         default: null
-        description: InNoHassle Workshops integration settings
+        description: InNoHassle Events integration settings
       room_booking:
         anyOf:
         - $ref: '#/$defs/src__schedule__config_schema__RoomBookingIntegrationSettings'
@@ -785,24 +715,75 @@ $defs:
         description: Room Booking API integration settings
     title: When2MeetSettings
     type: object
-  WorkshopsSettings:
+  src__events__config_schema__EventsSettings:
     additionalProperties: false
-    description: InNoHassle Workshops integration settings.
+    description: Settings for the Events service.
     properties:
-      api_url:
-        default: https://api.innohassle.ru/workshops/v0
-        description: URL of the Workshops API
-        title: Api Url
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: ''
+        description: Prefix for the API path (e.g. "/api/v0")
+        title: App Root Path
         type: string
-      api_key:
-        description: API key for the Workshops API
-        format: password
-        title: Api Key
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
         type: string
-        writeOnly: true
+      mongo:
+        $ref: '#/$defs/MongoDatabaseSettings'
+        description: Configuration for MongoDB
+      minio:
+        $ref: '#/$defs/MinioSettings'
+        description: Configuration for S3 object storage
+      images_prefix:
+        default: events-images/
+        description: Prefix for event images in MinIO
+        title: Images Prefix
+        type: string
+      innohassle_url:
+        default: https://innohassle.ru
+        description: Base URL of the InNoHassle frontend (used for club host links
+          and ICS event URLs)
+        title: Innohassle Url
+        type: string
+      event_manager_emails:
+        description: Innomails of users who can act as event managers (can use any
+          external host)
+        items:
+          type: string
+        title: Event Manager Emails
+        type: array
+      moderator_emails:
+        description: Innomails of users who can review and publish events
+        items:
+          type: string
+        title: Moderator Emails
+        type: array
+      club_moderator_emails:
+        description: Innomails of users who can act on behalf of any club
+        items:
+          type: string
+        title: Club Moderator Emails
+        type: array
+      locales:
+        description: Allowed event locales
+        items:
+          type: string
+        title: Locales
+        type: array
+      clubs:
+        $ref: '#/$defs/ClubsIntegrationSettings'
+        description: Clubs service integration settings
     required:
-    - api_key
-    title: WorkshopsSettings
+    - clubs
+    title: EventsSettings
     type: object
   src__room_booking__config_schema__RoomBookingSettings:
     additionalProperties: false
@@ -866,6 +847,25 @@ $defs:
     - api_key
     - exchange
     title: RoomBookingSettings
+    type: object
+  src__schedule__config_schema__EventsSettings:
+    additionalProperties: false
+    description: InNoHassle Events integration settings.
+    properties:
+      api_url:
+        default: https://api.innohassle.ru/events/v1
+        description: URL of the Events API
+        title: Api Url
+        type: string
+      api_key:
+        description: API key for the Events API
+        format: password
+        title: Api Key
+        type: string
+        writeOnly: true
+    required:
+    - api_key
+    title: EventsSettings
     type: object
   src__schedule__config_schema__RoomBookingIntegrationSettings:
     additionalProperties: false
@@ -948,7 +948,7 @@ properties:
     default: null
   events_service:
     anyOf:
-    - $ref: '#/$defs/EventsSettings'
+    - $ref: '#/$defs/src__events__config_schema__EventsSettings'
     - type: 'null'
     default: null
   student_affairs_service:

@@ -22,13 +22,13 @@ class SportSettings(BaseSchema):
     "URL of the Sport API"
 
 
-class WorkshopsSettings(BaseSchema):
-    """InNoHassle Workshops integration settings."""
+class EventsSettings(BaseSchema):
+    """InNoHassle Events integration settings."""
 
-    api_url: str = "https://api.innohassle.ru/workshops/v0"
-    "URL of the Workshops API"
+    api_url: str = "https://api.innohassle.ru/events/v1"
+    "URL of the Events API"
     api_key: SecretStr
-    "API key for the Workshops API"
+    "API key for the Events API"
 
 
 class RoomBookingIntegrationSettings(BaseSchema):
@@ -67,8 +67,8 @@ class ScheduleSettings(ServiceSettingsBase):
     "InNoHassle Music Room integration settings"
     sport: SportSettings = Field(default_factory=SportSettings)
     "Innopolis Sport integration settings"
-    workshops: WorkshopsSettings | None = None
-    "InNoHassle Workshops integration settings"
+    events: EventsSettings | None = None
+    "InNoHassle Events integration settings"
     room_booking: RoomBookingIntegrationSettings | None = None
     "InNoHassle Room Booking integration settings"
     schedule_assistant: ScheduleAssistantIntegrationSettings | None = None

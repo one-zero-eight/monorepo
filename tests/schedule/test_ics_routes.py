@@ -47,26 +47,28 @@ def test_personal_all_ics_with_favorites(
     assert b"BEGIN:VCALENDAR" in body
 
 
-def test_workshops_ics_not_configured(schedule_client: TestClient):
-    response = schedule_client.get("/workshops.ics")
+@pytest.mark.parametrize("path", ["/events.ics", "/workshops.ics"])
+def test_events_ics_not_configured(schedule_client: TestClient, path: str):
+    response = schedule_client.get(path)
     assert response.status_code == 404
-    assert response.json()["detail"] == "Workshops are not configured"
+    assert response.json()["detail"] == "Events are not configured"
 
 
-def test_workshops_ics_proxies_api(schedule_client: TestClient, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("path", ["/events.ics", "/workshops.ics"])
+def test_events_ics_proxies_api(schedule_client: TestClient, monkeypatch: pytest.MonkeyPatch, path: str):
     from src.schedule.config import settings
-    from src.schedule.config_schema import WorkshopsSettings
+    from src.schedule.config_schema import EventsSettings
 
-    api_url = "https://workshops.test"
+    api_url = "https://events.test"
     monkeypatch.setattr(
         settings,
-        "workshops",
-        WorkshopsSettings(api_url=api_url, api_key=SecretStr("workshops-key")),
+        "events",
+        EventsSettings(api_url=api_url, api_key=SecretStr("events-key")),
     )
 
-    workshop = {
-        "id": "workshop-1",
-        "english_name": "Test Workshop",
+    events_event = {
+        "id": "event-1",
+        "english_name": "Test Event",
         "dtstart": "2025-01-01T10:00:00+00:00",
         "dtend": "2025-01-01T11:00:00+00:00",
         "is_draft": False,
@@ -75,12 +77,93 @@ def test_workshops_ics_proxies_api(schedule_client: TestClient, monkeypatch: pyt
     }
 
     with respx.mock(assert_all_called=False) as mock:
-        mock.get(f"{api_url}/workshops/").mock(return_value=httpx.Response(200, json=[workshop]))
-        response = schedule_client.get("/workshops.ics")
+        mock.get(f"{api_url}/events/").mock(return_value=httpx.Response(200, json=[events_event]))
+        response = schedule_client.get(path)
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/calendar")
     assert b"BEGIN:VCALENDAR" in response.content
+
+
+@pytest.mark.parametrize("path", ["/users/me/events.ics", "/users/me/workshops.ics"])
+def test_personal_events_ics(
+    schedule_client: TestClient, user_headers: dict[str, str], monkeypatch: pytest.MonkeyPatch, path: str
+):
+    from src.schedule.config import settings
+    from src.schedule.config_schema import EventsSettings
+
+    monkeypatch.setattr(
+        settings,
+        "events",
+        EventsSettings(api_url="https://events.test", api_key=SecretStr("events-key")),
+    )
+    event = {
+        "id": "event-1",
+        "english_name": "Checked in",
+        "dtstart": "2025-01-01T10:00:00+00:00",
+        "dtend": "2025-01-01T11:00:00+00:00",
+    }
+
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get("https://events.test/users/test-user-1/checkins").mock(return_value=httpx.Response(200, json=[event]))
+        response = schedule_client.get(path, headers=user_headers)
+
+    assert response.status_code == 200
+    assert b"Checked in" in response.content
+
+
+@pytest.mark.parametrize("path_suffix", ["events.ics", "workshops.ics"])
+@pytest.mark.parametrize("key_path_suffix", ["events.ics", "workshops.ics"])
+def test_user_events_ics_aliases_use_events_key(
+    schedule_client: TestClient,
+    user_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+    path_suffix: str,
+    key_path_suffix: str,
+):
+    from src.schedule.config import settings
+    from src.schedule.config_schema import EventsSettings
+
+    monkeypatch.setattr(
+        settings,
+        "events",
+        EventsSettings(api_url="https://events.test", api_key=SecretStr("events-key")),
+    )
+    user_id = schedule_client.get("/users/me", headers=user_headers).json()["id"]
+    canonical_path = f"/users/{user_id}/events.ics"
+    key_response = schedule_client.post(
+        "/users/me/get-schedule-access-key",
+        params={"resource_path": f"/users/{user_id}/{key_path_suffix}"},
+        headers=user_headers,
+    )
+    assert key_response.status_code == 200
+    assert key_response.json()["access_key"]["resource_path"] == canonical_path
+    access_key = key_response.json()["access_key"]["access_key"]
+    path = f"/users/{user_id}/{path_suffix}"
+
+    assert schedule_client.get(path, params={"access_key": "wrong"}).status_code == 403
+    event = {
+        "id": "event-1",
+        "english_name": "Checked in",
+        "dtstart": "2025-01-01T10:00:00+00:00",
+        "dtend": "2025-01-01T11:00:00+00:00",
+    }
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get("https://events.test/users/test-user-1/checkins").mock(return_value=httpx.Response(200, json=[event]))
+        response = schedule_client.get(path, params={"access_key": access_key})
+
+    assert response.status_code == 200
+    assert b"Checked in" in response.content
+
+
+def test_events_ics_aliases_in_openapi(schedule_client: TestClient):
+    paths = schedule_client.get("/openapi.json").json()["paths"]
+    assert "/events.ics" in paths
+    assert "/users/me/events.ics" in paths
+    assert "/users/{user_id}/events.ics" in paths
+    assert "/workshops.ics" not in paths
+    assert "/users/me/workshops.ics" not in paths
+    assert "/users/{user_id}/workshops.ics" not in paths
 
 
 def test_music_room_ics_not_configured(schedule_client: TestClient):

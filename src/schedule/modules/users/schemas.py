@@ -13,7 +13,7 @@ class TargetForExport(StrEnum):
     SPORT = "sport"
     MOODLE = "moodle"
     ROOM_BOOKINGS = "room-bookings"
-    WORKSHOPS = "workshops"
+    EVENTS = "events"
 
 
 class CreateUser(BaseModel):
@@ -42,7 +42,7 @@ class ViewUser(BaseModel):
     music_room_hidden: bool
     sports_hidden: bool
     moodle_hidden: bool
-    workshops_hidden: bool
+    events_hidden: bool
     room_bookings_hidden: bool
     moodle_userid: int | None = None
     moodle_calendar_authtoken: str | None = None

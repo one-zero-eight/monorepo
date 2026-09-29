@@ -16,13 +16,13 @@ from src.schedule.exceptions import EventGroupNotFoundException, ForbiddenExcept
 from src.schedule.modules.event_groups.repository import event_group_repository
 from src.schedule.modules.ics.utils import (
     generate_ics_from_url,
-    get_all_workshops_ics,
+    get_all_events_ics,
     get_moodle_ics,
     get_personal_event_groups_ics,
+    get_personal_events_ics,
     get_personal_music_room_ics,
     get_personal_room_bookings,
     get_personal_sport_ics,
-    get_personal_workshops_ics,
 )
 from src.schedule.modules.users.linked import LinkedCalendarView
 from src.schedule.modules.users.repository import user_repository
@@ -199,17 +199,18 @@ async def get_sport_user_schedule(user_id: int, access_key: str) -> Response:
     return Response(content=ical_bytes, media_type="text/calendar")
 
 
+@router.get("/users/me/workshops.ics", include_in_schema=False)
 @router.get(
-    "/users/me/workshops.ics",
+    "/users/me/events.ics",
     responses={
         200: {
-            "description": "ICS file with your workshops check-ins",
+            "description": "ICS file with your events check-ins",
             "content": {"text/calendar": {"schema": {"type": "string", "format": "binary"}}},
         },
     },
     tags=["Users"],
 )
-async def get_workshops_current_user_schedule(user_id: CURRENT_USER_ID_DEPENDENCY) -> Response:
+async def get_events_current_user_schedule(user_id: CURRENT_USER_ID_DEPENDENCY) -> Response:
     """
     Get schedule in ICS format for the current user
     """
@@ -218,34 +219,35 @@ async def get_workshops_current_user_schedule(user_id: CURRENT_USER_ID_DEPENDENC
     if user is None:
         raise ObjectNotFound()
 
-    ical_bytes = await get_personal_workshops_ics(user)
+    ical_bytes = await get_personal_events_ics(user)
     return Response(content=ical_bytes, media_type="text/calendar")
 
 
+@router.get("/users/{user_id}/workshops.ics", include_in_schema=False)
 @router.get(
-    "/users/{user_id}/workshops.ics",
+    "/users/{user_id}/events.ics",
     responses={
         200: {
-            "description": "ICS file with your workshops check-ins",
+            "description": "ICS file with your events check-ins",
             "content": {"text/calendar": {"schema": {"type": "string", "format": "binary"}}},
         },
     },
     tags=["Users"],
 )
-async def get_workshops_user_schedule(user_id: int, access_key: str) -> Response:
+async def get_events_user_schedule(user_id: int, access_key: str) -> Response:
     """
-    Get schedule in ICS format for the user; requires access key for `/users/{user_id}/workshops.ics` resource
+    Get schedule in ICS format for the user; requires access key for `/users/{user_id}/events.ics` resource
     """
 
     user = await user_repository.read(user_id)
     if user is None:
         raise ObjectNotFound()
 
-    resource_path = f"/users/{user_id}/workshops.ics"
+    resource_path = f"/users/{user_id}/events.ics"
     if not await user_repository.check_user_schedule_key(user_id, access_key, resource_path):
         raise ForbiddenException()
 
-    ical_bytes = await get_personal_workshops_ics(user)
+    ical_bytes = await get_personal_events_ics(user)
     return Response(content=ical_bytes, media_type="text/calendar")
 
 
@@ -387,22 +389,23 @@ async def get_music_room_schedule() -> StreamingResponse:
     return StreamingResponse(content=ical_generator, media_type="text/calendar")
 
 
+@router.get("/workshops.ics", include_in_schema=False)
 @router.get(
-    "/workshops.ics",
+    "/events.ics",
     responses={
         200: {
-            "description": "ICS file with all workshops",
+            "description": "ICS file with all events",
             "content": {"text/calendar": {"schema": {"type": "string", "format": "binary"}}},
         },
-        404: {"description": "Workshops are not configured"},
+        404: {"description": "Events are not configured"},
     },
 )
-async def get_workshops_schedule(only_published: bool = True) -> Response:
+async def get_events_schedule(only_published: bool = True) -> Response:
     """
-    Get schedule in ICS format for workshops.
-    By default, returns only active non-draft workshops.
+    Get schedule in ICS format for events.
+    By default, returns only active non-draft events.
     """
-    ical_bytes = await get_all_workshops_ics(only_published=only_published)
+    ical_bytes = await get_all_events_ics(only_published=only_published)
     return Response(content=ical_bytes, media_type="text/calendar")
 
 

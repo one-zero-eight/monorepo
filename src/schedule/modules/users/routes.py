@@ -221,6 +221,9 @@ async def generate_user_schedule_key(
     Generate an access key for the user schedule
     """
 
+    if resource_path == f"/users/{user_id}/workshops.ics":
+        resource_path = f"/users/{user_id}/events.ics"
+
     key = await user_repository.get_user_schedule_key_for_resource(user_id, resource_path)
     new = False
     if key is None:

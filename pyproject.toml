@@ -73,12 +73,6 @@ clubs = [
 events = [
     "pillow>=12.3.0", # ~18.6 MiB
 ]
-#workshops = [
-#    "alembic>=1.20.0", # ~258 KiB
-#    "asyncpg>=0.31.0", # ~3.4 MiB
-#    "sqlalchemy>=2.0.49", # ~3.4 MiB
-#    "sqlmodel>=0.0.38", # ~27 KiB
-#]
 forms = [
     "nanoid>=2.0.0", # ~9 KiB
 ]

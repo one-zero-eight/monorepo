@@ -26,7 +26,7 @@ from src.schedule.utils import aware_utcnow, get_base_calendar, locate_ics_by_pa
 TIMEOUT = 60
 MAX_SIZE = 10 * 1024 * 1024
 MOSCOW_TZ = dtm.timezone(dtm.timedelta(hours=3), name="Europe/Moscow")
-WORKSHOPS_ALL_LIMIT = 10_000
+EVENTS_ALL_LIMIT = 10_000
 
 
 def _as_event(component: object) -> icalendar.Event:
@@ -225,68 +225,68 @@ async def get_personal_music_room_ics(user: ViewUser) -> AsyncGenerator[bytes]:
     return ical_generator
 
 
-def _workshop_to_vevent(workshop: dict) -> icalendar.Event:
-    string_to_hash = str(workshop["id"])
+def _events_event_to_vevent(events_event: dict) -> icalendar.Event:
+    string_to_hash = str(events_event["id"])
     hash_ = crc32(string_to_hash.encode("utf-8"))
-    uid = f"workshop-{abs(hash_):x}@innohassle.ru"
+    uid = f"event-{abs(hash_):x}@innohassle.ru"
 
     vevent = icalendar.Event()
     vevent.add("uid", uid)
 
-    vevent.add("summary", workshop["english_name"])
-    if workshop.get("place") is not None:
-        vevent.add("location", workshop["place"])
-    if workshop.get("english_description") is not None:
-        vevent.add("description", workshop["english_description"])
-    _dtstart = dtm.datetime.fromisoformat(workshop["dtstart"])
+    vevent.add("summary", events_event["english_name"])
+    if events_event.get("place") is not None:
+        vevent.add("location", events_event["place"])
+    if events_event.get("english_description") is not None:
+        vevent.add("description", events_event["english_description"])
+    _dtstart = dtm.datetime.fromisoformat(events_event["dtstart"])
     _dtstart = _dtstart.astimezone(MOSCOW_TZ)
-    _dtend = dtm.datetime.fromisoformat(workshop["dtend"])
+    _dtend = dtm.datetime.fromisoformat(events_event["dtend"])
     _dtend = _dtend.astimezone(MOSCOW_TZ)
     vevent.add("dtstart", icalendar.vDatetime(_dtstart))
     vevent.add("dtend", icalendar.vDatetime(_dtend))
-    vevent.add("x-workshop-id", workshop["id"])
+    vevent.add("x-event-id", events_event["id"])
     return vevent
 
 
-async def _fetch_workshops(path: str, params: dict | None = None) -> list[dict]:
-    if settings.workshops is None:
-        raise HTTPException(status_code=404, detail="Workshops are not configured")
+async def _fetch_events(path: str, params: dict | None = None) -> list[dict]:
+    if settings.events is None:
+        raise HTTPException(status_code=404, detail="Events are not configured")
 
     async with httpx.AsyncClient(
-        headers={"Authorization": f"Bearer {settings.workshops.api_key.get_secret_value()}"}, timeout=TIMEOUT
+        headers={"Authorization": f"Bearer {settings.events.api_key.get_secret_value()}"}, timeout=TIMEOUT
     ) as client:
-        response = await client.get(f"{settings.workshops.api_url}{path}", params=params)
+        response = await client.get(f"{settings.events.api_url}{path}", params=params)
         if response.status_code == 404 and "User not found" in response.text:
-            raise HTTPException(status_code=404, detail="User not found in workshops service")
+            raise HTTPException(status_code=404, detail="User not found in Events service")
         response.raise_for_status()
         return response.json()
 
 
-def _generate_workshops_ics(workshops: list[dict], calendar_name: str) -> bytes:
+def _generate_events_ics(events: list[dict], calendar_name: str) -> bytes:
     main_calendar = get_base_calendar()
     main_calendar["x-wr-calname"] = calendar_name
 
-    for workshop in workshops:
-        event = _workshop_to_vevent(workshop)
-        main_calendar.add_component(event)
+    for events_event in events:
+        vevent = _events_event_to_vevent(events_event)
+        main_calendar.add_component(vevent)
 
     return main_calendar.to_ical()
 
 
-async def get_all_workshops_ics(only_published: bool = True) -> bytes:
-    workshops = await _fetch_workshops("/workshops/", params={"limit": WORKSHOPS_ALL_LIMIT})
+async def get_all_events_ics(only_published: bool = True) -> bytes:
+    events = await _fetch_events("/events/", params={"limit": EVENTS_ALL_LIMIT})
     if only_published:
-        workshops = [
-            workshop
-            for workshop in workshops
-            if workshop.get("is_draft") is False
-            and workshop.get("is_active") is True
-            and workshop.get("is_approved") is True
+        events = [
+            events_event
+            for events_event in events
+            if events_event.get("is_draft") is False
+            and events_event.get("is_active") is True
+            and events_event.get("is_approved") is True
         ]
-    return _generate_workshops_ics(workshops, "Workshops schedule from innohassle.ru")
+    return _generate_events_ics(events, "Events schedule from innohassle.ru")
 
 
-async def get_personal_workshops_ics(user: ViewUser) -> bytes:
+async def get_personal_events_ics(user: ViewUser) -> bytes:
     """
     GET */users/{innohassle_user_id}/checkins
 
@@ -303,8 +303,8 @@ async def get_personal_workshops_ics(user: ViewUser) -> bytes:
     ]
     """
 
-    workshops = await _fetch_workshops(f"/users/{user.innohassle_id}/checkins")
-    return _generate_workshops_ics(workshops, f"{user.email} Events schedule from innohassle.ru")
+    events = await _fetch_events(f"/users/{user.innohassle_id}/checkins")
+    return _generate_events_ics(events, f"{user.email} Events schedule from innohassle.ru")
 
 
 class Training(BaseModel):

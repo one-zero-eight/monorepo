@@ -1,8 +1,15 @@
+import asyncio
+from pathlib import Path
+
 import httpx
 import pytest
 import respx
+from alembic import command
+from alembic.config import Config
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from tests.schedule.conftest import create_event_group
 from tests.schedule.constants import AUTH_REQUIRED_DETAIL, MAX_USER_ID, MIN_USER_ID, TEST_USER_EMAIL
@@ -150,6 +157,46 @@ def test_schedule_access_key_flow(schedule_client: TestClient, user_headers: dic
 
     list_after_delete = schedule_client.get("/users/me/schedule-access-keys", headers=user_headers)
     assert all(key["access_key"] != access_key for key in list_after_delete.json())
+
+
+def test_events_calendar_keys_migrate_without_changing_access_key(migration_database_url: str):
+    config = Config(Path(__file__).parents[2] / "src/schedule/alembic.ini")
+    config.attributes["sqlalchemy.url"] = migration_database_url
+    engine = create_async_engine(migration_database_url)
+
+    async def check_migration() -> None:
+        async with engine.begin() as connection:
+            config.attributes["connection"] = connection.sync_connection
+            await connection.run_sync(lambda conn: command.upgrade(config, "bcf54d8acd7c"))
+        async with engine.begin() as connection:
+            await connection.execute(
+                text("INSERT INTO users (id, email, name) VALUES (101001, 'migration@test.example', 'Migration')")
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO user_schedule_keys (id, user_id, access_key, resource_path) VALUES "
+                    "(1, 101001, 'old-key', '/users/101001/workshops.ics'), "
+                    "(2, 101001, 'unrelated-key', '/users/101001/all.ics'), "
+                    "(3, 101001, 'custom-key', '/users/me/workshops.ics')"
+                )
+            )
+        async with engine.begin() as connection:
+            config.attributes["connection"] = connection.sync_connection
+            await connection.run_sync(lambda conn: command.upgrade(config, "head"))
+        async with engine.connect() as connection:
+            rows = (
+                await connection.execute(text("SELECT access_key, resource_path FROM user_schedule_keys ORDER BY id"))
+            ).all()
+            assert rows == [
+                ("old-key", "/users/101001/events.ics"),
+                ("unrelated-key", "/users/101001/all.ics"),
+                ("custom-key", "/users/me/workshops.ics"),
+            ]
+
+    try:
+        asyncio.run(check_migration())
+    finally:
+        asyncio.run(engine.dispose())
 
 
 def test_virtual_favorite_is_persisted_by_alias(
