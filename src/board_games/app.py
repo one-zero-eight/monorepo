@@ -2,9 +2,12 @@ __all__ = ["app"]
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from starlette import status
 from starlette.middleware.cors import CORSMiddleware
 
+from src.board_games.modules.board_games import board_games_repo
 from src.common_beanie import setup_beanie
 from src.common_fastapi import (
     MIT_LICENSE_INFO,
@@ -57,6 +60,17 @@ app = FastAPI(
 )
 tune_fastapi(app, logger=logger, metrics_namespace="board_games")
 
+
+@app.exception_handler(board_games_repo.BoardGameAlreadyExistsError)
+async def _board_game_exists_handler(
+    request: Request, exc: board_games_repo.BoardGameAlreadyExistsError
+) -> JSONResponse:
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail="Board game with this title already exists",
+    )
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=settings.cors_allow_origin_regex,
@@ -70,6 +84,5 @@ import src.board_games.modules.users.routes  # noqa: E402
 
 app.include_router(src.board_games.modules.users.routes.router)
 popule_openapi_tags(app, src.board_games.modules.users.routes)
-app.include_router(src.board_games.modules.board_games.routes.public_router)
 app.include_router(src.board_games.modules.board_games.routes.router)
 popule_openapi_tags(app, src.board_games.modules.board_games.routes)

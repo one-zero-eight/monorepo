@@ -44,5 +44,11 @@ class PhotosRepo:
             content_type=content_type,
         )
 
+    def delete(self, photo_file_id: str, size: int | None = None) -> None:
+        self.minio_client.remove_object(
+            bucket_name=self.bucket,
+            object_name=self.get_object_name(photo_file_id, size),
+        )
+
 
 photos_repo = PhotosRepo()
