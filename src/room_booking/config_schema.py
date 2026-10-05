@@ -20,8 +20,6 @@ class Room(BaseSchema):
     "Room capacity, amount of people"
     access_level: Literal["yellow", "red", "special"] | None = None
     "Access level to the room. Yellow = for students. Red = for employees. Special = special rules apply."
-    private: bool = False
-    "Only users in the room access list can view its schedule and book it."
     restrict_daytime: bool = False
     "Prohibit to book during working hours. True = this room is available only at night 19:00-8:00, or full day on weekends."
 

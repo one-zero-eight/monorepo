@@ -1,5 +1,5 @@
 # Rooms configuration for room booking
-# Available fields: id, title, short_name, resource_email, capacity, access_level, restrict_daytime, private
+# Available fields: id, title, short_name, resource_email, capacity, access_level, restrict_daytime
 
 rooms:
   # Yellow Access Rooms (for students) >
@@ -304,4 +304,3 @@ rooms:
     resource_email: "iu.resource.studentunionoffice@innopolis.ru"
     access_level: "special"
     capacity: 10
-    private: true

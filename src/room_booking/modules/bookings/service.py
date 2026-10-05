@@ -7,7 +7,6 @@ from exchangelib import CalendarItem
 from exchangelib.properties import Mailbox
 from exchangelib.recurrence import Recurrence
 
-from src.inh_accounts_sdk import UserTokenData
 from src.logging_ import logger
 from src.room_booking.config_schema import Room
 from src.room_booking.dependencies import AuthContext
@@ -15,7 +14,6 @@ from src.room_booking.modules.bookings.recurrence import recurrence_to_xml
 from src.room_booking.modules.bookings.schemas import Attendee, Booking, BookingStatus
 from src.room_booking.modules.bookings.tz_utils import to_msk
 from src.room_booking.modules.rooms.repository import room_repository
-from src.room_booking.modules.rules.service import can_view_room
 
 
 def get_emails_to_attendees_index(calendar_item: CalendarItem) -> dict[str, exchangelib.Attendee]:
@@ -168,14 +166,6 @@ def set_related_to_me(bookings: list[Booking] | Booking, user_email: str) -> lis
                 booking.related_to_me = False
 
     return bookings
-
-
-def can_view_booking(booking: Booking, auth: AuthContext | UserTokenData) -> bool:
-    room_ids = {booking.room_id}
-    room_ids.update(attendee.assosiated_room_id for attendee in booking.attendees or [] if attendee.assosiated_room_id)
-    return all(
-        (room := room_repository.get_by_id(room_id)) is not None and can_view_room(room, auth) for room_id in room_ids
-    )
 
 
 def apply_related_to_me(bookings: list[Booking], auth: AuthContext) -> list[Booking]:
