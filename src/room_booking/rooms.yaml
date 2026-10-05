@@ -1,5 +1,5 @@
 # Rooms configuration for room booking
-# Available fields: id, title, short_name, resource_email, capacity, access_level, restrict_daytime
+# Available fields: id, title, short_name, resource_email, capacity, access_level, restrict_daytime, private
 
 rooms:
   # Yellow Access Rooms (for students) >
@@ -297,3 +297,11 @@ rooms:
     access_level: "special"
     capacity: 12
   # Red Access Rooms (meeting rooms) ^
+
+  - id: "su-office"
+    short_name: "SU"
+    title: "Student Union Office"
+    resource_email: "iu.resource.studentunionoffice@innopolis.ru"
+    access_level: "special"
+    capacity: 10
+    private: true

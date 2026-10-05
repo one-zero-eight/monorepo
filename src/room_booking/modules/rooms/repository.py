@@ -57,6 +57,9 @@ class RoomsRepository:
     def get_by_email(self, email: str) -> Room | None:
         return self.room_by_email.get(email)
 
+    def user_can_view_room(self, user_email: str, room: Room) -> bool:
+        return not room.private or self.user_has_access_to_room(user_email, room.id)
+
     def get_access_list_for_user(self, user_email: str) -> dict[str, AccessToRoom]:
         return self.email_x_access_list.get(user_email, {})
 

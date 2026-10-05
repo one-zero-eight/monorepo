@@ -9,15 +9,20 @@ import datetime as dtm
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from src.inh_accounts_sdk import inh_accounts
+from src.inh_accounts_sdk import UserTokenData, inh_accounts
 from src.room_booking.config_schema import AccessToRoom, Room
-from src.room_booking.dependencies import VerifiedDep, VerifiedOrApiKeyDep, VerifiedOrApiKeyOrRoomTvDep
+from src.room_booking.dependencies import AuthContext, VerifiedDep, VerifiedOrApiKeyDep, VerifiedOrApiKeyOrRoomTvDep
 from src.room_booking.modules.bookings.exchange_repository import Booking, exchange_booking_repository
-from src.room_booking.modules.bookings.service import apply_related_to_me
+from src.room_booking.modules.bookings.service import apply_related_to_me, can_view_booking
 from src.room_booking.modules.rooms.repository import room_repository
-from src.room_booking.modules.rules.service import can_book
+from src.room_booking.modules.rules.service import can_book, can_view_room
 
 router = APIRouter(tags=["Rooms"])
+
+
+def require_room_access(room: Room, auth: AuthContext | UserTokenData) -> None:
+    if not can_view_room(room, auth):
+        raise HTTPException(403, "You don't have access to this room.")
 
 
 class CanBookResponse(BaseModel):
@@ -26,8 +31,8 @@ class CanBookResponse(BaseModel):
 
 
 @router.get("/rooms/")
-async def rooms(_: VerifiedOrApiKeyDep, include_red: bool = False) -> list[Room]:
-    return room_repository.get_all(include_red)
+async def rooms(auth: VerifiedOrApiKeyDep, include_red: bool = False) -> list[Room]:
+    return [room for room in room_repository.get_all(include_red) if can_view_room(room, auth)]
 
 
 @router.get(
@@ -60,13 +65,15 @@ async def all_access_lists(user: VerifiedDep) -> dict[str, list[AccessToRoom]]:
     "/room/{id}",
     responses={
         200: {"description": "Room info"},
+        403: {"description": "No access to the private room"},
         404: {"description": "Room not found"},
     },
 )
-async def room_route(id: str, _: VerifiedDep) -> Room:
+async def room_route(id: str, user: VerifiedDep) -> Room:
     room = room_repository.get_by_id(id)
     if room is None:
         raise HTTPException(404, "Room not found")
+    require_room_access(room, user)
     return room
 
 
@@ -75,7 +82,7 @@ async def room_route(id: str, _: VerifiedDep) -> Room:
     responses={
         200: {"description": "Can book"},
         400: {"description": "Start must be before end"},
-        403: {"description": "Invalid user"},
+        403: {"description": "Invalid user OR No access to the private room"},
         404: {"description": "Room not found"},
     },
 )
@@ -88,6 +95,7 @@ async def room_can_book_route(
     room = room_repository.get_by_id(id)
     if room is None:
         raise HTTPException(404, "Room not found")
+    require_room_access(room, user)
     innohassle_user = await inh_accounts.get_user(innohassle_id=user.innohassle_id)
 
     if innohassle_user is None:
@@ -101,6 +109,7 @@ async def room_can_book_route(
     "/room/{id}/bookings",
     responses={
         200: {"description": "Room bookings"},
+        403: {"description": "No access to the room"},
         400: {"description": "Start must be before end"},
         404: {"description": "Room not found"},
     },
@@ -113,5 +122,6 @@ async def room_bookings_route(
     obj = room_repository.get_by_id(id)
     if obj is None:
         raise HTTPException(404, "Room not found")
+    require_room_access(obj, auth)
     bookings = await exchange_booking_repository.get_bookings_for_room(room_id=id, from_dt=start, to_dt=end)
-    return apply_related_to_me(bookings, auth)
+    return apply_related_to_me([booking for booking in bookings if can_view_booking(booking, auth)], auth)

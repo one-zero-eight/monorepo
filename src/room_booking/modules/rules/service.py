@@ -1,11 +1,24 @@
 import datetime as dtm
 from typing import Literal
 
-from src.inh_accounts_sdk import InnopolisInfo, UserSchema
-from src.room_booking.modules.bookings.exchange_repository import to_msk
+from src.inh_accounts_sdk import InnopolisInfo, UserSchema, UserTokenData
+from src.room_booking.dependencies import AuthContext
+from src.room_booking.modules.bookings.tz_utils import to_msk
 from src.room_booking.modules.rooms.repository import Room, room_repository
 
 type Role = Literal["none", "student", "staff"]
+
+
+def can_view_room(room: Room, auth: AuthContext | UserTokenData) -> bool:
+    if isinstance(auth, UserTokenData):
+        return room_repository.user_can_view_room(auth.email, room)
+    if auth.is_service:
+        return True
+    if auth.user is not None:
+        return room_repository.user_can_view_room(auth.user.email, room)
+    if auth.room is not None:
+        return not room.private and auth.room.id == room.id
+    return False
 
 
 def can_use_recurrence(*, email: str, user: UserSchema | None = None) -> bool:
@@ -92,6 +105,9 @@ def check_rules(
     in_access_list: bool,
     is_restricted_time: bool,
 ) -> tuple[bool, str]:
+    if room.private and not in_access_list:
+        return False, "You don't have access to this private room."
+
     # Только staff и students имеют доступ к бронированию
     if highest_role == "none":
         return False, "You must be a student or staff to book rooms (college students can't book rooms)."

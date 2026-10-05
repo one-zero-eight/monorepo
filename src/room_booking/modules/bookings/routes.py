@@ -9,12 +9,13 @@ import datetime as dtm
 from typing import cast
 
 import httpx
+from exchangelib import CalendarItem
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, EmailStr
 
-from src.inh_accounts_sdk import inh_accounts
+from src.inh_accounts_sdk import UserTokenData, inh_accounts
 from src.logging_ import logger
-from src.room_booking.dependencies import ApiKeyDep, VerifiedDep, VerifiedOrApiKeyDep, VerifiedOrRoomTvDep
+from src.room_booking.dependencies import ApiKeyDep, AuthContext, VerifiedDep, VerifiedOrApiKeyDep, VerifiedOrRoomTvDep
 from src.room_booking.modules.bookings.exchange_repository import exchange_booking_repository
 from src.room_booking.modules.bookings.schemas import (
     Booking,
@@ -24,13 +25,21 @@ from src.room_booking.modules.bookings.schemas import (
 from src.room_booking.modules.bookings.service import (
     apply_related_to_me,
     calendar_item_to_booking,
+    can_view_booking,
     get_emails_to_attendees_index,
     get_first_room_from_emails,
     set_related_to_me,
 )
 from src.room_booking.modules.bookings.tz_utils import msk_timezone
 from src.room_booking.modules.rooms.repository import room_repository
-from src.room_booking.modules.rules.service import can_book, can_use_recurrence
+from src.room_booking.modules.rooms.routes import require_room_access
+from src.room_booking.modules.rules.service import can_book, can_use_recurrence, can_view_room
+
+
+def _require_calendar_item_access(item: CalendarItem, auth: AuthContext | UserTokenData) -> None:
+    for email in get_emails_to_attendees_index(item):
+        if room := room_repository.get_by_email(email):
+            require_room_access(room, auth)
 
 
 def _default_date_range(
@@ -86,25 +95,20 @@ async def bookings(
     if start >= end:
         raise HTTPException(400, "Start must be before end")
 
-    room_ids_to_fetch: list[str] = []
-
     if not room_ids and not room_id:  # nothing provided, get all rooms
-        room_ids_to_fetch = [room.id for room in room_repository.get_all(include_red)]
-    elif room_id and not room_ids:  # only room id is provided
-        if room_repository.get_by_id(room_id) is None:
-            raise HTTPException(404, "Room not found")
-        room_ids_to_fetch = [room_id]
-    elif room_id and room_ids:  # both room id and room ids are provided
-        room_ids_to_fetch = [room_id, *room_ids] if room_id not in room_ids else room_ids
-    elif room_ids:  # only room ids are provided
-        room_ids_to_fetch = room_ids
+        room_ids_to_fetch = [room.id for room in room_repository.get_all(include_red) if can_view_room(room, auth)]
     else:
-        raise AssertionError("Invalid combination of room_id and room_ids, not even possible")
+        room_ids_to_fetch = list(dict.fromkeys(([room_id] if room_id else []) + (room_ids or [])))
+        for requested_room_id in room_ids_to_fetch:
+            room = room_repository.get_by_id(requested_room_id)
+            if room is None:
+                raise HTTPException(404, "Room not found")
+            require_room_access(room, auth)
 
     bookings = await exchange_booking_repository.get_bookings_for_certain_rooms(
         room_ids=room_ids_to_fetch, from_dt=start, to_dt=end
     )
-    return apply_related_to_me(bookings, auth)
+    return apply_related_to_me([booking for booking in bookings if can_view_booking(booking, auth)], auth)
 
 
 @router.get("/bookings/my")
@@ -121,6 +125,7 @@ async def my_bookings(
     if start >= end:
         raise HTTPException(400, "Start must be before end")
     bookings = await exchange_booking_repository.fetch_user_bookings(attendee_email=user.email, start=start, end=end)
+    bookings = [booking for booking in bookings if can_view_booking(booking, user)]
     return set_related_to_me(bookings, user.email)
 
 
@@ -140,6 +145,12 @@ async def create_booking(user: VerifiedDep, request: CreateBookingRequest) -> Bo
     room = room_repository.get_by_id(room_id=request.room_id)
     if room is None:
         raise HTTPException(404, "Room not found")
+
+    require_room_access(room, user)
+    for email in request.participant_emails or []:
+        participant_room = room_repository.get_by_email(email)
+        if participant_room is not None:
+            require_room_access(participant_room, user)
 
     innohassle_user = await inh_accounts.get_user(innohassle_id=user.innohassle_id)
 
@@ -202,6 +213,11 @@ async def get_attendee_details(
         )
         raise HTTPException(400, "Invalid email")
 
+    calendar_item = await exchange_booking_repository.get_booking(outlook_booking_id)
+    if calendar_item is None:
+        raise HTTPException(404, "Booking not found")
+    _require_calendar_item_access(calendar_item, auth)
+
     searched_user = await inh_accounts.get_user(email=user_email)
 
     if searched_user is None:
@@ -229,6 +245,7 @@ async def get_booking_by_entry_id(
     room = room_repository.get_by_id(room_id=room_id)
     if room is None:
         raise HTTPException(404, "Room not found")
+    require_room_access(room, auth)
 
     booking = await exchange_booking_repository.get_booking_by_entry_id(
         outlook_entry_id=outlook_entry_id,
@@ -237,6 +254,8 @@ async def get_booking_by_entry_id(
     if booking is None:
         raise HTTPException(404, "Booking not found")
 
+    if not can_view_booking(booking, auth):
+        raise HTTPException(403, "You don't have access to this room.")
     if auth.user is not None:
         return set_related_to_me(booking, auth.user.email)
     return booking
@@ -259,6 +278,7 @@ async def delete_booking_by_entry_id(
     room = room_repository.get_by_id(room_id=room_id)
     if room is None:
         raise HTTPException(404, "Room not found")
+    require_room_access(room, user)
 
     calendar_item = await exchange_booking_repository.get_calendar_item_by_entry_id(
         outlook_entry_id=outlook_entry_id,
@@ -267,6 +287,7 @@ async def delete_booking_by_entry_id(
     if calendar_item is None:
         raise HTTPException(404, "Booking not found")
 
+    _require_calendar_item_access(calendar_item, user)
     if user.email not in get_emails_to_attendees_index(calendar_item):
         raise HTTPException(403, "You are not the participant of the booking")
 
@@ -283,6 +304,8 @@ async def get_booking(outlook_booking_id: str, user: VerifiedDep) -> Booking:
     calendar_item = await exchange_booking_repository.get_booking(outlook_booking_id)
     if calendar_item is None:
         raise HTTPException(404, "Booking not found")
+
+    _require_calendar_item_access(calendar_item, user)
 
     if (booking := calendar_item_to_booking(calendar_item)) is None:
         raise HTTPException(404, "Room attendee not found in booking attendees")
@@ -309,6 +332,7 @@ async def update_booking(
         raise HTTPException(404, "Booking not found")
 
     email_index = get_emails_to_attendees_index(booking)
+    _require_calendar_item_access(booking, user)
     room = get_first_room_from_emails(email_index.keys())
 
     if user.email not in email_index:
@@ -359,7 +383,9 @@ async def delete_booking(user: VerifiedDep, outlook_booking_id: str):
     if booking is None:
         raise HTTPException(404, "Booking not found")
 
-    if user.email not in get_emails_to_attendees_index(booking):
+    email_index = get_emails_to_attendees_index(booking)
+    _require_calendar_item_access(booking, user)
+    if user.email not in email_index:
         raise HTTPException(403, "You are not the participant of the booking")
 
     await exchange_booking_repository.cancel_booking(booking, email=user.email)
