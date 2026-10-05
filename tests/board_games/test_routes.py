@@ -1,4 +1,5 @@
 from io import BytesIO
+from urllib.parse import urlsplit
 
 from fastapi.testclient import TestClient
 from PIL import Image
@@ -36,12 +37,15 @@ def test_admin_can_upload_board_game_photo(
     )
 
     assert uploaded.status_code == 200
-    assert uploaded.json()["photo_file_id"] is not None
+    assert uploaded.json()["has_photo"] is True
+    assert "photo_file_id" not in uploaded.json()
 
     photo = board_games_client.get(f"/board-games/{game_id}/photo", follow_redirects=False)
     assert photo.status_code == 307
-    assert f"board-game-photos/{uploaded.json()['photo_file_id']}-512" in photo.headers["location"]
-    assert "X-Amz-Signature=" in photo.headers["location"]
+    photo_url = urlsplit(photo.headers["location"])
+    assert "/board-game-photos/" in photo_url.path
+    assert photo_url.path.endswith("-512")
+    assert "X-Amz-Signature=" in photo_url.query
 
 
 def test_photo_file_id_can_only_be_set_through_upload(
@@ -86,7 +90,8 @@ def test_user_can_see_available_games_and_reserve(
         headers=user_headers,
     )
     assert created.status_code == 200
-    assert created.json()["photo_file_id"] is None
+    assert created.json()["has_photo"] is False
+    assert "photo_file_id" not in created.json()
     game_id = created.json()["id"]
 
     listed = board_games_client.get("/board-games", headers=user_headers)
@@ -151,7 +156,7 @@ def test_user_can_see_available_games_and_reserve(
         headers=user_headers,
     )
     assert unavailable.status_code == 409
-    assert unavailable.json()["detail"] == "Board game is not available"
+    assert unavailable.json()["detail"] == "You already have an active reservation for this board game"
 
     listed_admin_after_reservation = board_games_client.get("/admin/board-games", headers=user_headers)
     assert listed_admin_after_reservation.status_code == 200
@@ -170,7 +175,8 @@ def test_admin_can_lend_reservation_and_see_borrower(
         headers=user_headers,
     )
     assert created.status_code == 200
-    assert created.json()["photo_file_id"] is None
+    assert created.json()["has_photo"] is False
+    assert "photo_file_id" not in created.json()
     game_id = created.json()["id"]
     reservation = board_games_client.post(
         f"/board-games/{game_id}/reservations",
@@ -199,11 +205,11 @@ def test_admin_can_lend_reservation_and_see_borrower(
         headers=user_headers,
     )
     assert edit_taken.status_code == 409
-    assert edit_taken.json()["detail"] == "Reservation is not reserved"
+    assert edit_taken.json()["detail"] == "Only reservations in 'reserved' status can be edited"
 
     delete_taken = board_games_client.delete(f"/users/me/reservations/{reservation_id}", headers=user_headers)
     assert delete_taken.status_code == 409
-    assert delete_taken.json()["detail"] == "Reservation is not reserved"
+    assert delete_taken.json()["detail"] == "Only reservations in 'reserved' status can be cancelled"
 
     current_after_lend = board_games_client.get("/admin/reservations", params={"how": "current"}, headers=user_headers)
     assert current_after_lend.status_code == 200
@@ -241,11 +247,11 @@ def test_admin_can_lend_reservation_and_see_borrower(
         headers=user_headers,
     )
     assert edit_returned.status_code == 409
-    assert edit_returned.json()["detail"] == "Reservation is not reserved"
+    assert edit_returned.json()["detail"] == "Only reservations in 'reserved' status can be edited"
 
     delete_returned = board_games_client.delete(f"/users/me/reservations/{reservation_id}", headers=user_headers)
     assert delete_returned.status_code == 409
-    assert delete_returned.json()["detail"] == "Reservation is not reserved"
+    assert delete_returned.json()["detail"] == "Only reservations in 'reserved' status can be cancelled"
 
     deleted = board_games_client.delete(f"/admin/reservations/{reservation_id}", headers=user_headers)
     assert deleted.status_code == 200
