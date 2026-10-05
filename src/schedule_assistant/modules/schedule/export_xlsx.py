@@ -847,7 +847,10 @@ def _term_weeks(term: TermConfig) -> list[tuple[dtm.date, dtm.date]]:
 
 def _compact_meeting_label(meeting: ExportMeeting, slot: TermTimeSlot) -> str:
     time_suffix = ""
-    if meeting.start != slot.start_time or meeting.end != slot.end_time:
+    # Schedule slots are local clock times; timezone metadata must not make them custom.
+    start_matches_slot = meeting.start.replace(tzinfo=None) == slot.start_time.replace(tzinfo=None)
+    end_matches_slot = meeting.end.replace(tzinfo=None) == slot.end_time.replace(tzinfo=None)
+    if not start_matches_slot or not end_matches_slot:
         time_suffix = f" ({_slot_label(meeting.start, meeting.end)})"
     if meeting.notes:
         time_suffix += f"\n{meeting.notes}"

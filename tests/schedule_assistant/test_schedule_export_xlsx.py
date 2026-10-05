@@ -306,14 +306,34 @@ def test_groups_export_uses_configured_color_and_fallback() -> None:
     ("short_name", "expected_label"),
     [("SRE", "SRE ONLINE (ELEC-01)"), ("ELEC-01", "ELEC-01 ONLINE")],
 )
+@pytest.mark.parametrize(
+    ("start_timezone", "end_timezone", "row_timezone"),
+    [
+        (None, None, None),
+        (dtm.UTC, dtm.UTC, None),
+        (None, dtm.UTC, None),
+        (dtm.UTC, None, None),
+        (None, None, dtm.UTC),
+        (dtm.UTC, dtm.UTC, dtm.timezone(dtm.timedelta(hours=3))),
+    ],
+    ids=["naive", "aware-meeting", "aware-end", "aware-start", "aware-row", "different-offsets"],
+)
 def test_calendar_export_shows_time_only_when_different_from_row_slot(
     start_time: dtm.time,
     end_time: dtm.time,
     time_suffix: str,
     short_name: str,
     expected_label: str,
+    start_timezone: dtm.tzinfo | None,
+    end_timezone: dtm.tzinfo | None,
+    row_timezone: dtm.tzinfo | None,
 ) -> None:
     config = _sample_config()
+    for slot in config.term.time_slots:
+        slot.start_time = slot.start_time.replace(tzinfo=row_timezone)
+        slot.end_time = slot.end_time.replace(tzinfo=row_timezone)
+    start_time = start_time.replace(tzinfo=start_timezone)
+    end_time = end_time.replace(tzinfo=end_timezone)
     course = config.courses[1]
     course.short_name = short_name
     component = course.components[0]
