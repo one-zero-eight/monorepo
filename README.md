@@ -50,9 +50,8 @@ our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CON
    ```
 4. Run infra:
    ```bash
-   docker compose up --wait mongodb minio
+   docker compose up --wait mongodb minio postgres
    ```
-   For `schedule` or `schedule_assistant`, also start PostgreSQL with `docker compose up --wait postgres`.
 5. Create `settings.yaml` in monorepo and set up accounts API JWT token:
    ```bash
    uv run scripts/prepare.py
