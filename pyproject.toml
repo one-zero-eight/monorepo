@@ -64,7 +64,7 @@ room-booking = [
 ]
 maps = [
     "cairosvg>=2.9.1", # ~156 KiB
-    "pypdf>=6.18.1", # ~1.4 MiB
+    "pypdf>=6.19.0", # ~1.4 MiB
     "rapidfuzz>=3.14.6", # ~11.5 MiB
 ]
 clubs = [
