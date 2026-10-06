@@ -427,12 +427,18 @@ def _moodle_course_name(event: icalendar.Event) -> str:
 def _moodle_make_deadline(event: icalendar.Event) -> icalendar.Event:
     new = icalendar.Event()
     end = _prop_dt(event["dtend"]).astimezone(MOSCOW_TZ)
-    new["dtstart"] = icalendar.vDate(end.date())
+    new.add("dtstart", end.date())
     new["uid"] = event["uid"]
     new["dtstamp"] = event["dtstamp"]
     course_name = _moodle_course_name(event)
     new["summary"] = _prop_str(event["summary"]) + f" - {course_name}"
-    new["description"] = f"Course: {course_name}\nDue to: {end.timetz().isoformat()}"
+    new["description"] = "\n".join(
+        [
+            f"Course: {course_name}",
+            f"Due to: {end.timetz().isoformat()}",
+            _prop_str(event["description"]) if event.get("description") else "",
+        ]
+    ).strip()
     return new
 
 
@@ -445,7 +451,7 @@ def _moodle_create_quiz(
     if closes:
         due = _prop_dt(closes["dtend"]).astimezone(MOSCOW_TZ)
     if due and start.date() != due.date():  # Display only on deadline day
-        new["dtstart"] = icalendar.vDate(due.date())
+        new.add("dtstart", due.date())
     else:
         new["dtstart"] = icalendar.vDatetime(start)
         if due:
@@ -493,9 +499,11 @@ def fix_moodle_events(calendar: icalendar.Calendar) -> icalendar.Calendar:
 
     for raw_event in calendar.walk(name="VEVENT"):
         event = _as_event(raw_event)
-        event_timedelta = _prop_dt(event["dtend"]) - _prop_dt(event["dtstart"])
         event_name = _prop_str(event["summary"]).strip()
+        if "Attendance" in event_name or "Посещаемость" in event_name:
+            continue
 
+        event_timedelta = _prop_dt(event["dtend"]) - _prop_dt(event["dtstart"])
         if event_timedelta == dtm.timedelta():
             marker = _moodle_quiz_suffix(event_name)
             if marker is not None:
@@ -512,9 +520,6 @@ def fix_moodle_events(calendar: icalendar.Calendar) -> icalendar.Calendar:
                     quiz_closes[key] = event
             else:
                 fixed_events.append(_moodle_make_deadline(event))
-            continue
-
-        if "Attendance" in event_name:
             continue
 
         categories = _to_ical_str(event["categories"])
