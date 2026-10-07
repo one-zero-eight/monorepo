@@ -12,7 +12,7 @@ SETTINGS_FILE = BASE_DIR / "settings.yaml"
 PRE_COMMIT_CONFIG = BASE_DIR / ".pre-commit-config.yaml"
 ACCOUNTS_TOKEN_URL = (
     "https://api.innohassle.ru/accounts/v0/tokens/"  # noqa: S105
-    "generate-service-token?sub=monorepo-local-dev&scopes=users&scopes=sport&only_for_me=true"
+    "generate-service-token?sub=monorepo-local-dev&scopes=users:me&scopes=sport:me"
 )
 PLACEHOLDER = "change-me"
 

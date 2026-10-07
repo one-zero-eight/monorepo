@@ -110,7 +110,7 @@ def parser_headers(jwt_keypair: tuple[RSAKey, RSAKey]) -> dict[str, str]:
     now = int(dtm.datetime.now(dtm.UTC).timestamp())
     token = jwt.encode(
         {"alg": "RS256", "kid": "public"},
-        {"sub": "parser", "iat": now, "exp": now + 3600},
+        {"scope": "parser", "iat": now, "exp": now + 3600},
         private_key,
     )
     token_str = token.decode() if isinstance(token, bytes) else token

@@ -52,7 +52,7 @@ def verify_parser(
         raise IncorrectCredentialsException(no_credentials=True)
     try:
         payload = inh_accounts._get_jwt_claims(token)
-        if payload.get("sub") == "parser":
+        if "parser" in (payload.get("scope") or "").split():
             return True
         raise IncorrectCredentialsException()
     except JoseError:
@@ -69,7 +69,7 @@ async def verify_parser_or_admin(
         raise IncorrectCredentialsException(no_credentials=True)
     try:
         payload = inh_accounts._get_jwt_claims(token)
-        if payload.get("sub") == "parser":
+        if "parser" in (payload.get("scope") or "").split():
             return True
     except JoseError:
         raise IncorrectCredentialsException()
