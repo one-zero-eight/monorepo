@@ -372,7 +372,7 @@ async def test_ambiguous_create_not_retried(exchange_boundary):
 
 
 @pytest.mark.asyncio
-async def test_same_slot_distinct_source_meetings_survive_merge(exchange_boundary):
+async def test_same_slot_distinct_organizer_meetings_survive_merge(exchange_boundary):
     b = exchange_boundary
     start, end = b.item.start, b.item.end
     first = b.repo.booking_from_calendar_item(b.item, room_id=b.room.id)
@@ -389,9 +389,53 @@ async def test_same_slot_distinct_source_meetings_survive_merge(exchange_boundar
     await b.repo._cache_from_account_calendar.update_cache(b.room.id, [first, second], start, end)
     await b.repo._cache_from_busy_info.update_cache(b.room.id, [busy], start, end)
     bookings = await b.repo.get_bookings_for_room(b.room.id, start, end)
-    assert len(bookings) == 3
-    assert len({booking.id for booking in bookings}) == 3
-    assert any(booking.busy_type == "Tentative" for booking in bookings)
+    assert len(bookings) == 2
+    assert {booking.outlook_booking_id for booking in bookings} == {"item-1", "item-2"}
+    assert len({booking.id for booking in bookings}) == 2
+
+
+@pytest.mark.parametrize("busy_end_hour", [11, 12])
+def test_bookings_list_matches_free_busy_by_room_and_window(
+    exchange_boundary, room_booking_client, api_key_headers, monkeypatch, busy_end_hour
+):
+    from src.room_booking.modules.bookings import routes
+
+    b = exchange_boundary
+    monkeypatch.setattr(routes, "exchange_booking_repository", b.repo)
+    b.calendar.view.return_value.only.return_value = [b.item]
+    protocol = MagicMock()
+    protocol.get_free_busy_info.return_value = [
+        SimpleNamespace(
+            view_type="Detailed",
+            calendar_events=[
+                SimpleNamespace(
+                    start=b.item.start,
+                    end=msk(2026, 9, 11, busy_end_hour),
+                    details=SimpleNamespace(
+                        subject="Algebra from room calendar", location=None, id="room-mailbox-entry"
+                    ),
+                    busy_type="Busy",
+                )
+            ],
+        )
+    ]
+    b.repo.account.protocol = protocol
+
+    response = room_booking_client.get(
+        "/bookings/",
+        headers=api_key_headers,
+        params={"room_id": b.room.id, "start": b.item.start.isoformat(), "end": msk(2026, 9, 11, 13).isoformat()},
+    )
+
+    assert response.status_code == 200
+    bookings = response.json()
+    assert len(bookings) == (1 if busy_end_hour == 11 else 2)
+    organizer_booking = next(booking for booking in bookings if booking["outlook_booking_id"] == b.item.id)
+    assert organizer_booking["title"] == b.item.subject
+    assert organizer_booking["uid"] == b.item.uid
+    assert organizer_booking["attendees"][0]["assosiated_room_id"] == b.room.id
+    if busy_end_hour != 11:
+        assert any(booking["outlook_entry_id"] == "room-mailbox-entry" for booking in bookings)
 
 
 def test_reconcile_route_returns_structured_evidence(

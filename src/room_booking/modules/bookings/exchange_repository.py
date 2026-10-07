@@ -4,6 +4,7 @@ import datetime as dtm
 import re
 import threading
 import time as tm
+from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import TypedDict, cast
@@ -570,14 +571,21 @@ class ExchangeBookingRepository:
             ),
         )
 
-        # Free/busy entry IDs belong to the room mailbox, not the organizer.
-        # Without a proven cross-mailbox identity retain both copies and all conflicts.
-        bookings = [
-            booking
-            for source in (bookings_from_account_calendar, bookings_from_busy_info)
-            for room_bookings in source.values()
-            for booking in room_bookings
-        ]
+        account_calendar_registry: dict[tuple[str, dtm.datetime, dtm.datetime], list[Booking]] = defaultdict(list)
+        busy_info_registry: dict[tuple[str, dtm.datetime, dtm.datetime], list[Booking]] = defaultdict(list)
+
+        for room_bookings in bookings_from_account_calendar.values():
+            for booking in room_bookings:
+                account_calendar_registry[booking.room_id, booking.start, booking.end].append(booking)
+        for room_bookings in bookings_from_busy_info.values():
+            for booking in room_bookings:
+                busy_info_registry[booking.room_id, booking.start, booking.end].append(booking)
+
+        # Prefer manageable organizer bookings for the same room and exact window.
+        # This is display matching, not evidence of room acceptance or Exchange identity.
+        bookings: list[Booking] = []
+        for slot in account_calendar_registry.keys() | busy_info_registry.keys():
+            bookings.extend(account_calendar_registry[slot] or busy_info_registry[slot])
 
         # ---- Use cache for recently created, updated and canceled bookings ----
         recently_created_bookings = await self._recently.get_created()
