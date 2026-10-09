@@ -14,7 +14,7 @@ from pymongo import MongoClient
 from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
 from urllib3.exceptions import HTTPError
 
-from src.board_games.config_schema import BoardGamesSettings
+from src.board_games.config_schema import BoardGamesMinioSettings, BoardGamesSettings
 from src.clubs.config_schema import ClubsSettings
 from src.common_config import Environment, MinioSettings, MongoDatabaseSettings
 from src.config_root_schema import AccountsSettings, MetricsSettings, Settings
@@ -121,7 +121,7 @@ def load_root_settings() -> Settings:
             mongo=MongoDatabaseSettings(
                 uri=SecretStr(mongo_uri.replace("<service_name>", "board_games")),
             ),
-            minio=MinioSettings(
+            minio=BoardGamesMinioSettings(
                 endpoint=SUITE_MINIO_ENDPOINT,
                 access_key=SUITE_MINIO_ACCESS_KEY,
                 secret_key=SecretStr(SUITE_MINIO_KEY),
