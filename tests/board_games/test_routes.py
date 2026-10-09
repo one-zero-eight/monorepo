@@ -4,6 +4,8 @@ from urllib.parse import urlsplit
 from fastapi.testclient import TestClient
 from PIL import Image
 
+from src.board_games.config import settings
+
 
 def make_admin(board_games_client: TestClient, superadmin_headers: dict[str, str]) -> None:
     response = board_games_client.post(
@@ -43,10 +45,11 @@ def test_admin_can_upload_board_game_photo(
     photo = board_games_client.get(f"/board-games/{game_id}/photo", follow_redirects=False)
     assert photo.status_code == 307
     photo_url = urlsplit(photo.headers["location"])
+    assert photo_url.scheme == ("https" if settings.minio.secure else "http")
+    assert photo_url.netloc == settings.minio.endpoint
     assert photo_url.path.startswith(f"/{board_games_client.app.state.minio_store.bucket_name}/")
     assert photo_url.path.count("/") == 2
     assert photo_url.path.endswith("-512")
-    assert "X-Amz-Signature=" in photo_url.query
 
 
 def test_photo_file_id_can_only_be_set_through_upload(
