@@ -15,13 +15,16 @@ class Player(BeanieDocumentMixin, Document):
     nickname: str = Field(default="nouname", min_length=2, max_length=20)
 
     rating: int = 100
-    "RTTF has no fixed start: newcomers get the minimum (100) until an admin assigns a starting rating."
+    "Newcomers start at 100 until an admin sets their rating manually (any value from 0)."
     ratings: dict[dtm.datetime, int] = Field(default_factory=dict)
     wins: int = 0
     losses: int = 0
 
     last_game: dtm.datetime
     status: str = "Beginner"
+    "Beginner or Advanced. Being an admin is not a status: admins are listed in the settings (admin_emails)."
+    placeholder: bool = False
+    "A guest created by an admin for someone without an account. Merged into the real player once they register."
 
     class Settings(BeanieDocumentMixin.Settings):
         indexes: ClassVar[list[IndexModel]] = [IndexModel("innohassle_id", unique=True)]
@@ -44,6 +47,10 @@ class Game(BeanieDocumentMixin, Document):
     player1_delta: int | None = None
     "Rating change applied to player1 when the game was finished. Needed to roll it back on a score correction."
     player2_delta: int | None = None
+
+    player1_promoted: bool = False
+    "Whether this game promoted player1 to Advanced. A score correction takes the promotion back."
+    player2_promoted: bool = False
 
     class Settings(BeanieDocumentMixin.Settings):
         indexes: ClassVar[list[IndexModel]] = [IndexModel("tour_id")]
