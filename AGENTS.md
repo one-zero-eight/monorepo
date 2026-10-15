@@ -41,6 +41,10 @@ async def get_me(user_id: CurrentUserIdDep, users: UserRepoDep) -> ViewUser:
 ```
 
 
+### Router documentation
+
+`popule_openapi_tags(app, router_module)` publishes the router module's docstring as the description of its first OpenAPI tag (e.g. `popule_openapi_tags(app, src.schedule.modules.users.routes)`). Use the module docstring to document shared behavior, business rules, and workflows in detail when needed; keep endpoint-specific details in endpoint docstrings. Register this call after `app.include_router(...)` when wiring a router whose module documentation should appear in OpenAPI.
+
 ### SQLAlchemy
 
 Used in `schedule` (async) and `schedule_assistant` (sync). Prefer SQLAlchemy 2.0 style.
