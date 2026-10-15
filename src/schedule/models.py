@@ -1,10 +1,8 @@
 __all__ = [
     "Base",
     "DescriptionMixin",
-    "Event",
     "EventGroup",
     "EventGroupTagAssociation",
-    "EventPatch",
     "IdMixin",
     "LinkedCalendar",
     "NameMixin",
@@ -63,7 +61,6 @@ class EventGroup(Base, IdMixin, NameMixin, DescriptionMixin, UpdateCreateDateTim
     path: Mapped[str] = mapped_column(nullable=True, unique=True)
     satellite: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=True)
 
-    events: Mapped[list[Event]] = relationship("Event", secondary="events_x_event_groups")
     tags_association: Mapped[list[EventGroupTagAssociation]] = relationship("EventGroupTagAssociation", lazy="selectin")
     tags: AssociationProxy[list[Tag]] = association_proxy("tags_association", "tag")
 
@@ -86,61 +83,6 @@ class UserXHiddenEventGroup(Base):
     __tablename__ = "users_x_hidden_groups"
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     group_alias: Mapped[str] = mapped_column(String(255), primary_key=True)
-
-
-class Event(Base, IdMixin, NameMixin, DescriptionMixin, UpdateCreateDateTimeMixin):
-    """
-    Create new .icalendar event
-        - summary
-        - dtstart
-        - dtend OR duration
-        - rrule [optional]
-        - description [optional]
-        - location [optional]
-        - organizer [optional]
-        - attendees [optional]
-        - categories [optional]
-    """
-
-    __tablename__ = "events"
-
-    patches: Mapped[list[EventPatch]] = relationship(
-        "EventPatch", back_populates="parent", cascade="all, delete-orphan", lazy="selectin"
-    )
-
-    event_groups: Mapped[list[EventGroup]] = relationship(
-        "EventGroup", secondary="events_x_event_groups", back_populates="events", lazy="selectin"
-    )
-
-
-class EventPatch(Base, IdMixin):
-    """
-    Patch for .icalendar event
-        - order-id
-    """
-
-    __tablename__ = "event_patches"
-
-    parent_id: Mapped[int] = mapped_column(ForeignKey("events.id"), nullable=False)
-    parent: Mapped[Event] = relationship("Event", back_populates="patches", lazy="joined")
-    type = mapped_column(String(255), nullable=False, default="create")
-
-    # --- .ics fields --- #
-    summary: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=True)
-    location: Mapped[str] = mapped_column(String(255), nullable=True)
-
-    dtstart: Mapped[dtm.datetime] = mapped_column()
-    dtend: Mapped[dtm.datetime] = mapped_column()
-
-    rrule: Mapped[str] = mapped_column()
-
-
-class EventXEventGroup(Base):
-    __tablename__ = "events_x_event_groups"
-
-    event_id: Mapped[int] = mapped_column(ForeignKey("events.id"), nullable=False, primary_key=True)
-    event_group_id: Mapped[int] = mapped_column(ForeignKey("event_groups.id"), nullable=False, primary_key=True)
 
 
 class User(Base, IdMixin):

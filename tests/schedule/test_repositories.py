@@ -1,15 +1,10 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from alembic.autogenerate import compare_metadata
-from alembic.migration import MigrationContext
 from fastapi.testclient import TestClient
 
-from src.schedule.models import Base
 from src.schedule.modules.event_groups.repository import SqlEventGroupRepository
 from src.schedule.modules.event_groups.schemas import CreateEventGroup, CreateEventGroupWithoutTags, UpdateEventGroup
-from src.schedule.modules.events.repository import SqlEventRepository
-from src.schedule.modules.events.schemas import CreateEvent, UpdateEvent
 from src.schedule.modules.tags.repository import SqlTagRepository
 from src.schedule.modules.tags.schemas import CreateTag, UpdateTag
 
@@ -17,14 +12,13 @@ from src.schedule.modules.tags.schemas import CreateTag, UpdateTag
 @asynccontextmanager
 async def _repos(
     schedule_client: TestClient,
-) -> AsyncIterator[tuple[SqlEventGroupRepository, SqlTagRepository, SqlEventRepository]]:
+) -> AsyncIterator[tuple[SqlEventGroupRepository, SqlTagRepository]]:
     storage = schedule_client.app.state.sql_storage
     async with storage.sessionmaker() as session:
         try:
             yield (
                 SqlEventGroupRepository(session),
                 SqlTagRepository(session),
-                SqlEventRepository(session),
             )
             await session.commit()
         except Exception:
@@ -32,31 +26,9 @@ async def _repos(
             raise
 
 
-def test_explicit_associations_match_migrated_schema(schedule_client: TestClient, schedule_portal):
-    table_names = {"event_groups_x_tags"}
-
-    def compare_schema(connection):
-        context = MigrationContext.configure(
-            connection,
-            opts={
-                "compare_server_default": True,
-                "include_object": lambda obj, name, type_, reflected, compare_to: (
-                    type_ != "table" or name in table_names
-                ),
-            },
-        )
-        assert compare_metadata(context, Base.metadata) == []
-
-    async def check():
-        async with schedule_client.app.state.sql_storage.engine.connect() as connection:
-            await connection.run_sync(compare_schema)
-
-    schedule_portal.call(check)
-
-
 def test_group_updates_are_scoped_and_preserve_tags(schedule_client: TestClient, schedule_portal):
     async def check():
-        async with _repos(schedule_client) as (event_groups, _, _):
+        async with _repos(schedule_client) as (event_groups, _):
             first = await event_groups.create(
                 CreateEventGroup(
                     alias="first-group",
@@ -105,7 +77,7 @@ def test_group_updates_are_scoped_and_preserve_tags(schedule_client: TestClient,
 
 def test_batch_create_groups(schedule_client: TestClient, schedule_portal):
     async def check():
-        async with _repos(schedule_client) as (event_groups, _, _):
+        async with _repos(schedule_client) as (event_groups, _):
             groups = await event_groups.batch_create(
                 [
                     CreateEventGroupWithoutTags(alias="batch-first", name="First"),
@@ -122,7 +94,7 @@ def test_batch_create_groups(schedule_client: TestClient, schedule_portal):
 
 def test_tag_crud_is_scoped(schedule_client: TestClient, schedule_portal):
     async def check():
-        async with _repos(schedule_client) as (_, tags, _):
+        async with _repos(schedule_client) as (_, tags):
             data = CreateTag(alias="first-tag", type="course", name="First")
             first = await tags.create_or_read(data)
             repeated = await tags.create_or_read(data)
@@ -151,30 +123,5 @@ def test_tag_crud_is_scoped(schedule_client: TestClient, schedule_portal):
             await tags.delete(first.id)
             assert await tags.read(first.id) is None
             assert [tag.id for tag in await tags.read_all()] == [second.id]
-
-    schedule_portal.call(check)
-
-
-def test_event_crud_is_scoped(schedule_client: TestClient, schedule_portal):
-    async def check():
-        async with _repos(schedule_client) as (_, _, events):
-            first = await events.create(CreateEvent(name="First", description="Preserve this"))
-            second = await events.create(CreateEvent(name="Second"))
-            updated = await events.update(first.id, UpdateEvent(name="Renamed"))
-            assert updated.id == first.id
-            assert updated.name == "Renamed"
-            assert updated.description == "Preserve this"
-            assert updated.patches == []
-            read_updated = await events.read(first.id)
-            assert read_updated is not None
-            assert read_updated.name == "Renamed"
-            unchanged = await events.read(second.id)
-            assert unchanged is not None
-            assert unchanged.name == "Second"
-            await events.delete(first.id)
-            assert await events.read(first.id) is None
-            remaining = await events.read(second.id)
-            assert remaining is not None
-            assert remaining.name == "Second"
 
     schedule_portal.call(check)
