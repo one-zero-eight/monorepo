@@ -9,8 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from starlette.responses import JSONResponse
 
 from src.schedule.config import settings
-from src.schedule.db import EventGroupRepoDep
-from src.schedule.dependencies import VerifyParserDep
+from src.schedule.dependencies import EventGroupRepoDep, VerifyParserDep
 from src.schedule.exceptions import (
     EventGroupNotFoundException,
     EventGroupWithMissingPath,

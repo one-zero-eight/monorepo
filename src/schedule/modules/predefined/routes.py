@@ -1,8 +1,7 @@
 from fastapi import APIRouter
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 
-from src.schedule.db import EventGroupRepoDep
-from src.schedule.dependencies import VerifyParserOrAdminDep
+from src.schedule.dependencies import EventGroupRepoDep, VerifyParserOrAdminDep
 from src.schedule.exceptions import ForbiddenException, IncorrectCredentialsException
 from src.schedule.modules.predefined.repository import predefined_repository
 from src.schedule.modules.predefined.storage import JsonPredefinedUsers

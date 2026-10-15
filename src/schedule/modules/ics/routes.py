@@ -11,8 +11,7 @@ from starlette.responses import FileResponse, Response, StreamingResponse
 
 from src.logging_ import logger
 from src.schedule.config import settings
-from src.schedule.db import EventGroupRepoDep, UserRepoDep
-from src.schedule.dependencies import CurrentUserIdDep
+from src.schedule.dependencies import CurrentUserIdDep, EventGroupRepoDep, UserRepoDep
 from src.schedule.exceptions import EventGroupNotFoundException, ForbiddenException, ObjectNotFound
 from src.schedule.modules.ics.utils import (
     generate_ics_from_url,

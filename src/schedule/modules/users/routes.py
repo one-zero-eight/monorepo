@@ -3,8 +3,7 @@ from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 
-from src.schedule.db import EventGroupRepoDep, UserRepoDep
-from src.schedule.dependencies import CurrentUserIdDep
+from src.schedule.dependencies import CurrentUserIdDep, EventGroupRepoDep, UserRepoDep
 from src.schedule.exceptions import EventGroupNotFoundException, IncorrectCredentialsException, ObjectNotFound
 from src.schedule.modules.predefined.repository import predefined_repository
 from src.schedule.modules.users.linked import LinkedCalendarCreate, LinkedCalendarUpdate, LinkedCalendarView

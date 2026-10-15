@@ -5,8 +5,7 @@ import icalendar
 from fastapi import APIRouter
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 
-from src.schedule.db import EventGroupRepoDep
-from src.schedule.dependencies import VerifyParserDep
+from src.schedule.dependencies import EventGroupRepoDep, VerifyParserDep
 from src.schedule.exceptions import IncorrectCredentialsException
 from src.schedule.modules.event_groups.repository import SqlEventGroupRepository
 from src.schedule.modules.event_groups.schemas import CreateEventGroup

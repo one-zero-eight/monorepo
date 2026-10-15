@@ -5,8 +5,7 @@ from fastapi import APIRouter, Body
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 from pydantic import BaseModel
 
-from src.schedule.db import TagRepoDep
-from src.schedule.dependencies import VerifyParserDep
+from src.schedule.dependencies import TagRepoDep, VerifyParserDep
 from src.schedule.exceptions import IncorrectCredentialsException
 from src.schedule.modules.tags.schemas import CreateTag, ViewTag
 
