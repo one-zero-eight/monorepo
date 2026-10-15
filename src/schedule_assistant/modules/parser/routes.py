@@ -1,3 +1,5 @@
+from typing import Annotated
+
 import yaml
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import Response
@@ -47,7 +49,7 @@ async def parse_location_string_route(
 
 @router.post("/parse-core-courses")
 async def parse_core_courses_route(
-    _user_and_token: VerifyTokenDep, config_yaml: str = Body(media_type="text/yaml")
+    _user_and_token: VerifyTokenDep, config_yaml: Annotated[str, Body(media_type="text/yaml")]
 ) -> Response:
     try:
         payload = yaml.safe_load(config_yaml) or {}
@@ -77,7 +79,7 @@ async def parse_core_courses_route(
 
 @router.post("/parse-electives")
 async def parse_electives_route(
-    _user_and_token: VerifyTokenDep, config_yaml: str = Body(media_type="text/yaml")
+    _user_and_token: VerifyTokenDep, config_yaml: Annotated[str, Body(media_type="text/yaml")]
 ) -> Response:
     try:
         payload = yaml.safe_load(config_yaml) or {}

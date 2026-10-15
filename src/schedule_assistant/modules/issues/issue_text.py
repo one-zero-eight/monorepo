@@ -102,8 +102,7 @@ def format_room_issue_text(issue: RoomIssue) -> str:
 
 def format_teacher_issue_text(issue: TeacherIssue) -> str:
     when_parts: set[str] = set()
-    for meeting in issue.teaching_meetings + issue.studying_meetings:
-        when_parts.add(format_meeting_when(meeting))
+    when_parts.update(format_meeting_when(meeting) for meeting in issue.teaching_meetings + issue.studying_meetings)
 
     when = next(iter(when_parts)) if len(when_parts) == 1 else "; ".join(sorted(when_parts))
     parts: list[str] = []

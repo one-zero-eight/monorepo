@@ -1,12 +1,11 @@
 """
 Lists of bookings for rooms.
 """
-# ruff: noqa: B008
 
 __all__ = ["router"]
 
 import datetime as dtm
-from typing import cast
+from typing import Annotated, cast
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query
@@ -61,15 +60,15 @@ router = APIRouter(
 )
 async def bookings(
     auth: VerifiedOrApiKeyDep,
-    room_id: str | None = Query(None, title="ID for getting single room bookings"),
-    room_ids: list[str] | None = Query(None, title="IDs for multiple rooms bookings"),
-    start: dtm.datetime | None = Query(
-        None, description="Start date, if not provided, will be set to 7 days before current date"
-    ),
-    end: dtm.datetime | None = Query(
-        None, description="End date, if not provided, will be set to 14 days after current date"
-    ),
-    include_red: bool = Query(False, description="Include red-access rooms bookings when getting all"),
+    room_id: Annotated[str | None, Query(title="ID for getting single room bookings")] = None,
+    room_ids: Annotated[list[str] | None, Query(title="IDs for multiple rooms bookings")] = None,
+    start: Annotated[
+        dtm.datetime | None, Query(description="Start date, if not provided, will be set to 7 days before current date")
+    ] = None,
+    end: Annotated[
+        dtm.datetime | None, Query(description="End date, if not provided, will be set to 14 days after current date")
+    ] = None,
+    include_red: Annotated[bool, Query(description="Include red-access rooms bookings when getting all")] = False,
 ) -> list[Booking]:
     """
     Get bookings for all or for specific rooms.
@@ -110,12 +109,12 @@ async def bookings(
 @router.get("/bookings/my")
 async def my_bookings(
     user: VerifiedDep,
-    start: dtm.datetime | None = Query(
-        None, description="Start date, if not provided, will be set to 7 days before current date"
-    ),
-    end: dtm.datetime | None = Query(
-        None, description="End date, if not provided, will be set to 14 days after current date"
-    ),
+    start: Annotated[
+        dtm.datetime | None, Query(description="Start date, if not provided, will be set to 7 days before current date")
+    ] = None,
+    end: Annotated[
+        dtm.datetime | None, Query(description="End date, if not provided, will be set to 14 days after current date")
+    ] = None,
 ) -> list[Booking]:
     start, end = _default_date_range(start, end)
     if start >= end:
@@ -372,12 +371,12 @@ async def delete_booking(user: VerifiedDep, outlook_booking_id: str):
 async def get_user_bookings(
     user_id: str,
     _: ApiKeyDep,
-    start: dtm.datetime | None = Query(
-        None, description="Start date, if not provided, will be set to 7 days before current date"
-    ),
-    end: dtm.datetime | None = Query(
-        None, description="End date, if not provided, will be set to 14 days after current date"
-    ),
+    start: Annotated[
+        dtm.datetime | None, Query(description="Start date, if not provided, will be set to 7 days before current date")
+    ] = None,
+    end: Annotated[
+        dtm.datetime | None, Query(description="End date, if not provided, will be set to 14 days after current date")
+    ] = None,
 ) -> list[Booking]:
     start, end = _default_date_range(start, end)
     if start >= end:

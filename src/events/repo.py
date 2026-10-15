@@ -26,8 +26,12 @@ async def list_accessible_drafts(creator_id: str, club_ids: list[str]) -> list[E
     """Drafts the user created, co-hosts, or has a pending invitation for."""
     clauses: list[dict] = [{"creator_id": creator_id}]
     if club_ids:
-        clauses.append({"invitations": {"$in": club_ids}})
-        clauses.append({"draft.data.hosts": {"$elemMatch": {"type": HostType.CLUB, "club_id": {"$in": club_ids}}}})
+        clauses.extend(
+            (
+                {"invitations": {"$in": club_ids}},
+                {"draft.data.hosts": {"$elemMatch": {"type": HostType.CLUB, "club_id": {"$in": club_ids}}}},
+            )
+        )
     return await Event.find({"$or": clauses}).to_list()
 
 

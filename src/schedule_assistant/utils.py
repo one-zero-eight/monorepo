@@ -7,7 +7,6 @@ https://github.com/one-zero-eight/schedule-builder-backend/blob/main/src/parsers
 __all__ = [
     "TIMEZONE",
     "WEEKDAYS",
-    "WEEKDAYS",
     "nearest_weekday",
     "prettify_string",
     # "get_color",

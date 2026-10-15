@@ -36,10 +36,11 @@ async def lifespan(app: FastAPI):
     app.state.minio_store = minio_store
     photos_repo.post_init(minio_store)
 
-    yield
-
-    await inh_accounts.aclose()
-    await beanie_store.close()
+    try:
+        yield
+    finally:
+        await inh_accounts.aclose()
+        await beanie_store.close()
 
 
 app = FastAPI(

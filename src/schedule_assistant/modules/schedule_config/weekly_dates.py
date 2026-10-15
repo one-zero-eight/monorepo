@@ -27,7 +27,7 @@ def active_weekly_dates(
     alternation: WeeklyAlternation | None = None,
 ) -> list[dtm.date]:
     """Inclusive audience window, with phase extending both before and after the anchor."""
-    dates = meeting_dates_in_window(window, weekday.index)
+    dates = meeting_dates_in_window(window, weekday.day_index)
     if alternation is None:
         return dates
     anchor = week_start_for_date(alternation.anchor_week, starting_day)

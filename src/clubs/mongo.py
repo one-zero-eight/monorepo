@@ -19,7 +19,7 @@ from beanie import Document
 from pydantic import Field
 from pymongo import IndexModel
 
-from src.common_beanie import BeanieDocumentMixin
+from src.common_beanie import BeanieDocumentMixin, BeanieSettings
 from src.common_pydantic import BaseSchema
 
 
@@ -82,7 +82,7 @@ class ClubSchema(BaseSchema):
 
 
 class Club(ClubSchema, BeanieDocumentMixin, Document):
-    class Settings(BeanieDocumentMixin.Settings):
+    class Settings(BeanieSettings):
         indexes: ClassVar = [IndexModel("slug", unique=True)]
 
 
@@ -99,7 +99,7 @@ class UserSchema(BaseSchema):
 
 
 class User(UserSchema, BeanieDocumentMixin, Document):
-    class Settings(BeanieDocumentMixin.Settings):
+    class Settings(BeanieSettings):
         indexes: ClassVar = [IndexModel("innohassle_id", unique=True)]
 
 

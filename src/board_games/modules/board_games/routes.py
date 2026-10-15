@@ -1,4 +1,5 @@
 from io import BytesIO
+from typing import Annotated
 
 import filetype
 from anyio import to_thread
@@ -160,7 +161,7 @@ async def get_board_games_reservations(id: PydanticObjectId, _: BOARD_GAMES_ADMI
 
 @router.get("/admin/reservations")
 async def get_reservations(
-    _: BOARD_GAMES_ADMIN_AUTH, how: str = Query("current", pattern="^(current|all)$")
+    _: BOARD_GAMES_ADMIN_AUTH, how: Annotated[str, Query(pattern="^(current|all)$")] = "current"
 ) -> list[ReservationOut]:
     if how == "current":
         reservations = await board_games_repo.read_current_reservations()
@@ -215,7 +216,7 @@ async def get_board_game_photo(id: PydanticObjectId) -> RedirectResponse:
 
 @router.get("/users/me/reservations")
 async def get_users_reservations(
-    current_user: INH_TOKEN_AUTH, how: str = Query("current", pattern="^(current|all)$")
+    current_user: INH_TOKEN_AUTH, how: Annotated[str, Query(pattern="^(current|all)$")] = "current"
 ) -> list[ReservationOut]:
     if how == "current":
         reservations = await board_games_repo.read_user_current_reservations(current_user.innohassle_id)

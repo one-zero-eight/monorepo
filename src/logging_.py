@@ -146,7 +146,6 @@ async def run_endpoint_function(*, dependant: Dependant, values: dict[str, Any],
         exc_info=None,
         func=func_name,
     )
-    record.relativePath = os.path.relpath(record.pathname)
     logger.handle(record)
     return r
 

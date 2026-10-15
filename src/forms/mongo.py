@@ -11,7 +11,7 @@ from beanie import Document
 from pydantic import Field
 from pymongo import IndexModel
 
-from src.common_beanie import BeanieDocumentMixin
+from src.common_beanie import BeanieDocumentMixin, BeanieSettings
 from src.common_pydantic import BaseSchema
 
 
@@ -25,7 +25,7 @@ class LinkSchema(BaseSchema):
 class Link(LinkSchema, BeanieDocumentMixin, Document):
     created_at: dtm.datetime = Field(default_factory=lambda: dtm.datetime.now(tz=dtm.UTC))
 
-    class Settings(BeanieDocumentMixin.Settings):
+    class Settings(BeanieSettings):
         indexes: ClassVar = [
             IndexModel("slug", unique=True),
             IndexModel("owner_innohassle_id"),

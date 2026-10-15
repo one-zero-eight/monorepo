@@ -28,10 +28,11 @@ async def lifespan(app: FastAPI):
     beanie_store = await setup_beanie(settings.mongo.uri, "forms", document_models)
     app.state.beanie_store = beanie_store
 
-    yield
-
-    await inh_accounts.aclose()
-    await beanie_store.close()
+    try:
+        yield
+    finally:
+        await inh_accounts.aclose()
+        await beanie_store.close()
 
 
 app = FastAPI(

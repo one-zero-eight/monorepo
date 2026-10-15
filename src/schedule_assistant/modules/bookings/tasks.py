@@ -1,7 +1,7 @@
 import hashlib
 import json
 import uuid
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Any
 
@@ -44,7 +44,7 @@ def payload_key(payload: dict[str, Any]) -> str:
 
 
 @contextmanager
-def task_lock(task_id: str) -> Iterator[bool]:
+def task_lock(task_id: str) -> Generator[bool]:
     """A process death releases the lock; recovery only reads Exchange, never dispatches."""
     lock_id = int.from_bytes(hashlib.sha256(task_id.encode()).digest()[:8], signed=True)
     with _session_factory()() as session, session.begin():

@@ -1474,7 +1474,7 @@ def solve_schedule(
     if not meetings:
         return _empty_result("no meetings to schedule", slots_count=num_days * slots_per_day)
 
-    weekend_day_indices = frozenset(i for i, d in enumerate(days) if Weekday(d).index >= 5)
+    weekend_day_indices = frozenset(i for i, d in enumerate(days) if Weekday(d).day_index >= 5)
     late_cutoff = dtm.time(18, 0)
     late_slot_indices = frozenset(i for i, slot in enumerate(cfg.term.time_slots) if slot.end_time > late_cutoff)
 
@@ -1611,7 +1611,7 @@ def solve_schedule(
                     audience=list(audience),
                     weekly_pattern=sorted(
                         slots,
-                        key=lambda slot: (Weekday(slot.weekday).index, slot.start_time),
+                        key=lambda slot: (Weekday(slot.weekday).day_index, slot.start_time),
                     ),
                 )
                 for audience, slots in instances_map.items()

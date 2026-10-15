@@ -79,11 +79,12 @@ settings: MyServiceSettings = require_not_none(
 
 ### `src/my_service/app.py`
 
-Same file for every tier. Drop unused lifespan steps, imports, `StaticFiles` mount, and extra router blocks when the service does not need them. Lifespan initializes runtime clients only: never apply migrations from lifespan or worker startup; the database must be migrated before starting the API.
+Same file for every tier. Drop unused lifespan steps, imports, `StaticFiles` mount, and extra router blocks when the service does not need them. Lifespan initializes runtime clients only: never apply migrations from lifespan or worker startup; the database must be migrated before starting the API. Wrap `yield` in `try`/`finally` so teardown always runs; annotate as `AsyncGenerator[None]` (sync context managers use `Generator[...]`, not `Iterator` / `AsyncIterator`).
 
 ```python
 __all__ = ["app"]
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -105,7 +106,7 @@ from .config import settings
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     from src.inh_accounts_sdk import inh_accounts
     from src.my_service.modules.items.files_repo import files_repo
     from src.my_service.mongo import document_models
@@ -120,9 +121,10 @@ async def lifespan(app: FastAPI):
 
     files_repo.post_init(minio_store)
 
-    yield
-
-    await beanie_store.close()
+    try:
+        yield
+    finally:
+        await beanie_store.close()
 
 
 app = FastAPI(
@@ -290,9 +292,10 @@ __all__ = ["Item", "ItemSchema", "document_models"]
 
 from typing import ClassVar
 
+from beanie import Document
 from pymongo import IndexModel
 
-from src.common_beanie import BeanieDocument
+from src.common_beanie import BeanieDocumentMixin, BeanieSettings
 from src.common_pydantic import BaseSchema
 
 
@@ -301,8 +304,8 @@ class ItemSchema(BaseSchema):
     title: str
 
 
-class Item(ItemSchema, BeanieDocument):
-    class Settings(BeanieDocument.Settings):
+class Item(ItemSchema, BeanieDocumentMixin, Document):
+    class Settings(BeanieSettings):
         indexes: ClassVar = [IndexModel("slug", unique=True)]
 
 

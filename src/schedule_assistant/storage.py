@@ -1,6 +1,6 @@
 """SQLAlchemy engine and session factory (no FastAPI Depends)."""
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from functools import lru_cache
 
@@ -30,7 +30,7 @@ def get_session_factory(db_url: str | None = None) -> sessionmaker[Session]:
 
 
 @contextmanager
-def open_session(db_url: str | None = None) -> Iterator[Session]:
+def open_session(db_url: str | None = None) -> Generator[Session]:
     """Open a session outside HTTP (tests, scripts, background tasks). Caller commits."""
     session = get_session_factory(db_url)()
     try:

@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi.testclient import TestClient
@@ -12,7 +12,7 @@ from src.schedule.modules.tags.schemas import CreateTag, UpdateTag
 @asynccontextmanager
 async def _repos(
     schedule_client: TestClient,
-) -> AsyncIterator[tuple[SqlEventGroupRepository, SqlTagRepository]]:
+) -> AsyncGenerator[tuple[SqlEventGroupRepository, SqlTagRepository]]:
     storage = schedule_client.app.state.sql_storage
     async with storage.sessionmaker() as session:
         try:

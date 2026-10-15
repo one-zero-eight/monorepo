@@ -18,7 +18,7 @@ from beanie import Document
 from pydantic import Field
 from pymongo import IndexModel
 
-from src.common_beanie import BeanieDocumentMixin
+from src.common_beanie import BeanieDocumentMixin, BeanieSettings
 from src.common_pydantic import BaseSchema
 
 
@@ -35,7 +35,7 @@ class UserSchema(BaseSchema):
 
 
 class User(UserSchema, BeanieDocumentMixin, Document):
-    class Settings(BeanieDocumentMixin.Settings):
+    class Settings(BeanieSettings):
         indexes: ClassVar = [IndexModel("innohassle_id", unique=True)]
 
 
@@ -51,7 +51,7 @@ class BoardGameSchema(BaseSchema):
 
 
 class BoardGame(BoardGameSchema, BeanieDocumentMixin, Document):
-    class Settings(BeanieDocumentMixin.Settings):
+    class Settings(BeanieSettings):
         indexes: ClassVar = [IndexModel("title", unique=True)]
 
 
@@ -85,7 +85,7 @@ class ReservationSchema(BaseSchema):
 
 
 class Reservation(ReservationSchema, BeanieDocumentMixin, Document):
-    class Settings(BeanieDocumentMixin.Settings):
+    class Settings(BeanieSettings):
         indexes: ClassVar = [
             IndexModel("board_game_id"),
             IndexModel("user_innohassle_id"),

@@ -34,12 +34,12 @@ def test_cache_entry_stores_bookings_start_end_timestamp():
 
 def test_cache_accepts_ttl_as_int_seconds():
     cache = CacheForBookings(ttl=60)
-    assert cache.ttl_sec == 60.0
+    assert cache.ttl_sec == pytest.approx(60.0)
 
 
 def test_cache_accepts_ttl_as_timedelta():
     cache = CacheForBookings(ttl=dtm.timedelta(minutes=5))
-    assert cache.ttl_sec == 300.0
+    assert cache.ttl_sec == pytest.approx(300.0)
 
 
 @pytest.mark.anyio

@@ -12,7 +12,8 @@ class Weekday(StrEnum):
     SUNDAY = "SUNDAY"
 
     @property
-    def index(self) -> int:
+    def day_index(self) -> int:
+        """0=Monday … 6=Sunday. Named to avoid shadowing ``str.index`` on ``StrEnum``."""
         return list(Weekday).index(self)
 
 
@@ -20,7 +21,7 @@ WEEKDAYS = [day.value for day in Weekday]
 
 
 def week_start_for_date(value: dtm.date, starting_day: Weekday = Weekday.MONDAY) -> dtm.date:
-    return value - dtm.timedelta(days=(value.weekday() - starting_day.index) % 7)
+    return value - dtm.timedelta(days=(value.weekday() - starting_day.day_index) % 7)
 
 
 def weekday_index(name: str) -> int:

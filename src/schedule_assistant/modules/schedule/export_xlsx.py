@@ -856,7 +856,7 @@ def _compact_meeting_label(meeting: ExportMeeting, slot: TermTimeSlot) -> str:
         time_suffix += f"\n{meeting.notes}"
     name = (meeting.course_short_name or meeting.course).strip() or "—"
     tag = meeting.tag.strip().lower()
-    if tag and tag not in name.casefold() and tag not in {"class"}:
+    if tag and tag not in name.casefold() and tag != "class":
         name = f"{name} ({tag})" if "(" not in name else name
     room = meeting.room.strip()
     main = f"{name} {room}".strip() if room else name
@@ -988,7 +988,7 @@ def _write_calendar_sheet(
         _apply_fill(week_cell, WEEK_HEADER_FILL, TITLE_FONT, CENTER)
         for i, day in enumerate(days):
             day_date = week_start_for_date(week_start, term.starting_day) + dtm.timedelta(
-                days=(day.index - term.starting_day.index) % 7
+                days=(day.day_index - term.starting_day.day_index) % 7
             )
             label = day_date.strftime("%B ") + str(day_date.day)
             cell = ws.cell(row, i + 2, label)
@@ -1000,7 +1000,7 @@ def _write_calendar_sheet(
             _apply_fill(time_cell, WHITE_FILL, NORMAL_FONT, CENTER)
             for i, day in enumerate(days):
                 day_date = week_start_for_date(week_start, term.starting_day) + dtm.timedelta(
-                    days=(day.index - term.starting_day.index) % 7
+                    days=(day.day_index - term.starting_day.day_index) % 7
                 )
                 cell_meetings = by_key.get((day_date, slot.start_time), [])
                 unique: dict[str, ExportMeeting] = {}

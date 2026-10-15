@@ -41,10 +41,11 @@ async def lifespan(app: FastAPI):
 
     setup_predefined_data_from_file()
 
-    yield
-
-    await storage.close_connection()
-    await inh_accounts.aclose()
+    try:
+        yield
+    finally:
+        await storage.close_connection()
+        await inh_accounts.aclose()
 
 
 app = FastAPI(

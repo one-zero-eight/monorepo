@@ -1,10 +1,10 @@
-# ruff: noqa: BLE001, B008
+# ruff: noqa: BLE001
 import asyncio
 import datetime as dtm
 import json
 import time as tm
 from collections.abc import AsyncIterator
-from typing import cast
+from typing import Annotated, cast
 
 from exchangelib.recurrence import Recurrence
 from fastapi import APIRouter, HTTPException, Query
@@ -122,8 +122,8 @@ async def _create_bmp_booking(request: CreateBookingRequest) -> Booking:
 @router.get("/auto-bookings/")
 async def list_auto_bookings(
     _: ApiKeyDep,
-    start: dtm.datetime | None = Query(None),
-    end: dtm.datetime | None = Query(None),
+    start: Annotated[dtm.datetime | None, Query()] = None,
+    end: Annotated[dtm.datetime | None, Query()] = None,
 ) -> list[Booking]:
     start, end = _default_date_range(start, end)
     if start >= end:

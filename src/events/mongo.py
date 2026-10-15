@@ -23,7 +23,7 @@ from enum import StrEnum
 from beanie import Document
 from pydantic import Field, model_validator
 
-from src.common_beanie import BeanieDocumentMixin
+from src.common_beanie import BeanieDocumentMixin, BeanieSettings
 from src.common_pydantic import BaseSchema
 
 
@@ -190,6 +190,9 @@ class Event(BeanieDocumentMixin, Document):
     draft: Draft
     submission: Submission | None = None
     public: PublicEvent | None = None
+
+    class Settings(BeanieSettings):
+        pass
 
 
 document_models = [Event]

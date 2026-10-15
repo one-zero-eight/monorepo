@@ -1,5 +1,6 @@
 from io import BytesIO
 
+import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
@@ -47,7 +48,7 @@ def test_create_draft_starts_without_hosts(events_client: TestClient, club_leade
     assert draft["invitations"] == []
     assert draft["can_edit"] is True
     assert set(draft["data"]["locales"]) == {"en", "ru"}
-    assert draft["data"]["duration_hours"] == 2.0
+    assert draft["data"]["duration_hours"] == pytest.approx(2.0)
     assert draft["data"]["enrollment"] == {"type": "internal", "url": None, "capacity": None}
 
 
@@ -182,7 +183,7 @@ def test_patch_draft_data(events_client: TestClient, club_leader_headers: dict[s
     assert response.status_code == 200
     draft = response.json()
     assert_resolved_location(draft["data"]["location"], "109", on_map=True)
-    assert draft["data"]["duration_hours"] == 3.5
+    assert draft["data"]["duration_hours"] == pytest.approx(3.5)
     assert draft["revision"] != created["revision"]
 
 

@@ -4,6 +4,8 @@ Lists of scenes for maps.
 
 __all__ = ["router"]
 
+from typing import Annotated
+
 from fastapi import APIRouter, Query
 from fastapi.responses import FileResponse
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
@@ -24,7 +26,7 @@ def scenes() -> list[Scene]:
 
 
 @router.get("/scenes/areas/search")
-def search_areas(query: str = Query(..., min_length=1)) -> list[SearchResult]:
+def search_areas(query: Annotated[str, Query(min_length=1)]) -> list[SearchResult]:
     result = maps_repo.search_areas(query=query)
     logger.info(f"Searching areas for `{query}`, Results: {result}")
     return result

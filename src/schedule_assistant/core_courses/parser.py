@@ -274,8 +274,7 @@ class CoreCoursesParser:
 
                 excel_coords = f"{get_column_letter(j + 1)}{i + 1}"
                 df.iloc[i, j] = f"{df.iloc[i, j]}${excel_coords}"
-                for x in range(i, i + 3):
-                    used_cells.add((x, j))
+                used_cells.update((x, j) for x in range(i, i + 3))
 
     def merge_cells(
         self, df: pd.DataFrame, xlsx: io.BytesIO, target_sheet_name: str

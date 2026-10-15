@@ -57,7 +57,7 @@ def test_locate_ics_by_path_rejects_non_ics_extension(tmp_path, monkeypatch: pyt
     from src.schedule.config import settings
 
     monkeypatch.setattr(settings, "predefined_dir", tmp_path)
-    with pytest.raises(ValueError, match="must point to an .ics file"):
+    with pytest.raises(ValueError, match=r"must point to an \.ics file"):
         locate_ics_by_path("notes.txt")
 
 

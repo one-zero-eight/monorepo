@@ -81,7 +81,7 @@ def parse_one_line_in_value(
     google_sheet_name: str,
     a1: str | None = None,
 ) -> ElectiveEvent:
-    """
+    r"""
     Process one line in cell value (was splitted by \\n before)
 
     - GAI (lec) online

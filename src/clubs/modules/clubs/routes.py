@@ -401,6 +401,7 @@ async def get_description_image(image_id: str) -> RedirectResponse:
 async def upload_description_image(
     _: CLUB_LEADER_OR_ADMIN,
     image_file: UploadFile,
+    id: PydanticObjectId,
 ) -> DescriptionImageUploadResponse:
     """Upload an image for use in club description."""
     bytes_ = await image_file.read()

@@ -12,6 +12,7 @@ import respx
 from src.inh_accounts_sdk import InNoHassleAccounts
 
 _TEST_API_JWT = "token"
+_INH_ACCOUNTS_JWKS_FALLBACK_PATH = Path(__file__).resolve().parents[1] / "src" / "inh_accounts_jwks.json"
 
 
 def _make_unsigned_jwt(*, exp: int | None) -> str:
@@ -123,8 +124,7 @@ async def test_update_key_set_uses_committed_fallback_when_fetch_fails():
     with respx.mock(assert_all_called=True) as respx_mock:
         respx_mock.get("https://example.test/.well-known/jwks.json").mock(side_effect=httpx.ConnectError("offline"))
         await accounts.update_key_set()
-    fallback_path = Path(__file__).resolve().parents[1] / "src" / "inh_accounts_jwks.json"
-    assert accounts.key_set == json.loads(fallback_path.read_text(encoding="utf-8"))
+    assert accounts.key_set == json.loads(_INH_ACCOUNTS_JWKS_FALLBACK_PATH.read_text(encoding="utf-8"))
     await accounts.aclose()
 
 

@@ -313,7 +313,7 @@ def _iter_flat_meetings(schedule: CoursesConfig, cfg: ScheduleConfig) -> Iterato
                             component_tag=comp.tag,
                             groups=tuple(series.audience),
                             day=day,
-                            day_index=rank.get(day, Weekday(day).index),
+                            day_index=rank.get(day, Weekday(day).day_index),
                             start_time=slot.start_time,
                             room=slot.room or "",
                             instructors=_normalize_instructors(slot.instructor),
@@ -668,7 +668,7 @@ def calculate_schedule_metrics(result: SolveResult, cfg: ScheduleConfig) -> Sche
             saturday_event_count += 1
         for g in e.groups:
             per_group_day_load[g][e.day] += 1
-            if Weekday(e.day).index in WEEKDAYS_MON_SAT:
+            if Weekday(e.day).day_index in WEEKDAYS_MON_SAT:
                 per_group_day_subjects[g][e.day].add(e.course)
         for inst in e.instructors:
             per_inst_day_load[inst][e.day] += 1

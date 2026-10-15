@@ -20,8 +20,6 @@ STREAM_TIMEOUT = httpx.Timeout(connect=30.0, read=3600.0, write=120.0, pool=30.0
 class BookingDTO(BookingEvidence):
     """Booking description"""
 
-    room_id: str
-    "ID of the room"
     event_id: str | None = None
     "ID of the event"
     title: str

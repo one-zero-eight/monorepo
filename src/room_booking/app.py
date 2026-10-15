@@ -92,17 +92,18 @@ async def lifespan(_app: FastAPI):
 
         exchange_subscription_task = asyncio.create_task(print_exchanglelib_status_and_start_subscription())
 
-    yield
-
-    if settings.environment != Environment.TESTING:
-        if exchange_subscription_task is not None:
-            exchange_subscription_task.cancel()
-            try:
-                await exchange_subscription_task
-            except asyncio.CancelledError:
-                pass
-        await bmp_repository.stop_inbox_poller()
-        await exchange_booking_repository.stop_inbox_poller()
+    try:
+        yield
+    finally:
+        if settings.environment != Environment.TESTING:
+            if exchange_subscription_task is not None:
+                exchange_subscription_task.cancel()
+                try:
+                    await exchange_subscription_task
+                except asyncio.CancelledError:
+                    pass
+            await bmp_repository.stop_inbox_poller()
+            await exchange_booking_repository.stop_inbox_poller()
 
 
 app = FastAPI(

@@ -16,13 +16,16 @@ class Kind(StrEnum):
     OCCURRENCE = "occurrence"
     WEEKLY_PATTERN = "weekly_pattern"
 
+
 # Good — enum member inside Literal (Pydantic discriminator).
 class OccurrencePlacement(BaseModel):
     kind: Literal[Kind.OCCURRENCE] = Kind.OCCURRENCE
 
+
 # Avoid — string Literal when an enum already exists / should exist.
 class OccurrencePlacement(BaseModel):
     kind: Literal["occurrence"] = "occurrence"
+
 
 # Bad — full enum type is not a valid Pydantic discriminator tag.
 class OccurrencePlacement(BaseModel):
@@ -51,14 +54,28 @@ DO NOT USE response_model= in route decorator, use type hints instead:
 def get_user_repository(session: SessionDep) -> SqlUserRepository:
     return SqlUserRepository(session)
 
+
 UserRepoDep = Annotated[SqlUserRepository, Depends(get_user_repository)]
 CurrentUserIdDep = Annotated[int, Depends(get_current_user_id)]
 
+
 # route
 @router.get("/me")
-async def get_me(user_id: CurrentUserIdDep, users: UserRepoDep) -> ViewUser:
-    ...
+async def get_me(user_id: CurrentUserIdDep, users: UserRepoDep) -> ViewUser: ...
 ```
+
+**FastAPI Query/Path/Body/Header/Cookie** — always `Annotated` (FAST002). Defaults go on the parameter, not inside `Query()`:
+
+```python
+# Good
+how: Annotated[str, Query(pattern="^(current|all)$")] = "current"
+start: Annotated[dtm.datetime | None, Query(description="...")] = None
+
+# Bad
+how: str = Query("current", pattern="^(current|all)$")
+```
+
+Every `{path_param}` in the route path must appear in the handler signature (FAST003).
 
 ### Models vs schemas
 
@@ -86,7 +103,9 @@ class User(Base, IdMixin):
     email: Mapped[str] = mapped_column(unique=True)
     name: Mapped[str | None] = mapped_column()
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
     favorites: Mapped[list[Favorite]] = relationship(...)
 ```
 
@@ -103,7 +122,7 @@ insert(...).on_conflict_do_update(index_elements=[EventGroup.alias], ...)
 
 ```python
 # dependencies.py
-def get_session(request: Request) -> Generator[Session]:  # or AsyncIterator[AsyncSession]
+def get_session(request: Request) -> Generator[Session]:  # or AsyncGenerator[AsyncSession]
     session = request.app.state.sessionmaker()
     try:
         yield session
@@ -114,17 +133,20 @@ def get_session(request: Request) -> Generator[Session]:  # or AsyncIterator[Asy
     finally:
         session.close()
 
+
 SessionDep = Annotated[Session, Depends(get_session)]
+
 
 def get_schedule_config_repository(session: SessionDep) -> ScheduleConfigRepository:
     return ScheduleConfigRepository(session)
 
+
 ScheduleConfigRepoDep = Annotated[ScheduleConfigRepository, Depends(get_schedule_config_repository)]
+
 
 # route
 @router.get("/")
-async def get_config(config_repo: ScheduleConfigRepoDep) -> ScheduleConfig:
-    ...
+async def get_config(config_repo: ScheduleConfigRepoDep) -> ScheduleConfig: ...
 ```
 
 Repos do not commit; the request-scoped session commits once at the end. Outside HTTP (tests, scripts, background tasks), open a session from `storage.open_session()` / `sessionmaker()` and pass it into the repository.
@@ -161,7 +183,7 @@ Good examples from this repository's history (a subject alone is enough for simp
 
 Follow the repository testing guidelines in [TESTING.md](TESTING.md).
 
-Run pytest from the repository root: `uv run -m pytest` for all tests, or select relevant suites (e.g. `uv run -m pytest tests/clubs/ tests/events/`). Multiple services can run in one process. Shared MongoDB fields/settings belong in the non-Document `BeanieDocumentMixin`; concrete models inherit from it and `Document` directly to avoid shared Beanie initialization state.
+Run pytest from the repository root: `uv run -m pytest` for all tests, or select relevant suites (e.g. `uv run -m pytest tests/clubs/ tests/events/`). Multiple services can run in one process. Shared MongoDB fields belong in the non-Document `BeanieDocumentMixin`; nested `Settings` inherit `BeanieSettings`; concrete models inherit `BeanieDocumentMixin, Document` directly to avoid shared Beanie initialization state.
 
 `prek` checks can modify files through fixers and formatters. Review the existing diff before running them and the resulting diff afterward; preserve unrelated changes.
 
@@ -174,3 +196,6 @@ When writing tests:
 - keep tests independent and parallel-safe
 - do not write tests for migrations
 - run the relevant pytest command before claiming the change is complete
+- compare floats with `pytest.approx(...)`, not `==` (RUF069)
+- `pytest.raises(..., match=...)`: use a raw string when the pattern has `.` or other regex metacharacters (RUF043)
+- do not call blocking `Path.resolve()` / `os.path.*` after `await` in async tests (ASYNC240); build paths at module level or before the first await

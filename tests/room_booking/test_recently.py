@@ -28,12 +28,12 @@ def _booking(
 
 def test_recently_accepts_ttl_as_int():
     rb = RecentBookings(ttl_sec=60)
-    assert rb.ttl_sec == 60.0
+    assert rb.ttl_sec == pytest.approx(60.0)
 
 
 def test_recently_accepts_ttl_as_float():
     rb = RecentBookings(ttl_sec=300.5)
-    assert rb.ttl_sec == 300.5
+    assert rb.ttl_sec == pytest.approx(300.5)
 
 
 @pytest.mark.anyio

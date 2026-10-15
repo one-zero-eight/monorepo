@@ -1,4 +1,4 @@
-__all__ = ["BeanieDocumentMixin", "BeanieStore", "setup_beanie"]
+__all__ = ["BeanieDocumentMixin", "BeanieSettings", "BeanieStore", "setup_beanie"]
 
 import os
 from collections.abc import Mapping, Sequence
@@ -12,10 +12,18 @@ from pymongo.errors import ConnectionFailure
 from src.logging_ import logger
 
 
-class BeanieDocumentMixin(BaseModel):
-    """Shared fields/settings without Beanie's mutable Document class state.
+class BeanieSettings:
+    """Shared Beanie document ``Settings`` defaults. Inherit this in nested ``Settings`` classes."""
 
-    Concrete models must inherit from ``BeanieDocumentMixin, Document``.
+    keep_nulls = False
+    max_nesting_depth = 1
+
+
+class BeanieDocumentMixin(BaseModel):
+    """Shared fields without Beanie's mutable Document class state.
+
+    Concrete models must inherit from ``BeanieDocumentMixin, Document`` and declare
+    ``class Settings(BeanieSettings): ...`` (at least ``pass``) so ``keep_nulls`` applies.
     Beanie recursively initializes Document bases, replacing their field defaults
     with query expressions that would corrupt models imported afterward.
     """
@@ -32,10 +40,6 @@ class BeanieDocumentMixin(BaseModel):
             description="MongoDB document ObjectID",
             serialization_alias="id",
         )
-
-    class Settings:
-        keep_nulls = False
-        max_nesting_depth = 1
 
 
 class BeanieStore:

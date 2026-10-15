@@ -39,8 +39,8 @@ dev = [
     "pytest-socket>=0.8.1", # ~8 KiB
     "pytest-xdist>=3.8.0", # ~142 KiB
     "respx>=0.23.1", # ~87 KiB
-    "ruff>=0.16.7", # ~27.0 MiB
-    "ty>=0.0.80", # ~25.0 MiB
+    "ruff>=0.17.1", # ~27.0 MiB
+    "ty>=0.0.88", # ~25.0 MiB
     "types-pyyaml>=6.0.12.20260906", # ~65 KiB
 ]
 schedule = [

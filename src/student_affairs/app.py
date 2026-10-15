@@ -26,9 +26,11 @@ async def lifespan(app: FastAPI):
 
     await inh_accounts.update_key_set()
     app.state.httpx_client = httpx.AsyncClient(timeout=_OMNIDESK_TIMEOUT_S)
-    yield
-    await inh_accounts.aclose()
-    await app.state.httpx_client.aclose()
+    try:
+        yield
+    finally:
+        await inh_accounts.aclose()
+        await app.state.httpx_client.aclose()
 
 
 app = FastAPI(

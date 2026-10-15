@@ -1,5 +1,6 @@
 from io import BytesIO
 
+import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
@@ -33,7 +34,7 @@ def test_submit_and_get_pending(events_client: TestClient, user_headers: dict[st
     assert response["status"] == "pending"
     assert response["submission"]["moderation"]["status"] == "pending"
     assert len(response["submission"]["data"]["hosts"]) == 1
-    assert response["submission"]["data"]["duration_hours"] == 2.0
+    assert response["submission"]["data"]["duration_hours"] == pytest.approx(2.0)
     assert response["submission"]["data"]["enrollment"]["type"] == "internal"
 
     draft = events_client.get(f"/drafts/{created['id']}", headers=user_headers).json()

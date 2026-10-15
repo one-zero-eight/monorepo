@@ -15,7 +15,7 @@ from typing import ClassVar, Literal
 from beanie import Document, PydanticObjectId
 from pymongo import IndexModel
 
-from src.common_beanie import BeanieDocumentMixin
+from src.common_beanie import BeanieDocumentMixin, BeanieSettings
 from src.common_pydantic import BaseSchema
 
 type UserID = PydanticObjectId
@@ -55,7 +55,7 @@ class GoogleFileSchema(BaseSchema):
 
 
 class GoogleFile(GoogleFileSchema, BeanieDocumentMixin, Document):
-    class Settings(BeanieDocumentMixin.Settings):
+    class Settings(BeanieSettings):
         indexes: ClassVar = [
             IndexModel("slug", unique=True),
             IndexModel("file_id"),

@@ -6,7 +6,7 @@ from beanie import Document
 from pydantic import Field
 from pymongo import IndexModel
 
-from src.common_beanie import BeanieDocumentMixin
+from src.common_beanie import BeanieDocumentMixin, BeanieSettings
 from src.common_pydantic import BaseSchema
 from src.when2meet.modules.events.schemas import BookedRoom, MeetingTime, TimeRange
 
@@ -51,7 +51,7 @@ class Event(BeanieDocumentMixin, Document):
     room_booking_in_progress: bool = False
     "Internal guard preventing concurrent room bookings for one meeting"
 
-    class Settings(BeanieDocumentMixin.Settings):
+    class Settings(BeanieSettings):
         name = "events"
         indexes: ClassVar[list[Any]] = [
             IndexModel("slug", unique=True),

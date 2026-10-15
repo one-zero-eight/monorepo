@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Query
 
 from src.schedule_assistant.dependencies import ModeratorDep, ScheduleConfigRepoDep
@@ -20,7 +22,7 @@ async def get_booking_review(_moderator: ModeratorDep, config_repo: ScheduleConf
 
 @router.get("/tasks")
 async def list_booking_tasks(
-    _moderator: ModeratorDep, limit: int = Query(100, ge=1, le=100), offset: int = Query(0, ge=0)
+    _moderator: ModeratorDep, limit: Annotated[int, Query(ge=1, le=100)] = 100, offset: Annotated[int, Query(ge=0)] = 0
 ) -> list[BookingTask]:
     return service.list_tasks(limit=limit, offset=offset)
 

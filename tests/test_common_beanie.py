@@ -4,7 +4,7 @@ import pytest
 from beanie import Document, PydanticObjectId, init_beanie
 from pymongo import AsyncMongoClient
 
-from src.common_beanie import BeanieDocumentMixin
+from src.common_beanie import BeanieDocumentMixin, BeanieSettings
 from src.common_pydantic import BaseSchema
 from tests.conftest_runtime_settings import load_root_settings
 
@@ -22,6 +22,9 @@ async def test_models_defined_after_initialization_keep_defaults_and_database_is
         value: str
         optional_value: str | None = None
 
+        class Settings(BeanieSettings):
+            pass
+
     try:
         await init_beanie(database=first_database, document_models=[FirstDocument])
         first = await FirstDocument(value="first").insert()
@@ -32,11 +35,15 @@ async def test_models_defined_after_initialization_keep_defaults_and_database_is
             value: str
             optional_value: str | None = None
 
+            class Settings(BeanieSettings):
+                pass
+
         class ThirdSchema(BaseSchema):
             value: str
 
         class ThirdDocument(ThirdSchema, BeanieDocumentMixin, Document):
-            pass
+            class Settings(BeanieSettings):
+                pass
 
         await init_beanie(database=second_database, document_models=[SecondDocument, ThirdDocument])
         for model in (SecondDocument, ThirdDocument):

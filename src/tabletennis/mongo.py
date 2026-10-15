@@ -7,7 +7,7 @@ from beanie import Document
 from pydantic import Field
 from pymongo import IndexModel
 
-from src.common_beanie import BeanieDocumentMixin
+from src.common_beanie import BeanieDocumentMixin, BeanieSettings
 
 
 class Player(BeanieDocumentMixin, Document):
@@ -26,7 +26,7 @@ class Player(BeanieDocumentMixin, Document):
     placeholder: bool = False
     "A guest created by an admin for someone without an account. Merged into the real player once they register."
 
-    class Settings(BeanieDocumentMixin.Settings):
+    class Settings(BeanieSettings):
         indexes: ClassVar[list[IndexModel]] = [IndexModel("innohassle_id", unique=True)]
 
 
@@ -52,7 +52,7 @@ class Game(BeanieDocumentMixin, Document):
     "Whether this game promoted player1 to Advanced. A score correction takes the promotion back."
     player2_promoted: bool = False
 
-    class Settings(BeanieDocumentMixin.Settings):
+    class Settings(BeanieSettings):
         indexes: ClassVar[list[IndexModel]] = [IndexModel("tour_id")]
 
 
@@ -78,7 +78,7 @@ class Tournament(BeanieDocumentMixin, Document):
 
     bonus_applied: bool = Field(default=False)
 
-    class Settings(BeanieDocumentMixin.Settings):
+    class Settings(BeanieSettings):
         name = "Tournament_v2"
         indexes: ClassVar[list[IndexModel]] = [IndexModel("tour_id", unique=True)]
 

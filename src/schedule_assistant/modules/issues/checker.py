@@ -200,7 +200,7 @@ class IssueChecker:
             if not conflicting_keys:
                 continue
 
-            conflict_key = sorted(conflicting_keys)[0]
+            conflict_key = min(conflicting_keys)
             if key_field == "group":
                 issue = GroupIssue(
                     issue_type=IssueTypeEnum.GROUP,
@@ -317,7 +317,7 @@ class IssueChecker:
 
             student_issue = StudentIssue(
                 issue_type=IssueTypeEnum.STUDENT,
-                student=sorted(conflicting_students)[0],
+                student=min(conflicting_students),
                 meetings=meeting_group,
             )
             attach_issue_text(student_issue)

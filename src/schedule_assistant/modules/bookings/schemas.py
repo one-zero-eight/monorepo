@@ -153,8 +153,6 @@ class ExtraAutoBooking(BookingEvidence):
     "Stable id used to cancel this extra booking"
     label: str
     "Human-readable extra booking line"
-    room_id: str
-    "Booked room"
     start: dtm.datetime
     "Booking start"
     end: dtm.datetime
