@@ -9,6 +9,26 @@ DO NOT MAKE ridiculous fallbacks.
 DO NOT MAKE any backward compatibility shit unless requested.
 DO NOT EVER WRITE "try: import ... except", as all libraries are expected to be installed.
 DO NOT WRITE "from __future__ import annotations", as Python 3.14+ uses deferred annotations by default.
+Prefer `enum.StrEnum` for closed string sets (statuses, roles, layouts, sources) over Literal["string"]. When a discriminator needs a fixed tag, prefer `Literal[Kind.OCCURRENCE]` over bare `Literal["occurrence"]`:
+
+```python
+class Kind(StrEnum):
+    OCCURRENCE = "occurrence"
+    WEEKLY_PATTERN = "weekly_pattern"
+
+# Good — enum member inside Literal (Pydantic discriminator).
+class OccurrencePlacement(BaseModel):
+    kind: Literal[Kind.OCCURRENCE] = Kind.OCCURRENCE
+
+# Avoid — string Literal when an enum already exists / should exist.
+class OccurrencePlacement(BaseModel):
+    kind: Literal["occurrence"] = "occurrence"
+
+# Bad — full enum type is not a valid Pydantic discriminator tag.
+class OccurrencePlacement(BaseModel):
+    kind: Kind = Kind.OCCURRENCE
+```
+
 DO NOT USE response_model= in route decorator, use type hints instead:
 
     ```python
