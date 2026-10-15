@@ -9,9 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.inh_accounts_sdk import inh_accounts
-from src.schedule.modules.crud import AbstractCRUDRepository, crud_factory
 from src.schedule.modules.users.linked import LinkedCalendarCreate, LinkedCalendarUpdate, LinkedCalendarView
-from src.schedule.modules.users.schemas import CreateUser, TargetForExport, UpdateUser, ViewUser, ViewUserScheduleKey
+from src.schedule.modules.users.schemas import CreateUser, TargetForExport, ViewUser, ViewUserScheduleKey
 from src.schedule.storages.sql.models import LinkedCalendar, User, UserScheduleKeys, UserXFavoriteEventGroup
 from src.schedule.storages.sql.models.event_groups import UserXHiddenEventGroup
 from src.schedule.storages.sql.storage import SQLAlchemyStorage
@@ -26,12 +25,6 @@ _get_options = (
 def select_user_by_id(id_: int):
     return select(User).where(User.id == id_).options(*_get_options)
 
-
-CRUD: AbstractCRUDRepository[
-    CreateUser,
-    ViewUser,
-    UpdateUser,
-] = crud_factory(User, CreateUser, ViewUser, UpdateUser, get_options=_get_options)
 
 MIN_USER_ID = 100_000
 MAX_USER_ID = 999_999
@@ -66,16 +59,20 @@ class SqlUserRepository:
         async with self._create_session() as session:
             available_id = await _get_available_user_ids(session)
             user.id = available_id if isinstance(available_id, int) else available_id[0]
-            created = await CRUD.create(session, user)
-            return created
+            q = insert(User).values(**user.model_dump()).returning(User).options(*_get_options)
+            created = await session.scalar(q)
+            await session.commit()
+            return ViewUser.model_validate(created)
 
     async def read(self, user_id: int) -> ViewUser | None:
         async with self._create_session() as session:
-            return await CRUD.read(session, id=user_id)
+            user = await session.scalar(select_user_by_id(user_id))
+            return ViewUser.model_validate(user) if user is not None else None
 
     async def read_all(self) -> list[ViewUser]:
         async with self._create_session() as session:
-            return await CRUD.read_all(session)
+            users = await session.scalars(select(User).options(*_get_options))
+            return [ViewUser.model_validate(user) for user in users]
 
     async def read_mapping_by_emails(self, emails: list[str]) -> dict[str, int | None]:
         async with self._create_session() as session:

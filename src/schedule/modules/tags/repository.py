@@ -1,21 +1,14 @@
 __all__ = ["SqlTagRepository", "tag_repository"]
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.schedule.modules.crud import AbstractCRUDRepository, crud_factory
 from src.schedule.modules.ownership import OwnershipEnum, setup_ownership_method
 from src.schedule.modules.tags.schemas import CreateTag, UpdateTag, ViewTag
 from src.schedule.storages.sql import SQLAlchemyStorage
-from src.schedule.storages.sql.models import EventGroup, Tag
-
-CRUD: AbstractCRUDRepository[
-    CreateTag,
-    ViewTag,
-    UpdateTag,
-] = crud_factory(Tag, CreateTag, ViewTag, UpdateTag)
+from src.schedule.storages.sql.models import EventGroupTagAssociation, Tag, TagOwnership
 
 
 class SqlTagRepository:
@@ -30,13 +23,15 @@ class SqlTagRepository:
     # ------------------ CRUD ------------------ #
     async def create_or_read(self, tag: CreateTag) -> ViewTag:
         async with self._create_session() as session:
-            created = await CRUD.create_if_not_exists(session, tag)
+            q = insert(Tag).values(**tag.model_dump()).on_conflict_do_nothing().returning(Tag)
+            created = await session.scalar(q)
+            await session.commit()
             if created is not None:
-                return created
-            found = await CRUD.read_by(session, only_first=True, alias=tag.alias, type=tag.type)
+                return ViewTag.model_validate(created)
+            found = await session.scalar(select(Tag).where(Tag.alias == tag.alias, Tag.type == tag.type))
             if found is None:
                 raise RuntimeError(f"Tag not found after conflict: {tag.alias}")
-            return found
+            return ViewTag.model_validate(found)
 
     async def batch_create_or_read(self, tags: list[CreateTag]) -> list[ViewTag]:
         if not tags:
@@ -61,42 +56,56 @@ class SqlTagRepository:
 
     async def read(self, id: int) -> ViewTag | None:
         async with self._create_session() as session:
-            return await CRUD.read(session, id=id)
+            tag = await session.scalar(select(Tag).where(Tag.id == id))
+            return ViewTag.model_validate(tag) if tag is not None else None
 
     async def read_all(self) -> list[ViewTag]:
         async with self._create_session() as session:
-            return await CRUD.read_all(session)
+            tags = await session.scalars(select(Tag))
+            return [ViewTag.model_validate(tag) for tag in tags]
 
     async def batch_read(self, tag_ids: list[int]) -> list[ViewTag]:
+        if not tag_ids:
+            return []
         async with self._create_session() as session:
-            return await CRUD.batch_read(session, pkeys=[{"id": tag_id} for tag_id in tag_ids])
+            tags = await session.scalars(select(Tag).where(Tag.id.in_(tag_ids)))
+            return [ViewTag.model_validate(tag) for tag in tags]
 
     async def read_by_name(self, name: str) -> ViewTag | None:
         async with self._create_session() as session:
-            return await CRUD.read_by(session, only_first=True, name=name)
+            tag = await session.scalar(select(Tag).where(Tag.name == name))
+            return ViewTag.model_validate(tag) if tag is not None else None
 
     async def update(self, id: int, tag: UpdateTag) -> ViewTag:
         async with self._create_session() as session:
-            return await CRUD.update(session, data=tag, id=id)
+            values = tag.model_dump(exclude_unset=True)
+            if values:
+                q = update(Tag).where(Tag.id == id).values(**values).returning(Tag)
+            else:
+                q = select(Tag).where(Tag.id == id)
+            updated = await session.scalar(q)
+            await session.commit()
+            return ViewTag.model_validate(updated)
 
     async def delete(self, id: int) -> None:
         async with self._create_session() as session:
-            await CRUD.delete(session, id=id)
+            await session.execute(delete(Tag).where(Tag.id == id))
+            await session.commit()
 
     # ^^^^^^^^^^^^^^^^^^^^ CRUD ^^^^^^^^^^^^^^^^^^^^ #
 
     async def read_by_alias(self, alias: str) -> ViewTag | None:
         async with self._create_session() as session:
-            return await CRUD.read_by(session, only_first=True, alias=alias)
+            tag = await session.scalar(select(Tag).where(Tag.alias == alias))
+            return ViewTag.model_validate(tag) if tag is not None else None
 
     async def setup_ownership(self, tag_id: int, user_id: int, role_alias: OwnershipEnum) -> None:
         async with self._create_session() as session:
-            ownership_model = Tag.Ownership
-            return await setup_ownership_method(ownership_model, session, tag_id, user_id, role_alias)
+            await setup_ownership_method(TagOwnership, session, tag_id, user_id, role_alias)
 
     async def set_tags_to_event_group(self, event_group_id: int, tag_ids: list[int]) -> None:
         async with self._create_session() as session:
-            table = Tag.__tags_associations__[EventGroup.__tablename__]
+            table = EventGroupTagAssociation
             q = delete(table).where(table.object_id == event_group_id)
             await session.execute(q)
 
@@ -113,7 +122,7 @@ class SqlTagRepository:
             return
 
         async with self._create_session() as session:
-            table = Tag.__tags_associations__[EventGroup.__tablename__]
+            table = EventGroupTagAssociation
             # clear all tags
             to_clear = tuple(tags_mapping.keys())
             if to_clear:

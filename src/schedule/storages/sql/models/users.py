@@ -1,6 +1,6 @@
 __all__ = ["User", "UserScheduleKeys"]
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, false
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
@@ -15,7 +15,6 @@ if TYPE_CHECKING:
 
 
 class User(Base, IdMixin):
-    __ownerships_tables__: ClassVar[dict[str, object]] = {}
     __tablename__ = "users"
 
     name: Mapped[str] = mapped_column(nullable=True)

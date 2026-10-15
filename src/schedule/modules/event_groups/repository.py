@@ -7,7 +7,6 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.schedule.modules.crud import AbstractCRUDRepository, crud_factory
 from src.schedule.modules.event_groups.schemas import (
     CreateEventGroup,
     CreateEventGroupWithoutTags,
@@ -17,18 +16,7 @@ from src.schedule.modules.event_groups.schemas import (
 from src.schedule.modules.ownership import OwnershipEnum, setup_ownership_method
 from src.schedule.modules.tags.repository import tag_repository
 from src.schedule.storages.sql import SQLAlchemyStorage
-from src.schedule.storages.sql.models import EventGroup
-
-CRUD: AbstractCRUDRepository[
-    CreateEventGroupWithoutTags,
-    ViewEventGroup,
-    UpdateEventGroup,
-] = crud_factory(
-    EventGroup,
-    CreateEventGroupWithoutTags,
-    ViewEventGroup,
-    UpdateEventGroup,
-)
+from src.schedule.storages.sql.models import EventGroup, EventGroupOwnership, EventGroupTagAssociation
 
 
 class SqlEventGroupRepository:
@@ -50,15 +38,13 @@ class SqlEventGroupRepository:
             tags_ids = [tag.id for tag in await tag_repository.batch_create_or_read(group.tags)]
 
         async with self._create_session() as session:
-            # without CRUD
             q = insert(EventGroup).values(group.model_dump(exclude={"tags"})).returning(EventGroup)
             obj = await session.scalar(q)
             if obj is None:
                 raise RuntimeError("Failed to create event group")
             if tags_ids:
-                association_table = EventGroup.TagAssociation
                 q = (
-                    insert(association_table)
+                    insert(EventGroupTagAssociation)
                     .values([{"object_id": obj.id, "tag_id": tag_id} for tag_id in tags_ids])
                     .on_conflict_do_nothing()
                 )
@@ -75,7 +61,10 @@ class SqlEventGroupRepository:
             return []
 
         async with self._create_session() as session:
-            return await CRUD.batch_create(session, groups)
+            q = insert(EventGroup).returning(EventGroup)
+            created = await session.scalars(q, params=[group.model_dump() for group in groups])
+            await session.commit()
+            return [ViewEventGroup.model_validate(group) for group in created]
 
     async def create_or_update(self, group: CreateEventGroup) -> int:
         from src.schedule.modules.tags.repository import tag_repository
@@ -84,7 +73,7 @@ class SqlEventGroupRepository:
             insert_stmt = insert(EventGroup).values(group.model_dump(exclude={"tags"}))
             update_dict = {c.name: c for c in cast(Iterable, insert_stmt.excluded) if not c.primary_key}
             q = insert_stmt.on_conflict_do_update(index_elements=["alias"], set_=update_dict).returning(EventGroup.id)
-            obj_id = await session.scalar(q)
+            obj_id = (await session.execute(q)).scalar_one()
             await session.commit()
 
             tags_ids = []
@@ -121,7 +110,8 @@ class SqlEventGroupRepository:
 
     async def read(self, group_id: int) -> ViewEventGroup | None:
         async with self._create_session() as session:
-            return await CRUD.read(session, id=group_id)
+            group = await session.scalar(select(EventGroup).where(EventGroup.id == group_id))
+            return ViewEventGroup.model_validate(group) if group is not None else None
 
     async def get_only_path(self, group_id: int) -> str | None:
         async with self._create_session() as session:
@@ -131,15 +121,18 @@ class SqlEventGroupRepository:
 
     async def read_all(self) -> list[ViewEventGroup]:
         async with self._create_session() as session:
-            return await CRUD.read_all(session)
+            groups = await session.scalars(select(EventGroup))
+            return [ViewEventGroup.model_validate(group) for group in groups]
 
     async def read_by_path(self, path: str) -> ViewEventGroup | None:
         async with self._create_session() as session:
-            return await CRUD.read_by(session, only_first=True, path=path)
+            group = await session.scalar(select(EventGroup).where(EventGroup.path == path))
+            return ViewEventGroup.model_validate(group) if group is not None else None
 
     async def read_by_alias(self, alias: str) -> ViewEventGroup | None:
         async with self._create_session() as session:
-            return await CRUD.read_by(session, only_first=True, alias=alias)
+            group = await session.scalar(select(EventGroup).where(EventGroup.alias == alias))
+            return ViewEventGroup.model_validate(group) if group is not None else None
 
     async def batch_read_ids_by_aliases(self, aliases: list[str]) -> dict[str, int | None]:
         async with self._create_session() as session:
@@ -159,17 +152,29 @@ class SqlEventGroupRepository:
 
     async def update(self, event_group_id: int, event_group: UpdateEventGroup) -> ViewEventGroup:
         async with self._create_session() as session:
-            return await CRUD.update(session, data=event_group, id=event_group_id)
+            q = (
+                update(EventGroup)
+                .where(EventGroup.id == event_group_id)
+                .values(**event_group.model_dump(exclude_unset=True))
+                .returning(EventGroup)
+            )
+            updated = await session.scalar(q)
+            await session.commit()
+            return ViewEventGroup.model_validate(updated)
 
     async def batch_update(self, event_groups: dict[int, UpdateEventGroup]) -> list[ViewEventGroup]:
         if not event_groups:
             return []
         async with self._create_session() as session:
-            data = list(event_groups.values())
-
-            return await CRUD.batch_update(
-                session, data=data, pkeys=[{"id": event_group_id} for event_group_id in event_groups]
+            await session.execute(
+                update(EventGroup),
+                params=[
+                    {"id": group_id, **group.model_dump(exclude_unset=True)} for group_id, group in event_groups.items()
+                ],
             )
+            await session.commit()
+            groups = await session.scalars(select(EventGroup).where(EventGroup.id.in_(event_groups)))
+            return [ViewEventGroup.model_validate(group) for group in groups]
 
     async def delete_by_alias(self, alias: str) -> None:
         async with self._create_session() as session:
@@ -203,8 +208,7 @@ class SqlEventGroupRepository:
 
     async def setup_ownership(self, group_id: int, user_id: int, role_alias: OwnershipEnum) -> None:
         async with self._create_session() as session:
-            ownership_model = EventGroup.Ownership
-            return await setup_ownership_method(ownership_model, session, group_id, user_id, role_alias)
+            await setup_ownership_method(EventGroupOwnership, session, group_id, user_id, role_alias)
 
     async def update_timestamp(self, group_id: int):
         async with self._create_session() as session:

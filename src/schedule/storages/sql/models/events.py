@@ -1,4 +1,4 @@
-__all__ = ["Event", "EventPatch"]
+__all__ = ["Event", "EventOwnership", "EventPatch"]
 
 import datetime as dtm
 from typing import TYPE_CHECKING
@@ -6,22 +6,20 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.schedule.storages.sql.models import Base
 from src.schedule.storages.sql.models.__mixin__ import (
     DescriptionMixin,
     IdMixin,
     NameMixin,
     UpdateCreateDateTimeMixin,
-    ownerships_mixin_factory,
 )
+from src.schedule.storages.sql.models.base import Base
 
 if TYPE_CHECKING:
     from src.schedule.storages.sql.models.event_groups import EventGroup
+    from src.schedule.storages.sql.models.users import User
 
 
-class Event(
-    Base, IdMixin, NameMixin, DescriptionMixin, UpdateCreateDateTimeMixin, ownerships_mixin_factory("events", Base)
-):
+class Event(Base, IdMixin, NameMixin, DescriptionMixin, UpdateCreateDateTimeMixin):
     """
     Create new .icalendar event
         - summary
@@ -44,6 +42,16 @@ class Event(
     event_groups: Mapped[list[EventGroup]] = relationship(
         "EventGroup", secondary="events_x_event_groups", back_populates="events", lazy="selectin"
     )
+    ownerships: Mapped[list[EventOwnership]] = relationship("EventOwnership", cascade="all, delete-orphan")
+
+
+class EventOwnership(Base):
+    __tablename__ = "events_x_ownerships"
+
+    object_id: Mapped[int] = mapped_column(ForeignKey("events.id"), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    user: Mapped[User] = relationship("User")
+    role_alias: Mapped[str] = mapped_column(String(255), nullable=False, default="default")
 
 
 class EventPatch(Base, IdMixin):

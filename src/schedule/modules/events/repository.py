@@ -1,11 +1,10 @@
 __all__ = ["SqlEventRepository"]
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert as postgres_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from src.schedule.modules.crud import crud_factory
 from src.schedule.modules.events.schemas import (
     AddEventPatch,
     CreateEvent,
@@ -16,14 +15,6 @@ from src.schedule.modules.events.schemas import (
 )
 from src.schedule.storages.sql import SQLAlchemyStorage
 from src.schedule.storages.sql.models import Event, EventPatch
-
-CRUD = crud_factory(
-    Event,
-    CreateEvent,
-    ViewEvent,
-    UpdateEvent,
-    get_options=(selectinload(Event.patches),),
-)
 
 
 class SqlEventRepository:
@@ -51,15 +42,27 @@ class SqlEventRepository:
 
     async def read(self, event_id: int) -> ViewEvent | None:
         async with self._create_session() as session:
-            return await CRUD.read(session, id=event_id)
+            q = select(Event).where(Event.id == event_id).options(selectinload(Event.patches))
+            event = await session.scalar(q)
+            return ViewEvent.model_validate(event) if event is not None else None
 
     async def update(self, event_id: int, event: UpdateEvent) -> ViewEvent:
         async with self._create_session() as session:
-            return await CRUD.update(session, event, id=event_id)
+            q = (
+                update(Event)
+                .where(Event.id == event_id)
+                .values(**event.model_dump(exclude_unset=True))
+                .returning(Event)
+                .options(selectinload(Event.patches))
+            )
+            updated = await session.scalar(q)
+            await session.commit()
+            return ViewEvent.model_validate(updated)
 
     async def delete(self, event_id: int) -> None:
         async with self._create_session() as session:
-            await CRUD.delete(session, id=event_id)
+            await session.execute(delete(Event).where(Event.id == event_id))
+            await session.commit()
 
     # ^^^^^^^^^^^^^^^^^^ CRUD ^^^^^^^^^^^^^^^ #
     # ----------------- PATCHES ----------------- #
