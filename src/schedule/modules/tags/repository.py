@@ -3,12 +3,10 @@ __all__ = ["SqlTagRepository", "tag_repository"]
 from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from src.schedule.modules.ownership import OwnershipEnum, setup_ownership_method
 from src.schedule.modules.tags.schemas import CreateTag, UpdateTag, ViewTag
 from src.schedule.storages.sql import SQLAlchemyStorage
-from src.schedule.storages.sql.models import EventGroupTagAssociation, Tag, TagOwnership
+from src.schedule.storages.sql.models import EventGroupTagAssociation, Tag
 
 
 class SqlTagRepository:
@@ -44,9 +42,6 @@ class SqlTagRepository:
                     set_={"id": Tag.id},
                 )
                 .values([tag.model_dump() for tag in tags])
-                .options(
-                    selectinload(Tag.ownerships),
-                )
                 .returning(Tag)
             )
 
@@ -98,10 +93,6 @@ class SqlTagRepository:
         async with self._create_session() as session:
             tag = await session.scalar(select(Tag).where(Tag.alias == alias))
             return ViewTag.model_validate(tag) if tag is not None else None
-
-    async def setup_ownership(self, tag_id: int, user_id: int, role_alias: OwnershipEnum) -> None:
-        async with self._create_session() as session:
-            await setup_ownership_method(TagOwnership, session, tag_id, user_id, role_alias)
 
     async def set_tags_to_event_group(self, event_group_id: int, tag_ids: list[int]) -> None:
         async with self._create_session() as session:

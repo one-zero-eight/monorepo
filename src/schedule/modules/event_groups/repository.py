@@ -13,10 +13,9 @@ from src.schedule.modules.event_groups.schemas import (
     UpdateEventGroup,
     ViewEventGroup,
 )
-from src.schedule.modules.ownership import OwnershipEnum, setup_ownership_method
 from src.schedule.modules.tags.repository import tag_repository
 from src.schedule.storages.sql import SQLAlchemyStorage
-from src.schedule.storages.sql.models import EventGroup, EventGroupOwnership, EventGroupTagAssociation
+from src.schedule.storages.sql.models import EventGroup, EventGroupTagAssociation
 
 
 class SqlEventGroupRepository:
@@ -205,10 +204,6 @@ class SqlEventGroupRepository:
             return len(event_group_ids)
 
     # ^^^^^^^^^^^^^^^^^ CRUD ^^^^^^^^^^^^^^^^^ #
-
-    async def setup_ownership(self, group_id: int, user_id: int, role_alias: OwnershipEnum) -> None:
-        async with self._create_session() as session:
-            await setup_ownership_method(EventGroupOwnership, session, group_id, user_id, role_alias)
 
     async def update_timestamp(self, group_id: int):
         async with self._create_session() as session:

@@ -40,12 +40,10 @@ router = APIRouter(prefix="/event-groups", tags=["Event Groups"], route_class=Au
 )
 async def create_event_group(
     event_group: CreateEventGroup,
-    # current_user_id: CURRENT_USER_ID_DEPENDENCY,
     _: VERIFY_PARSER_DEPENDENCY,
 ):
     try:
         event_group_view = await event_group_repository.create(event_group)
-        # await event_group_repository.setup_ownership(event_group_view.id, current_user_id, OwnershipEnum.owner)
         return JSONResponse(status_code=201, content=event_group_view.model_dump(mode="json"))
     except IntegrityError as integrity_error:
         detail = integrity_error.args[0]
@@ -61,7 +59,6 @@ async def create_event_group(
     status_code=201,
 )
 async def batch_create_event_groups(
-    # current_user_id: CURRENT_USER_ID_DEPENDENCY,
     _: VERIFY_PARSER_DEPENDENCY,
     event_groups: Annotated[list[CreateEventGroup], Body(embed=True)],
 ) -> ListEventGroupsResponse:
@@ -81,7 +78,6 @@ async def batch_create_event_groups(
 async def update_event_group(
     event_group_id: int,
     update_scheme: UpdateEventGroup,
-    # current_user_id: CURRENT_USER_ID_DEPENDENCY,
     _: VERIFY_PARSER_DEPENDENCY,
 ) -> ViewEventGroup:
     event_group = await event_group_repository.read(event_group_id)
@@ -91,11 +87,6 @@ async def update_event_group(
 
     if update_scheme.alias is not None and update_scheme.alias != event_group.alias:
         raise HTTPException(status_code=409, detail="Event group alias cannot be changed")
-
-    # owners_and_moderators = {ownership.user_id for ownership in event_group.ownerships}
-    #
-    # if current_user_id not in owners_and_moderators:
-    #     raise OperationIsNotAllowed()
 
     event_group = await event_group_repository.update(event_group_id, update_scheme)
     return event_group
@@ -253,7 +244,6 @@ async def list_event_groups() -> ListEventGroupsResponse:
 async def set_event_group_ics(
     event_group_id: int,
     ics_file: UploadFile,
-    # current_user_id: CURRENT_USER_ID_DEPENDENCY,
     _: VERIFY_PARSER_DEPENDENCY,
 ):
     """
@@ -269,11 +259,6 @@ async def set_event_group_ics(
 
     if event_group_path is None:
         raise EventGroupWithMissingPath()
-
-    # owners_and_moderators = {ownership.user_id for ownership in event_group.ownerships}
-    #
-    # if current_user_id not in owners_and_moderators:
-    #     raise OperationIsNotAllowed()
 
     try:
         from src.schedule.utils import validate_calendar

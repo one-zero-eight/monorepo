@@ -76,7 +76,6 @@ class ViewEventGroup(BaseModel):
     tags: list[ViewTag] = Field(default_factory=list)
     virtual: bool = False
 
-    # ownerships: list["Ownership"] = Field(default_factory=list)
     @field_validator("tags", mode="before")
     @classmethod
     def _validate_tags(cls, v):

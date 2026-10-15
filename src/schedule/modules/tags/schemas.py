@@ -26,7 +26,6 @@ class ViewTag(BaseModel):
     name: str | None = None
     satellite: dict | None = None
 
-    # ownerships: list[Ownership] = Field(default_factory=list)
     @field_validator("satellite", mode="before")
     @classmethod
     def _validate_satellite(cls, v):

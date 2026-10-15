@@ -1,15 +1,12 @@
-__all__ = ["Tag", "TagOwnership"]
+__all__ = ["Tag"]
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-from sqlalchemy import JSON, ForeignKey, String, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import JSON, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column
 
 from src.schedule.storages.sql.models.__mixin__ import DescriptionMixin, IdMixin, NameMixin
 from src.schedule.storages.sql.models.base import Base
-
-if TYPE_CHECKING:
-    from src.schedule.storages.sql.models.users import User
 
 
 class Tag(Base, IdMixin, NameMixin, DescriptionMixin):
@@ -22,15 +19,5 @@ class Tag(Base, IdMixin, NameMixin, DescriptionMixin):
     alias: Mapped[str] = mapped_column(nullable=False)
     type: Mapped[str] = mapped_column(nullable=True)
     satellite: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=True)
-    ownerships: Mapped[list[TagOwnership]] = relationship("TagOwnership", cascade="all, delete-orphan")
 
     __table_args__ = (UniqueConstraint("alias", "type"),)
-
-
-class TagOwnership(Base):
-    __tablename__ = "tags_x_ownerships"
-
-    object_id: Mapped[int] = mapped_column(ForeignKey("tags.id"), primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
-    user: Mapped[User] = relationship("User")
-    role_alias: Mapped[str] = mapped_column(String(255), nullable=False, default="default")

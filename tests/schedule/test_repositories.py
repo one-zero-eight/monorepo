@@ -1,21 +1,18 @@
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
 from fastapi.testclient import TestClient
-from sqlalchemy import select
 
 from src.schedule.modules.event_groups.repository import event_group_repository
 from src.schedule.modules.event_groups.schemas import CreateEventGroup, CreateEventGroupWithoutTags, UpdateEventGroup
 from src.schedule.modules.events.repository import SqlEventRepository
 from src.schedule.modules.events.schemas import CreateEvent, UpdateEvent
-from src.schedule.modules.ownership import OwnershipEnum, setup_ownership_method
 from src.schedule.modules.tags.repository import tag_repository
 from src.schedule.modules.tags.schemas import CreateTag, UpdateTag
-from src.schedule.modules.users.repository import user_repository
-from src.schedule.storages.sql.models import Base, EventGroupOwnership, EventOwnership, TagOwnership
+from src.schedule.storages.sql.models import Base
 
 
 def test_explicit_associations_match_migrated_schema(schedule_client: TestClient, schedule_portal):
-    table_names = {"event_groups_x_tags", "event_groups_x_ownerships", "tags_x_ownerships", "events_x_ownerships"}
+    table_names = {"event_groups_x_tags"}
 
     def compare_schema(connection):
         context = MigrationContext.configure(
@@ -155,43 +152,5 @@ def test_event_crud_is_scoped(schedule_client: TestClient, schedule_portal):
         remaining = await repository.read(second.id)
         assert remaining is not None
         assert remaining.name == "Second"
-
-    schedule_portal.call(check)
-
-
-def test_ownerships_persist_update_and_delete(
-    schedule_client: TestClient, schedule_portal, user_headers: dict[str, str]
-):
-    response = schedule_client.get("/users/me", headers=user_headers)
-    assert response.status_code == 200
-    user_id = response.json()["id"]
-
-    async def check():
-        group = await event_group_repository.create(CreateEventGroup(alias="owned-group", name="Owned"))
-        assert group.id is not None
-        tag = await tag_repository.create_or_read(CreateTag(alias="owned-tag", type="course", name="Owned"))
-        events = SqlEventRepository(schedule_client.app.state.sql_storage)
-        event = await events.create(CreateEvent(name="Owned"))
-
-        for role in (OwnershipEnum.owner, OwnershipEnum.moderator, OwnershipEnum.delete):
-            await event_group_repository.setup_ownership(group.id, user_id, role)
-            await tag_repository.setup_ownership(tag.id, user_id, role)
-            async with schedule_client.app.state.sql_storage.create_session() as session:
-                await setup_ownership_method(EventOwnership, session, event.id, user_id, role)
-            async with schedule_client.app.state.sql_storage.create_session() as session:
-                for model, object_id in (
-                    (EventGroupOwnership, group.id),
-                    (TagOwnership, tag.id),
-                    (EventOwnership, event.id),
-                ):
-                    ownership = await session.scalar(
-                        select(model).where(model.object_id == object_id, model.user_id == user_id)
-                    )
-                    if role == OwnershipEnum.delete:
-                        assert ownership is None
-                    else:
-                        assert ownership.role_alias == role
-
-        assert [user.id for user in await user_repository.read_all()] == [user_id]
 
     schedule_portal.call(check)

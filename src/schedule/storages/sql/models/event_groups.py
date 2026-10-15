@@ -1,6 +1,5 @@
 __all__ = [
     "EventGroup",
-    "EventGroupOwnership",
     "EventGroupTagAssociation",
     "UserXFavoriteEventGroup",
     "UserXHiddenEventGroup",
@@ -23,7 +22,6 @@ from src.schedule.storages.sql.models.base import Base
 if TYPE_CHECKING:
     from src.schedule.storages.sql.models.events import Event
     from src.schedule.storages.sql.models.tags import Tag
-    from src.schedule.storages.sql.models.users import User
 
 
 class EventGroup(Base, IdMixin, NameMixin, DescriptionMixin, UpdateCreateDateTimeMixin):
@@ -35,7 +33,6 @@ class EventGroup(Base, IdMixin, NameMixin, DescriptionMixin, UpdateCreateDateTim
     events: Mapped[list[Event]] = relationship("Event", secondary="events_x_event_groups")
     tags_association: Mapped[list[EventGroupTagAssociation]] = relationship("EventGroupTagAssociation", lazy="selectin")
     tags: AssociationProxy[list[Tag]] = association_proxy("tags_association", "tag")
-    ownerships: Mapped[list[EventGroupOwnership]] = relationship("EventGroupOwnership", cascade="all, delete-orphan")
 
 
 class EventGroupTagAssociation(Base):
@@ -44,15 +41,6 @@ class EventGroupTagAssociation(Base):
     object_id: Mapped[int] = mapped_column(ForeignKey("event_groups.id", ondelete="CASCADE"), primary_key=True)
     tag_id: Mapped[int] = mapped_column(ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True)
     tag: Mapped[Tag] = relationship("Tag", lazy="joined")
-
-
-class EventGroupOwnership(Base):
-    __tablename__ = "event_groups_x_ownerships"
-
-    object_id: Mapped[int] = mapped_column(ForeignKey("event_groups.id"), primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
-    user: Mapped[User] = relationship("User")
-    role_alias: Mapped[str] = mapped_column(String(255), nullable=False, default="default")
 
 
 class UserXFavoriteEventGroup(Base):
