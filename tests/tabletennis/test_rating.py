@@ -113,23 +113,23 @@ def test_finish_game_twice_is_rejected(tabletennis_client: TestClient, admin_hea
 def test_finish_game_rttf_delta_between_two_advanced_players(
     tabletennis_client: TestClient, admin_headers: dict[str, str]
 ):
-    """Equal 300-rated non-beginners, avg rating 300 -> k=0.25; 3-set win -> D=1.2."""
+    """Equal 400-rated non-beginners, avg rating 400 -> k=0.3; 3-set win -> D=1.2."""
     portal = tabletennis_client.portal
     assert portal is not None
 
-    portal.call(_mk_player("p1", rating=300, status="Advanced").insert)
-    portal.call(_mk_player("p2", rating=300, status="Advanced").insert)
+    portal.call(_mk_player("p1", rating=400, status="Advanced").insert)
+    portal.call(_mk_player("p2", rating=400, status="Advanced").insert)
     portal.call(_mk_tournament("tour-adv", ["p1", "p2"]).insert)
 
     result = _play_game(tabletennis_client, admin_headers, "tour-adv", "p1", "p2", 3, 0)
 
-    assert result["player1"]["delta"] == 3
-    assert result["player2"]["delta"] == -3
+    assert result["player1"]["delta"] == 4
+    assert result["player2"]["delta"] == -4
 
     p1 = _get_player(portal, "p1")
     p2 = _get_player(portal, "p2")
-    assert p1.rating == 303
-    assert p2.rating == 297
+    assert p1.rating == 404
+    assert p2.rating == 396
 
 
 def test_finish_game_beginner_winner_does_not_leak_coefficients_to_opponent(
@@ -143,18 +143,18 @@ def test_finish_game_beginner_winner_does_not_leak_coefficients_to_opponent(
     assert portal is not None
 
     portal.call(_mk_player("beginner", rating=300, status="Beginner").insert)
-    portal.call(_mk_player("advanced", rating=300, status="Advanced").insert)
+    portal.call(_mk_player("advanced", rating=380, status="Advanced").insert)
     portal.call(_mk_tournament("tour-mix", ["beginner", "advanced"]).insert)
 
     result = _play_game(tabletennis_client, admin_headers, "tour-mix", "beginner", "advanced", 3, 0)
 
-    assert result["player1"]["delta"] == 10  # beginner winner: k=1, D=1 -> base 10
-    assert result["player2"]["delta"] == -3  # advanced loser: k=0.25, D=1.2 -> base 10
+    assert result["player1"]["delta"] == 18  # beginner winner: k=1, D=1 -> base (100 + 80) / 10
+    assert result["player2"]["delta"] == -5  # advanced loser: avg 340 -> k=0.25, D=1.2 -> 18 * 0.3
 
     beginner = _get_player(portal, "beginner")
     advanced = _get_player(portal, "advanced")
-    assert beginner.rating == 310
-    assert advanced.rating == 297
+    assert beginner.rating == 318
+    assert advanced.rating == 375
 
 
 def test_finish_game_no_delta_when_rating_gap_at_least_100(
@@ -178,18 +178,19 @@ def test_finish_game_no_delta_when_rating_gap_at_least_100(
     assert weak.rating == 1000
 
 
-def test_finish_game_rating_never_drops_below_one(tabletennis_client: TestClient, admin_headers: dict[str, str]):
+def test_finish_game_rating_never_drops_below_zero(tabletennis_client: TestClient, admin_headers: dict[str, str]):
     portal = tabletennis_client.portal
     assert portal is not None
 
-    portal.call(_mk_player("p1", rating=1, status="Advanced").insert)
-    portal.call(_mk_player("p2", rating=1, status="Advanced").insert)
+    portal.call(_mk_player("p1", rating=1).insert)
+    portal.call(_mk_player("p2", rating=1).insert)
     portal.call(_mk_tournament("tour-floor", ["p1", "p2"]).insert)
 
-    _play_game(tabletennis_client, admin_headers, "tour-floor", "p1", "p2", 3, 0)
+    result = _play_game(tabletennis_client, admin_headers, "tour-floor", "p1", "p2", 3, 0)
 
     loser = _get_player(portal, "p2")
-    assert loser.rating >= 1
+    assert loser.rating == 0
+    assert result["player2"]["delta"] == -1  # the change actually applied, not the -5 by the formula
 
 
 def test_tournament_bonus_requires_at_least_16_players(tabletennis_client: TestClient, admin_headers: dict[str, str]):

@@ -239,7 +239,7 @@ def test_finish_game_rejects_invalid_scores(tabletennis_client: TestClient, admi
     _tour(portal, "bad", ["a", "b"])
 
     game_id = _reg(tabletennis_client, admin_headers, "bad", "a", "b").json()["game_id"]
-    for s1, s2 in [(-1, 3), (3, -2), (10, 0), (3, 10), (2, 2)]:
+    for s1, s2 in [(-1, 3), (3, -2), (5, 0), (3, 5), (2, 2)]:
         assert _finish(tabletennis_client, admin_headers, "bad", game_id, s1, s2).status_code == 400, (s1, s2)
 
     game = (_get_tour(portal, "bad").val_games or [])[0]
@@ -247,7 +247,7 @@ def test_finish_game_rejects_invalid_scores(tabletennis_client: TestClient, admi
     assert _get_player(portal, "a").rating == 500
     assert _get_player(portal, "b").rating == 500
     # the game can still be finished with a valid score
-    assert _finish(tabletennis_client, admin_headers, "bad", game_id, 9, 0).status_code == 200
+    assert _finish(tabletennis_client, admin_headers, "bad", game_id, 4, 0).status_code == 200
 
 
 def test_fix_game_rejects_invalid_scores(tabletennis_client: TestClient, admin_headers: dict[str, str]):
