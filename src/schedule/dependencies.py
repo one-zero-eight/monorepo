@@ -31,7 +31,7 @@ from src.schedule.modules.event_groups.repository import SqlEventGroupRepository
 from src.schedule.modules.events.repository import SqlEventRepository
 from src.schedule.modules.tags.repository import SqlTagRepository
 from src.schedule.modules.users.repository import SqlUserRepository
-from src.schedule.storages.sql import SQLAlchemyStorage
+from src.schedule.storage import SQLAlchemyStorage
 
 
 async def get_session(request: Request) -> AsyncIterator[AsyncSession]:

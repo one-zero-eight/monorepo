@@ -16,10 +16,6 @@ async def preference_fixtures(
         "src.schedule_assistant.dependencies.settings.moderator_emails",
         ["test@test.com"],
     )
-    monkeypatch.setattr(
-        "src.schedule_assistant.modules.instructor_preferences.routes.schedule_config_repository",
-        schedule_config_repo,
-    )
 
     term = {
         "name": "Fall",
@@ -112,20 +108,18 @@ async def test_share_link_reuses_unexpired_key(authenticated_client, preference_
 
 
 @pytest.mark.asyncio
-async def test_unknown_and_expired_invite_key(authenticated_client, preference_fixtures):
-    from src.schedule_assistant.db.models import PreferenceInviteLinkRow
-    from src.schedule_assistant.modules.instructor_preferences.repository import (
-        preference_invite_repository,
-    )
+async def test_unknown_and_expired_invite_key(authenticated_client, preference_fixtures, preference_invite_repo):
+    from src.schedule_assistant.models import PreferenceInviteLinkRow
+    from src.schedule_assistant.storage import open_session
 
     unknown = await authenticated_client.get("/instructor-preferences/link/does-not-exist")
     assert unknown.status_code == 404
 
-    invite = preference_invite_repository.get_or_create_for_instructor(
+    invite = preference_invite_repo.get_or_create_for_instructor(
         "pi-1",
         created_by="test@test.com",
     )
-    with preference_invite_repository._session() as session:
+    with open_session() as session:
         row = session.get(PreferenceInviteLinkRow, invite.key)
         assert row is not None
         row.expires_at = utcnow() - dtm.timedelta(hours=1)

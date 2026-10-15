@@ -72,7 +72,7 @@ def schedule_client(request: pytest.FixtureRequest) -> Iterator[TestClient]:
     request.getfixturevalue("mock_inh_accounts_http")
 
     from src.schedule.config import settings
-    from src.schedule.storages.sql import SQLAlchemyStorage
+    from src.schedule.storage import SQLAlchemyStorage
 
     database_name = conftest_runtime_settings.schedule_test_database_name()
     admin_dsn = f"postgresql+asyncpg://postgres:test@{SUITE_POSTGRES_NETLOC}/postgres"
@@ -118,7 +118,7 @@ def parser_headers(jwt_keypair: tuple[RSAKey, RSAKey]) -> dict[str, str]:
 
 
 async def _truncate_schedule_tables(storage) -> None:
-    from src.schedule.storages.sql.models import Base
+    from src.schedule.models import Base
 
     table_names = ", ".join(f'"{table.name}"' for table in Base.metadata.sorted_tables)
     if not table_names:

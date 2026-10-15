@@ -3,7 +3,7 @@ import datetime as dtm
 import pytest
 from httpx import AsyncClient
 
-from src.schedule_assistant.db.models import TermRow
+from src.schedule_assistant.models import TermRow
 from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
 from src.schedule_assistant.modules.schedule_config.schemas import (
     ComponentSessionSeries,
@@ -535,7 +535,9 @@ async def test_put_yaml_file_strips_legacy_section_kind(
 ) -> None:
     monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
     schedule_config_repo.set_term(_minimal_term_settings())
-    with schedule_config_repo._session() as session:
+    from src.schedule_assistant.storage import open_session
+
+    with open_session() as session:
         row = session.get(TermRow, 1)
         assert row is not None
         row.sections = [

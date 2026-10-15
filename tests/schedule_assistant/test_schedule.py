@@ -395,15 +395,15 @@ async def test_instructor_ics_contains_only_matching_meetings(
 ) -> None:
     _seed_config(schedule_data_repo)
     alias = teacher_alias("teacher@innopolis.ru")
-    original_get_instructors = schedule_data_repo.get_instructors
+    original_get_instructors = ScheduleConfigRepository.get_instructors
     get_instructors_calls = 0
 
-    def count_get_instructors_calls() -> InstructorConfig:
+    def count_get_instructors_calls(self) -> InstructorConfig:
         nonlocal get_instructors_calls
         get_instructors_calls += 1
-        return original_get_instructors()
+        return original_get_instructors(self)
 
-    monkeypatch.setattr(schedule_data_repo, "get_instructors", count_get_instructors_calls)
+    monkeypatch.setattr(ScheduleConfigRepository, "get_instructors", count_get_instructors_calls)
 
     response = await fastapi_test_client.get(
         f"/integration/event-groups/{alias}/schedule.ics",
@@ -490,6 +490,8 @@ async def test_group_ics_is_valid_and_deterministic(
 def test_group_ics_handles_database_times_with_mixed_timezone_awareness(
     schedule_data_repo: ScheduleConfigRepository,
 ) -> None:
+    from src.schedule_assistant.storage import open_session
+
     _seed_config(schedule_data_repo)
     courses = schedule_data_repo.get_courses()
     algorithms_component = courses.courses[1].components[0]
@@ -500,7 +502,9 @@ def test_group_ics_handles_database_times_with_mixed_timezone_awareness(
     slot.start_time = slot.start_time.replace(tzinfo=dtm.timezone(dtm.timedelta(hours=3)))
     schedule_data_repo.set_courses(courses)
 
-    calendar = icalendar.Calendar.from_ical(service.get_group_ics("english-b25-cse-01"))
+    with open_session() as session:
+        ics_bytes = service.get_group_ics(ScheduleConfigRepository(session), "english-b25-cse-01")
+    calendar = icalendar.Calendar.from_ical(ics_bytes)
     events = [cast(icalendar.Event, component) for component in calendar.walk("VEVENT")]
 
     assert events
@@ -510,6 +514,8 @@ def test_group_ics_handles_database_times_with_mixed_timezone_awareness(
 def test_weekly_ics_uses_rrule_exdate_and_recurrence_override(
     schedule_data_repo: ScheduleConfigRepository,
 ) -> None:
+    from src.schedule_assistant.storage import open_session
+
     _seed_config(schedule_data_repo)
     courses = schedule_data_repo.get_courses()
     sessions = courses.courses[1].components[0].sessions
@@ -533,7 +539,9 @@ def test_weekly_ics_uses_rrule_exdate_and_recurrence_override(
     ]
     schedule_data_repo.set_courses(courses)
 
-    calendar = icalendar.Calendar.from_ical(service.get_group_ics("english-b25-cse-01"))
+    with open_session() as session:
+        ics_bytes = service.get_group_ics(ScheduleConfigRepository(session), "english-b25-cse-01")
+    calendar = icalendar.Calendar.from_ical(ics_bytes)
     events = [cast(icalendar.Event, component) for component in calendar.walk("VEVENT")]
 
     assert len(events) == 2

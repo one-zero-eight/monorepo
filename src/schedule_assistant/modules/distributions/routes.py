@@ -5,17 +5,19 @@ from urllib.parse import quote
 from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import Response as FastAPIResponse
 
-from src.schedule_assistant.dependencies import ModeratorDep, VerifyTokenDep
+from src.schedule_assistant.dependencies import (
+    DistributionUploadRepoDep,
+    ModeratorDep,
+    ScheduleConfigRepoDep,
+    VerifyTokenDep,
+)
 from src.schedule_assistant.modules.distributions.mapping import (
     section_target_groups,
     sort_labels_by_suggested_mapping,
     suggest_mapping,
 )
 from src.schedule_assistant.modules.distributions.parser import normalize_email, parse_distribution_xlsx
-from src.schedule_assistant.modules.distributions.repository import (
-    DistributionUploadRecord,
-    distribution_upload_repository,
-)
+from src.schedule_assistant.modules.distributions.repository import DistributionUploadRecord
 from src.schedule_assistant.modules.distributions.schemas import (
     DistributionApplyResponse,
     DistributionApplyResultItem,
@@ -27,7 +29,6 @@ from src.schedule_assistant.modules.distributions.schemas import (
     DistributionUploadStats,
     DistributionUploadSummary,
 )
-from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
 from src.schedule_assistant.modules.schedule_config.schemas import SectionConfig
 
 router = APIRouter(prefix="/distributions", tags=["Distributions"])
@@ -133,8 +134,8 @@ def _parse_emails_by_label(raw: str | None) -> dict[str, list[str]] | None:
     return result
 
 
-def _get_section(section_code: str) -> SectionConfig:
-    sections = schedule_config_repository.get_sections().sections
+def _get_section(config_repo: ScheduleConfigRepoDep, section_code: str) -> SectionConfig:
+    sections = config_repo.get_sections().sections
     for section in sections:
         if section.code == section_code:
             return section
@@ -199,6 +200,7 @@ def _detail_from_record(record: DistributionUploadRecord) -> DistributionUploadD
 
 
 def _build_preview(
+    config_repo: ScheduleConfigRepoDep,
     *,
     section_code: str,
     file_bytes: bytes,
@@ -207,8 +209,8 @@ def _build_preview(
     membership_columns: list[str] | None,
     forward_fill_columns: list[str] | None,
 ) -> DistributionPreviewResponse:
-    section = _get_section(section_code)
-    students_groups = schedule_config_repository.list_student_groups()
+    section = _get_section(config_repo, section_code)
+    students_groups = config_repo.list_student_groups()
     targets = section_target_groups(section, students_groups)
 
     try:
@@ -270,20 +272,22 @@ def _build_preview(
 
 @router.get("/uploads")
 async def list_distribution_uploads(
+    uploads: DistributionUploadRepoDep,
     _user_and_token: VerifyTokenDep,
     section_code: Annotated[str | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> list[DistributionUploadSummary]:
-    records = distribution_upload_repository.list_uploads(section_code=section_code, limit=limit)
+    records = uploads.list_uploads(section_code=section_code, limit=limit)
     return [_summary_from_record(record) for record in records]
 
 
 @router.get("/uploads/{upload_id}")
 async def get_distribution_upload(
+    uploads: DistributionUploadRepoDep,
     upload_id: str,
     _user_and_token: VerifyTokenDep,
 ) -> DistributionUploadDetail:
-    record = distribution_upload_repository.get(upload_id)
+    record = uploads.get(upload_id)
     if record is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -294,10 +298,11 @@ async def get_distribution_upload(
 
 @router.get("/uploads/{upload_id}/file")
 async def download_distribution_upload(
+    uploads: DistributionUploadRepoDep,
     upload_id: str,
     _user_and_token: VerifyTokenDep,
 ) -> FastAPIResponse:
-    filename, content_type, file_bytes = distribution_upload_repository.get_file(upload_id)
+    filename, content_type, file_bytes = uploads.get_file(upload_id)
     ascii_name = filename.encode("ascii", "ignore").decode("ascii") or "distribution.xlsx"
     quoted = quote(filename)
     return FastAPIResponse(
@@ -312,6 +317,7 @@ async def download_distribution_upload(
 @router.post("/preview")
 async def preview_distribution(
     moderator: ModeratorDep,
+    config_repo: ScheduleConfigRepoDep,
     file: Annotated[UploadFile, File(description="Distribution Excel workbook")],
     section_code: Annotated[str, Form()],
     sheet_name: Annotated[str | None, Form()] = None,
@@ -322,6 +328,7 @@ async def preview_distribution(
     _ = moderator
     file_bytes = await _read_upload(file)
     return _build_preview(
+        config_repo,
         section_code=section_code,
         file_bytes=file_bytes,
         sheet_name=sheet_name or None,
@@ -333,6 +340,8 @@ async def preview_distribution(
 
 @router.post("/apply")
 async def apply_distribution(
+    config_repo: ScheduleConfigRepoDep,
+    uploads: DistributionUploadRepoDep,
     response: Response,
     moderator: ModeratorDep,
     file: Annotated[UploadFile, File(description="Distribution Excel workbook")],
@@ -347,8 +356,8 @@ async def apply_distribution(
         Form(description="Optional JSON object excel_label -> email[] overrides"),
     ] = None,
 ) -> DistributionApplyResponse:
-    section = _get_section(section_code)
-    students_groups = schedule_config_repository.list_student_groups()
+    section = _get_section(config_repo, section_code)
+    students_groups = config_repo.list_student_groups()
     targets = section_target_groups(section, students_groups)
     allowed_codes = {group.code for group in targets}
 
@@ -405,11 +414,11 @@ async def apply_distribution(
         )
 
     uploaded_by = _moderator_email(moderator)
-    revision = schedule_config_repository.replace_student_group_students(
+    revision = config_repo.replace_student_group_students(
         updates,
     )
     mapped_label_count = sum(1 for label in emails_by_label_map if label_mapping.get(label))
-    upload = distribution_upload_repository.create(
+    upload = uploads.create(
         section_code=section_code,
         filename=file.filename or "distribution.xlsx",
         content_type=file.content_type or "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

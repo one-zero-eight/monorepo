@@ -51,32 +51,26 @@ def schedule_assistant_db_url() -> str:
 
 
 def _prepare_schedule_assistant_schema() -> None:
-    from src.schedule_assistant.config import settings
-    from src.schedule_assistant.db.session import get_engine
+    from src.schedule_assistant.storage import get_engine
 
-    engine = get_engine(settings.db_url.get_secret_value())
-    try:
-        with engine.begin() as connection:
-            config = Config(Path(__file__).parents[2] / "src/schedule_assistant/alembic.ini")
-            config.attributes["connection"] = connection
-            command.upgrade(config, "head")
-    finally:
-        engine.dispose()
+    engine = get_engine()
+    with engine.begin() as connection:
+        config = Config(Path(__file__).parents[2] / "src/schedule_assistant/alembic.ini")
+        config.attributes["connection"] = connection
+        command.upgrade(config, "head")
 
 
 async def _truncate_schedule_assistant_tables() -> None:
-    import src.schedule_assistant.db.models  # noqa: F401
-    from src.schedule_assistant.config import settings
-    from src.schedule_assistant.db.base import Base
-    from src.schedule_assistant.db.session import get_engine
+    import src.schedule_assistant.models  # noqa: F401
+    from src.schedule_assistant.models import Base
+    from src.schedule_assistant.storage import get_engine
 
     table_names = ", ".join(f'"{table.name}"' for table in Base.metadata.sorted_tables)
     if not table_names:
         return
-    engine = get_engine(settings.db_url.get_secret_value())
+    engine = get_engine()
     with engine.begin() as conn:
         conn.execute(text(f"TRUNCATE {table_names} RESTART IDENTITY CASCADE"))
-    engine.dispose()
 
 
 async def _drop_postgres_database(admin_dsn: str, database_name: str) -> None:
@@ -100,88 +94,79 @@ def migration_database_url() -> Iterator[str]:
 
 @pytest.fixture(scope="session")
 def schedule_assistant_postgres() -> Iterator[None]:
+    from src.schedule_assistant.storage import clear_engine_cache, get_engine
+
     database_name = conftest_runtime_settings.schedule_assistant_test_database_name()
     asyncio.run(_ensure_postgres_database(_schedule_assistant_admin_dsn(), database_name))
+    clear_engine_cache()
     try:
         _prepare_schedule_assistant_schema()
         yield
     finally:
-        from src.schedule_assistant.db.session import get_engine
-
-        get_engine(schedule_assistant_db_url()).dispose()
+        get_engine().dispose()
+        clear_engine_cache()
         asyncio.run(_drop_postgres_database(_schedule_assistant_admin_dsn(), database_name))
 
 
+class _CommittingRepoProxy:
+    """Open a short-lived session per call and commit so HTTP requests see writes."""
+
+    def __init__(self, repo_cls):
+        self._repo_cls = repo_cls
+
+    def __getattr__(self, name: str):
+        from src.schedule_assistant.storage import open_session
+
+        def call(*args, **kwargs):
+            with open_session() as session:
+                repo = self._repo_cls(session)
+                result = getattr(repo, name)(*args, **kwargs)
+                session.commit()
+                return result
+
+        return call
+
+
 @pytest.fixture
-def schedule_assistant_repo(
-    schedule_assistant_postgres: None,
-    monkeypatch: pytest.MonkeyPatch,
-):
-    from src.schedule_assistant.modules.distributions.repository import DistributionUploadRepository
-    from src.schedule_assistant.modules.instructor_preferences.repository import PreferenceInviteRepository
+def schedule_assistant_repo(schedule_assistant_postgres: None):
     from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
 
     asyncio.run(_truncate_schedule_assistant_tables())
-    repo = ScheduleConfigRepository(schedule_assistant_db_url())
-    invite_repo = PreferenceInviteRepository(schedule_assistant_db_url())
-    distribution_repo = DistributionUploadRepository(schedule_assistant_db_url())
-    monkeypatch.setattr(
-        "src.schedule_assistant.modules.schedule_config.repository.schedule_config_repository",
-        repo,
-    )
-    monkeypatch.setattr(
-        "src.schedule_assistant.modules.instructor_preferences.repository.preference_invite_repository",
-        invite_repo,
-    )
-    monkeypatch.setattr(
-        "src.schedule_assistant.modules.instructor_preferences.routes.preference_invite_repository",
-        invite_repo,
-    )
-    monkeypatch.setattr(
-        "src.schedule_assistant.modules.distributions.repository.distribution_upload_repository",
-        distribution_repo,
-    )
-    monkeypatch.setattr(
-        "src.schedule_assistant.modules.distributions.routes.distribution_upload_repository",
-        distribution_repo,
-    )
-    return repo
+    return _CommittingRepoProxy(ScheduleConfigRepository)
 
 
 @pytest.fixture
-def schedule_config_repo(schedule_assistant_repo, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        "src.schedule_assistant.modules.schedule_config.routes.schedule_config_repository",
-        schedule_assistant_repo,
-    )
+def schedule_config_repo(schedule_assistant_repo):
     return schedule_assistant_repo
 
 
 @pytest.fixture
-def schedule_data_repo(schedule_assistant_repo, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        "src.schedule_assistant.modules.schedule.service.schedule_config_repository",
-        schedule_assistant_repo,
-    )
+def schedule_data_repo(schedule_assistant_repo):
     return schedule_assistant_repo
 
 
 @pytest.fixture
-def issues_repo(schedule_assistant_repo, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        "src.schedule_assistant.modules.issues.service.schedule_config_repository",
-        schedule_assistant_repo,
-    )
+def issues_repo(schedule_assistant_repo):
     return schedule_assistant_repo
 
 
 @pytest.fixture
-def bookings_repo(schedule_assistant_repo, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        "src.schedule_assistant.modules.bookings.service.schedule_config_repository",
-        schedule_assistant_repo,
-    )
+def bookings_repo(schedule_assistant_repo):
     return schedule_assistant_repo
+
+
+@pytest.fixture
+def preference_invite_repo(schedule_assistant_repo):
+    from src.schedule_assistant.modules.instructor_preferences.repository import PreferenceInviteRepository
+
+    return _CommittingRepoProxy(PreferenceInviteRepository)
+
+
+@pytest.fixture
+def distribution_upload_repo(schedule_assistant_repo):
+    from src.schedule_assistant.modules.distributions.repository import DistributionUploadRepository
+
+    return _CommittingRepoProxy(DistributionUploadRepository)
 
 
 @pytest.fixture(scope="session")
@@ -195,9 +180,13 @@ def schedule_assistant_client(request: pytest.FixtureRequest) -> Iterator[TestCl
 
 
 @pytest.fixture(scope="function")
-def fastapi_app() -> FastAPI:
+def fastapi_app(schedule_assistant_postgres: None) -> FastAPI:
     from src.schedule_assistant.app import app
+    from src.schedule_assistant.storage import get_engine, get_session_factory
 
+    # Reuse the session-scoped engine; only refresh app.state bindings.
+    app.state.engine = get_engine()
+    app.state.sessionmaker = get_session_factory()
     return app
 
 

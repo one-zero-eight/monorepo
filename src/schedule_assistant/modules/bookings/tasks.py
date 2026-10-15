@@ -7,10 +7,9 @@ from typing import Any
 
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
-from src.schedule_assistant.db.models import BookingOperationRow, BookingTaskRow
-from src.schedule_assistant.db.session import get_engine
+from src.schedule_assistant.models import BookingOperationRow, BookingTaskRow
 from src.schedule_assistant.modules.bookings.match import iter_payload_occurrences
 from src.schedule_assistant.modules.bookings.schemas import (
     BatchBookItemResult,
@@ -25,6 +24,7 @@ from src.schedule_assistant.modules.bookings.schemas import (
     BookingTaskStatus,
     CancelExtraResponse,
 )
+from src.schedule_assistant.storage import get_session_factory
 from src.schedule_assistant.utcnow import utcnow
 
 
@@ -34,8 +34,8 @@ class ReservationConflictError(Exception):
         super().__init__("Booking operation already reserved")
 
 
-def _session_factory() -> sessionmaker[Session]:
-    return sessionmaker(bind=get_engine(), autoflush=False, autocommit=False)
+def _session_factory():
+    return get_session_factory()
 
 
 def payload_key(payload: dict[str, Any]) -> str:

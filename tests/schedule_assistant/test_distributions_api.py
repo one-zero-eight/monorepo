@@ -87,10 +87,6 @@ async def test_preview_core_distribution(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
-    monkeypatch.setattr(
-        "src.schedule_assistant.modules.distributions.routes.schedule_config_repository",
-        schedule_config_repo,
-    )
     _seed_config(schedule_config_repo)
 
     files = {
@@ -126,10 +122,6 @@ async def test_apply_updates_only_mapped_groups(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
-    monkeypatch.setattr(
-        "src.schedule_assistant.modules.distributions.routes.schedule_config_repository",
-        schedule_config_repo,
-    )
     _seed_config(schedule_config_repo)
 
     mapping = {

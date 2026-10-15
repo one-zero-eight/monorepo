@@ -10,7 +10,7 @@ from src.schedule_assistant.modules.schedule.domain import meetings_from_schedul
 from src.schedule_assistant.modules.schedule.export_xlsx import export_schedule_xlsx as build_schedule_xlsx
 from src.schedule_assistant.modules.schedule.ics import english_group_alias, render_calendar, teacher_alias
 from src.schedule_assistant.modules.schedule.schemas import VirtualEventGroup
-from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
+from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
 from src.schedule_assistant.modules.schedule_config.schemas import (
     CourseConfig,
     CoursesConfig,
@@ -44,15 +44,15 @@ def _instructor_name(instructor: InstructorConfig.Instructor) -> str:
     )
 
 
-def _published_student_groups() -> list[StudentsGroups]:
-    config = schedule_config_repository.get_sections()
-    english_section = next((section for section in config.sections if section.code == "english"), None)
+def _published_student_groups(config_repo: ScheduleConfigRepository) -> list[StudentsGroups]:
+    sections = config_repo.get_sections()
+    english_section = next((section for section in sections.sections if section.code == "english"), None)
     if english_section is None:
         return []
-    return section_target_groups(english_section, config.students_groups)
+    return section_target_groups(english_section, sections.students_groups)
 
 
-def list_virtual_event_groups() -> list[VirtualEventGroup]:
+def list_virtual_event_groups(config: ScheduleConfigRepository) -> list[VirtualEventGroup]:
     student_groups = [
         VirtualEventGroup(
             alias=english_group_alias(group.code),
@@ -60,11 +60,11 @@ def list_virtual_event_groups() -> list[VirtualEventGroup]:
             description=f"Schedule for {group.name or group.code}",
             group_code=group.code,
         )
-        for group in _published_student_groups()
+        for group in _published_student_groups(config)
     ]
     instructors = filter_scheduled_instructors(
-        schedule_config_repository.get_instructors(),
-        schedule_config_repository.get_courses().courses,
+        config.get_instructors(),
+        config.get_courses().courses,
     ).instructors
     instructor_groups = [
         VirtualEventGroup(
@@ -84,16 +84,16 @@ def list_virtual_event_groups() -> list[VirtualEventGroup]:
     return groups
 
 
-def get_predefined_aliases(user_email: str) -> list[str]:
+def get_predefined_aliases(config: ScheduleConfigRepository, user_email: str) -> list[str]:
     normalized_email = _normalize_email(user_email)
     aliases = [
         english_group_alias(group.code)
-        for group in _published_student_groups()
+        for group in _published_student_groups(config)
         if any(_normalize_email(student) == normalized_email for student in group.students)
     ]
     scheduled_instructors = filter_scheduled_instructors(
-        schedule_config_repository.get_instructors(),
-        schedule_config_repository.get_courses().courses,
+        config.get_instructors(),
+        config.get_courses().courses,
     )
     instructor = find_instructor_by_email(scheduled_instructors, user_email)
     if instructor is not None and instructor.email:
@@ -101,37 +101,39 @@ def get_predefined_aliases(user_email: str) -> list[str]:
     return sorted(set(aliases))
 
 
-def _group_by_alias(alias: str) -> VirtualEventGroup:
-    for group in list_virtual_event_groups():
+def _group_by_alias(config: ScheduleConfigRepository, alias: str) -> VirtualEventGroup:
+    for group in list_virtual_event_groups(config):
         if group.alias == alias:
             return group
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event group not found")
 
 
-def _concrete_meetings() -> list[ScheduledMeeting]:
-    term = schedule_config_repository.get_term()
+def _concrete_meetings(config: ScheduleConfigRepository) -> list[ScheduledMeeting]:
+    term = config.get_term()
     if term is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Schedule term config is required for calendar export",
         )
     return meetings_from_schedule_config(
-        schedule_config_repository.get_courses(),
-        schedule_config_repository.get_sections(),
+        config.get_courses(),
+        config.get_sections(),
         term=term,
     )
 
 
-def _calendar_meetings(courses: list[CourseConfig] | None = None) -> list[ScheduledMeeting]:
-    term = schedule_config_repository.get_term()
+def _calendar_meetings(
+    config: ScheduleConfigRepository, courses: list[CourseConfig] | None = None
+) -> list[ScheduledMeeting]:
+    term = config.get_term()
     if term is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Schedule term config is required for calendar export",
         )
     return meetings_from_schedule_config(
-        CoursesConfig(courses=courses) if courses is not None else schedule_config_repository.get_courses(),
-        schedule_config_repository.get_sections(),
+        CoursesConfig(courses=courses) if courses is not None else config.get_courses(),
+        config.get_sections(),
         term=term,
         expand_weekly=False,
     )
@@ -153,12 +155,12 @@ def _course_colors(courses: list[CourseConfig]) -> dict[str, str | None]:
     return {course.name: course.color for course in courses}
 
 
-def get_group_ics(alias: str) -> bytes:
-    group = _group_by_alias(alias)
-    instructors = schedule_config_repository.get_instructors()
+def get_group_ics(config: ScheduleConfigRepository, alias: str) -> bytes:
+    group = _group_by_alias(config, alias)
+    instructors = config.get_instructors()
     instructor_identities = _instructor_identities_by_group([group], instructors)
-    courses = schedule_config_repository.get_courses().courses
-    meetings = _meetings_for_group(_calendar_meetings(courses), group, instructor_identities)
+    courses = config.get_courses().courses
+    meetings = _meetings_for_group(_calendar_meetings(config, courses), group, instructor_identities)
     return render_calendar(
         group.name,
         [(alias, meeting) for meeting in meetings],
@@ -263,13 +265,13 @@ def _meeting_identity(meeting: ScheduledMeeting) -> tuple[object, ...]:
     )
 
 
-def get_aliases_ics(aliases: list[str]) -> bytes:
+def get_aliases_ics(config: ScheduleConfigRepository, aliases: list[str]) -> bytes:
     normalized_aliases = sorted(set(aliases))
-    groups = {alias: _group_by_alias(alias) for alias in normalized_aliases}
-    instructors = schedule_config_repository.get_instructors()
+    groups = {alias: _group_by_alias(config, alias) for alias in normalized_aliases}
+    instructors = config.get_instructors()
     instructor_identities = _instructor_identities_by_group(list(groups.values()), instructors)
-    courses = schedule_config_repository.get_courses().courses
-    meetings = _calendar_meetings(courses)
+    courses = config.get_courses().courses
+    meetings = _calendar_meetings(config, courses)
     alias_meetings: list[tuple[str, ScheduledMeeting]] = []
     seen_meetings: set[tuple[object, ...]] = set()
     for alias, group in groups.items():
@@ -316,8 +318,8 @@ def _audience_matches_group(audience: list[str], group_code: str, selector_map: 
     return group_code in _expand_audience(audience, selector_map)
 
 
-def get_my_groups(user_email: str) -> list[StudentsGroups]:
-    sections = schedule_config_repository.get_sections()
+def get_my_groups(config: ScheduleConfigRepository, user_email: str) -> list[StudentsGroups]:
+    sections = config.get_sections()
     normalized_email = _normalize_email(user_email)
     groups = [
         student_group
@@ -359,9 +361,9 @@ def _group_exists(group_code: str, sections: SectionsConfig, selector_map: dict[
     return any(group_code in groups for groups in selector_map.values())
 
 
-def get_group_schedule(group_code: str) -> CoursesConfig:
-    sections = schedule_config_repository.get_sections()
-    courses = schedule_config_repository.get_courses().courses
+def get_group_schedule(config: ScheduleConfigRepository, group_code: str) -> CoursesConfig:
+    sections = config.get_sections()
+    courses = config.get_courses().courses
     selector_map = _build_selector_map(sections)
 
     if not _group_exists(group_code, sections, selector_map):
@@ -370,18 +372,17 @@ def get_group_schedule(group_code: str) -> CoursesConfig:
     return CoursesConfig(courses=_filter_courses_for_group(courses, group_code, selector_map))
 
 
-def get_instructor_schedule(instructor_id: str) -> CoursesConfig:
-    instructors = schedule_config_repository.get_instructors()
+def get_instructor_schedule(config: ScheduleConfigRepository, instructor_id: str) -> CoursesConfig:
+    instructors = config.get_instructors()
     instructor = find_instructor_by_id(instructors, instructor_id)
     if instructor is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Instructor not found")
 
-    courses = schedule_config_repository.get_courses().courses
+    courses = config.get_courses().courses
     return CoursesConfig(
         courses=filter_courses_for_instructor(courses, {_normalize_email(instructor.id)}),
     )
 
 
-def export_schedule_xlsx() -> tuple[bytes, str]:
-    config = schedule_config_repository.get_assembled()
-    return build_schedule_xlsx(config)
+def export_schedule_xlsx(config_repo: ScheduleConfigRepository) -> tuple[bytes, str]:
+    return build_schedule_xlsx(config_repo.get_assembled())

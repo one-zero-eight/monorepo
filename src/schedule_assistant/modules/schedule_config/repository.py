@@ -4,10 +4,9 @@ from typing import Any, Literal
 from fastapi import HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import delete, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
-from src.schedule_assistant.config import settings
-from src.schedule_assistant.db.models import (
+from src.schedule_assistant.models import (
     ConfigMetaRow,
     CourseRow,
     InstructorRow,
@@ -15,7 +14,6 @@ from src.schedule_assistant.db.models import (
     StudentGroupRow,
     TermRow,
 )
-from src.schedule_assistant.db.session import get_engine
 from src.schedule_assistant.modules.schedule_config.schemas import (
     CourseConfig,
     CoursesConfig,
@@ -157,13 +155,8 @@ def _apply_room_fields(row: RoomRow, room: RoomConfig.Room) -> None:
 
 
 class ScheduleConfigRepository:
-    def __init__(self, db_url: str | None = None) -> None:
-        self.db_url = db_url or settings.db_url.get_secret_value()
-        self._engine = get_engine(self.db_url)
-        self._session_factory = sessionmaker(bind=self._engine, autoflush=False, autocommit=False)
-
-    def _session(self) -> Session:
-        return self._session_factory()
+    def __init__(self, session: Session) -> None:
+        self.session = session
 
     def _model_dump(self, model: BaseModel) -> dict[str, Any]:
         return model.model_dump(mode="json", by_alias=True, exclude_none=True)
@@ -177,8 +170,8 @@ class ScheduleConfigRepository:
         return row
 
     def get_revision(self) -> int:
-        with self._session() as session:
-            return self._get_revision_row(session).revision
+        session = self.session
+        return self._get_revision_row(session).revision
 
     def _assembled_dump(self, session: Session) -> dict[str, Any]:
         return self._model_dump(self._assemble_config(session))
@@ -334,317 +327,47 @@ class ScheduleConfigRepository:
         )
 
     def get_assembled(self) -> ScheduleConfig:
-        with self._session() as session:
-            return self._assemble_config(session)
+        session = self.session
+        return self._assemble_config(session)
 
     def get_term(self) -> TermConfig | None:
-        with self._session() as session:
-            row = session.get(TermRow, TERM_SINGLETON_ID)
-            if row is None:
-                return None
-            return self._term_row_to_term(row)
+        session = self.session
+        row = session.get(TermRow, TERM_SINGLETON_ID)
+        if row is None:
+            return None
+        return self._term_row_to_term(row)
 
     def set_term(self, term: TermConfig) -> tuple[TermConfig, int]:
-        with self._session() as session:
-            old_dump = self._assembled_dump_if_possible(session)
-            ctx = self._validation_context(session)
-            self._raise_validation_errors(validate_term_config(term, ctx))
-            row = session.get(TermRow, TERM_SINGLETON_ID)
-            session.add(self._term_to_row(term, row))
-            session.flush()
-            revision = self._bump_revision_if_changed(
-                session,
-                old_dump,
-                self._assembled_dump_if_possible(session),
-            )
-            session.commit()
-            return self._term_row_to_term(self._load_term_row(session)), revision
+        session = self.session
+        old_dump = self._assembled_dump_if_possible(session)
+        ctx = self._validation_context(session)
+        self._raise_validation_errors(validate_term_config(term, ctx))
+        row = session.get(TermRow, TERM_SINGLETON_ID)
+        session.add(self._term_to_row(term, row))
+        session.flush()
+        revision = self._bump_revision_if_changed(
+            session,
+            old_dump,
+            self._assembled_dump_if_possible(session),
+        )
+        return self._term_row_to_term(self._load_term_row(session)), revision
 
     def get_sections(self) -> SectionsConfig:
-        with self._session() as session:
-            return self._load_sections_config(session)
+        session = self.session
+        return self._load_sections_config(session)
 
     def set_sections(self, config: SectionsConfig) -> tuple[SectionsConfig, int]:
-        with self._session() as session:
-            term_row = session.get(TermRow, TERM_SINGLETON_ID)
-            if term_row is None:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND, detail="Schedule config resource not found: term"
-                )
-            old_dump = self._assembled_dump_if_possible(session)
-            self._raise_validation_errors(validate_sections(config))
-            term_row.sections = [section.model_dump(mode="json") for section in config.sections]
-            session.execute(delete(StudentGroupRow))
-            for group in config.students_groups:
-                session.add(
-                    StudentGroupRow(
-                        code=group.code,
-                        name=group.name,
-                        estimated_size=group.estimated_size,
-                        students=group.students,
-                    )
-                )
-            session.flush()
-            revision = self._bump_revision_if_changed(
-                session,
-                old_dump,
-                self._assembled_dump_if_possible(session),
+        session = self.session
+        term_row = session.get(TermRow, TERM_SINGLETON_ID)
+        if term_row is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Schedule config resource not found: term"
             )
-            session.commit()
-            return self._load_sections_config(session), revision
-
-    def list_courses(self) -> list[CourseConfig]:
-        return self.get_courses().courses
-
-    def get_course(self, name: str) -> CourseConfig | None:
-        with self._session() as session:
-            row = session.get(CourseRow, name)
-            if row is None:
-                return None
-            return CourseConfig.model_validate(_course_row_payload(row))
-
-    def create_course(self, course: CourseConfig) -> tuple[CourseConfig, int]:
-        with self._session() as session:
-            if session.get(CourseRow, course.name) is not None:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT, detail=f"Course already exists: {course.name!r}"
-                )
-            old_dump = self._assembled_dump_if_possible(session)
-            ctx = self._validation_context(session)
-            self._raise_validation_errors(validate_course(course, ctx))
-            course = canonicalize_courses([course], ctx.term)[0][0]
-            self._raise_validation_errors(validate_course(course, ctx))
-            session.add(_course_to_row(course))
-            session.flush()
-            revision = self._bump_revision_if_changed(
-                session,
-                old_dump,
-                self._assembled_dump_if_possible(session),
-            )
-            session.commit()
-            return course, revision
-
-    def update_course(self, name: str, course: CourseConfig) -> tuple[CourseConfig, int]:
-        with self._session() as session:
-            row = session.get(CourseRow, name)
-            if row is None:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Course not found: {name!r}")
-            old_dump = self._assembled_dump_if_possible(session)
-            ctx = self._validation_context(session)
-            self._raise_validation_errors(validate_course(course, ctx, exclude_name=name))
-            course = canonicalize_courses([course], ctx.term)[0][0]
-            self._raise_validation_errors(validate_course(course, ctx, exclude_name=name))
-            if course.name != name:
-                if session.get(CourseRow, course.name) is not None:
-                    raise HTTPException(
-                        status_code=status.HTTP_409_CONFLICT, detail=f"Course already exists: {course.name!r}"
-                    )
-                session.delete(row)
-                session.flush()
-                session.add(_course_to_row(course))
-            else:
-                row.color = course.color
-                row.section_code = course.section_code
-                row.short_name = course.short_name
-                row.name_ru = course.name_ru
-                row.short_name_ru = course.short_name_ru
-                row.instructors = [item.model_dump(mode="json") for item in course.instructors]
-                row.components = [component.model_dump(mode="json") for component in course.components]
-            session.flush()
-            revision = self._bump_revision_if_changed(
-                session,
-                old_dump,
-                self._assembled_dump_if_possible(session),
-            )
-            session.commit()
-            return course, revision
-
-    def delete_course(self, name: str) -> int:
-        with self._session() as session:
-            row = session.get(CourseRow, name)
-            if row is None:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Course not found: {name!r}")
-            old_dump = self._assembled_dump_if_possible(session)
-            session.delete(row)
-            session.flush()
-            revision = self._bump_revision_if_changed(
-                session,
-                old_dump,
-                self._assembled_dump_if_possible(session),
-            )
-            session.commit()
-            return revision
-
-    def get_courses(self) -> CoursesConfig:
-        with self._session() as session:
-            return self._load_courses_config(session)
-
-    def set_courses(self, config: CoursesConfig) -> tuple[CoursesConfig, int]:
-        with self._session() as session:
-            old_dump = self._assembled_dump_if_possible(session)
-            ctx = ValidationContext(
-                sections=self._load_sections_config(session),
-                rooms=self._load_room_config(session),
-                instructors=self._load_instructor_config(session),
-                courses=CoursesConfig(),
-                term=self._load_term_config(session),
-            )
-            self._raise_validation_errors(validate_courses(config, ctx))
-            config = CoursesConfig(courses=canonicalize_courses(config.courses, ctx.term)[0])
-            self._raise_validation_errors(validate_courses(config, ctx))
-            session.execute(delete(CourseRow))
-            for course in config.courses:
-                session.add(_course_to_row(course))
-            session.flush()
-            revision = self._bump_revision_if_changed(
-                session,
-                old_dump,
-                self._assembled_dump_if_possible(session),
-            )
-            session.commit()
-            return self._load_courses_config(session), revision
-
-    def list_instructors(self) -> list[InstructorConfig.Instructor]:
-        return self.get_instructors().instructors
-
-    def get_instructor(self, instructor_id: str) -> InstructorConfig.Instructor | None:
-        with self._session() as session:
-            row = session.get(InstructorRow, instructor_id)
-            if row is None:
-                return None
-            return _instructor_row_to_model(row)
-
-    def create_instructor(self, instructor: InstructorConfig.Instructor) -> tuple[InstructorConfig.Instructor, int]:
-        with self._session() as session:
-            if session.get(InstructorRow, instructor.id) is not None:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT, detail=f"Instructor already exists: {instructor.id!r}"
-                )
-            old_dump = self._assembled_dump_if_possible(session)
-            self._raise_validation_errors(
-                validate_instructor(
-                    instructor,
-                    self._load_instructor_config(session),
-                    term=self._term_row_to_term(self._load_term_row(session)),
-                )
-            )
-            session.add(_new_instructor_row(instructor))
-            session.flush()
-            revision = self._bump_revision_if_changed(
-                session,
-                old_dump,
-                self._assembled_dump_if_possible(session),
-            )
-            session.commit()
-            return instructor, revision
-
-    def update_instructor(
-        self,
-        instructor_id: str,
-        instructor: InstructorConfig.Instructor,
-    ) -> tuple[InstructorConfig.Instructor, int]:
-        with self._session() as session:
-            row = session.get(InstructorRow, instructor_id)
-            if row is None:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND, detail=f"Instructor not found: {instructor_id!r}"
-                )
-            old_dump = self._assembled_dump_if_possible(session)
-            instructors = [
-                item for item in self._load_instructor_config(session).instructors if item.id != instructor_id
-            ]
-            instructors.append(instructor)
-            self._raise_validation_errors(
-                validate_instructors(
-                    InstructorConfig(instructors=instructors),
-                    term=self._term_row_to_term(self._load_term_row(session)),
-                )
-            )
-            if instructor.id != instructor_id:
-                if session.get(InstructorRow, instructor.id) is not None:
-                    raise HTTPException(
-                        status_code=status.HTTP_409_CONFLICT, detail=f"Instructor already exists: {instructor.id!r}"
-                    )
-                session.delete(row)
-                session.flush()
-                row = InstructorRow(id=instructor.id)
-                session.add(row)
-            _apply_instructor_fields(row, instructor)
-            session.flush()
-            revision = self._bump_revision_if_changed(
-                session,
-                old_dump,
-                self._assembled_dump_if_possible(session),
-            )
-            session.commit()
-            return instructor, revision
-
-    def delete_instructor(self, instructor_id: str) -> int:
-        with self._session() as session:
-            row = session.get(InstructorRow, instructor_id)
-            if row is None:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND, detail=f"Instructor not found: {instructor_id!r}"
-                )
-            old_dump = self._assembled_dump_if_possible(session)
-            ctx = self._validation_context(session)
-            self._raise_validation_errors(validate_instructor_delete(instructor_id, ctx))
-            session.delete(row)
-            session.flush()
-            revision = self._bump_revision_if_changed(
-                session,
-                old_dump,
-                self._assembled_dump_if_possible(session),
-            )
-            session.commit()
-            return revision
-
-    def get_instructors(self) -> InstructorConfig:
-        with self._session() as session:
-            return self._load_instructor_config(session)
-
-    def set_instructors(self, config: InstructorConfig) -> tuple[InstructorConfig, int]:
-        with self._session() as session:
-            old_dump = self._assembled_dump_if_possible(session)
-            self._raise_validation_errors(
-                validate_instructors(config, term=self._term_row_to_term(self._load_term_row(session)))
-            )
-            session.execute(delete(InstructorRow))
-            for instructor in config.instructors:
-                session.add(_new_instructor_row(instructor))
-            session.flush()
-            revision = self._bump_revision_if_changed(
-                session,
-                old_dump,
-                self._assembled_dump_if_possible(session),
-            )
-            session.commit()
-            return self._load_instructor_config(session), revision
-
-    def list_student_groups(self) -> list[StudentsGroups]:
-        return self.get_sections().students_groups
-
-    def get_student_group(self, code: str) -> StudentsGroups | None:
-        with self._session() as session:
-            row = session.get(StudentGroupRow, code)
-            if row is None:
-                return None
-            return StudentsGroups(
-                code=row.code,
-                name=row.name,
-                estimated_size=row.estimated_size,
-                students=row.students,
-            )
-
-    def create_student_group(self, group: StudentsGroups) -> tuple[StudentsGroups, int]:
-        with self._session() as session:
-            if session.get(StudentGroupRow, group.code) is not None:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT, detail=f"Student group already exists: {group.code!r}"
-                )
-            old_dump = self._assembled_dump_if_possible(session)
-            ctx = self._validation_context(session)
-            self._raise_validation_errors(validate_student_group(group, ctx))
+        old_dump = self._assembled_dump_if_possible(session)
+        self._raise_validation_errors(validate_sections(config))
+        term_row.sections = [section.model_dump(mode="json") for section in config.sections]
+        session.execute(delete(StudentGroupRow))
+        for group in config.students_groups:
             session.add(
                 StudentGroupRow(
                     code=group.code,
@@ -653,61 +376,314 @@ class ScheduleConfigRepository:
                     students=group.students,
                 )
             )
-            session.flush()
-            revision = self._bump_revision_if_changed(
-                session,
-                old_dump,
-                self._assembled_dump_if_possible(session),
-            )
-            session.commit()
-            return group, revision
+        session.flush()
+        revision = self._bump_revision_if_changed(
+            session,
+            old_dump,
+            self._assembled_dump_if_possible(session),
+        )
+        return self._load_sections_config(session), revision
 
-    def update_student_group(self, code: str, group: StudentsGroups) -> tuple[StudentsGroups, int]:
-        with self._session() as session:
-            row = session.get(StudentGroupRow, code)
-            if row is None:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Student group not found: {code!r}")
-            old_dump = self._assembled_dump_if_possible(session)
-            ctx = self._validation_context(session)
-            self._raise_validation_errors(validate_student_group(group, ctx, exclude_code=code))
-            if group.code != code:
-                if session.get(StudentGroupRow, group.code) is not None:
-                    raise HTTPException(
-                        status_code=status.HTTP_409_CONFLICT, detail=f"Student group already exists: {group.code!r}"
-                    )
-                session.delete(row)
-                session.flush()
-                row = StudentGroupRow(code=group.code)
-                session.add(row)
-            row.name = group.name
-            row.estimated_size = group.estimated_size
-            row.students = group.students
-            session.flush()
-            revision = self._bump_revision_if_changed(
-                session,
-                old_dump,
-                self._assembled_dump_if_possible(session),
-            )
-            session.commit()
-            return group, revision
+    def list_courses(self) -> list[CourseConfig]:
+        return self.get_courses().courses
 
-    def delete_student_group(self, code: str) -> int:
-        with self._session() as session:
-            row = session.get(StudentGroupRow, code)
-            if row is None:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Student group not found: {code!r}")
-            old_dump = self._assembled_dump_if_possible(session)
-            ctx = self._validation_context(session)
-            self._raise_validation_errors(validate_student_group_delete(code, ctx))
+    def get_course(self, name: str) -> CourseConfig | None:
+        session = self.session
+        row = session.get(CourseRow, name)
+        if row is None:
+            return None
+        return CourseConfig.model_validate(_course_row_payload(row))
+
+    def create_course(self, course: CourseConfig) -> tuple[CourseConfig, int]:
+        session = self.session
+        if session.get(CourseRow, course.name) is not None:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Course already exists: {course.name!r}")
+        old_dump = self._assembled_dump_if_possible(session)
+        ctx = self._validation_context(session)
+        self._raise_validation_errors(validate_course(course, ctx))
+        course = canonicalize_courses([course], ctx.term)[0][0]
+        self._raise_validation_errors(validate_course(course, ctx))
+        session.add(_course_to_row(course))
+        session.flush()
+        revision = self._bump_revision_if_changed(
+            session,
+            old_dump,
+            self._assembled_dump_if_possible(session),
+        )
+        return course, revision
+
+    def update_course(self, name: str, course: CourseConfig) -> tuple[CourseConfig, int]:
+        session = self.session
+        row = session.get(CourseRow, name)
+        if row is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Course not found: {name!r}")
+        old_dump = self._assembled_dump_if_possible(session)
+        ctx = self._validation_context(session)
+        self._raise_validation_errors(validate_course(course, ctx, exclude_name=name))
+        course = canonicalize_courses([course], ctx.term)[0][0]
+        self._raise_validation_errors(validate_course(course, ctx, exclude_name=name))
+        if course.name != name:
+            if session.get(CourseRow, course.name) is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT, detail=f"Course already exists: {course.name!r}"
+                )
             session.delete(row)
             session.flush()
-            revision = self._bump_revision_if_changed(
-                session,
-                old_dump,
-                self._assembled_dump_if_possible(session),
+            session.add(_course_to_row(course))
+        else:
+            row.color = course.color
+            row.section_code = course.section_code
+            row.short_name = course.short_name
+            row.name_ru = course.name_ru
+            row.short_name_ru = course.short_name_ru
+            row.instructors = [item.model_dump(mode="json") for item in course.instructors]
+            row.components = [component.model_dump(mode="json") for component in course.components]
+        session.flush()
+        revision = self._bump_revision_if_changed(
+            session,
+            old_dump,
+            self._assembled_dump_if_possible(session),
+        )
+        return course, revision
+
+    def delete_course(self, name: str) -> int:
+        session = self.session
+        row = session.get(CourseRow, name)
+        if row is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Course not found: {name!r}")
+        old_dump = self._assembled_dump_if_possible(session)
+        session.delete(row)
+        session.flush()
+        revision = self._bump_revision_if_changed(
+            session,
+            old_dump,
+            self._assembled_dump_if_possible(session),
+        )
+        return revision
+
+    def get_courses(self) -> CoursesConfig:
+        session = self.session
+        return self._load_courses_config(session)
+
+    def set_courses(self, config: CoursesConfig) -> tuple[CoursesConfig, int]:
+        session = self.session
+        old_dump = self._assembled_dump_if_possible(session)
+        ctx = ValidationContext(
+            sections=self._load_sections_config(session),
+            rooms=self._load_room_config(session),
+            instructors=self._load_instructor_config(session),
+            courses=CoursesConfig(),
+            term=self._load_term_config(session),
+        )
+        self._raise_validation_errors(validate_courses(config, ctx))
+        config = CoursesConfig(courses=canonicalize_courses(config.courses, ctx.term)[0])
+        self._raise_validation_errors(validate_courses(config, ctx))
+        session.execute(delete(CourseRow))
+        for course in config.courses:
+            session.add(_course_to_row(course))
+        session.flush()
+        revision = self._bump_revision_if_changed(
+            session,
+            old_dump,
+            self._assembled_dump_if_possible(session),
+        )
+        return self._load_courses_config(session), revision
+
+    def list_instructors(self) -> list[InstructorConfig.Instructor]:
+        return self.get_instructors().instructors
+
+    def get_instructor(self, instructor_id: str) -> InstructorConfig.Instructor | None:
+        session = self.session
+        row = session.get(InstructorRow, instructor_id)
+        if row is None:
+            return None
+        return _instructor_row_to_model(row)
+
+    def create_instructor(self, instructor: InstructorConfig.Instructor) -> tuple[InstructorConfig.Instructor, int]:
+        session = self.session
+        if session.get(InstructorRow, instructor.id) is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail=f"Instructor already exists: {instructor.id!r}"
             )
-            session.commit()
-            return revision
+        old_dump = self._assembled_dump_if_possible(session)
+        self._raise_validation_errors(
+            validate_instructor(
+                instructor,
+                self._load_instructor_config(session),
+                term=self._term_row_to_term(self._load_term_row(session)),
+            )
+        )
+        session.add(_new_instructor_row(instructor))
+        session.flush()
+        revision = self._bump_revision_if_changed(
+            session,
+            old_dump,
+            self._assembled_dump_if_possible(session),
+        )
+        return instructor, revision
+
+    def update_instructor(
+        self,
+        instructor_id: str,
+        instructor: InstructorConfig.Instructor,
+    ) -> tuple[InstructorConfig.Instructor, int]:
+        session = self.session
+        row = session.get(InstructorRow, instructor_id)
+        if row is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=f"Instructor not found: {instructor_id!r}"
+            )
+        old_dump = self._assembled_dump_if_possible(session)
+        instructors = [item for item in self._load_instructor_config(session).instructors if item.id != instructor_id]
+        instructors.append(instructor)
+        self._raise_validation_errors(
+            validate_instructors(
+                InstructorConfig(instructors=instructors),
+                term=self._term_row_to_term(self._load_term_row(session)),
+            )
+        )
+        if instructor.id != instructor_id:
+            if session.get(InstructorRow, instructor.id) is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT, detail=f"Instructor already exists: {instructor.id!r}"
+                )
+            session.delete(row)
+            session.flush()
+            row = InstructorRow(id=instructor.id)
+            session.add(row)
+        _apply_instructor_fields(row, instructor)
+        session.flush()
+        revision = self._bump_revision_if_changed(
+            session,
+            old_dump,
+            self._assembled_dump_if_possible(session),
+        )
+        return instructor, revision
+
+    def delete_instructor(self, instructor_id: str) -> int:
+        session = self.session
+        row = session.get(InstructorRow, instructor_id)
+        if row is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=f"Instructor not found: {instructor_id!r}"
+            )
+        old_dump = self._assembled_dump_if_possible(session)
+        ctx = self._validation_context(session)
+        self._raise_validation_errors(validate_instructor_delete(instructor_id, ctx))
+        session.delete(row)
+        session.flush()
+        revision = self._bump_revision_if_changed(
+            session,
+            old_dump,
+            self._assembled_dump_if_possible(session),
+        )
+        return revision
+
+    def get_instructors(self) -> InstructorConfig:
+        session = self.session
+        return self._load_instructor_config(session)
+
+    def set_instructors(self, config: InstructorConfig) -> tuple[InstructorConfig, int]:
+        session = self.session
+        old_dump = self._assembled_dump_if_possible(session)
+        self._raise_validation_errors(
+            validate_instructors(config, term=self._term_row_to_term(self._load_term_row(session)))
+        )
+        session.execute(delete(InstructorRow))
+        for instructor in config.instructors:
+            session.add(_new_instructor_row(instructor))
+        session.flush()
+        revision = self._bump_revision_if_changed(
+            session,
+            old_dump,
+            self._assembled_dump_if_possible(session),
+        )
+        return self._load_instructor_config(session), revision
+
+    def list_student_groups(self) -> list[StudentsGroups]:
+        return self.get_sections().students_groups
+
+    def get_student_group(self, code: str) -> StudentsGroups | None:
+        session = self.session
+        row = session.get(StudentGroupRow, code)
+        if row is None:
+            return None
+        return StudentsGroups(
+            code=row.code,
+            name=row.name,
+            estimated_size=row.estimated_size,
+            students=row.students,
+        )
+
+    def create_student_group(self, group: StudentsGroups) -> tuple[StudentsGroups, int]:
+        session = self.session
+        if session.get(StudentGroupRow, group.code) is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail=f"Student group already exists: {group.code!r}"
+            )
+        old_dump = self._assembled_dump_if_possible(session)
+        ctx = self._validation_context(session)
+        self._raise_validation_errors(validate_student_group(group, ctx))
+        session.add(
+            StudentGroupRow(
+                code=group.code,
+                name=group.name,
+                estimated_size=group.estimated_size,
+                students=group.students,
+            )
+        )
+        session.flush()
+        revision = self._bump_revision_if_changed(
+            session,
+            old_dump,
+            self._assembled_dump_if_possible(session),
+        )
+        return group, revision
+
+    def update_student_group(self, code: str, group: StudentsGroups) -> tuple[StudentsGroups, int]:
+        session = self.session
+        row = session.get(StudentGroupRow, code)
+        if row is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Student group not found: {code!r}")
+        old_dump = self._assembled_dump_if_possible(session)
+        ctx = self._validation_context(session)
+        self._raise_validation_errors(validate_student_group(group, ctx, exclude_code=code))
+        if group.code != code:
+            if session.get(StudentGroupRow, group.code) is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT, detail=f"Student group already exists: {group.code!r}"
+                )
+            session.delete(row)
+            session.flush()
+            row = StudentGroupRow(code=group.code)
+            session.add(row)
+        row.name = group.name
+        row.estimated_size = group.estimated_size
+        row.students = group.students
+        session.flush()
+        revision = self._bump_revision_if_changed(
+            session,
+            old_dump,
+            self._assembled_dump_if_possible(session),
+        )
+        return group, revision
+
+    def delete_student_group(self, code: str) -> int:
+        session = self.session
+        row = session.get(StudentGroupRow, code)
+        if row is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Student group not found: {code!r}")
+        old_dump = self._assembled_dump_if_possible(session)
+        ctx = self._validation_context(session)
+        self._raise_validation_errors(validate_student_group_delete(code, ctx))
+        session.delete(row)
+        session.flush()
+        revision = self._bump_revision_if_changed(
+            session,
+            old_dump,
+            self._assembled_dump_if_possible(session),
+        )
+        return revision
 
     def replace_student_group_students(
         self,
@@ -717,138 +693,129 @@ class ScheduleConfigRepository:
         if not updates:
             return self.get_revision()
 
-        with self._session() as session:
-            old_dump = self._assembled_dump_if_possible(session)
-            for code, students in updates.items():
-                row = session.get(StudentGroupRow, code)
-                if row is None:
-                    raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail=f"Student group not found: {code!r}",
-                    )
-                row.students = list(students)
-            session.flush()
-            revision = self._bump_revision_if_changed(
-                session,
-                old_dump,
-                self._assembled_dump_if_possible(session),
-            )
-            session.commit()
-            return revision
+        session = self.session
+        old_dump = self._assembled_dump_if_possible(session)
+        for code, students in updates.items():
+            row = session.get(StudentGroupRow, code)
+            if row is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Student group not found: {code!r}",
+                )
+            row.students = list(students)
+        session.flush()
+        revision = self._bump_revision_if_changed(
+            session,
+            old_dump,
+            self._assembled_dump_if_possible(session),
+        )
+        return revision
 
     def list_rooms(self) -> list[RoomConfig.Room]:
         return self.get_rooms().rooms
 
     def get_room(self, room_id: str) -> RoomConfig.Room | None:
-        with self._session() as session:
-            row = session.get(RoomRow, room_id)
-            if row is None:
-                return None
-            return _room_row_to_model(row)
+        session = self.session
+        row = session.get(RoomRow, room_id)
+        if row is None:
+            return None
+        return _room_row_to_model(row)
 
     def create_room(self, room: RoomConfig.Room) -> tuple[RoomConfig.Room, int]:
-        with self._session() as session:
-            if session.get(RoomRow, room.id) is not None:
-                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Room already exists: {room.id!r}")
-            old_dump = self._assembled_dump_if_possible(session)
-            self._raise_validation_errors(
-                validate_room(
-                    room,
-                    self._load_room_config(session),
-                    courses=self._load_courses_config(session),
-                    term=self._load_term_config(session),
-                ),
-            )
-            session.add(_new_room_row(room))
-            session.flush()
-            revision = self._bump_revision_if_changed(
-                session,
-                old_dump,
-                self._assembled_dump_if_possible(session),
-            )
-            session.commit()
-            return room, revision
+        session = self.session
+        if session.get(RoomRow, room.id) is not None:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Room already exists: {room.id!r}")
+        old_dump = self._assembled_dump_if_possible(session)
+        self._raise_validation_errors(
+            validate_room(
+                room,
+                self._load_room_config(session),
+                courses=self._load_courses_config(session),
+                term=self._load_term_config(session),
+            ),
+        )
+        session.add(_new_room_row(room))
+        session.flush()
+        revision = self._bump_revision_if_changed(
+            session,
+            old_dump,
+            self._assembled_dump_if_possible(session),
+        )
+        return room, revision
 
     def update_room(self, room_id: str, room: RoomConfig.Room) -> tuple[RoomConfig.Room, int]:
-        with self._session() as session:
-            row = session.get(RoomRow, room_id)
-            if row is None:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Room not found: {room_id!r}")
-            old_dump = self._assembled_dump_if_possible(session)
-            rooms = [item for item in self._load_room_config(session).rooms if item.id != room_id]
-            rooms.append(room)
-            self._raise_validation_errors(
-                validate_rooms(
-                    RoomConfig(rooms=rooms),
-                    courses=self._load_courses_config(session),
-                    term=self._load_term_config(session),
-                ),
-            )
-            if room.id != room_id:
-                if session.get(RoomRow, room.id) is not None:
-                    raise HTTPException(
-                        status_code=status.HTTP_409_CONFLICT, detail=f"Room already exists: {room.id!r}"
-                    )
-                session.delete(row)
-                session.flush()
-                row = _new_room_row(room)
-                session.add(row)
-            else:
-                _apply_room_fields(row, room)
-            session.flush()
-            revision = self._bump_revision_if_changed(
-                session,
-                old_dump,
-                self._assembled_dump_if_possible(session),
-            )
-            session.commit()
-            return room, revision
-
-    def delete_room(self, room_id: str) -> int:
-        with self._session() as session:
-            row = session.get(RoomRow, room_id)
-            if row is None:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Room not found: {room_id!r}")
-            old_dump = self._assembled_dump_if_possible(session)
-            ctx = self._validation_context(session)
-            self._raise_validation_errors(validate_room_delete(room_id, ctx))
+        session = self.session
+        row = session.get(RoomRow, room_id)
+        if row is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Room not found: {room_id!r}")
+        old_dump = self._assembled_dump_if_possible(session)
+        rooms = [item for item in self._load_room_config(session).rooms if item.id != room_id]
+        rooms.append(room)
+        self._raise_validation_errors(
+            validate_rooms(
+                RoomConfig(rooms=rooms),
+                courses=self._load_courses_config(session),
+                term=self._load_term_config(session),
+            ),
+        )
+        if room.id != room_id:
+            if session.get(RoomRow, room.id) is not None:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Room already exists: {room.id!r}")
             session.delete(row)
             session.flush()
-            revision = self._bump_revision_if_changed(
-                session,
-                old_dump,
-                self._assembled_dump_if_possible(session),
-            )
-            session.commit()
-            return revision
+            row = _new_room_row(room)
+            session.add(row)
+        else:
+            _apply_room_fields(row, room)
+        session.flush()
+        revision = self._bump_revision_if_changed(
+            session,
+            old_dump,
+            self._assembled_dump_if_possible(session),
+        )
+        return room, revision
+
+    def delete_room(self, room_id: str) -> int:
+        session = self.session
+        row = session.get(RoomRow, room_id)
+        if row is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Room not found: {room_id!r}")
+        old_dump = self._assembled_dump_if_possible(session)
+        ctx = self._validation_context(session)
+        self._raise_validation_errors(validate_room_delete(room_id, ctx))
+        session.delete(row)
+        session.flush()
+        revision = self._bump_revision_if_changed(
+            session,
+            old_dump,
+            self._assembled_dump_if_possible(session),
+        )
+        return revision
 
     def get_rooms(self) -> RoomConfig:
-        with self._session() as session:
-            return self._load_room_config(session)
+        session = self.session
+        return self._load_room_config(session)
 
     def set_rooms(self, config: RoomConfig) -> tuple[RoomConfig, int]:
-        with self._session() as session:
-            old_dump = self._assembled_dump_if_possible(session)
-            ctx = ValidationContext(
-                sections=self._load_sections_config(session),
-                rooms=RoomConfig(),
-                instructors=self._load_instructor_config(session),
-                courses=self._load_courses_config(session),
-            )
-            self._raise_validation_errors(
-                validate_rooms(config, courses=ctx.courses, term=self._load_term_config(session))
-            )
-            session.execute(delete(RoomRow))
-            for room in config.rooms:
-                session.add(_new_room_row(room))
-            session.flush()
-            revision = self._bump_revision_if_changed(
-                session,
-                old_dump,
-                self._assembled_dump_if_possible(session),
-            )
-            session.commit()
-            return self._load_room_config(session), revision
+        session = self.session
+        old_dump = self._assembled_dump_if_possible(session)
+        ctx = ValidationContext(
+            sections=self._load_sections_config(session),
+            rooms=RoomConfig(),
+            instructors=self._load_instructor_config(session),
+            courses=self._load_courses_config(session),
+        )
+        self._raise_validation_errors(validate_rooms(config, courses=ctx.courses, term=self._load_term_config(session)))
+        session.execute(delete(RoomRow))
+        for room in config.rooms:
+            session.add(_new_room_row(room))
+        session.flush()
+        revision = self._bump_revision_if_changed(
+            session,
+            old_dump,
+            self._assembled_dump_if_possible(session),
+        )
+        return self._load_room_config(session), revision
 
     def _resources_to_update(self, update: ScheduleConfigUpdate) -> set[ConfigResource]:
         resources: set[ConfigResource] = set()
@@ -916,98 +883,90 @@ class ScheduleConfigRepository:
         if not resources:
             return self.get_assembled(), self.get_revision()
 
-        with self._session() as session:
-            old_dump = self._assembled_dump_if_possible(session)
-            existing_sections = self._load_sections_config(session)
-            existing_rooms = self._load_room_config(session)
-            existing_instructors = self._load_instructor_config(session)
-            existing_courses = self._load_courses_config(session)
+        session = self.session
+        old_dump = self._assembled_dump_if_possible(session)
+        existing_sections = self._load_sections_config(session)
+        existing_rooms = self._load_room_config(session)
+        existing_instructors = self._load_instructor_config(session)
+        existing_courses = self._load_courses_config(session)
 
-            term_row = session.get(TermRow, TERM_SINGLETON_ID)
-            existing_term = self._term_row_to_term(term_row) if term_row is not None else None
-            merged_term = (
-                self._merge_term_partial(existing_term, update.term) if update.term is not None else existing_term
-            )
-            new_sections = self._sections_config_from_update(
-                existing_sections,
-                update,
-                merged_term=merged_term,
-            )
-            new_rooms = RoomConfig(rooms=update.rooms) if update.rooms is not None else existing_rooms
-            new_instructors = (
-                InstructorConfig(instructors=update.instructors)
-                if update.instructors is not None
-                else existing_instructors
-            )
-            new_courses = CoursesConfig(courses=update.courses) if update.courses is not None else existing_courses
-            validation_context = ValidationContext(
-                sections=new_sections,
-                rooms=new_rooms,
-                instructors=new_instructors,
-                courses=new_courses,
-                term=merged_term,
-            )
+        term_row = session.get(TermRow, TERM_SINGLETON_ID)
+        existing_term = self._term_row_to_term(term_row) if term_row is not None else None
+        merged_term = self._merge_term_partial(existing_term, update.term) if update.term is not None else existing_term
+        new_sections = self._sections_config_from_update(
+            existing_sections,
+            update,
+            merged_term=merged_term,
+        )
+        new_rooms = RoomConfig(rooms=update.rooms) if update.rooms is not None else existing_rooms
+        new_instructors = (
+            InstructorConfig(instructors=update.instructors) if update.instructors is not None else existing_instructors
+        )
+        new_courses = CoursesConfig(courses=update.courses) if update.courses is not None else existing_courses
+        validation_context = ValidationContext(
+            sections=new_sections,
+            rooms=new_rooms,
+            instructors=new_instructors,
+            courses=new_courses,
+            term=merged_term,
+        )
 
-            errors: list[str] = []
-            changed_resources: list[ConfigResource] = []
-            if "term" in resources:
-                assert merged_term is not None
-                errors.extend(validate_term_config(merged_term, validation_context))
-                changed_resources.append("term")
-            if "sections" in resources:
-                errors.extend(validate_sections_update(existing_sections, new_sections, courses=new_courses))
-                changed_resources.append("sections")
-            if "rooms" in resources:
-                errors.extend(
-                    validate_rooms_update(
-                        existing_rooms,
-                        new_rooms,
-                        courses=new_courses,
-                        term=merged_term,
-                    )
+        errors: list[str] = []
+        changed_resources: list[ConfigResource] = []
+        if "term" in resources:
+            assert merged_term is not None
+            errors.extend(validate_term_config(merged_term, validation_context))
+            changed_resources.append("term")
+        if "sections" in resources:
+            errors.extend(validate_sections_update(existing_sections, new_sections, courses=new_courses))
+            changed_resources.append("sections")
+        if "rooms" in resources:
+            errors.extend(
+                validate_rooms_update(
+                    existing_rooms,
+                    new_rooms,
+                    courses=new_courses,
+                    term=merged_term,
                 )
-                changed_resources.append("rooms")
-            if "instructors" in resources:
-                errors.extend(
-                    validate_instructors_update(
-                        existing_instructors,
-                        new_instructors,
-                        courses=new_courses,
-                        term=merged_term,
-                    )
-                )
-                changed_resources.append("instructors")
-            if "courses" in resources:
-                errors.extend(validate_courses(new_courses, validation_context))
-                changed_resources.append("courses")
-            self._raise_validation_errors(errors)
-
-            if update.courses is not None:
-                new_courses = CoursesConfig(
-                    courses=canonicalize_courses(update.courses, merged_term)[0],
-                )
-                canonical_context = replace(validation_context, courses=new_courses)
-                self._raise_validation_errors(validate_courses(new_courses, canonical_context))
-
-            if merged_term is not None and "term" in resources:
-                self._apply_term_update(session, merged_term)
-            if update.students_groups is not None:
-                self._apply_student_groups_update(session, update.students_groups)
-            if update.rooms is not None:
-                self._apply_rooms_update(session, update.rooms)
-            if update.instructors is not None:
-                self._apply_instructors_update(session, update.instructors)
-            if update.courses is not None:
-                self._apply_courses_update(session, new_courses.courses)
-
-            session.flush()
-            revision = self._bump_revision_if_changed(
-                session,
-                old_dump,
-                self._assembled_dump_if_possible(session),
             )
-            session.commit()
-            return self._assemble_config(session), revision
+            changed_resources.append("rooms")
+        if "instructors" in resources:
+            errors.extend(
+                validate_instructors_update(
+                    existing_instructors,
+                    new_instructors,
+                    courses=new_courses,
+                    term=merged_term,
+                )
+            )
+            changed_resources.append("instructors")
+        if "courses" in resources:
+            errors.extend(validate_courses(new_courses, validation_context))
+            changed_resources.append("courses")
+        self._raise_validation_errors(errors)
 
+        if update.courses is not None:
+            new_courses = CoursesConfig(
+                courses=canonicalize_courses(update.courses, merged_term)[0],
+            )
+            canonical_context = replace(validation_context, courses=new_courses)
+            self._raise_validation_errors(validate_courses(new_courses, canonical_context))
 
-schedule_config_repository = ScheduleConfigRepository()
+        if merged_term is not None and "term" in resources:
+            self._apply_term_update(session, merged_term)
+        if update.students_groups is not None:
+            self._apply_student_groups_update(session, update.students_groups)
+        if update.rooms is not None:
+            self._apply_rooms_update(session, update.rooms)
+        if update.instructors is not None:
+            self._apply_instructors_update(session, update.instructors)
+        if update.courses is not None:
+            self._apply_courses_update(session, new_courses.courses)
+
+        session.flush()
+        revision = self._bump_revision_if_changed(
+            session,
+            old_dump,
+            self._assembled_dump_if_possible(session),
+        )
+        return self._assemble_config(session), revision

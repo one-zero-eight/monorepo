@@ -5,13 +5,13 @@ from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
 from fastapi.testclient import TestClient
 
+from src.schedule.models import Base
 from src.schedule.modules.event_groups.repository import SqlEventGroupRepository
 from src.schedule.modules.event_groups.schemas import CreateEventGroup, CreateEventGroupWithoutTags, UpdateEventGroup
 from src.schedule.modules.events.repository import SqlEventRepository
 from src.schedule.modules.events.schemas import CreateEvent, UpdateEvent
 from src.schedule.modules.tags.repository import SqlTagRepository
 from src.schedule.modules.tags.schemas import CreateTag, UpdateTag
-from src.schedule.storages.sql.models import Base
 
 
 @asynccontextmanager

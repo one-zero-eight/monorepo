@@ -1,20 +1,33 @@
 __all__ = [
+    "DistributionUploadRepoDep",
     "ModeratorDep",
+    "PreferenceInviteRepoDep",
+    "ScheduleConfigRepoDep",
     "ServiceApiKeyDep",
+    "SessionDep",
     "VerifyTokenDep",
+    "get_distribution_upload_repository",
+    "get_preference_invite_repository",
+    "get_schedule_config_repository",
+    "get_session",
     "is_moderator_email",
     "verify_moderator_dep",
     "verify_service_api_key",
     "verify_token_dep",
 ]
 
+from collections.abc import Generator
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.orm import Session, sessionmaker
 
 from src.inh_accounts_sdk import UserTokenData, inh_accounts
 from src.schedule_assistant.config import settings
+from src.schedule_assistant.modules.distributions.repository import DistributionUploadRepository
+from src.schedule_assistant.modules.instructor_preferences.repository import PreferenceInviteRepository
+from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
 
 bearer_scheme = HTTPBearer(
     scheme_name="Bearer",
@@ -22,6 +35,40 @@ bearer_scheme = HTTPBearer(
     bearerFormat="JWT",
     auto_error=False,
 )
+
+
+def get_session(request: Request) -> Generator[Session]:
+    """Request-scoped session. Commit on success, rollback on error."""
+    factory: sessionmaker[Session] = request.app.state.sessionmaker
+    session = factory()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+SessionDep = Annotated[Session, Depends(get_session)]
+
+
+def get_schedule_config_repository(session: SessionDep) -> ScheduleConfigRepository:
+    return ScheduleConfigRepository(session)
+
+
+def get_preference_invite_repository(session: SessionDep) -> PreferenceInviteRepository:
+    return PreferenceInviteRepository(session)
+
+
+def get_distribution_upload_repository(session: SessionDep) -> DistributionUploadRepository:
+    return DistributionUploadRepository(session)
+
+
+ScheduleConfigRepoDep = Annotated[ScheduleConfigRepository, Depends(get_schedule_config_repository)]
+PreferenceInviteRepoDep = Annotated[PreferenceInviteRepository, Depends(get_preference_invite_repository)]
+DistributionUploadRepoDep = Annotated[DistributionUploadRepository, Depends(get_distribution_upload_repository)]
 
 
 async def verify_service_api_key(

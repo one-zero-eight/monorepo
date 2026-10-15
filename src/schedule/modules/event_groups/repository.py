@@ -7,6 +7,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.schedule.models import EventGroup, EventGroupTagAssociation
 from src.schedule.modules.event_groups.schemas import (
     CreateEventGroup,
     CreateEventGroupWithoutTags,
@@ -14,7 +15,6 @@ from src.schedule.modules.event_groups.schemas import (
     ViewEventGroup,
 )
 from src.schedule.modules.tags.repository import SqlTagRepository
-from src.schedule.storages.sql.models import EventGroup, EventGroupTagAssociation
 
 
 class SqlEventGroupRepository:

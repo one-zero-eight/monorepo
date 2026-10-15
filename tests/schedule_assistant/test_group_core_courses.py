@@ -144,7 +144,7 @@ def test_shared_lecture_merges_across_colors_and_preserves_majority(colors, merg
 
 
 @pytest.mark.parametrize("additional_slot", [False, True])
-def test_group_rejects_tied_course_colors_after_merging(additional_slot) -> None:
+def test_group_leaves_tied_course_colors_unset_after_merging(additional_slot) -> None:
     lessons = [_lesson(color="#112233"), _lesson(color="#AABBCC")]
     if additional_slot:
         lessons.extend(
@@ -154,20 +154,27 @@ def test_group_rejects_tied_course_colors_after_merging(additional_slot) -> None
             ]
         )
     merged = merge_identical_lessons(lessons)
+    grouped = group_core_course_lessons(merged, term_dates=TERM_DATES)
 
-    with pytest.raises(ValueError, match=r"History.*#112233.*#AABBCC"):
-        group_core_course_lessons(merged, term_dates=TERM_DATES)
+    assert len(grouped) == 1
+    assert grouped[0].color is None
+    assert len(grouped[0].components) == (2 if additional_slot else 1)
+    assert grouped[0].components[0].a1_range == merged[0].a1_range
 
 
-def test_group_rejects_tied_course_colors() -> None:
-    with pytest.raises(ValueError, match=r"History.*#112233.*#AABBCC"):
-        group_core_course_lessons(
-            [
-                _lesson(color="#112233"),
-                _lesson(start_time=dtm.time(10, 40), end_time=dtm.time(12, 10), color="#AABBCC"),
-            ],
-            term_dates=TERM_DATES,
-        )
+def test_group_preserves_components_when_course_colors_are_tied() -> None:
+    grouped = group_core_course_lessons(
+        [
+            _lesson(color="#112233"),
+            _lesson(start_time=dtm.time(10, 40), end_time=dtm.time(12, 10), color="#AABBCC"),
+        ],
+        term_dates=TERM_DATES,
+    )
+
+    assert len(grouped) == 1
+    assert grouped[0].subject == "History"
+    assert grouped[0].color is None
+    assert [component.start_time for component in grouped[0].components] == [dtm.time(9, 0), dtm.time(10, 40)]
 
 
 def test_group_splits_different_subjects_and_cohorts():

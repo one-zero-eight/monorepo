@@ -39,7 +39,7 @@ from src.schedule_assistant.modules.bookings.tasks import (
 )
 from src.schedule_assistant.modules.issues.booking_slots import build_bookable_slots
 from src.schedule_assistant.modules.issues.booking_window import resolve_booking_fetch_window
-from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
+from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
 from src.schedule_assistant.modules.schedule_config.schemas import TermConfig
 from src.schedule_assistant.utcnow import utcnow
 
@@ -60,8 +60,8 @@ async def stop_background_tasks() -> None:
     await asyncio.gather(*tasks, return_exceptions=True)
 
 
-def _require_term() -> TermConfig:
-    term = schedule_config_repository.get_term()
+def _require_term(config: ScheduleConfigRepository) -> TermConfig:
+    term = config.get_term()
     if term is None:
         raise HTTPException(status_code=404, detail="Schedule term config is required for booking review")
     return term
@@ -74,11 +74,11 @@ def _booking_window(term: TermConfig) -> tuple[dtm.datetime, dtm.datetime] | Non
     return resolve_booking_fetch_window(window.start_date, window.end_date)
 
 
-async def _load_review_index() -> ReviewIndex:
-    term = _require_term()
-    sections = schedule_config_repository.get_sections()
-    courses = schedule_config_repository.get_courses()
-    config_rooms = schedule_config_repository.get_rooms()
+async def _load_review_index(config: ScheduleConfigRepository) -> ReviewIndex:
+    term = _require_term(config)
+    sections = config.get_sections()
+    courses = config.get_courses()
+    config_rooms = config.get_rooms()
     try:
         rooms = await booking_client.get_rooms()
         known_room_ids = {room.id for room in config_rooms.rooms} | {room.id for room in rooms}
@@ -165,8 +165,8 @@ def _overlay_operations(index: ReviewIndex) -> None:
                     slot.can_cancel = any(item.can_cancel for item in operations)
 
 
-async def get_booking_review() -> BookingReview:
-    return (await _load_review_index()).tree
+async def get_booking_review(config: ScheduleConfigRepository) -> BookingReview:
+    return (await _load_review_index(config)).tree
 
 
 def get_booking_task(task_id: str) -> BookingTask:
@@ -193,7 +193,7 @@ def _reserve(kind: BookingTaskKind, items: list[BookingTaskItem]) -> tuple[Booki
         ) from error
 
 
-async def start_batch_book(request: BatchBookRequest) -> BookingTask:
+async def start_batch_book(config: ScheduleConfigRepository, request: BatchBookRequest) -> BookingTask:
     # Recover the server-side task even when review now blocks the pending slots.
     owners = {
         owner
@@ -210,7 +210,7 @@ async def start_batch_book(request: BatchBookRequest) -> BookingTask:
         raise HTTPException(
             status_code=409, detail={"message": "Slots already have booking operations", "task_ids": sorted(owners)}
         )
-    index = await _load_review_index()
+    index = await _load_review_index(config)
     items: list[BookingTaskItem] = []
     seen: set[str] = set()
     for slot_id in dict.fromkeys(request.slot_ids):
@@ -502,7 +502,7 @@ def _cancel_item(
     )
 
 
-async def start_cancel_booking(request: CancelBookingRequest) -> BookingTask:
+async def start_cancel_booking(config: ScheduleConfigRepository, request: CancelBookingRequest) -> BookingTask:
     items = []
     for operation_id in dict.fromkeys(request.operation_ids):
         operation = get_operation(operation_id)
@@ -512,7 +512,7 @@ async def start_cancel_booking(request: CancelBookingRequest) -> BookingTask:
             _cancel_item(operation[0], index=operation_id, scope=request.scope, occurrence_date=request.occurrence_date)
         )
     if request.booking_ids:
-        window = _booking_window(_require_term())
+        window = _booking_window(_require_term(config))
         if window is None:
             raise HTTPException(status_code=409, detail="No checked booking window")
         try:
@@ -555,8 +555,8 @@ async def start_cancel_booking(request: CancelBookingRequest) -> BookingTask:
     return task
 
 
-async def start_cancel_extra(request: CancelExtraRequest) -> BookingTask:
-    index = await _load_review_index()
+async def start_cancel_extra(config: ScheduleConfigRepository, request: CancelExtraRequest) -> BookingTask:
+    index = await _load_review_index(config)
     items = []
     for extra_id in dict.fromkeys(request.extra_ids):
         booking = index.extras.get(extra_id)

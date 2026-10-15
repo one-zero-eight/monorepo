@@ -14,7 +14,7 @@ from src.schedule import docs
 from src.schedule.config import settings
 from src.schedule.modules.predefined.storage import JsonPredefinedUsers
 from src.schedule.modules.predefined.utils import setup_predefined_data_from_object
-from src.schedule.storages.sql import SQLAlchemyStorage
+from src.schedule.storage import SQLAlchemyStorage
 
 
 def setup_predefined_data_from_file() -> None:

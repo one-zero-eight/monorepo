@@ -10,6 +10,7 @@ from src.schedule_assistant.modules.schedule_config.schemas import CoursesConfig
 from src.schedule_assistant.modules.schedule_config.weekly_pattern_canonicalization import (
     canonicalize_courses,
 )
+from src.schedule_assistant.storage import open_session
 
 
 def parse_args() -> argparse.Namespace:
@@ -31,31 +32,33 @@ def parse_args() -> argparse.Namespace:
 
 
 def run(*, apply: bool, course_names: set[str] | None) -> int:
-    repository = ScheduleConfigRepository()
-    term = repository.get_term()
-    courses = repository.get_courses()
-    normalized, stats = canonicalize_courses(
-        courses.courses,
-        term,
-        course_names=course_names,
-    )
+    with open_session() as session:
+        repository = ScheduleConfigRepository(session)
+        term = repository.get_term()
+        courses = repository.get_courses()
+        normalized, stats = canonicalize_courses(
+            courses.courses,
+            term,
+            course_names=course_names,
+        )
 
-    print(f"Courses changed: {stats.courses_changed}")
-    print(f"Weekly slots changed: {stats.slots_changed}")
-    print(f"Edits: {stats.edits_before} -> {stats.edits_after}")
+        print(f"Courses changed: {stats.courses_changed}")
+        print(f"Weekly slots changed: {stats.slots_changed}")
+        print(f"Edits: {stats.edits_before} -> {stats.edits_after}")
 
-    if stats.slots_changed == 0:
-        print("Nothing to change.")
+        if stats.slots_changed == 0:
+            print("Nothing to change.")
+            return 0
+        if not apply:
+            print("Dry run complete. Run again with --apply to write changes.")
+            return 0
+
+        _, revision = repository.set_courses(
+            CoursesConfig(courses=normalized),
+        )
+        session.commit()
+        print(f"Saved revision: {revision}")
         return 0
-    if not apply:
-        print("Dry run complete. Run again with --apply to write changes.")
-        return 0
-
-    _, revision = repository.set_courses(
-        CoursesConfig(courses=normalized),
-    )
-    print(f"Saved revision: {revision}")
-    return 0
 
 
 def main() -> int:

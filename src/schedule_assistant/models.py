@@ -2,9 +2,11 @@ import datetime as dtm
 from typing import Any
 
 from sqlalchemy import JSON, Date, DateTime, Integer, LargeBinary, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from src.schedule_assistant.db.base import Base
+
+class Base(DeclarativeBase):
+    pass
 
 
 class TermRow(Base):

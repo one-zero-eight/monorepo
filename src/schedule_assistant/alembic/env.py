@@ -7,8 +7,8 @@ from sqlalchemy import engine_from_config, pool
 from sqlalchemy.engine import Connection
 from yaml import safe_load
 
-import src.schedule_assistant.db.models  # noqa: F401
-from src.schedule_assistant.db.base import Base
+import src.schedule_assistant.models  # noqa: F401
+from src.schedule_assistant.models import Base
 
 config = context.config
 

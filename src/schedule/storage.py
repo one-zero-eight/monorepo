@@ -22,7 +22,7 @@ class SQLAlchemyStorage:
         return self.sessionmaker()
 
     async def create_all(self) -> None:
-        from src.schedule.storages.sql.models import Base
+        from src.schedule.models import Base
 
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)

@@ -2,16 +2,19 @@ import datetime as dtm
 
 from fastapi import APIRouter, HTTPException, status
 
-from src.schedule_assistant.dependencies import ModeratorDep, VerifyTokenDep
-from src.schedule_assistant.modules.instructor_preferences.repository import (
-    preference_invite_repository,
+from src.schedule_assistant.dependencies import (
+    ModeratorDep,
+    PreferenceInviteRepoDep,
+    ScheduleConfigRepoDep,
+    VerifyTokenDep,
 )
+from src.schedule_assistant.modules.instructor_preferences.repository import PreferenceInviteRepository
 from src.schedule_assistant.modules.instructor_preferences.schemas import (
     InstructorPreferenceForm,
     InstructorPreferenceUpdate,
     PreferenceShareLinkResponse,
 )
-from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
+from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
 from src.schedule_assistant.modules.schedule_config.schemas import InstructorConfig, InstructorSlotPreferenceEntry
 from src.schedule_assistant.modules.schedule_config.validation import validate_instructors
 from src.schedule_assistant.modules.schedule_config.visibility import find_instructor_by_email
@@ -20,8 +23,11 @@ from src.schedule_assistant.modules.solver.instructor_preferences import validat
 router = APIRouter(prefix="/instructor-preferences", tags=["Instructor Preferences"])
 
 
-def _preference_form(instructor: InstructorConfig.Instructor) -> InstructorPreferenceForm:
-    term = schedule_config_repository.get_term()
+def _preference_form(
+    config_repo: ScheduleConfigRepository,
+    instructor: InstructorConfig.Instructor,
+) -> InstructorPreferenceForm:
+    term = config_repo.get_term()
     if term is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Term is not configured")
     return InstructorPreferenceForm(
@@ -34,10 +40,11 @@ def _preference_form(instructor: InstructorConfig.Instructor) -> InstructorPrefe
 
 
 def _save_slot_preferences(
+    config_repo: ScheduleConfigRepository,
     instructor: InstructorConfig.Instructor,
     slot_preferences: list[InstructorSlotPreferenceEntry],
 ) -> InstructorConfig.Instructor:
-    term = schedule_config_repository.get_term()
+    term = config_repo.get_term()
     if term is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Term is not configured")
 
@@ -51,31 +58,37 @@ def _save_slot_preferences(
     if validation_errors:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=validation_errors)
 
-    saved, _revision = schedule_config_repository.update_instructor(
+    saved, _revision = config_repo.update_instructor(
         instructor.id,
         updated,
     )
     return saved
 
 
-def _instructor_for_invite_key(token: str) -> InstructorConfig.Instructor:
-    invite = preference_invite_repository.get_active_by_key(token)
+def _instructor_for_invite_key(
+    config_repo: ScheduleConfigRepository,
+    invites: PreferenceInviteRepository,
+    token: str,
+) -> InstructorConfig.Instructor:
+    invite = invites.get_active_by_key(token)
     if invite is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Invalid or expired preference link",
         )
-    instructor = schedule_config_repository.get_instructor(invite.instructor_id)
+    instructor = config_repo.get_instructor(invite.instructor_id)
     if instructor is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Instructor not found")
     return instructor
 
 
 @router.get("/me")
-async def get_my_preferences(user_and_token: VerifyTokenDep) -> InstructorPreferenceForm:
+async def get_my_preferences(
+    user_and_token: VerifyTokenDep, config_repo: ScheduleConfigRepoDep
+) -> InstructorPreferenceForm:
     user, _token = user_and_token
     instructor = find_instructor_by_email(
-        schedule_config_repository.get_instructors(),
+        config_repo.get_instructors(),
         user.email,
     )
     if instructor is None:
@@ -83,17 +96,18 @@ async def get_my_preferences(user_and_token: VerifyTokenDep) -> InstructorPrefer
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No instructor profile matches your email",
         )
-    return _preference_form(instructor)
+    return _preference_form(config_repo, instructor)
 
 
 @router.put("/me")
 async def update_my_preferences(
     user_and_token: VerifyTokenDep,
     body: InstructorPreferenceUpdate,
+    config_repo: ScheduleConfigRepoDep,
 ) -> InstructorPreferenceForm:
     user, _token = user_and_token
     instructor = find_instructor_by_email(
-        schedule_config_repository.get_instructors(),
+        config_repo.get_instructors(),
         user.email,
     )
     if instructor is None:
@@ -102,23 +116,26 @@ async def update_my_preferences(
             detail="No instructor profile matches your email",
         )
     saved = _save_slot_preferences(
+        config_repo,
         instructor,
         body.slot_preferences,
     )
-    return _preference_form(saved)
+    return _preference_form(config_repo, saved)
 
 
 @router.post("/{instructor_id:path}/share-link")
 async def create_preference_share_link(
     instructor_id: str,
     moderator: ModeratorDep,
+    config_repo: ScheduleConfigRepoDep,
+    invites: PreferenceInviteRepoDep,
 ) -> PreferenceShareLinkResponse:
-    instructor = schedule_config_repository.get_instructor(instructor_id)
+    instructor = config_repo.get_instructor(instructor_id)
     if instructor is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Instructor not found: {instructor_id!r}")
 
     user, _tok = moderator
-    invite = preference_invite_repository.get_or_create_for_instructor(
+    invite = invites.get_or_create_for_instructor(
         instructor.id,
         created_by=user.email,
     )
@@ -129,18 +146,23 @@ async def create_preference_share_link(
 
 
 @router.get("/link/{token}")
-async def get_preferences_by_token(token: str) -> InstructorPreferenceForm:
-    return _preference_form(_instructor_for_invite_key(token))
+async def get_preferences_by_token(
+    token: str, config_repo: ScheduleConfigRepoDep, invites: PreferenceInviteRepoDep
+) -> InstructorPreferenceForm:
+    return _preference_form(config_repo, _instructor_for_invite_key(config_repo, invites, token))
 
 
 @router.put("/link/{token}")
 async def update_preferences_by_token(
     token: str,
     body: InstructorPreferenceUpdate,
+    config_repo: ScheduleConfigRepoDep,
+    invites: PreferenceInviteRepoDep,
 ) -> InstructorPreferenceForm:
-    instructor = _instructor_for_invite_key(token)
+    instructor = _instructor_for_invite_key(config_repo, invites, token)
     saved = _save_slot_preferences(
+        config_repo,
         instructor,
         body.slot_preferences,
     )
-    return _preference_form(saved)
+    return _preference_form(config_repo, saved)

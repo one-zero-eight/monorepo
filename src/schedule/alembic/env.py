@@ -34,7 +34,7 @@ if config.attributes.get("connection") is None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from src.schedule.storages.sql.models import Base  # noqa: E402
+from src.schedule.models import Base  # noqa: E402
 
 target_metadata = Base.metadata
 

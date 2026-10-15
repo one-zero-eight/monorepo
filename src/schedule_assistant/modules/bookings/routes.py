@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query
 
-from src.schedule_assistant.dependencies import ModeratorDep
+from src.schedule_assistant.dependencies import ModeratorDep, ScheduleConfigRepoDep
 from src.schedule_assistant.modules.bookings import service
 from src.schedule_assistant.modules.bookings.schemas import (
     BatchBookRequest,
@@ -14,8 +14,8 @@ router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
 
 @router.get("/review")
-async def get_booking_review(_moderator: ModeratorDep) -> BookingReview:
-    return await service.get_booking_review()
+async def get_booking_review(_moderator: ModeratorDep, config_repo: ScheduleConfigRepoDep) -> BookingReview:
+    return await service.get_booking_review(config_repo)
 
 
 @router.get("/tasks")
@@ -31,8 +31,10 @@ async def reconcile_booking_task(_moderator: ModeratorDep, task_id: str) -> Book
 
 
 @router.post("/cancel")
-async def cancel_bookings(_moderator: ModeratorDep, request: CancelBookingRequest) -> BookingTask:
-    return await service.start_cancel_booking(request)
+async def cancel_bookings(
+    _moderator: ModeratorDep, request: CancelBookingRequest, config_repo: ScheduleConfigRepoDep
+) -> BookingTask:
+    return await service.start_cancel_booking(config_repo, request)
 
 
 @router.get("/tasks/{task_id}")
@@ -41,10 +43,14 @@ async def get_booking_task(_moderator: ModeratorDep, task_id: str) -> BookingTas
 
 
 @router.post("/batch")
-async def batch_book_slots(_moderator: ModeratorDep, request: BatchBookRequest) -> BookingTask:
-    return await service.start_batch_book(request)
+async def batch_book_slots(
+    _moderator: ModeratorDep, request: BatchBookRequest, config_repo: ScheduleConfigRepoDep
+) -> BookingTask:
+    return await service.start_batch_book(config_repo, request)
 
 
 @router.post("/cancel-extra")
-async def cancel_extra_bookings(_moderator: ModeratorDep, request: CancelExtraRequest) -> BookingTask:
-    return await service.start_cancel_extra(request)
+async def cancel_extra_bookings(
+    _moderator: ModeratorDep, request: CancelExtraRequest, config_repo: ScheduleConfigRepoDep
+) -> BookingTask:
+    return await service.start_cancel_extra(config_repo, request)

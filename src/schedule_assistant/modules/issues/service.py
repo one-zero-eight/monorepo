@@ -14,7 +14,7 @@ from src.schedule_assistant.modules.issues.per_week import per_week_issues_from_
 from src.schedule_assistant.modules.issues.schemas import CheckParameters, CheckResults, Issue, IssueTypeEnum
 from src.schedule_assistant.modules.issues.student_emails import student_email_issues_from_sections
 from src.schedule_assistant.modules.schedule.domain import meetings_from_schedule_config
-from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
+from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
 from src.schedule_assistant.modules.schedule_config.schemas import RoomConfig, TermConfig
 from src.schedule_assistant.modules.schedule_config.semester_windows import union_semester_window
 
@@ -26,8 +26,8 @@ def _merge_room_capacities(config_rooms: RoomConfig, booking_rooms: list[RoomDTO
     return capacities
 
 
-def _require_term() -> TermConfig:
-    term = schedule_config_repository.get_term()
+def _require_term(config: ScheduleConfigRepository) -> TermConfig:
+    term = config.get_term()
     if term is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -36,12 +36,12 @@ def _require_term() -> TermConfig:
     return term
 
 
-async def check_schedule_issues(params: CheckParameters) -> CheckResults:
-    term = _require_term()
-    sections = schedule_config_repository.get_sections()
-    courses = schedule_config_repository.get_courses()
-    instructors = schedule_config_repository.get_instructors()
-    config_rooms = schedule_config_repository.get_rooms()
+async def check_schedule_issues(config: ScheduleConfigRepository, params: CheckParameters) -> CheckResults:
+    term = _require_term(config)
+    sections = config.get_sections()
+    courses = config.get_courses()
+    instructors = config.get_instructors()
+    config_rooms = config.get_rooms()
 
     meetings = meetings_from_schedule_config(courses, sections, expand_weekly=False)
     concrete_meetings = meetings_from_schedule_config(courses, sections, term=term)

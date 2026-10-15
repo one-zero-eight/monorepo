@@ -9,10 +9,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.inh_accounts_sdk import inh_accounts
+from src.schedule.models import (
+    LinkedCalendar,
+    User,
+    UserScheduleKeys,
+    UserXFavoriteEventGroup,
+    UserXHiddenEventGroup,
+)
 from src.schedule.modules.users.linked import LinkedCalendarCreate, LinkedCalendarUpdate, LinkedCalendarView
 from src.schedule.modules.users.schemas import CreateUser, TargetForExport, ViewUser, ViewUserScheduleKey
-from src.schedule.storages.sql.models import LinkedCalendar, User, UserScheduleKeys, UserXFavoriteEventGroup
-from src.schedule.storages.sql.models.event_groups import UserXHiddenEventGroup
 
 _get_options = (
     selectinload(User.favorites_association),

@@ -10,7 +10,7 @@ from alembic.script import ScriptDirectory
 from sqlalchemy import Connection, column, inspect, select, table, text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from src.schedule.storages.sql.models import Base
+from src.schedule.models import Base
 
 ALEMBIC_CONFIG = Path(__file__).parents[2] / "src/schedule/alembic.ini"
 

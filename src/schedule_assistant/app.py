@@ -22,13 +22,19 @@ from src.schedule_assistant.config import settings
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from src.schedule_assistant.modules.bookings.service import start_recovery, stop_background_tasks
+    from src.schedule_assistant.storage import clear_engine_cache, get_engine, get_session_factory
 
     await inh_accounts.update_key_set()
+    engine = get_engine()
+    app.state.engine = engine
+    app.state.sessionmaker = get_session_factory()
     start_recovery()
     try:
         yield
     finally:
         await stop_background_tasks()
+        engine.dispose()
+        clear_engine_cache()
         await inh_accounts.aclose()
 
 

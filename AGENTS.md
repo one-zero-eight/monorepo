@@ -27,7 +27,7 @@ DO NOT USE response_model= in route decorator, use type hints instead:
 **FastAPI Depends** — declare reusable deps as `XxxDep = Annotated[T, Depends(factory)]` (PascalCase + `Dep` suffix). Use the alias as the parameter type; do not write `Depends(...)` in route signatures. Name route params after the value (`users`, `session`), or `_` when the dep is auth-only:
 
 ```python
-# dependencies.py / db.py
+# dependencies.py
 def get_user_repository(session: SessionDep) -> SqlUserRepository:
     return SqlUserRepository(session)
 
@@ -40,6 +40,12 @@ async def get_me(user_id: CurrentUserIdDep, users: UserRepoDep) -> ViewUser:
     ...
 ```
 
+### Models vs schemas
+
+- **model** — SQLAlchemy ORM mapped to a table (`src/<service>/models.py`). Persist/query via the session; not an API contract.
+- **schema** — Pydantic (or similar) request/response/DTO types (`modules/*/schemas.py`, and service-level `config_schema.py` / `schema_base.py` for settings). Wire these in routes and OpenAPI; do not put ORM models in route signatures.
+
+Do not name API DTOs `*Model` or ORM tables `*Schema`.
 
 ### Router documentation
 
@@ -48,6 +54,8 @@ Use the router module's docstring to document shared behavior, business rules, a
 ### SQLAlchemy
 
 Used in `schedule` (async) and `schedule_assistant` (sync). Prefer SQLAlchemy 2.0 style.
+
+Layout: `src/<service>/storage.py` (engine / sessionmaker), `src/<service>/models.py` (ORM), `src/<service>/dependencies.py` (`get_session`, `SessionDep`, `*RepoDep`, auth deps).
 
 **Models** — declarative classes with `Mapped[...]` + `mapped_column` / `relationship` (not classic `Column(...)` without annotations):
 
@@ -71,37 +79,35 @@ insert(...).on_conflict_do_update(index_elements=[EventGroup.alias], ...)
 
 `.values(**model_dump(...))` and executemany `params=[{...}, ...]` still use string keys — that is fine; batch UPDATE dicts cannot take Column objects. Avoid raw `text()` in app code except when there is no ORM/Core equivalent.
 
-**Sessions (async FastAPI)** — one `AsyncSession` per request via `Depends`, not per-method `async with create_session()` and not `async_scoped_session` / ContextVar globals:
+**Sessions (FastAPI)** — one session per request via `Depends`, not per-method `create_session()` and not `async_scoped_session` / ContextVar globals. `schedule` uses async `AsyncSession`; `schedule_assistant` uses sync `Session` the same way:
 
 ```python
-# db.py
-async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
-    async with request.app.state.sql_storage.sessionmaker() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
+# dependencies.py
+def get_session(request: Request) -> Generator[Session]:  # or AsyncIterator[AsyncSession]
+    session = request.app.state.sessionmaker()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
-SessionDep = Annotated[AsyncSession, Depends(get_session)]
+SessionDep = Annotated[Session, Depends(get_session)]
 
-class SqlUserRepository:
-    def __init__(self, session: AsyncSession) -> None:
-        self.session = session
+def get_schedule_config_repository(session: SessionDep) -> ScheduleConfigRepository:
+    return ScheduleConfigRepository(session)
 
-def get_user_repository(session: SessionDep) -> SqlUserRepository:
-    return SqlUserRepository(session)
-
-UserRepoDep = Annotated[SqlUserRepository, Depends(get_user_repository)]
+ScheduleConfigRepoDep = Annotated[ScheduleConfigRepository, Depends(get_schedule_config_repository)]
 
 # route
-@router.get("/me")
-async def get_me(users: UserRepoDep) -> ViewUser:
+@router.get("/")
+async def get_config(config_repo: ScheduleConfigRepoDep) -> ScheduleConfig:
     ...
 ```
 
-Repos do not commit; the request-scoped session commits once at the end. Outside HTTP (tests, scripts), open a session from `sessionmaker()` and pass it into the repository.
+Repos do not commit; the request-scoped session commits once at the end. Outside HTTP (tests, scripts, background tasks), open a session from `storage.open_session()` / `sessionmaker()` and pass it into the repository.
 
 ### Migrations
 

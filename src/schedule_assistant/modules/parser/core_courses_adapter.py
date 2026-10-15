@@ -260,7 +260,8 @@ def _majority_course_color(course: str, lessons: list[Lesson]) -> str | None:
     top_count = max(counts.values())
     top_colors = sorted(color for color, count in counts.items() if count == top_count)
     if len(top_colors) > 1:
-        raise ValueError(f"Course {course!r} has tied top colors: {', '.join(top_colors)}")
+        logger.warning(f"Course {course!r} has tied top colors: {', '.join(top_colors)}; leaving course color unset")
+        return None
     return top_colors[0]
 
 

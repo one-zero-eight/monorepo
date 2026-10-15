@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from src.schedule_assistant.dependencies import VerifyTokenDep, is_moderator_email
+from src.schedule_assistant.dependencies import ScheduleConfigRepoDep, VerifyTokenDep, is_moderator_email
 from src.schedule_assistant.modules.schedule import service as schedule_service
 from src.schedule_assistant.schema_base import ScheduleAssistantSchema
 
@@ -15,10 +15,10 @@ class MeResponse(ScheduleAssistantSchema):
 
 
 @router.get("/me/student-groups")
-async def get_my_student_groups(user_and_token: VerifyTokenDep) -> list[str]:
+async def get_my_student_groups(user_and_token: VerifyTokenDep, config_repo: ScheduleConfigRepoDep) -> list[str]:
     """Return only group codes belonging to the verified user, never membership lists."""
     user, _token = user_and_token
-    return [group.code for group in schedule_service.get_my_groups(user.email)]
+    return [group.code for group in schedule_service.get_my_groups(config_repo, user.email)]
 
 
 @router.get("/me")

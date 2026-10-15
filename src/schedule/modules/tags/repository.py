@@ -4,8 +4,8 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.schedule.models import EventGroupTagAssociation, Tag
 from src.schedule.modules.tags.schemas import CreateTag, UpdateTag, ViewTag
-from src.schedule.storages.sql.models import EventGroupTagAssociation, Tag
 
 
 class SqlTagRepository:

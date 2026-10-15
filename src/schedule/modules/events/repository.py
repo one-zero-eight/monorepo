@@ -5,6 +5,7 @@ from sqlalchemy.dialects.postgresql import insert as postgres_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
+from src.schedule.models import Event, EventPatch
 from src.schedule.modules.events.schemas import (
     AddEventPatch,
     CreateEvent,
@@ -13,7 +14,6 @@ from src.schedule.modules.events.schemas import (
     ViewEvent,
     ViewEventPatch,
 )
-from src.schedule.storages.sql.models import Event, EventPatch
 
 
 class SqlEventRepository:
