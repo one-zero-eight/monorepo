@@ -116,6 +116,7 @@ lint.extend-select = [
     "A", # flake8-builtins
     "DTZ", # flake8-datetimez
     "ICN", # flake8-import-conventions
+    "INP", # flake8-no-pep420 — require __init__.py for packages
     "TID251", # flake8-tidy-imports banned-api
 ]
 lint.extend-ignore = [
@@ -128,12 +129,14 @@ lint.extend-ignore = [
 lint.unfixable = ["F401"] # unused-import — report only, do not remove on fix
 target-version = "py314"
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"] # assert is standard in pytest
+"tests/**" = ["S101", "INP001"] # assert is standard in pytest; tests are not packages
 "tests/schedule_assistant/**" = ["PLC2701", "SIM117"]
 "src/schedule_assistant/core_courses/**" = ["S101", "DTZ", "ICN003"]
 "src/schedule_assistant/electives/**" = ["S101", "DTZ"]
 "src/schedule_assistant/modules/**" = ["S101", "DTZ"]
-"scripts/schedule_assistant/**" = ["E402", "DTZ", "N806", "SIM115"]
+"scripts/**" = ["INP001"] # scripts are entrypoints, not packages
+"scripts/schedule_assistant/**" = ["E402", "DTZ", "N806", "SIM115", "INP001"]
+"**/alembic/**" = ["INP001"] # alembic loads by path, not as packages
 [tool.ruff.lint.flake8-builtins]
 ignorelist = ["id"]
 [tool.ruff.lint.flake8-import-conventions]
