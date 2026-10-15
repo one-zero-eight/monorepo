@@ -43,7 +43,7 @@ async def get_me(user_id: CurrentUserIdDep, users: UserRepoDep) -> ViewUser:
 
 ### Router documentation
 
-`popule_openapi_tags(app, router_module)` publishes the router module's docstring as the description of its first OpenAPI tag (e.g. `popule_openapi_tags(app, src.schedule.modules.users.routes)`). Use the module docstring to document shared behavior, business rules, and workflows in detail when needed; keep endpoint-specific details in endpoint docstrings. Register this call after `app.include_router(...)` when wiring a router whose module documentation should appear in OpenAPI.
+Use the router module's docstring to document shared behavior, business rules, and workflows in detail when needed; keep endpoint-specific details in endpoint docstrings. This module docstring is published as the description of the router's first OpenAPI tag through `popule_openapi_tags(app, router_module)` (e.g. `popule_openapi_tags(app, src.schedule.modules.users.routes)`). Register this call after `app.include_router(...)` when wiring a router whose module documentation should appear in OpenAPI.
 
 ### SQLAlchemy
 
@@ -115,13 +115,20 @@ Repos do not commit; the request-scoped session commits once at the end. Outside
 
 When finishing a task with code changes:
 - stage only the relevant changes (not the full working tree / unrelated diffs); do not stage secrets (`.env`, credentials, local `settings.yaml`)
-- draft a concise conventional commit message matching recent `git log` style (focus on why). **Always include a scope:**
+- draft a concise Conventional Commit message using the examples below as a reference; describe the purpose or behavioral change, not just the files edited. **Always include a scope:**
   - service/area scope when the change is local (e.g. `feat(maps): …`, `fix(schedule): …`)
   - comma-separated scopes when a few services are touched (e.g. `chore(schedule, maps): …`)
   - `general` for repo-wide / all-services changes (e.g. `chore(general): …`, `docs(general): …`)
 - **Base the message on the full staged diff** (`git diff --cached` / all files being committed), not only the last edit in the chat. One commit = one message that covers the whole staged set.
 - if the change is tied to a GitHub issue, put a trailer in the commit body: `Closes one-zero-eight/monorepo#123` when the commit closes the issue, or `Relates one-zero-eight/monorepo#123` when it only relates to it
 - do **not** run `git commit` unless the user explicitly asks
+
+Good examples from this repository's history (a subject alone is enough for simple changes):
+- `feat(when2meet): support independent booking titles`
+- `fix(room-booking): restore calendar and free-busy booking matching`
+- `fix(room-booking, schedule-assistant): preserve booking intents and verify Outlook outcomes`
+- `docs(general): start PostgreSQL with development infrastructure`
+- `feat(general): gate API startup on database migrations\n\nRelates one-zero-eight/monorepo#249`
 
 
 ### Testing
