@@ -616,8 +616,8 @@ $defs:
     description: Innopolis Sport integration settings.
     properties:
       api_url:
-        default: https://sport.innopolis.university/api
-        description: URL of the Sport API
+        default: https://sport.innopolis.university/api/v3
+        description: URL of the Sport v3 API
         title: Api Url
         type: string
     title: SportSettings
@@ -736,6 +736,16 @@ $defs:
           Specify as a regex: `https://.*.innohassle.ru`'
         title: Cors Allow Origin Regex
         type: string
+      api_key:
+        anyOf:
+        - format: password
+          type: string
+          writeOnly: true
+        - type: 'null'
+        default: null
+        description: Service API key for the Schedule personal calendar integration;
+          disabled when unset
+        title: Api Key
       mongo:
         $ref: '#/$defs/MongoDatabaseSettings'
         description: Configuration for MongoDB
@@ -853,7 +863,7 @@ $defs:
     description: InNoHassle Events integration settings.
     properties:
       api_url:
-        default: https://api.innohassle.ru/events/v1
+        default: https://api.innohassle.ru/events/v0
         description: URL of the Events API
         title: Api Url
         type: string

@@ -94,6 +94,7 @@ def load_root_settings() -> Settings:
         ),
         events_service=EventsSettings(
             environment=Environment.TESTING,
+            api_key=SecretStr("test-events-api-key"),
             mongo=MongoDatabaseSettings(
                 uri=SecretStr(mongo_uri.replace("<service_name>", "events")),
             ),

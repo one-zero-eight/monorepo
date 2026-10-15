@@ -1,12 +1,32 @@
+from secrets import compare_digest
 from typing import Annotated
 
 from fastapi import Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials
 
-from src.dependencies import INH_TOKEN_AUTH, OPTIONAL_INH_TOKEN_AUTH
+from src.dependencies import INH_TOKEN_AUTH, OPTIONAL_INH_TOKEN_AUTH, bearer_scheme
 from src.events.clubs_client import clubs_client
 from src.events.config import settings
 from src.events.schemas import UserRoles
 from src.inh_accounts_sdk import UserTokenData
+
+
+async def verify_schedule_api_key(
+    bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> None:
+    if settings.api_key is None or not settings.api_key.get_secret_value():
+        raise HTTPException(status_code=503, detail="Schedule integration is not configured")
+    if bearer is None or not compare_digest(
+        bearer.credentials.encode("utf-8"), settings.api_key.get_secret_value().encode("utf-8")
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid service API key",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+ScheduleApiKeyDep = Annotated[None, Depends(verify_schedule_api_key)]
 
 
 def _email_in_list(email: str, emails: list[str]) -> bool:

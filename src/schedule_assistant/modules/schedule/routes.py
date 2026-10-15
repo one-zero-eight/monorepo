@@ -43,7 +43,11 @@ async def get_predefined_aliases(
     return PredefinedAliasesResponse(event_groups=service.get_predefined_aliases(config_repo, email))
 
 
-@integration_router.post("/event-groups/schedule.ics")
+@integration_router.post(
+    "/event-groups/schedule.ics",
+    response_class=FastAPIResponse,
+    responses={200: {"content": {"text/calendar": {"schema": {"type": "string"}}}}},
+)
 async def get_event_groups_ics(
     request: BatchAliasesIcsRequest,
     _api_key: ServiceApiKeyDep,
@@ -52,7 +56,11 @@ async def get_event_groups_ics(
     return FastAPIResponse(content=service.get_aliases_ics(config_repo, request.aliases), media_type=ICS_MEDIA_TYPE)
 
 
-@integration_router.get("/event-groups/{alias}/schedule.ics")
+@integration_router.get(
+    "/event-groups/{alias}/schedule.ics",
+    response_class=FastAPIResponse,
+    responses={200: {"content": {"text/calendar": {"schema": {"type": "string"}}}}},
+)
 async def get_event_group_ics(
     alias: str, _api_key: ServiceApiKeyDep, config_repo: ScheduleConfigRepoDep
 ) -> FastAPIResponse:

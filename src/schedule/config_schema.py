@@ -18,14 +18,14 @@ class MusicRoomSettings(BaseSchema):
 class SportSettings(BaseSchema):
     """Innopolis Sport integration settings."""
 
-    api_url: str = "https://sport.innopolis.university/api"
-    "URL of the Sport API"
+    api_url: str = "https://sport.innopolis.university/api/v3"
+    "URL of the Sport v3 API"
 
 
 class EventsSettings(BaseSchema):
     """InNoHassle Events integration settings."""
 
-    api_url: str = "https://api.innohassle.ru/events/v1"
+    api_url: str = "https://api.innohassle.ru/events/v0"
     "URL of the Events API"
     api_key: SecretStr
     "API key for the Events API"

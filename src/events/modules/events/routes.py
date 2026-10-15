@@ -59,7 +59,11 @@ async def list_events(
     ]
 
 
-@ics_router.get("/events.ics")
+@ics_router.get(
+    "/events.ics",
+    response_class=Response,
+    responses={200: {"content": {"text/calendar": {"schema": {"type": "string"}}}}},
+)
 async def get_events_ics() -> Response:
     """ICS feed of all published events (no event description, no enrollment filtering)."""
     events = await events_repo.list_all_published()

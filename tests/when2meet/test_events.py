@@ -1,3 +1,5 @@
+import asyncio
+import datetime as dtm
 import json
 from functools import partial
 from typing import Any
@@ -10,6 +12,7 @@ from beanie import PydanticObjectId
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
+from src.clients.room_booking import CreateBookingRequest, PatchBookingRequest
 from src.when2meet.modules.events import events_repo, routes
 from src.when2meet.modules.events.schemas import BookedRoom
 
@@ -18,6 +21,7 @@ ROOM_BOOKING_API_URL = "https://room-booking.test/api/v0"
 
 def _booking(room_id: str, start: str, end: str) -> dict:
     return {
+        "id": f"booking-{room_id}-{start}",
         "room_id": room_id,
         "title": "Busy",
         "start": start,
@@ -30,6 +34,7 @@ def _booking(room_id: str, start: str, end: str) -> dict:
 
 def _created_booking(room_id: str, outlook_booking_id: str = "booking-1") -> dict:
     return {
+        "id": outlook_booking_id,
         "room_id": room_id,
         "title": "Room Search",
         "start": "2027-06-15T10:00:00Z",
@@ -38,6 +43,16 @@ def _created_booking(room_id: str, outlook_booking_id: str = "booking-1") -> dic
         "outlook_entry_id": "entry-1",
         "attendees": None,
     }
+
+
+def _create_booking_request(room_id: str) -> CreateBookingRequest:
+    return CreateBookingRequest(
+        room_id=room_id,
+        title="Meeting",
+        start=dtm.datetime(2027, 6, 15, 10, tzinfo=dtm.UTC),
+        end=dtm.datetime(2027, 6, 15, 11, tzinfo=dtm.UTC),
+        participant_emails=None,
+    )
 
 
 def _booking_url(outlook_booking_id: str) -> str:
@@ -102,10 +117,52 @@ def test_room_booking_get_requires_config(when2meet_client: TestClient, monkeypa
     assert portal is not None
 
     with pytest.raises(HTTPException) as exc_info:
-        portal.call(routes._room_booking_get, "/rooms/", {}, "Bearer user-token")
+        portal.call(routes._get_rooms, "Bearer user-token")
 
     assert exc_info.value.status_code == 503
     assert exc_info.value.detail == "Room Booking integration is not configured"
+
+
+def test_room_booking_wrappers_keep_concurrent_user_credentials_isolated(when2meet_client: TestClient):
+    portal = when2meet_client.portal
+    assert portal is not None
+    headers: list[str] = []
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        headers.append(request.headers["Authorization"])
+        await asyncio.sleep(0)
+        assert request.extensions["timeout"]["read"] == pytest.approx(30.0)
+        return httpx.Response(200, json=[])
+
+    async def get_rooms_for_users() -> None:
+        first = routes._room_booking_client("Bearer first-user")
+        second = routes._room_booking_client("Bearer second-user")
+        await asyncio.gather(first.rooms_rooms(), second.rooms_rooms())
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.get(f"{ROOM_BOOKING_API_URL}/rooms/").mock(side_effect=respond)
+        portal.call(get_rooms_for_users)
+
+    assert sorted(headers) == ["Bearer first-user", "Bearer second-user"]
+
+
+def test_room_booking_transport_reopens_after_lifespan_shutdown(when2meet_client: TestClient):
+    portal = when2meet_client.portal
+    assert portal is not None
+
+    async def get_rooms_across_lifespans() -> None:
+        first_transport = routes.room_booking_transport.client
+        assert await routes._get_rooms("Bearer user-token") == []
+        assert routes.room_booking_transport.client is first_transport
+        await routes.room_booking_transport.aclose()
+        assert first_transport.is_closed
+        assert await routes._get_rooms("Bearer user-token") == []
+        assert routes.room_booking_transport.client is not first_transport
+        assert not routes.room_booking_transport.client.is_closed
+
+    with respx.mock(assert_all_called=True) as respx_mock:
+        respx_mock.get(f"{ROOM_BOOKING_API_URL}/rooms/").mock(return_value=httpx.Response(200, json=[]))
+        portal.call(get_rooms_across_lifespans)
 
 
 def test_room_booking_get_network_failure_returns_bad_gateway(when2meet_client: TestClient):
@@ -117,24 +174,23 @@ def test_room_booking_get_network_failure_returns_bad_gateway(when2meet_client: 
         respx_mock.get(f"{ROOM_BOOKING_API_URL}/rooms/").mock(side_effect=httpx.ConnectError("boom"))
 
         with pytest.raises(HTTPException) as exc_info:
-            portal.call(routes._room_booking_get, "/rooms/", {}, "Bearer user-token")
+            portal.call(routes._get_rooms, "Bearer user-token")
 
     assert exc_info.value.status_code == 502
     assert exc_info.value.detail == "Failed to call Room Booking API"
 
 
-def test_room_booking_get_invalid_json_returns_bad_gateway(when2meet_client: TestClient):
+@pytest.mark.parametrize("response_body", [b"<html>not json</html>", b"[{}]"])
+def test_room_booking_get_invalid_json_returns_bad_gateway(when2meet_client: TestClient, response_body: bytes):
     """Verify invalid room-booking JSON responses are treated as upstream failures."""
     portal = when2meet_client.portal
     assert portal is not None
 
     with respx.mock(assert_all_called=True) as respx_mock:
-        respx_mock.get(f"{ROOM_BOOKING_API_URL}/rooms/").mock(
-            return_value=httpx.Response(200, content=b"<html>not json</html>")
-        )
+        respx_mock.get(f"{ROOM_BOOKING_API_URL}/rooms/").mock(return_value=httpx.Response(200, content=response_body))
 
         with pytest.raises(HTTPException) as exc_info:
-            portal.call(routes._room_booking_get, "/rooms/", {}, "Bearer user-token")
+            portal.call(routes._get_rooms, "Bearer user-token")
 
     assert exc_info.value.status_code == 502
     assert exc_info.value.detail == "Room Booking API returned an invalid response"
@@ -151,7 +207,7 @@ def test_room_booking_post_forwards_client_errors(when2meet_client: TestClient):
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            portal.call(routes._room_booking_post, "/bookings/", {"room_id": "3.2"}, "Bearer user-token")
+            portal.call(routes._room_booking_post, _create_booking_request("3.2"), "Bearer user-token")
 
     assert exc_info.value.status_code == 403
     assert exc_info.value.detail == "No access"
@@ -168,7 +224,7 @@ def test_room_booking_post_forwards_json_client_error_without_detail(when2meet_c
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            portal.call(routes._room_booking_post, "/bookings/", {"room_id": "3.2"}, "Bearer user-token")
+            portal.call(routes._room_booking_post, _create_booking_request("3.2"), "Bearer user-token")
 
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == ["bad request"]
@@ -183,7 +239,7 @@ def test_room_booking_post_forwards_non_json_client_error(when2meet_client: Test
         respx_mock.post(f"{ROOM_BOOKING_API_URL}/bookings/").mock(return_value=httpx.Response(404, content=b"not json"))
 
         with pytest.raises(HTTPException) as exc_info:
-            portal.call(routes._room_booking_post, "/bookings/", {"room_id": "missing"}, "Bearer user-token")
+            portal.call(routes._room_booking_post, _create_booking_request("missing"), "Bearer user-token")
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Room Booking API returned an error"
@@ -198,7 +254,7 @@ def test_room_booking_post_upstream_error_returns_bad_gateway(when2meet_client: 
         respx_mock.post(f"{ROOM_BOOKING_API_URL}/bookings/").mock(return_value=httpx.Response(503))
 
         with pytest.raises(HTTPException) as exc_info:
-            portal.call(routes._room_booking_post, "/bookings/", {"room_id": "3.2"}, "Bearer user-token")
+            portal.call(routes._room_booking_post, _create_booking_request("3.2"), "Bearer user-token")
 
     assert exc_info.value.status_code == 502
     assert exc_info.value.detail == "Room Booking API returned an error"
@@ -213,7 +269,7 @@ def test_room_booking_post_network_failure_returns_bad_gateway(when2meet_client:
         respx_mock.post(f"{ROOM_BOOKING_API_URL}/bookings/").mock(side_effect=httpx.ConnectError("boom"))
 
         with pytest.raises(HTTPException) as exc_info:
-            portal.call(routes._room_booking_post, "/bookings/", {"room_id": "3.2"}, "Bearer user-token")
+            portal.call(routes._room_booking_post, _create_booking_request("3.2"), "Bearer user-token")
 
     assert exc_info.value.status_code == 502
     assert exc_info.value.detail == "Failed to call Room Booking API"
@@ -230,7 +286,12 @@ def test_room_booking_patch_forwards_client_errors(when2meet_client: TestClient)
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            portal.call(routes._room_booking_patch, "/bookings/booking-1", {"title": "New"}, "Bearer user-token")
+            portal.call(
+                routes._room_booking_patch,
+                "booking-1",
+                PatchBookingRequest(title="New", start=None, end=None),
+                "Bearer user-token",
+            )
 
     assert exc_info.value.status_code == 403
     assert exc_info.value.detail == "No access"
@@ -245,7 +306,12 @@ def test_room_booking_patch_upstream_error_returns_bad_gateway(when2meet_client:
         respx_mock.patch(f"{ROOM_BOOKING_API_URL}/bookings/booking-1").mock(return_value=httpx.Response(503))
 
         with pytest.raises(HTTPException) as exc_info:
-            portal.call(routes._room_booking_patch, "/bookings/booking-1", {"title": "New"}, "Bearer user-token")
+            portal.call(
+                routes._room_booking_patch,
+                "booking-1",
+                PatchBookingRequest(title="New", start=None, end=None),
+                "Bearer user-token",
+            )
 
     assert exc_info.value.status_code == 502
     assert exc_info.value.detail == "Room Booking API returned an error"
@@ -260,7 +326,12 @@ def test_room_booking_patch_network_failure_returns_bad_gateway(when2meet_client
         respx_mock.patch(f"{ROOM_BOOKING_API_URL}/bookings/booking-1").mock(side_effect=httpx.ConnectError("boom"))
 
         with pytest.raises(HTTPException) as exc_info:
-            portal.call(routes._room_booking_patch, "/bookings/booking-1", {"title": "New"}, "Bearer user-token")
+            portal.call(
+                routes._room_booking_patch,
+                "booking-1",
+                PatchBookingRequest(title="New", start=None, end=None),
+                "Bearer user-token",
+            )
 
     assert exc_info.value.status_code == 502
     assert exc_info.value.detail == "Failed to call Room Booking API"
@@ -277,7 +348,7 @@ def test_room_booking_delete_forwards_client_errors(when2meet_client: TestClient
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            portal.call(routes._room_booking_delete, "/bookings/booking-1", "Bearer user-token")
+            portal.call(routes._room_booking_delete, "booking-1", "Bearer user-token")
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Missing"
@@ -292,7 +363,7 @@ def test_room_booking_delete_upstream_error_returns_bad_gateway(when2meet_client
         respx_mock.delete(f"{ROOM_BOOKING_API_URL}/bookings/booking-1").mock(return_value=httpx.Response(503))
 
         with pytest.raises(HTTPException) as exc_info:
-            portal.call(routes._room_booking_delete, "/bookings/booking-1", "Bearer user-token")
+            portal.call(routes._room_booking_delete, "booking-1", "Bearer user-token")
 
     assert exc_info.value.status_code == 502
     assert exc_info.value.detail == "Room Booking API returned an error"
@@ -307,7 +378,7 @@ def test_room_booking_delete_network_failure_returns_bad_gateway(when2meet_clien
         respx_mock.delete(f"{ROOM_BOOKING_API_URL}/bookings/booking-1").mock(side_effect=httpx.ConnectError("boom"))
 
         with pytest.raises(HTTPException) as exc_info:
-            portal.call(routes._room_booking_delete, "/bookings/booking-1", "Bearer user-token")
+            portal.call(routes._room_booking_delete, "booking-1", "Bearer user-token")
 
     assert exc_info.value.status_code == 502
     assert exc_info.value.detail == "Failed to call Room Booking API"
@@ -1168,8 +1239,8 @@ def test_owner_books_room_for_selected_meeting_time(
     assert booking_payload == {
         "room_id": "3.2",
         "title": "Room Search",
-        "start": "2027-06-15T10:00:00+00:00",
-        "end": "2027-06-15T11:00:00+00:00",
+        "start": "2027-06-15T10:00:00Z",
+        "end": "2027-06-15T11:00:00Z",
         "participant_emails": None,
         "recurrence": None,
         "categories": ["When2Meet"],
@@ -1659,8 +1730,8 @@ def test_owner_renames_and_reschedules_meeting_without_updating_booking_title(
     assert patch_route.calls.last is not None
     assert json.loads(patch_route.calls.last.request.content) == {
         "title": None,
-        "start": "2027-06-15T12:00:00+00:00",
-        "end": "2027-06-15T13:00:00+00:00",
+        "start": "2027-06-15T12:00:00Z",
+        "end": "2027-06-15T13:00:00Z",
     }
 
 
@@ -1849,7 +1920,9 @@ def test_owner_changes_booked_room(when2meet_client: TestClient, user_headers):
         new_booking_route = respx_mock.post(f"{ROOM_BOOKING_API_URL}/bookings/").mock(
             return_value=httpx.Response(200, json=_created_booking("3.3", outlook_booking_id="booking/2"))
         )
-        old_delete_route = respx_mock.delete(_booking_url("booking/1")).mock(return_value=httpx.Response(200))
+        old_delete_route = respx_mock.delete(_booking_url("booking/1")).mock(
+            return_value=httpx.Response(200, content=b"null")
+        )
         response = when2meet_client.patch(
             f"/api/v0/meetings/{event_id}/book-room",
             json={"room_id": "3.3", "title": "Replacement booking"},
@@ -2016,7 +2089,9 @@ def test_change_booked_room_rolls_back_new_booking_when_old_cancel_fails(
             return_value=httpx.Response(200, json=_created_booking("3.3", outlook_booking_id="booking/2"))
         )
         old_delete_route = respx_mock.delete(_booking_url("booking/1")).mock(return_value=httpx.Response(503))
-        new_delete_route = respx_mock.delete(_booking_url("booking/2")).mock(return_value=httpx.Response(200))
+        new_delete_route = respx_mock.delete(_booking_url("booking/2")).mock(
+            return_value=httpx.Response(200, content=b"null")
+        )
         response = when2meet_client.patch(
             f"/api/v0/meetings/{event_id}/book-room",
             json={"room_id": "3.3"},
@@ -2150,7 +2225,9 @@ def test_owner_cancels_booked_room(when2meet_client: TestClient, user_headers):
     assert book_response.status_code == 200
 
     with respx.mock(assert_all_called=True) as respx_mock:
-        delete_route = respx_mock.delete(_booking_url("booking/1")).mock(return_value=httpx.Response(200))
+        delete_route = respx_mock.delete(_booking_url("booking/1")).mock(
+            return_value=httpx.Response(200, content=b"null")
+        )
         response = when2meet_client.delete(f"/api/v0/meetings/{event_id}/book-room", headers=user_headers)
 
     assert response.status_code == 200
@@ -2289,7 +2366,9 @@ def test_delete_meeting_cancels_booked_room(when2meet_client: TestClient, user_h
     assert book_response.status_code == 200
 
     with respx.mock(assert_all_called=True) as respx_mock:
-        delete_route = respx_mock.delete(_booking_url("booking/1")).mock(return_value=httpx.Response(200))
+        delete_route = respx_mock.delete(_booking_url("booking/1")).mock(
+            return_value=httpx.Response(200, content=b"null")
+        )
         response = when2meet_client.delete(f"/api/v0/meetings/{event_id}", headers=user_headers)
 
     assert response.status_code == 204
@@ -2359,7 +2438,7 @@ def test_delete_meeting_clears_booked_room_when_db_delete_fails(
     monkeypatch.setattr(events_repo, "delete_event", fail_delete_event)
 
     with respx.mock(assert_all_called=True) as respx_mock:
-        respx_mock.delete(_booking_url("booking/1")).mock(return_value=httpx.Response(200))
+        respx_mock.delete(_booking_url("booking/1")).mock(return_value=httpx.Response(200, content=b"null"))
         with pytest.raises(RuntimeError, match="db delete failed"):
             when2meet_client.delete(f"/api/v0/meetings/{event_id}", headers=user_headers)
 

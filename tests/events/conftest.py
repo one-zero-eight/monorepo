@@ -20,6 +20,24 @@ CLUB_SLUG_2 = "other-club"
 CLUB_TITLE_2 = "Other Club"
 
 
+def club_payload(club_id: str = CLUB_ID, slug: str = CLUB_SLUG, title: str = CLUB_TITLE) -> dict:
+    """A complete persisted club response from the Clubs API."""
+    return {
+        "id": club_id,
+        "is_active": True,
+        "slug": slug,
+        "title": title,
+        "short_description": "A university club",
+        "description": "Club activities and events",
+        "logo_file_id": None,
+        "type": "hobby",
+        "leader_innohassle_id": None,
+        "links": [],
+        "sport_id": None,
+        "pending_update": None,
+    }
+
+
 @pytest.fixture(scope="session")
 def clubs_owned_by() -> dict[str, list[dict]]:
     """Mapping innohassle_id → list of owned clubs served by the mocked Clubs API."""
@@ -122,7 +140,7 @@ def club_leader_headers(
 ):
     _ensure_mock_user(inh_accounts_mock_users, "club-leader-1", "club-leader@innopolis.university", "Club Leader One")
     clubs_owned_by["club-leader-1"] = [{"club_id": CLUB_ID, "title": CLUB_TITLE}]
-    clubs_by_id[CLUB_ID] = {"id": CLUB_ID, "slug": CLUB_SLUG, "title": CLUB_TITLE}
+    clubs_by_id[CLUB_ID] = club_payload()
     return auth_header_factory("club-leader-1", "club-leader@innopolis.university")
 
 
@@ -135,7 +153,7 @@ def other_club_leader_headers(
 ):
     _ensure_mock_user(inh_accounts_mock_users, "club-leader-2", "club-leader-2@innopolis.university", "Club Leader Two")
     clubs_owned_by["club-leader-2"] = [{"club_id": CLUB_ID_2, "title": CLUB_TITLE_2}]
-    clubs_by_id[CLUB_ID_2] = {"id": CLUB_ID_2, "slug": CLUB_SLUG_2, "title": CLUB_TITLE_2}
+    clubs_by_id[CLUB_ID_2] = club_payload(CLUB_ID_2, CLUB_SLUG_2, CLUB_TITLE_2)
     return auth_header_factory("club-leader-2", "club-leader-2@innopolis.university")
 
 
@@ -148,8 +166,8 @@ def club_moderator_headers(
     _ensure_mock_user(
         inh_accounts_mock_users, "club-moderator-1", "club-moderator@innopolis.university", "Club Moderator One"
     )
-    clubs_by_id[CLUB_ID] = {"id": CLUB_ID, "slug": CLUB_SLUG, "title": CLUB_TITLE}
-    clubs_by_id[CLUB_ID_2] = {"id": CLUB_ID_2, "slug": CLUB_SLUG_2, "title": CLUB_TITLE_2}
+    clubs_by_id[CLUB_ID] = club_payload()
+    clubs_by_id[CLUB_ID_2] = club_payload(CLUB_ID_2, CLUB_SLUG_2, CLUB_TITLE_2)
     return auth_header_factory("club-moderator-1", "club-moderator@innopolis.university")
 
 

@@ -1,10 +1,21 @@
+import datetime as dtm
+
 import httpx
+import icalendar
 import pytest
 import respx
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
 from tests.schedule.conftest import create_event_group
+
+EVENT_ID = "507f1f77bcf86cd799439011"
+EVENT_ICS = (
+    "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\n"
+    f"UID:event-{EVENT_ID}@innohassle.ru\r\n"
+    "DTSTART;VALUE=DATE:20250101\r\nDTEND;VALUE=DATE:20250102\r\n"
+    "SUMMARY:Enrolled event — событие\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+)
 
 
 def test_personal_all_ics_requires_auth(schedule_client: TestClient):
@@ -66,28 +77,24 @@ def test_events_ics_proxies_api(schedule_client: TestClient, monkeypatch: pytest
         EventsSettings(api_url=api_url, api_key=SecretStr("events-key")),
     )
 
-    events_event = {
-        "id": "event-1",
-        "english_name": "Test Event",
-        "dtstart": "2025-01-01T10:00:00+00:00",
-        "dtend": "2025-01-01T11:00:00+00:00",
-        "is_draft": False,
-        "is_active": True,
-        "is_approved": True,
-    }
-
-    with respx.mock(assert_all_called=False) as mock:
-        mock.get(f"{api_url}/events/").mock(return_value=httpx.Response(200, json=[events_event]))
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.get(f"{api_url}/events.ics").mock(return_value=httpx.Response(200, text=EVENT_ICS))
         response = schedule_client.get(path)
 
+    assert route.calls[0].request.headers["authorization"] == "Bearer events-key"
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/calendar")
-    assert b"BEGIN:VCALENDAR" in response.content
+    assert response.content == EVENT_ICS.encode("utf-8")
 
 
 @pytest.mark.parametrize("path", ["/users/me/events.ics", "/users/me/workshops.ics"])
+@pytest.mark.parametrize("enrolled", [True, False])
 def test_personal_events_ics(
-    schedule_client: TestClient, user_headers: dict[str, str], monkeypatch: pytest.MonkeyPatch, path: str
+    schedule_client: TestClient,
+    user_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+    enrolled: bool,
 ):
     from src.schedule.config import settings
     from src.schedule.config_schema import EventsSettings
@@ -97,19 +104,24 @@ def test_personal_events_ics(
         "events",
         EventsSettings(api_url="https://events.test", api_key=SecretStr("events-key")),
     )
-    event = {
-        "id": "event-1",
-        "english_name": "Checked in",
-        "dtstart": "2025-01-01T10:00:00+00:00",
-        "dtend": "2025-01-01T11:00:00+00:00",
-    }
-
+    content = EVENT_ICS if enrolled else "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n"
     with respx.mock(assert_all_called=True) as mock:
-        mock.get("https://events.test/users/test-user-1/checkins").mock(return_value=httpx.Response(200, json=[event]))
+        route = mock.get(
+            "https://events.test/users/integrations/schedule/test-user-1%40innopolis.university/events.ics"
+        ).respond(200, text=content)
         response = schedule_client.get(path, headers=user_headers)
 
+    assert route.calls[0].request.headers["authorization"] == "Bearer events-key"
     assert response.status_code == 200
-    assert b"Checked in" in response.content
+    assert response.content == content.encode("utf-8")
+    events = icalendar.Calendar.from_ical(response.content).walk("VEVENT")
+    if not enrolled:
+        assert events == []
+        return
+    event = events[0]
+    assert str(event["uid"]) == f"event-{EVENT_ID}@innohassle.ru"
+    assert event.decoded("dtstart") == dtm.date(2025, 1, 1)
+    assert event.decoded("dtend") == dtm.date(2025, 1, 2)
 
 
 @pytest.mark.parametrize("path_suffix", ["events.ics", "workshops.ics"])
@@ -142,18 +154,14 @@ def test_user_events_ics_aliases_use_events_key(
     path = f"/users/{user_id}/{path_suffix}"
 
     assert schedule_client.get(path, params={"access_key": "wrong"}).status_code == 403
-    event = {
-        "id": "event-1",
-        "english_name": "Checked in",
-        "dtstart": "2025-01-01T10:00:00+00:00",
-        "dtend": "2025-01-01T11:00:00+00:00",
-    }
     with respx.mock(assert_all_called=True) as mock:
-        mock.get("https://events.test/users/test-user-1/checkins").mock(return_value=httpx.Response(200, json=[event]))
+        mock.get(
+            "https://events.test/users/integrations/schedule/test-user-1%40innopolis.university/events.ics"
+        ).respond(200, text=EVENT_ICS)
         response = schedule_client.get(path, params={"access_key": access_key})
 
     assert response.status_code == 200
-    assert b"Checked in" in response.content
+    assert b"Enrolled event" in response.content
 
 
 def test_events_ics_aliases_in_openapi(schedule_client: TestClient):
@@ -324,7 +332,21 @@ def test_personal_ics_merges_local_and_assistant_groups(
 
     with respx.mock(assert_all_called=True) as mock:
         groups_route = mock.get(f"{api_url}/integration/event-groups").mock(
-            return_value=httpx.Response(200, json=[{"alias": "virtual-group", "name": "Virtual"}])
+            return_value=httpx.Response(
+                200,
+                json={
+                    "event_groups": [
+                        {
+                            "id": None,
+                            "alias": "virtual-group",
+                            "name": "Virtual",
+                            "description": "",
+                            "group_code": None,
+                            "instructor_id": None,
+                        }
+                    ]
+                },
+            )
         )
         schedule_client.post(
             "/users/me/favorites",
@@ -335,7 +357,7 @@ def test_personal_ics_merges_local_and_assistant_groups(
             return_value=httpx.Response(200, text=external)
         )
         mock.get(f"{api_url}/integration/users/test-user-1@innopolis.university/predefined").mock(
-            return_value=httpx.Response(200, json=[])
+            return_value=httpx.Response(200, json={"event_groups": []})
         )
         response = schedule_client.get("/users/me/all.ics", headers=user_headers)
 
@@ -419,7 +441,21 @@ def test_personal_ics_propagates_assistant_failure(
     )
     with respx.mock(assert_all_called=True) as mock:
         mock.get(f"{api_url}/integration/event-groups").mock(
-            return_value=httpx.Response(200, json=[{"alias": "virtual-group", "name": "Virtual"}])
+            return_value=httpx.Response(
+                200,
+                json={
+                    "event_groups": [
+                        {
+                            "id": None,
+                            "alias": "virtual-group",
+                            "name": "Virtual",
+                            "description": "",
+                            "group_code": None,
+                            "instructor_id": None,
+                        }
+                    ]
+                },
+            )
         )
         schedule_client.post(
             "/users/me/favorites",
@@ -430,7 +466,7 @@ def test_personal_ics_propagates_assistant_failure(
             return_value=httpx.Response(503, text="unavailable")
         )
         mock.get(f"{api_url}/integration/users/test-user-1@innopolis.university/predefined").mock(
-            return_value=httpx.Response(200, json=[])
+            return_value=httpx.Response(200, json={"event_groups": []})
         )
         response = schedule_client.get("/users/me/all.ics", headers=user_headers)
 

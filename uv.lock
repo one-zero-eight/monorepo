@@ -711,6 +711,20 @@ wheels = [
 ]
 
 [[package]]
+name = "httpxgen"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "jinja2" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/83/6a/91dddf8cd2f0f7c96d0e9092debd93f7252e65707573f9b089317eaaf965/httpxgen-0.3.0.tar.gz", hash = "sha256:df8ebf6f0260213846032abbc702e29e4dacd87655b271749c1f9e6a950af2d8", size = 144291, upload-time = "2026-10-13T11:56:39.766Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ee/4d/bcd8fbdc3e1af830a1ddb288cee3abc1848240dfe28bea615aa42e0739a0/httpxgen-0.3.0-py3-none-any.whl", hash = "sha256:633cd7e393c2d0a0086234e5de482975a36541835284946eea0f2b2a5c3478c0", size = 65589, upload-time = "2026-10-13T11:56:37.592Z" },
+]
+
+[[package]]
 name = "icalendar"
 version = "7.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -755,7 +769,7 @@ name = "jinja2"
 version = "3.1.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "markupsafe", marker = "sys_platform != 'win32'" },
+    { name = "markupsafe" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/df/bf/f7da0350254c0ed7c72f3e33cef02e048281fec7ecec5f032d4aac52226b/jinja2-3.1.6.tar.gz", hash = "sha256:0137fb05990d35f1275a587e9aee6d56da821fc83491a0fb838183be43f66d6d", size = 245115, upload-time = "2025-03-05T20:05:02.478Z" }
 wheels = [
@@ -994,6 +1008,7 @@ clubs = [
     { name = "pillow" },
 ]
 dev = [
+    { name = "httpxgen" },
     { name = "prek" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -1070,6 +1085,7 @@ requires-dist = [
 board-games = []
 clubs = [{ name = "pillow", specifier = ">=12.3.0" }]
 dev = [
+    { name = "httpxgen", specifier = "==0.3.0" },
     { name = "prek", specifier = ">=0.5.3" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-asyncio", specifier = ">=1.4.0" },

@@ -21,6 +21,7 @@ from .config import settings
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from src.common_minio import setup_minio
+    from src.events.clubs_client import clubs_client
     from src.events.images_repo import images_repo
     from src.events.mongo import document_models
     from src.inh_accounts_sdk import inh_accounts
@@ -38,6 +39,7 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        await clubs_client.aclose()
         await inh_accounts.aclose()
         await beanie_store.close()
 

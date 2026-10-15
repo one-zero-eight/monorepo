@@ -34,7 +34,9 @@ repos:
     rev: v6.0.0
     hooks:
       - id: trailing-whitespace
+        exclude: ^src/clients/(clubs|events|room_booking|schedule_assistant|music_room|sport_v3)/
       - id: end-of-file-fixer
+        exclude: ^src/clients/(clubs|events|room_booking|schedule_assistant|music_room|sport_v3)/
       - id: check-added-large-files
 
   - repo: https://github.com/compilerla/conventional-pre-commit
@@ -47,6 +49,12 @@ repos:
   # Local linting
   - repo: local
     hooks:
+      - id: generated-http-clients
+        name: check generated local HTTP clients
+        language: system
+        entry: uv run -m scripts.generate_clients --check
+        pass_filenames: false
+        files: ^(src/|scripts/(export_openapi|generate_clients)\.py$|pyproject\.toml$|uv\.lock$|settings\.example\.yaml$)
       - id: ty
         name: ty check
         language: system

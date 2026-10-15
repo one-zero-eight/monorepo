@@ -168,7 +168,21 @@ def test_virtual_favorite_is_persisted_by_alias(
     )
     with respx.mock(assert_all_called=True) as mock:
         route = mock.get(f"{api_url}/integration/event-groups").mock(
-            return_value=httpx.Response(200, json=[{"alias": "virtual-favorite", "name": "Virtual"}])
+            return_value=httpx.Response(
+                200,
+                json={
+                    "event_groups": [
+                        {
+                            "id": None,
+                            "alias": "virtual-favorite",
+                            "name": "Virtual",
+                            "description": "",
+                            "group_code": None,
+                            "instructor_id": None,
+                        }
+                    ]
+                },
+            )
         )
         response = schedule_client.post(
             "/users/me/favorites",

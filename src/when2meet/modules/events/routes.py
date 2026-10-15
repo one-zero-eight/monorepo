@@ -1,7 +1,8 @@
 import asyncio
 import datetime as dtm
+import json
+from collections.abc import Awaitable
 from typing import Annotated, cast
-from urllib.parse import quote
 
 import httpx
 from beanie.odm.queries.update import UpdateResponse
@@ -9,6 +10,14 @@ from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 from pydantic import ValidationError
 
+from src.clients.room_booking import (
+    ApiError,
+    CreateBookingRequest,
+    PatchBookingRequest,
+    ResponseValidationError,
+    RoomBookingClient,
+    TransportError,
+)
 from src.dependencies import INH_TOKEN_AUTH
 from src.inh_accounts_sdk import UserSchema, inh_accounts
 from src.logging_ import logger
@@ -41,9 +50,24 @@ router = APIRouter(
     route_class=AutoDeriveResponsesAPIRoute,
 )
 
-type RoomBookingQueryParams = dict[str, str] | list[tuple[str, str | int | float | None]]
-type RoomBookingJsonBody = dict[str, str | list[str] | None]
-type RoomBookingPatchBody = dict[str, str | None]
+
+class _RoomBookingTransport:
+    def __init__(self) -> None:
+        self._client: httpx.AsyncClient | None = None
+
+    @property
+    def client(self) -> httpx.AsyncClient:
+        if self._client is None:
+            self._client = httpx.AsyncClient()
+        return self._client
+
+    async def aclose(self) -> None:
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
+
+
+room_booking_transport = _RoomBookingTransport()
 
 
 def _build_participant_view(participant: Participant, user: UserSchema | None) -> ParticipantView:
@@ -121,31 +145,24 @@ def _selected_time_for_room_booking(event: Event) -> tuple[dtm.datetime, dtm.dat
     return event.selected_time.start_datetime, event.selected_time.end_datetime
 
 
-def _room_booking_url(path: str) -> str:
+def _room_booking_client(user_auth_header: str) -> RoomBookingClient:
     room_booking_settings = settings.room_booking
     if room_booking_settings is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Room Booking integration is not configured",
         )
+    return RoomBookingClient(
+        room_booking_transport.client,
+        base_url=room_booking_settings.api_url,
+        credentials={"Bearer": user_auth_header.split(" ", 1)[1]},
+        timeout=30.0,
+    )
 
-    return f"{room_booking_settings.api_url.rstrip('/')}/{path.lstrip('/')}"
 
-
-def _room_booking_json(response: httpx.Response) -> object:
+def _room_booking_error_detail(error: ApiError) -> object:
     try:
-        return response.json()
-    except ValueError as exc:
-        logger.warning("Room Booking API returned invalid JSON", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Room Booking API returned an invalid response",
-        ) from exc
-
-
-def _room_booking_error_detail(response: httpx.Response) -> object:
-    try:
-        data = response.json()
+        data = json.loads(error.raw_body)
     except ValueError:
         return "Room Booking API returned an error"
     if isinstance(data, dict) and "detail" in data:
@@ -153,153 +170,73 @@ def _room_booking_error_detail(response: httpx.Response) -> object:
     return data
 
 
-async def _room_booking_get(path: str, params: RoomBookingQueryParams, user_auth_header: str) -> object:
-    url = _room_booking_url(path)
+async def _room_booking_call[T](operation: Awaitable[T], *, forward_client_errors: bool = False) -> T:
     try:
-        async with httpx.AsyncClient(headers={"Authorization": user_auth_header}, timeout=30) as client:
-            response = await client.get(url, params=params)
-            response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        logger.warning("Room Booking API returned an error", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Room Booking API returned an error",
-        ) from exc
-    except httpx.HTTPError as exc:
-        logger.warning("Failed to call Room Booking API", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to call Room Booking API",
-        ) from exc
-
-    return _room_booking_json(response)
-
-
-async def _room_booking_post(path: str, json_body: RoomBookingJsonBody, user_auth_header: str) -> object:
-    url = _room_booking_url(path)
-    try:
-        async with httpx.AsyncClient(headers={"Authorization": user_auth_header}, timeout=30) as client:
-            response = await client.post(url, json=json_body)
-            response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        if exc.response.status_code in {
-            status.HTTP_400_BAD_REQUEST,
-            status.HTTP_403_FORBIDDEN,
-            status.HTTP_404_NOT_FOUND,
-        }:
+        return await operation
+    except ApiError as exc:
+        if forward_client_errors and exc.status_code in {400, 403, 404}:
             raise HTTPException(
-                status_code=exc.response.status_code,
-                detail=_room_booking_error_detail(exc.response),
+                status_code=exc.status_code,
+                detail=_room_booking_error_detail(exc),
             ) from exc
-
         logger.warning("Room Booking API returned an error", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Room Booking API returned an error",
-        ) from exc
-    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail="Room Booking API returned an error") from exc
+    except TransportError as exc:
         logger.warning("Failed to call Room Booking API", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to call Room Booking API",
-        ) from exc
-
-    return _room_booking_json(response)
-
-
-async def _room_booking_patch(path: str, json_body: RoomBookingPatchBody, user_auth_header: str) -> object:
-    url = _room_booking_url(path)
-    try:
-        async with httpx.AsyncClient(headers={"Authorization": user_auth_header}, timeout=30) as client:
-            response = await client.patch(url, json=json_body)
-            response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        if exc.response.status_code in {
-            status.HTTP_400_BAD_REQUEST,
-            status.HTTP_403_FORBIDDEN,
-            status.HTTP_404_NOT_FOUND,
-        }:
-            raise HTTPException(
-                status_code=exc.response.status_code,
-                detail=_room_booking_error_detail(exc.response),
-            ) from exc
-
-        logger.warning("Room Booking API returned an error", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Room Booking API returned an error",
-        ) from exc
-    except httpx.HTTPError as exc:
-        logger.warning("Failed to call Room Booking API", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to call Room Booking API",
-        ) from exc
-
-    return _room_booking_json(response)
+        raise HTTPException(status_code=502, detail="Failed to call Room Booking API") from exc
+    except ResponseValidationError as exc:
+        if not 200 <= exc.status_code < 300:
+            logger.warning("Room Booking API returned an error", exc_info=True)
+            raise HTTPException(status_code=502, detail="Room Booking API returned an error") from exc
+        logger.warning("Room Booking API returned an invalid response", exc_info=True)
+        raise HTTPException(status_code=502, detail="Room Booking API returned an invalid response") from exc
 
 
-async def _room_booking_delete(path: str, user_auth_header: str) -> None:
-    url = _room_booking_url(path)
-    try:
-        async with httpx.AsyncClient(headers={"Authorization": user_auth_header}, timeout=30) as client:
-            response = await client.delete(url)
-            response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        if exc.response.status_code in {
-            status.HTTP_400_BAD_REQUEST,
-            status.HTTP_403_FORBIDDEN,
-            status.HTTP_404_NOT_FOUND,
-        }:
-            raise HTTPException(
-                status_code=exc.response.status_code,
-                detail=_room_booking_error_detail(exc.response),
-            ) from exc
+async def _room_booking_post(body: CreateBookingRequest, user_auth_header: str) -> RoomBookingCreatedBooking:
+    booking = await _room_booking_call(
+        _room_booking_client(user_auth_header).bookings_create_booking(body), forward_client_errors=True
+    )
+    return RoomBookingCreatedBooking.model_validate(booking.model_dump())
 
-        logger.warning("Room Booking API returned an error", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Room Booking API returned an error",
-        ) from exc
-    except httpx.HTTPError as exc:
-        logger.warning("Failed to call Room Booking API", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to call Room Booking API",
-        ) from exc
+
+async def _room_booking_patch(
+    outlook_booking_id: str, body: PatchBookingRequest, user_auth_header: str
+) -> RoomBookingCreatedBooking:
+    booking = await _room_booking_call(
+        _room_booking_client(user_auth_header).bookings_update_booking(outlook_booking_id, body),
+        forward_client_errors=True,
+    )
+    return RoomBookingCreatedBooking.model_validate(booking.model_dump())
+
+
+async def _room_booking_delete(outlook_booking_id: str, user_auth_header: str) -> None:
+    await _room_booking_call(
+        _room_booking_client(user_auth_header).bookings_delete_booking(outlook_booking_id),
+        forward_client_errors=True,
+    )
 
 
 async def _get_rooms(user_auth_header: str) -> list[RoomBookingRoom]:
-    rooms = cast(
-        list[object],
-        await _room_booking_get("/rooms/", params={"include_red": "true"}, user_auth_header=user_auth_header),
-    )
-    return [RoomBookingRoom.model_validate(room) for room in rooms]
+    rooms = await _room_booking_call(_room_booking_client(user_auth_header).rooms_rooms(include_red=True))
+    return [RoomBookingRoom.model_validate(room.model_dump()) for room in rooms]
 
 
 async def _get_room_bookings(
     room_ids: list[str], start: dtm.datetime, end: dtm.datetime, user_auth_header: str
 ) -> list[RoomBookingBooking]:
-    params: RoomBookingQueryParams = [
-        ("start", start.isoformat()),
-        ("end", end.isoformat()),
-        *[("room_ids", room_id) for room_id in room_ids],
-    ]
-    bookings = cast(
-        list[object], await _room_booking_get("/bookings/", params=params, user_auth_header=user_auth_header)
+    bookings = await _room_booking_call(
+        _room_booking_client(user_auth_header).bookings_bookings(room_ids=room_ids, start=start, end=end)
     )
-    return [RoomBookingBooking.model_validate(booking) for booking in bookings]
+    return [RoomBookingBooking.model_validate(booking.model_dump()) for booking in bookings]
 
 
 async def _get_room_can_book(
     room_id: str, start: dtm.datetime, end: dtm.datetime, user_auth_header: str
 ) -> RoomBookingCanBook:
-    params = {
-        "start": start.isoformat(),
-        "end": end.isoformat(),
-    }
-    can_book = await _room_booking_get(f"/room/{room_id}/can-book", params=params, user_auth_header=user_auth_header)
-    return RoomBookingCanBook.model_validate(can_book)
+    can_book = await _room_booking_call(
+        _room_booking_client(user_auth_header).rooms_room_can_book_route(room_id, start, end)
+    )
+    return RoomBookingCanBook.model_validate(can_book.model_dump())
 
 
 async def _get_available_rooms_for_time(
@@ -349,21 +286,18 @@ async def _book_room(
             detail=can_book.reason_why_cannot or "Room is unavailable for the selected meeting time",
         )
 
-    booking = RoomBookingCreatedBooking.model_validate(
-        await _room_booking_post(
-            "/bookings/",
-            json_body={
-                "room_id": room_id,
-                "title": booking_title if booking_title is not None else event.name,
-                "start": start.isoformat(),
-                "end": end.isoformat(),
-                "participant_emails": None,
-                "recurrence": None,
-                "categories": ["When2Meet"],
-                "description": "Booked for When2Meet meeting",
-            },
-            user_auth_header=user_auth_header,
-        )
+    booking = await _room_booking_post(
+        CreateBookingRequest(
+            room_id=room_id,
+            title=booking_title if booking_title is not None else event.name,
+            start=start,
+            end=end,
+            participant_emails=None,
+            recurrence=None,
+            categories=["When2Meet"],
+            description="Booked for When2Meet meeting",
+        ),
+        user_auth_header=user_auth_header,
     )
     return BookedRoom(
         room_id=booking.room_id,
@@ -381,13 +315,9 @@ def _manageable_booking_id(booked_room: BookedRoom) -> str:
     return booked_room.outlook_booking_id
 
 
-def _manageable_booking_path(booked_room: BookedRoom) -> str:
-    return f"/bookings/{quote(_manageable_booking_id(booked_room), safe='')}"
-
-
 async def _cancel_room_booking(booked_room: BookedRoom, user_auth_header: str) -> None:
     try:
-        await _room_booking_delete(_manageable_booking_path(booked_room), user_auth_header=user_auth_header)
+        await _room_booking_delete(_manageable_booking_id(booked_room), user_auth_header=user_auth_header)
     except HTTPException as exc:
         if exc.status_code != status.HTTP_404_NOT_FOUND:
             raise
@@ -404,16 +334,14 @@ async def _update_room_booking(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room is not booked for this meeting")
     start, end = _selected_time_for_room_booking(event)
 
-    booking = RoomBookingCreatedBooking.model_validate(
-        await _room_booking_patch(
-            _manageable_booking_path(event.booked_room),
-            json_body={
-                "title": booking_title,
-                "start": start.isoformat() if selected_time else None,
-                "end": end.isoformat() if selected_time else None,
-            },
-            user_auth_header=user_auth_header,
-        )
+    booking = await _room_booking_patch(
+        _manageable_booking_id(event.booked_room),
+        PatchBookingRequest(
+            title=booking_title,
+            start=start if selected_time else None,
+            end=end if selected_time else None,
+        ),
+        user_auth_header=user_auth_header,
     )
     return BookedRoom(
         room_id=booking.room_id,

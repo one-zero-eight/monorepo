@@ -6,6 +6,7 @@ from typing import Any, Literal
 import httpx
 from fastapi import HTTPException, status
 
+from src.clients.room_booking import ApiError, ResponseValidationError, TransportError
 from src.logging_ import logger
 from src.schedule_assistant.modules.bookings.client import BmpStreamEventKind, booking_client
 from src.schedule_assistant.modules.bookings.match import iter_booking_occurrences, iter_payload_occurrences
@@ -99,7 +100,7 @@ async def _load_review_index(config: ScheduleConfigRepository) -> ReviewIndex:
         start, end = window
         existing_bookings = await booking_client.get_all_bookings(start, end)
         auto_bookings = await booking_client.get_auto_bookings(start, end)
-    except httpx.HTTPError as error:
+    except (httpx.HTTPError, ApiError, TransportError, ResponseValidationError) as error:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Failed to load booking evidence: {error}"
         ) from error
@@ -345,7 +346,7 @@ async def _reconcile(task: BookingTask) -> None:
                 item.status = (
                     BookingTaskItemStatus.ERROR if item.outcome == BookingOutcome.UNKNOWN else BookingTaskItemStatus.OK
                 )
-    except (httpx.HTTPError, ValueError) as error:
+    except (httpx.HTTPError, ApiError, TransportError, ResponseValidationError, ValueError) as error:
         for item in task.items:
             item.error = str(error)
             if item.status in {BookingTaskItemStatus.PENDING, BookingTaskItemStatus.SENT}:
@@ -517,7 +518,7 @@ async def start_cancel_booking(config: ScheduleConfigRepository, request: Cancel
             raise HTTPException(status_code=409, detail="No checked booking window")
         try:
             bookings = await booking_client.get_auto_bookings(*window)
-        except httpx.HTTPError as error:
+        except (httpx.HTTPError, ApiError, TransportError, ResponseValidationError) as error:
             raise HTTPException(status_code=502, detail="Unable to verify organizer bookings") from error
         known = {booking.outlook_booking_id: booking for booking in bookings if booking.outlook_booking_id}
         for booking_id in dict.fromkeys(request.booking_ids):
@@ -588,7 +589,7 @@ async def _cancel_task_body(task: BookingTask) -> None:
             evidence = await booking_client.cancel_booking_intent(item.payload)
             _apply_evidence(item, evidence, cancelling=True)
             item.status = BookingTaskItemStatus.OK
-        except (httpx.HTTPError, ValueError) as error:
+        except (httpx.HTTPError, ApiError, TransportError, ResponseValidationError, ValueError) as error:
             item.status = BookingTaskItemStatus.ERROR
             item.error = str(error)
         save_task(task)

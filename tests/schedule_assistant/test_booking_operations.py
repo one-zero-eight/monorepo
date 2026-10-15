@@ -5,7 +5,8 @@ from concurrent.futures import ThreadPoolExecutor
 import httpx
 import pytest
 
-from src.schedule_assistant.modules.bookings.client import BmpStreamEvent, BookingClient
+from src.clients.room_booking import ApiError, ResponseValidationError, TransportError
+from src.schedule_assistant.modules.bookings.client import STREAM_TIMEOUT, BmpStreamEvent, BookingClient
 from src.schedule_assistant.modules.bookings.schemas import (
     BookingEvidence,
     BookingOutcome,
@@ -328,7 +329,109 @@ async def test_client_reconciliation_contract(respx_mock):
             ],
         )
     )
-    evidence = await client.reconcile_auto_bookings([{"operation_id": "op", "room_id": "107"}])
-    assert route.called
-    assert evidence[0].room_presence == "unknown"
-    assert evidence[0].evidence == ["read failed"]
+    try:
+        evidence = await client.reconcile_auto_bookings([{"operation_id": "op", "room_id": "107"}])
+        assert route.called
+        assert evidence[0].room_presence == "unknown"
+        assert evidence[0].evidence == ["read failed"]
+        assert route.calls.last.request.headers["Authorization"] == "Bearer test-key"
+        assert route.calls.last.request.extensions["timeout"]["read"] == pytest.approx(300.0)
+    finally:
+        await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_client_transport_reopens_after_lifespan_shutdown(respx_mock):
+    client = BookingClient("https://booking.test/", "test-key")
+    respx_mock.get("https://booking.test/rooms/").mock(return_value=httpx.Response(200, json=[]))
+    first_transport = client.http_client
+    try:
+        assert await client.get_rooms() == []
+        assert client.http_client is first_transport
+        await client.aclose()
+        assert first_transport.is_closed
+        assert await client.get_rooms() == []
+        assert client.http_client is not first_transport
+        assert not client.http_client.is_closed
+    finally:
+        await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_client_preserves_domain_booking_enrichment(respx_mock):
+    client = BookingClient("https://booking.test/", "test-key")
+    start = dtm.datetime(2026, 6, 1, tzinfo=dtm.UTC)
+    end = start + dtm.timedelta(hours=1)
+    payload = {
+        "id": "booking-1",
+        "room_id": "107",
+        "title": "Algorithms",
+        "start": start.isoformat(),
+        "end": end.isoformat(),
+        "outlook_booking_id": "ews-1",
+        "outlook_entry_id": None,
+        "attendees": None,
+        "can_cancel": True,
+        "recurrence": "<Recurrence/>",
+        "recurrence_complete": True,
+        "deleted_occurrences": ["2026-06-08"],
+        "modified_occurrences": [{"original_start": "2026-06-15"}],
+    }
+    route = respx_mock.get("https://booking.test/bookings/").mock(return_value=httpx.Response(200, json=[payload]))
+    try:
+        bookings = await client.get_all_bookings(start, end)
+        booking = bookings[0]
+        assert booking.start_time == start
+        assert booking.end_time == end
+        assert booking.can_cancel is True
+        assert booking.room_response == "Unknown"
+        assert booking.recurrence_complete is True
+        assert booking.deleted_occurrences == ["2026-06-08"]
+        assert booking.modified_occurrences == [{"original_start": "2026-06-15"}]
+        assert route.calls.last.request.url.params["include_red"] == "true"
+    finally:
+        await client.aclose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["status", "transport", "validation"])
+async def test_generated_booking_errors_preserve_review_bad_gateway(
+    authenticated_client, bookings_repo, mock_booking_client, failure
+):
+    _seed(bookings_repo, courses=_occurrence_courses())
+    request = httpx.Request("GET", "https://booking.test/bookings/")
+    response = httpx.Response(503, request=request)
+    errors = {
+        "status": ApiError(503, "unavailable", response=response),
+        "transport": TransportError(httpx.ReadError("incomplete calendar")),
+        "validation": ResponseValidationError(200, response, ValueError("invalid booking")),
+    }
+    mock_booking_client.get_all_bookings.side_effect = errors[failure]
+    result = await authenticated_client.get("/bookings/review")
+    assert result.status_code == 502
+    assert "Failed to load booking evidence" in result.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_booking_stream_yields_before_reading_remaining_chunks():
+    class BookingStream(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            yield b'{"event":"started","total":1}\n'
+            raise httpx.ReadError("stream interrupted")
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        assert request.headers["Authorization"] == "Bearer test-key"
+        assert request.extensions["timeout"] == STREAM_TIMEOUT.as_dict()
+        return httpx.Response(200, stream=BookingStream())
+
+    client = BookingClient("https://booking.test/", "test-key")
+    client._http_client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
+    stream = client.stream_auto_bookings_batch([])
+    try:
+        event = await anext(stream)
+        assert event.event == "started"
+        with pytest.raises(httpx.ReadError, match="stream interrupted"):
+            await anext(stream)
+    finally:
+        await stream.aclose()
+        await client.aclose()

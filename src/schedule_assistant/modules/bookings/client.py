@@ -1,12 +1,20 @@
 import datetime as dtm
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from enum import StrEnum
 from typing import Any, Literal
-from urllib.parse import quote, urljoin
+from urllib.parse import urljoin
 
 import httpx
 from pydantic import Field
 
+from src.clients.room_booking import (
+    BmpBatchCancelRequest,
+    BmpReconcileRequest,
+    CancelExtraBookingRequest,
+    ReconcileBookingEntry,
+    RoomBookingClient,
+    ScopedCancelBookingRequest,
+)
 from src.schedule_assistant.config import settings
 from src.schedule_assistant.modules.bookings.schemas import BookingEvidence, BookingItemResultStatus
 from src.schedule_assistant.schema_base import ScheduleAssistantSchema
@@ -94,6 +102,28 @@ class BookingClient:
     def __init__(self, url: str, api_key: str) -> None:
         self.url = url if url.endswith("/") else f"{url}/"
         self._headers = {"Authorization": f"Bearer {api_key}"}
+        self._http_client: httpx.AsyncClient | None = None
+        self._api_key = api_key
+
+    @property
+    def http_client(self) -> httpx.AsyncClient:
+        if self._http_client is None:
+            self._http_client = httpx.AsyncClient()
+        return self._http_client
+
+    @property
+    def api(self) -> RoomBookingClient:
+        return RoomBookingClient(
+            self.http_client,
+            base_url=self.url,
+            credentials={"Bearer": self._api_key},
+            timeout=5.0,
+        )
+
+    async def aclose(self) -> None:
+        if self._http_client is not None:
+            await self._http_client.aclose()
+            self._http_client = None
 
     async def get_room_bookings(
         self,
@@ -101,63 +131,40 @@ class BookingClient:
         start: dtm.datetime,
         end: dtm.datetime,
     ) -> list[BookingDTO]:
-        async with httpx.AsyncClient(headers=self._headers) as client:
-            safe_room_id = quote(room_id, safe="")
-            full_url = urljoin(self.url, f"room/{safe_room_id}/bookings")
-            response = await client.get(
-                full_url,
-                params={"start": start.isoformat(), "end": end.isoformat()},
-            )
-            response.raise_for_status()
-            data = response.json()
-            return [BookingDTO.model_validate(entry) for entry in data]
+        bookings = await self.api.rooms_room_bookings_route(room_id, start, end)
+        # Preserve domain defaults and enrichment rather than applying generated defaults.
+        return [BookingDTO.model_validate(booking.model_dump(exclude_unset=True)) for booking in bookings]
 
     async def get_all_bookings(
         self,
         start: dtm.datetime,
         end: dtm.datetime,
     ) -> list[BookingDTO]:
-        async with httpx.AsyncClient(headers=self._headers) as client:
-            response = await client.get(
-                urljoin(self.url, "bookings/"),
-                params={"start": start.isoformat(), "end": end.isoformat(), "include_red": True},
-                timeout=HTTP_TIMEOUT_SECONDS,
-            )
-            response.raise_for_status()
-            data = response.json()
-            return [BookingDTO.model_validate(entry) for entry in data]
+        bookings = await self.api.bookings_bookings(
+            start=start, end=end, include_red=True, timeout=HTTP_TIMEOUT_SECONDS
+        )
+        return [BookingDTO.model_validate(booking.model_dump(exclude_unset=True)) for booking in bookings]
 
     async def get_rooms(self) -> list[RoomDTO]:
-        async with httpx.AsyncClient(headers=self._headers) as client:
-            response = await client.get(urljoin(self.url, "rooms/"), params={"include_red": True})
-            response.raise_for_status()
-            return [RoomDTO.model_validate(entry) for entry in response.json()]
+        rooms = await self.api.rooms_rooms(include_red=True)
+        return [RoomDTO.model_validate(room.model_dump(exclude_unset=True)) for room in rooms]
 
     async def get_auto_bookings(
         self,
         start: dtm.datetime,
         end: dtm.datetime,
     ) -> list[BookingDTO]:
-        async with httpx.AsyncClient(headers=self._headers) as client:
-            response = await client.get(
-                urljoin(self.url, "bmp/auto-bookings/"),
-                params={"start": start.isoformat(), "end": end.isoformat()},
-                timeout=HTTP_TIMEOUT_SECONDS,
-            )
-            response.raise_for_status()
-            data = response.json()
-            return [BookingDTO.model_validate(entry) for entry in data]
+        bookings = await self.api.bmp_specialist_list_auto_bookings(start=start, end=end, timeout=HTTP_TIMEOUT_SECONDS)
+        return [BookingDTO.model_validate(booking.model_dump(exclude_unset=True)) for booking in bookings]
 
-    async def stream_auto_bookings_batch(self, bookings: list[dict[str, Any]]) -> AsyncIterator[BmpStreamEvent]:
-        async with (
-            httpx.AsyncClient(headers=self._headers) as client,
-            client.stream(
-                "POST",
-                urljoin(self.url, "bmp/auto-bookings/batch"),
-                json={"bookings": bookings},
-                timeout=STREAM_TIMEOUT,
-            ) as response,
-        ):
+    async def stream_auto_bookings_batch(self, bookings: list[dict[str, Any]]) -> AsyncGenerator[BmpStreamEvent]:
+        async with self.http_client.stream(
+            "POST",
+            urljoin(self.url, "bmp/auto-bookings/batch"),
+            headers=self._headers,
+            json={"bookings": bookings},
+            timeout=STREAM_TIMEOUT,
+        ) as response:
             response.raise_for_status()
             async for line in response.aiter_lines():
                 if not line.strip():
@@ -165,43 +172,26 @@ class BookingClient:
                 yield BmpStreamEvent.model_validate_json(line)
 
     async def reconcile_auto_bookings(self, entries: list[dict[str, Any]]) -> list[BookingEvidence]:
-        async with httpx.AsyncClient(headers=self._headers) as client:
-            response = await client.post(
-                urljoin(self.url, "bmp/auto-bookings/reconcile"),
-                json={"entries": entries},
-                timeout=HTTP_TIMEOUT_SECONDS,
-            )
-            response.raise_for_status()
-            return [BookingEvidence.model_validate(entry) for entry in response.json()]
+        evidence = await self.api.bmp_specialist_reconcile_auto_bookings(
+            BmpReconcileRequest(entries=[ReconcileBookingEntry.model_validate(entry) for entry in entries]),
+            timeout=HTTP_TIMEOUT_SECONDS,
+        )
+        return [BookingEvidence.model_validate(entry.model_dump(exclude_unset=True)) for entry in evidence]
 
     async def cancel_booking_intent(self, payload: dict[str, Any]) -> BookingEvidence:
-        async with httpx.AsyncClient(headers=self._headers) as client:
-            response = await client.post(
-                urljoin(self.url, "bmp/auto-bookings/cancel"),
-                json=payload,
-                timeout=HTTP_TIMEOUT_SECONDS,
-            )
-            response.raise_for_status()
-            return BookingEvidence.model_validate(response.json())
+        evidence = await self.api.bmp_specialist_cancel_scoped_auto_booking(
+            ScopedCancelBookingRequest.model_validate(payload), timeout=HTTP_TIMEOUT_SECONDS
+        )
+        return BookingEvidence.model_validate(evidence.model_dump(exclude_unset=True))
 
     async def cancel_auto_booking(self, outlook_booking_id: str) -> None:
-        async with httpx.AsyncClient(headers=self._headers) as client:
-            response = await client.delete(
-                urljoin(self.url, f"bmp/auto-bookings/{quote(outlook_booking_id, safe='')}"),
-                timeout=HTTP_TIMEOUT_SECONDS,
-            )
-            response.raise_for_status()
+        await self.api.bmp_specialist_delete_auto_booking(outlook_booking_id, timeout=HTTP_TIMEOUT_SECONDS)
 
     async def cancel_auto_bookings_batch(self, outlook_booking_ids: list[str]) -> CancelAutoBookingsResult:
-        async with httpx.AsyncClient(headers=self._headers) as client:
-            response = await client.request(
-                "DELETE",
-                urljoin(self.url, "bmp/auto-bookings/batch"),
-                json={"outlook_booking_ids": outlook_booking_ids},
-                timeout=HTTP_TIMEOUT_SECONDS,
-            )
-            response.raise_for_status()
-            return CancelAutoBookingsResult.model_validate(response.json())
+        result = await self.api.bmp_specialist_batch_cancel_auto_bookings(
+            BmpBatchCancelRequest(outlook_booking_ids=outlook_booking_ids), timeout=HTTP_TIMEOUT_SECONDS
+        )
+        return CancelAutoBookingsResult.model_validate(result.model_dump(exclude_unset=True))
 
     async def cancel_extra_booking(
         self,
@@ -213,23 +203,17 @@ class BookingClient:
         outlook_booking_id: str | None = None,
         outlook_entry_id: str | None = None,
     ) -> None:
-        body: dict[str, Any] = {
-            "room_id": room_id,
-            "start": start,
-            "end": end,
-            "title": title,
-        }
-        if outlook_booking_id:
-            body["outlook_booking_id"] = outlook_booking_id
-        if outlook_entry_id:
-            body["outlook_entry_id"] = outlook_entry_id
-        async with httpx.AsyncClient(headers=self._headers) as client:
-            response = await client.post(
-                urljoin(self.url, "bmp/auto-bookings/cancel-extra"),
-                json=body,
-                timeout=HTTP_TIMEOUT_SECONDS,
-            )
-            response.raise_for_status()
+        await self.api.bmp_specialist_cancel_extra_auto_booking(
+            CancelExtraBookingRequest(
+                room_id=room_id,
+                start=dtm.datetime.fromisoformat(start),
+                end=dtm.datetime.fromisoformat(end),
+                title=title,
+                outlook_booking_id=outlook_booking_id or None,
+                outlook_entry_id=outlook_entry_id or None,
+            ),
+            timeout=HTTP_TIMEOUT_SECONDS,
+        )
 
 
 booking_client: BookingClient = BookingClient(

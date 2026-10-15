@@ -34,6 +34,9 @@ def setup_predefined_data_from_file() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from src.schedule.modules.ics.utils import close_internal_integration_clients
+    from src.schedule.modules.schedule_assistant.client import schedule_assistant_client
+
     await inh_accounts.update_key_set()
 
     storage = SQLAlchemyStorage.from_url(settings.db_url.get_secret_value())
@@ -44,6 +47,8 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        await close_internal_integration_clients()
+        await schedule_assistant_client.aclose()
         await storage.close_connection()
         await inh_accounts.aclose()
 

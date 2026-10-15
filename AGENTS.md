@@ -77,6 +77,10 @@ how: str = Query("current", pattern="^(current|all)$")
 
 Every `{path_param}` in the route path must appear in the handler signature (FAST003).
 
+### Generated HTTP clients
+
+Use the committed `httpxgen` clients in `src/clients/<service>/` for service HTTP calls. Do not edit generated packages manually or commit OpenAPI schemas. Run `uv run -m scripts.generate_clients` to regenerate all clients; local contracts are exported temporarily using `settings.example.yaml`, external Music Room and Sport v3 contracts are fetched upstream. `uv run -m scripts.generate_clients --check` verifies local clients offline; explicitly select `--check --service music_room --service sport_v3` to check external clients against upstream (requires network). Accounts stays on `inh_accounts_sdk`; Moodle and Omnidesk remain handwritten integrations.
+
 ### Models vs schemas
 
 - **model** — SQLAlchemy ORM mapped to a table (`src/<service>/models.py`). Persist/query via the session; not an API contract.

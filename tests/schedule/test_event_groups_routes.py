@@ -111,7 +111,18 @@ def test_list_and_read_include_assistant_groups(schedule_client: TestClient, mon
         "schedule_assistant",
         ScheduleAssistantIntegrationSettings(api_url=api_url, api_key=SecretStr("service-key")),
     )
-    payload = [{"alias": "virtual-group", "name": "Virtual Group", "description": "Assistant"}]
+    payload = {
+        "event_groups": [
+            {
+                "id": None,
+                "alias": "virtual-group",
+                "name": "Virtual Group",
+                "description": "Assistant",
+                "group_code": None,
+                "instructor_id": None,
+            }
+        ]
+    }
 
     with respx.mock(assert_all_called=True) as mock:
         route = mock.get(f"{api_url}/integration/event-groups").mock(return_value=httpx.Response(200, json=payload))

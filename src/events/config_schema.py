@@ -16,6 +16,8 @@ class ClubsIntegrationSettings(BaseSchema):
 class EventsSettings(ServiceSettingsBase):
     """Settings for the Events service."""
 
+    api_key: SecretStr | None = None
+    "Service API key for the Schedule personal calendar integration; disabled when unset"
     mongo: MongoDatabaseSettings = Field(default_factory=MongoDatabaseSettings)
     "Configuration for MongoDB"
     minio: MinioSettings = Field(default_factory=lambda: MinioSettings(bucket="events"))

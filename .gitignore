@@ -1,4 +1,5 @@
 ### Ours ###
+/openapi/
 .env
 settings.yaml
 private.pem
