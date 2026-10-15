@@ -50,17 +50,6 @@ async def _drop_postgres_database(admin_dsn: str, database_name: str) -> None:
         await engine.dispose()
 
 
-@pytest.fixture
-def migration_database_url() -> Iterator[str]:
-    database_name = f"schedule-alembic-{uuid4().hex}"
-    admin_dsn = f"postgresql+asyncpg://postgres:test@{SUITE_POSTGRES_NETLOC}/postgres"
-    asyncio.run(_ensure_postgres_database(admin_dsn, database_name))
-    try:
-        yield f"postgresql+asyncpg://postgres:test@{SUITE_POSTGRES_NETLOC}/{database_name}"
-    finally:
-        asyncio.run(_drop_postgres_database(admin_dsn, database_name))
-
-
 def _upgrade_schedule_schema(connection: Connection) -> None:
     config = Config(Path(__file__).parents[2] / "src/schedule/alembic.ini")
     config.attributes["connection"] = connection

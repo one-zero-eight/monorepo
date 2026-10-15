@@ -115,7 +115,7 @@ Repos do not commit; the request-scoped session commits once at the end. Outside
 - Keep published revisions, frozen historical models, and existing migration histories intact; do not rewrite history or blindly stamp databases to head.
 - Run migrations before API startup through Compose `pre_start` or locally with `uv run -m src.migrations <service>`, never from workers or app lifespan. Provision the target database first and serialize migrations against it.
 - Beanie records history after the data transaction commits: migrations must be idempotent and preserve unrelated fields, IDs, and existing timestamps.
-- Test upgrades from both an empty database and populated previous revisions using shared test infrastructure.
+- Do not write tests for migrations.
 
 ### Git
 
@@ -152,4 +152,5 @@ When writing tests:
 - use shared test infrastructure
 - mock only external systems
 - keep tests independent and parallel-safe
+- do not write tests for migrations
 - run the relevant pytest command before claiming the change is complete

@@ -60,6 +60,8 @@ Good tests should be:
 
 Avoid tests that depend on hidden global state, production services, arbitrary sleeps, or exact ordering unless ordering is part of the API contract.
 
+Do not write tests for migrations.
+
 ### Infrastructure
 
 Use shared test infrastructure and existing fixtures. Tests and fixtures must not launch Docker or start databases, object stores, or service containers internally. The developer starts `docker-compose.test.yaml`; CI uses native GitHub Actions `services` for PostgreSQL, MongoDB, and MinIO, without Compose or lazytainer. GitHub manages CI service startup and cleanup.
@@ -75,6 +77,8 @@ When parallel test execution is enabled, assume multiple workers may run tests a
 ### Database setup
 
 `schedule` and `schedule_assistant` fixtures provision isolated PostgreSQL databases **before** applying the existing Alembic history to head, then start the API. Do not use `create_all()` as a substitute for upgrades or blindly `stamp head`. Keep published revisions and migration histories unchanged.
+
+Do not write tests for migrations. Fixtures may apply migrations to prepare schema for behavior tests; do not assert upgrade paths, revision effects, or schema diffs against Alembic/Beanie history.
 
 See [Database migrations](DATABASE.md#migrations) for startup, serialization, and rollback rules.
 

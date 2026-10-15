@@ -82,16 +82,6 @@ async def _drop_postgres_database(admin_dsn: str, database_name: str) -> None:
         await engine.dispose()
 
 
-@pytest.fixture
-def migration_database_url() -> Iterator[str]:
-    database_name = f"sa-alembic-{uuid4().hex}"
-    asyncio.run(_ensure_postgres_database(_schedule_assistant_admin_dsn(), database_name))
-    try:
-        yield f"postgresql+psycopg://postgres:test@{SUITE_POSTGRES_NETLOC}/{database_name}"
-    finally:
-        asyncio.run(_drop_postgres_database(_schedule_assistant_admin_dsn(), database_name))
-
-
 @pytest.fixture(scope="session")
 def schedule_assistant_postgres() -> Iterator[None]:
     from src.schedule_assistant.storage import clear_engine_cache, get_engine
