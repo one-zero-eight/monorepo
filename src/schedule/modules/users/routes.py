@@ -3,12 +3,11 @@ from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 
-from src.schedule.dependencies import CURRENT_USER_ID_DEPENDENCY
+from src.schedule.db import EventGroupRepoDep, UserRepoDep
+from src.schedule.dependencies import CurrentUserIdDep
 from src.schedule.exceptions import EventGroupNotFoundException, IncorrectCredentialsException, ObjectNotFound
-from src.schedule.modules.event_groups.repository import event_group_repository
 from src.schedule.modules.predefined.repository import predefined_repository
 from src.schedule.modules.users.linked import LinkedCalendarCreate, LinkedCalendarUpdate, LinkedCalendarView
-from src.schedule.modules.users.repository import user_repository
 from src.schedule.modules.users.schemas import TargetForExport, ViewUser, ViewUserScheduleKey
 
 router = APIRouter(
@@ -22,12 +21,12 @@ router = APIRouter(
 
 
 @router.get("/me", responses={200: {"description": "Current user info"}})
-async def get_me(user_id: CURRENT_USER_ID_DEPENDENCY) -> ViewUser:
+async def get_me(user_id: CurrentUserIdDep, users: UserRepoDep) -> ViewUser:
     """
     Get current user info if authenticated
     """
 
-    user = await user_repository.read(user_id)
+    user = await users.read(user_id)
     if user is None:
         raise ObjectNotFound()
     return user
@@ -38,12 +37,14 @@ class UserPredefinedGroupsResponse(BaseModel):
 
 
 @router.get("/me/predefined", responses={200: {"description": "Predefined event groups for user"}})
-async def get_predefined(user_id: CURRENT_USER_ID_DEPENDENCY) -> UserPredefinedGroupsResponse:
+async def get_predefined(user_id: CurrentUserIdDep, users: UserRepoDep) -> UserPredefinedGroupsResponse:
     """
     Get predefined event groups for user
     """
-
-    groups = await predefined_repository.get_user_predefined(user_id)
+    user = await users.read(user_id)
+    if user is None:
+        raise ObjectNotFound()
+    groups = await predefined_repository.get_user_predefined(user.email)
     return UserPredefinedGroupsResponse(event_groups=groups)
 
 
@@ -51,11 +52,13 @@ async def get_predefined(user_id: CURRENT_USER_ID_DEPENDENCY) -> UserPredefinedG
     "/me/favorites",
     responses={200: {"description": "Favorite added successfully"}, **EventGroupNotFoundException.responses},
 )
-async def add_favorite(user_id: CURRENT_USER_ID_DEPENDENCY, group_alias: str) -> ViewUser:
+async def add_favorite(
+    user_id: CurrentUserIdDep, group_alias: str, users: UserRepoDep, event_groups: EventGroupRepoDep
+) -> ViewUser:
     """
     Add favorite to current user
     """
-    if await event_group_repository.read_by_alias(group_alias) is None:
+    if await event_groups.read_by_alias(group_alias) is None:
         from src.schedule.config import settings
         from src.schedule.modules.schedule_assistant.client import schedule_assistant_client
 
@@ -66,7 +69,7 @@ async def add_favorite(user_id: CURRENT_USER_ID_DEPENDENCY, group_alias: str) ->
         )
         if group_alias not in virtual_aliases:
             raise EventGroupNotFoundException(detail=f"Event group with alias {group_alias} does not exist")
-    updated_user = await user_repository.add_favorite(user_id, group_alias)
+    updated_user = await users.add_favorite(user_id, group_alias)
     return updated_user
 
 
@@ -74,12 +77,12 @@ async def add_favorite(user_id: CURRENT_USER_ID_DEPENDENCY, group_alias: str) ->
     "/me/favorites",
     responses={200: {"description": "Favorite deleted"}},
 )
-async def delete_favorite(user_id: CURRENT_USER_ID_DEPENDENCY, group_alias: str) -> ViewUser:
+async def delete_favorite(user_id: CurrentUserIdDep, group_alias: str, users: UserRepoDep) -> ViewUser:
     """
     Delete favorite from current user
     """
 
-    updated_user = await user_repository.remove_favorite(user_id, group_alias)
+    updated_user = await users.remove_favorite(user_id, group_alias)
     return updated_user
 
 
@@ -90,19 +93,19 @@ async def delete_favorite(user_id: CURRENT_USER_ID_DEPENDENCY, group_alias: str)
         **ObjectNotFound.responses,
     },
 )
-async def hide_favorite(user_id: CURRENT_USER_ID_DEPENDENCY, group_alias: str, hide: bool = True) -> ViewUser:
+async def hide_favorite(user_id: CurrentUserIdDep, group_alias: str, users: UserRepoDep, hide: bool = True) -> ViewUser:
     """
     Hide a favorite or predefined event group from current user
     """
-    user = await user_repository.read(user_id)
+    user = await users.read(user_id)
     if user is None:
         raise ObjectNotFound()
 
-    predefined_aliases = await predefined_repository.get_user_predefined(user_id)
+    predefined_aliases = await predefined_repository.get_user_predefined(user.email)
     if group_alias not in user.favorite_event_groups and group_alias not in predefined_aliases:
         raise ObjectNotFound(f"Favorite or predefined event group with alias {group_alias} does not exist")
 
-    updated_user = await user_repository.set_hidden_event_group(
+    updated_user = await users.set_hidden_event_group(
         user_id=user_id,
         group_alias=group_alias,
         hide=hide,
@@ -117,25 +120,29 @@ async def hide_favorite(user_id: CURRENT_USER_ID_DEPENDENCY, group_alias: str, h
         **ObjectNotFound.responses,
     },
 )
-async def hide_linked_calendar(user_id: CURRENT_USER_ID_DEPENDENCY, alias: str, hide: bool = True) -> ViewUser:
+async def hide_linked_calendar(
+    user_id: CurrentUserIdDep, alias: str, users: UserRepoDep, hide: bool = True
+) -> ViewUser:
     """
     Hide linked calendar from current user
     """
-    user = await user_repository.read(user_id)
+    user = await users.read(user_id)
     if user is None or alias not in user.linked_calendars:
         raise ObjectNotFound(f"Linked calendar with alias {alias} does not exist")
 
-    updated_user = await user_repository.set_linked_calendar_hidden(user_id=user_id, alias=alias, hide=hide)
+    updated_user = await users.set_linked_calendar_hidden(user_id=user_id, alias=alias, hide=hide)
     return updated_user
 
 
 @router.post("/me/{target}/hide", responses={200: {"description": "Target hidden"}})
-async def hide_target(user_id: CURRENT_USER_ID_DEPENDENCY, target: TargetForExport, hide: bool = True) -> ViewUser:
+async def hide_target(
+    user_id: CurrentUserIdDep, target: TargetForExport, users: UserRepoDep, hide: bool = True
+) -> ViewUser:
     """
     Hide music room, sports or moodle from current user
     """
 
-    updated_user = await user_repository.set_hidden(user_id=user_id, target=target, hide=hide)
+    updated_user = await users.set_hidden(user_id=user_id, target=target, hide=hide)
     return updated_user
 
 
@@ -147,13 +154,13 @@ async def hide_target(user_id: CURRENT_USER_ID_DEPENDENCY, target: TargetForExpo
     },
 )
 async def link_calendar(
-    linked_calendar: LinkedCalendarCreate, user_id: CURRENT_USER_ID_DEPENDENCY
+    linked_calendar: LinkedCalendarCreate, user_id: CurrentUserIdDep, users: UserRepoDep
 ) -> LinkedCalendarView:
     """
     Add linked calendar to current user
     """
     try:
-        calendar = await user_repository.link_calendar(user_id, linked_calendar)
+        calendar = await users.link_calendar(user_id, linked_calendar)
         return calendar
     except IntegrityError:
         raise HTTPException(status_code=409, detail="Calendar with this alias already exists")
@@ -166,15 +173,15 @@ async def link_calendar(
         **ObjectNotFound.responses,
     },
 )
-async def delete_linked_calendar(user_id: CURRENT_USER_ID_DEPENDENCY, alias: str) -> ViewUser:
+async def delete_linked_calendar(user_id: CurrentUserIdDep, alias: str, users: UserRepoDep) -> ViewUser:
     """
     Delete linked calendar from current user
     """
-    user = await user_repository.read(user_id)
+    user = await users.read(user_id)
     if user is None or alias not in user.linked_calendars:
         raise ObjectNotFound(f"Linked calendar with alias {alias} does not exist")
 
-    updated_user = await user_repository.delete_linked_calendar(user_id=user_id, alias=alias)
+    updated_user = await users.delete_linked_calendar(user_id=user_id, alias=alias)
     return updated_user
 
 
@@ -187,17 +194,17 @@ async def delete_linked_calendar(user_id: CURRENT_USER_ID_DEPENDENCY, alias: str
     },
 )
 async def update_linked_calendar(
-    user_id: CURRENT_USER_ID_DEPENDENCY, alias: str, linked_calendar: LinkedCalendarUpdate
+    user_id: CurrentUserIdDep, alias: str, linked_calendar: LinkedCalendarUpdate, users: UserRepoDep
 ) -> LinkedCalendarView:
     """
     Update linked calendar for current user
     """
-    user = await user_repository.read(user_id)
+    user = await users.read(user_id)
     if user is None or alias not in user.linked_calendars:
         raise ObjectNotFound(f"Linked calendar with alias {alias} does not exist")
 
     try:
-        updated_calendar = await user_repository.update_linked_calendar(user_id, alias, linked_calendar)
+        updated_calendar = await users.update_linked_calendar(user_id, alias, linked_calendar)
         if updated_calendar is None:
             raise ObjectNotFound(f"Linked calendar with alias {alias} does not exist")
         return updated_calendar
@@ -215,7 +222,7 @@ class _GetScheduleAccessKeyResponse(BaseModel):
     responses={200: {"description": "Schedule access key for given resource"}},
 )
 async def generate_user_schedule_key(
-    resource_path: str, user_id: CURRENT_USER_ID_DEPENDENCY
+    resource_path: str, user_id: CurrentUserIdDep, users: UserRepoDep
 ) -> _GetScheduleAccessKeyResponse:
     """
     Generate an access key for the user schedule
@@ -224,10 +231,10 @@ async def generate_user_schedule_key(
     if resource_path == f"/users/{user_id}/workshops.ics":
         resource_path = f"/users/{user_id}/events.ics"
 
-    key = await user_repository.get_user_schedule_key_for_resource(user_id, resource_path)
+    key = await users.get_user_schedule_key_for_resource(user_id, resource_path)
     new = False
     if key is None:
-        key = await user_repository.generate_user_schedule_key(user_id, resource_path)
+        key = await users.generate_user_schedule_key(user_id, resource_path)
         new = True
     return _GetScheduleAccessKeyResponse(new=new, access_key=key)
 
@@ -236,12 +243,12 @@ async def generate_user_schedule_key(
     "/me/schedule-access-keys",
     responses={200: {"description": "Schedule access keys for user"}},
 )
-async def get_user_schedule_keys(user_id: CURRENT_USER_ID_DEPENDENCY) -> list[ViewUserScheduleKey]:
+async def get_user_schedule_keys(user_id: CurrentUserIdDep, users: UserRepoDep) -> list[ViewUserScheduleKey]:
     """
     Get all access keys for the user schedule
     """
 
-    keys = await user_repository.get_user_schedule_keys(user_id)
+    keys = await users.get_user_schedule_keys(user_id)
     return keys
 
 
@@ -251,17 +258,19 @@ async def get_user_schedule_keys(user_id: CURRENT_USER_ID_DEPENDENCY) -> list[Vi
         200: {"description": "Schedule access key deleted"},
     },
 )
-async def delete_user_schedule_key(access_key: str, resource_path: str, user_id: CURRENT_USER_ID_DEPENDENCY) -> None:
+async def delete_user_schedule_key(
+    access_key: str, resource_path: str, user_id: CurrentUserIdDep, users: UserRepoDep
+) -> None:
     """
     Delete an access key for the user schedule
     """
 
-    await user_repository.delete_user_schedule_key(user_id, access_key, resource_path)
+    await users.delete_user_schedule_key(user_id, access_key, resource_path)
     return
 
 
 @router.post("/me/set-moodle", responses={200: {"description": "Moodle stuff is configured successfully"}})
 async def set_user_moodle_data(
-    moodle_userid: int, moodle_calendar_authtoken: str, user_id: CURRENT_USER_ID_DEPENDENCY
+    moodle_userid: int, moodle_calendar_authtoken: str, user_id: CurrentUserIdDep, users: UserRepoDep
 ) -> None:
-    await user_repository.set_user_moodle_data(user_id, moodle_userid, moodle_calendar_authtoken)
+    await users.set_user_moodle_data(user_id, moodle_userid, moodle_calendar_authtoken)

@@ -1,7 +1,7 @@
 __all__ = [
-    "CURRENT_USER_ID_DEPENDENCY",
-    "VERIFY_PARSER_DEPENDENCY",
-    "VERIFY_PARSER_OR_ADMIN_DEPENDENCY",
+    "CurrentUserIdDep",
+    "VerifyParserDep",
+    "VerifyParserOrAdminDep",
     "get_current_user_id",
     "verify_parser",
     "verify_parser_or_admin",
@@ -14,8 +14,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from joserfc.errors import JoseError
 
 from src.inh_accounts_sdk import inh_accounts
+from src.schedule.db import UserRepoDep
 from src.schedule.exceptions import ForbiddenException, IncorrectCredentialsException
-from src.schedule.modules.users.repository import user_repository
 
 bearer_scheme = HTTPBearer(
     scheme_name="Bearer",
@@ -27,6 +27,7 @@ bearer_scheme = HTTPBearer(
 
 async def get_current_user_id(
     bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+    users: UserRepoDep,
 ) -> int:
     if bearer is None:
         raise IncorrectCredentialsException(no_credentials=True)
@@ -36,7 +37,7 @@ async def get_current_user_id(
     token_data = inh_accounts.decode_user_token(token)
     if token_data is None:
         raise IncorrectCredentialsException()
-    user_id = await user_repository.fetch_user_id_or_create(token_data.innohassle_id)
+    user_id = await users.fetch_user_id_or_create(token_data.innohassle_id)
     if user_id is None:
         raise IncorrectCredentialsException()
     return user_id
@@ -82,6 +83,6 @@ async def verify_parser_or_admin(
     return True
 
 
-CURRENT_USER_ID_DEPENDENCY = Annotated[int, Depends(get_current_user_id)]
-VERIFY_PARSER_DEPENDENCY = Annotated[bool, Depends(verify_parser)]
-VERIFY_PARSER_OR_ADMIN_DEPENDENCY = Annotated[bool, Depends(verify_parser_or_admin)]
+CurrentUserIdDep = Annotated[int, Depends(get_current_user_id)]
+VerifyParserDep = Annotated[bool, Depends(verify_parser)]
+VerifyParserOrAdminDep = Annotated[bool, Depends(verify_parser_or_admin)]

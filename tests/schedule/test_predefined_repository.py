@@ -26,7 +26,7 @@ def test_get_user_predefined_returns_group_aliases(
     )
     setup_predefined_data_from_object(predefined)
 
-    group_aliases = schedule_portal.call(predefined_repository.get_user_predefined, me["id"])
+    group_aliases = schedule_portal.call(predefined_repository.get_user_predefined, me["email"])
     assert group_aliases == ["predefined-target-group"]
 
 
@@ -64,7 +64,7 @@ def test_get_user_predefined_combines_static_and_assistant(
                 },
             )
         )
-        aliases = schedule_portal.call(predefined_repository.get_user_predefined, me["id"])
+        aliases = schedule_portal.call(predefined_repository.get_user_predefined, me["email"])
 
     assert route.called
     assert aliases == [

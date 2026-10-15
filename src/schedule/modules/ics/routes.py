@@ -11,9 +11,9 @@ from starlette.responses import FileResponse, Response, StreamingResponse
 
 from src.logging_ import logger
 from src.schedule.config import settings
-from src.schedule.dependencies import CURRENT_USER_ID_DEPENDENCY
+from src.schedule.db import EventGroupRepoDep, UserRepoDep
+from src.schedule.dependencies import CurrentUserIdDep
 from src.schedule.exceptions import EventGroupNotFoundException, ForbiddenException, ObjectNotFound
-from src.schedule.modules.event_groups.repository import event_group_repository
 from src.schedule.modules.ics.utils import (
     generate_ics_from_url,
     get_all_events_ics,
@@ -25,7 +25,6 @@ from src.schedule.modules.ics.utils import (
     get_personal_sport_ics,
 )
 from src.schedule.modules.users.linked import LinkedCalendarView
-from src.schedule.modules.users.repository import user_repository
 from src.schedule.utils import locate_ics_by_path
 
 router = APIRouter(prefix="", tags=["ICS"], route_class=AutoDeriveResponsesAPIRoute)
@@ -41,16 +40,18 @@ router = APIRouter(prefix="", tags=["ICS"], route_class=AutoDeriveResponsesAPIRo
     },
     tags=["Users"],
 )
-async def get_current_user_schedule(user_id: CURRENT_USER_ID_DEPENDENCY) -> StreamingResponse:
+async def get_current_user_schedule(
+    user_id: CurrentUserIdDep, users: UserRepoDep, event_groups: EventGroupRepoDep
+) -> StreamingResponse:
     """
     Get schedule in ICS format for the current user
     """
 
-    user = await user_repository.read(user_id)
+    user = await users.read(user_id)
     if user is None:
         raise ObjectNotFound()
 
-    ical_generator = await get_personal_event_groups_ics(user)
+    ical_generator = await get_personal_event_groups_ics(user, event_groups)
 
     return StreamingResponse(
         content=ical_generator,
@@ -70,21 +71,23 @@ async def get_current_user_schedule(user_id: CURRENT_USER_ID_DEPENDENCY) -> Stre
     },
     tags=["Users"],
 )
-async def get_user_schedule(user_id: int, access_key: str) -> StreamingResponse:
+async def get_user_schedule(
+    user_id: int, access_key: str, users: UserRepoDep, event_groups: EventGroupRepoDep
+) -> StreamingResponse:
     """
     Get schedule in ICS format for the user; requires access key for `/users/{user_id}/all.ics` resource
     """
 
-    user = await user_repository.read(user_id)
+    user = await users.read(user_id)
 
     if user is None:
         raise ObjectNotFound()
 
     resource_path = f"/users/{user_id}/all.ics"
-    if not await user_repository.check_user_schedule_key(user_id, access_key, resource_path):
+    if not await users.check_user_schedule_key(user_id, access_key, resource_path):
         raise ForbiddenException()
 
-    ical_generator = await get_personal_event_groups_ics(user)
+    ical_generator = await get_personal_event_groups_ics(user, event_groups)
 
     return StreamingResponse(
         content=ical_generator,
@@ -103,12 +106,12 @@ async def get_user_schedule(user_id: int, access_key: str) -> StreamingResponse:
     },
     tags=["Users"],
 )
-async def get_music_room_current_user_schedule(user_id: CURRENT_USER_ID_DEPENDENCY) -> StreamingResponse:
+async def get_music_room_current_user_schedule(user_id: CurrentUserIdDep, users: UserRepoDep) -> StreamingResponse:
     """
     Get schedule in ICS format for the current user
     """
 
-    user = await user_repository.read(user_id)
+    user = await users.read(user_id)
     if user is None:
         raise ObjectNotFound()
 
@@ -129,17 +132,17 @@ async def get_music_room_current_user_schedule(user_id: CURRENT_USER_ID_DEPENDEN
     },
     tags=["Users"],
 )
-async def get_music_room_user_schedule(user_id: int, access_key: str) -> StreamingResponse:
+async def get_music_room_user_schedule(user_id: int, access_key: str, users: UserRepoDep) -> StreamingResponse:
     """
     Get schedule in ICS format for the user; requires access key for `/users/{user_id}/music-room.ics` resource
     """
 
-    user = await user_repository.read(user_id)
+    user = await users.read(user_id)
     if user is None:
         raise ObjectNotFound()
 
     resource_path = f"/users/{user_id}/music-room.ics"
-    if not await user_repository.check_user_schedule_key(user_id, access_key, resource_path):
+    if not await users.check_user_schedule_key(user_id, access_key, resource_path):
         raise ForbiddenException()
 
     ical_generator = await get_personal_music_room_ics(user)
@@ -157,12 +160,12 @@ async def get_music_room_user_schedule(user_id: int, access_key: str) -> Streami
     },
     tags=["Users"],
 )
-async def get_sport_current_user_schedule(user_id: CURRENT_USER_ID_DEPENDENCY) -> Response:
+async def get_sport_current_user_schedule(user_id: CurrentUserIdDep, users: UserRepoDep) -> Response:
     """
     Get schedule in ICS format for the current user
     """
 
-    user = await user_repository.read(user_id)
+    user = await users.read(user_id)
     if user is None:
         raise ObjectNotFound()
 
@@ -182,17 +185,17 @@ async def get_sport_current_user_schedule(user_id: CURRENT_USER_ID_DEPENDENCY) -
     },
     tags=["Users"],
 )
-async def get_sport_user_schedule(user_id: int, access_key: str) -> Response:
+async def get_sport_user_schedule(user_id: int, access_key: str, users: UserRepoDep) -> Response:
     """
     Get schedule in ICS format for the user; requires access key for `/users/{user_id}/sport.ics` resource
     """
 
-    user = await user_repository.read(user_id)
+    user = await users.read(user_id)
     if user is None:
         raise ObjectNotFound()
 
     resource_path = f"/users/{user_id}/sport.ics"
-    if not await user_repository.check_user_schedule_key(user_id, access_key, resource_path):
+    if not await users.check_user_schedule_key(user_id, access_key, resource_path):
         raise ForbiddenException()
 
     ical_bytes = await get_personal_sport_ics(user)
@@ -210,12 +213,12 @@ async def get_sport_user_schedule(user_id: int, access_key: str) -> Response:
     },
     tags=["Users"],
 )
-async def get_events_current_user_schedule(user_id: CURRENT_USER_ID_DEPENDENCY) -> Response:
+async def get_events_current_user_schedule(user_id: CurrentUserIdDep, users: UserRepoDep) -> Response:
     """
     Get schedule in ICS format for the current user
     """
 
-    user = await user_repository.read(user_id)
+    user = await users.read(user_id)
     if user is None:
         raise ObjectNotFound()
 
@@ -234,17 +237,17 @@ async def get_events_current_user_schedule(user_id: CURRENT_USER_ID_DEPENDENCY) 
     },
     tags=["Users"],
 )
-async def get_events_user_schedule(user_id: int, access_key: str) -> Response:
+async def get_events_user_schedule(user_id: int, access_key: str, users: UserRepoDep) -> Response:
     """
     Get schedule in ICS format for the user; requires access key for `/users/{user_id}/events.ics` resource
     """
 
-    user = await user_repository.read(user_id)
+    user = await users.read(user_id)
     if user is None:
         raise ObjectNotFound()
 
     resource_path = f"/users/{user_id}/events.ics"
-    if not await user_repository.check_user_schedule_key(user_id, access_key, resource_path):
+    if not await users.check_user_schedule_key(user_id, access_key, resource_path):
         raise ForbiddenException()
 
     ical_bytes = await get_personal_events_ics(user)
@@ -263,12 +266,12 @@ async def get_events_user_schedule(user_id: int, access_key: str) -> Response:
     },
     tags=["Users"],
 )
-async def get_moodle_user_schedule(user_id: CURRENT_USER_ID_DEPENDENCY) -> Response:
+async def get_moodle_user_schedule(user_id: CurrentUserIdDep, users: UserRepoDep) -> Response:
     """
     Get schedule in ICS format for the current user
     """
 
-    user = await user_repository.read(user_id)
+    user = await users.read(user_id)
     if user is None:
         raise ObjectNotFound()
 
@@ -292,17 +295,17 @@ async def get_moodle_user_schedule(user_id: CURRENT_USER_ID_DEPENDENCY) -> Respo
     },
     tags=["Users"],
 )
-async def get_moodle_current_user_schedule(user_id: int, access_key: str) -> Response:
+async def get_moodle_current_user_schedule(user_id: int, access_key: str, users: UserRepoDep) -> Response:
     """
     Get schedule in ICS format for the user; requires access key for `/users/{user_id}/moodle.ics` resource
     """
 
-    user = await user_repository.read(user_id)
+    user = await users.read(user_id)
     if user is None:
         raise ObjectNotFound()
 
     resource_path = f"/users/{user_id}/moodle.ics"
-    if not await user_repository.check_user_schedule_key(user_id, access_key, resource_path):
+    if not await users.check_user_schedule_key(user_id, access_key, resource_path):
         raise ForbiddenException()
 
     if user.moodle_userid is None or user.moodle_calendar_authtoken is None:
@@ -323,7 +326,7 @@ async def get_moodle_current_user_schedule(user_id: int, access_key: str) -> Res
         400: {"description": "Calendar can't be processed by the server"},
     },
 )
-async def check_calendar_url(user_id: CURRENT_USER_ID_DEPENDENCY, calendar_url: HttpUrl) -> Response:
+async def check_calendar_url(user_id: CurrentUserIdDep, calendar_url: HttpUrl) -> Response:
     """
     Check if calendar url can be processed by the server
     """
@@ -345,12 +348,12 @@ async def check_calendar_url(user_id: CURRENT_USER_ID_DEPENDENCY, calendar_url: 
     },
     tags=["Users"],
 )
-async def get_user_linked_schedule(user_id: int, linked_alias: str) -> Response:
+async def get_user_linked_schedule(user_id: int, linked_alias: str, users: UserRepoDep) -> Response:
     """
     Get schedule in ICS format for the user
     """
 
-    user = await user_repository.read(user_id)
+    user = await users.read(user_id)
 
     if user is None:
         raise ObjectNotFound(f"User with id {user_id} not found")
@@ -426,6 +429,7 @@ async def get_event_group_ics_by_alias(
     user_id: int,
     export_type: str,
     event_group_alias: str,
+    event_groups: EventGroupRepoDep,
     user_agent: Annotated[str | None, Header()] = None,
 ):
     """
@@ -433,7 +437,7 @@ async def get_event_group_ics_by_alias(
     """
 
     event_group_alias = unquote(event_group_alias)
-    event_group = await event_group_repository.read_by_alias(event_group_alias)
+    event_group = await event_groups.read_by_alias(event_group_alias)
     logger.info(f"User-Agent: {user_agent}")
 
     if event_group is None:
@@ -488,11 +492,11 @@ async def get_event_group_ics_by_alias(
         **ObjectNotFound.responses,
     },
 )
-async def get_current_user_room_bookings(user_id: CURRENT_USER_ID_DEPENDENCY) -> Response:
+async def get_current_user_room_bookings(user_id: CurrentUserIdDep, users: UserRepoDep) -> Response:
     """
     Get bookings in ICS format for the room bookings
     """
-    user = await user_repository.read(user_id)
+    user = await users.read(user_id)
     if user is None:
         raise ObjectNotFound()
 
@@ -511,17 +515,17 @@ async def get_current_user_room_bookings(user_id: CURRENT_USER_ID_DEPENDENCY) ->
         **ForbiddenException.responses,
     },
 )
-async def get_user_room_bookings(user_id: int, access_key: str) -> Response:
+async def get_user_room_bookings(user_id: int, access_key: str, users: UserRepoDep) -> Response:
     """
     Get bookings in ICS format for the room bookings;
     Requires access key for `/users/{user_id}/room-bookings.ics` resource
     """
-    user = await user_repository.read(user_id)
+    user = await users.read(user_id)
     if user is None:
         raise ObjectNotFound()
 
     resource_path = f"/users/{user_id}/room-bookings.ics"
-    if not await user_repository.check_user_schedule_key(user_id, access_key, resource_path):
+    if not await users.check_user_schedule_key(user_id, access_key, resource_path):
         raise ForbiddenException()
 
     ical_bytes = await get_personal_room_bookings(user)

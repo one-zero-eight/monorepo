@@ -1,9 +1,9 @@
 from fastapi import APIRouter
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 
-from src.schedule.dependencies import VERIFY_PARSER_OR_ADMIN_DEPENDENCY
+from src.schedule.db import EventGroupRepoDep
+from src.schedule.dependencies import VerifyParserOrAdminDep
 from src.schedule.exceptions import ForbiddenException, IncorrectCredentialsException
-from src.schedule.modules.event_groups.repository import event_group_repository
 from src.schedule.modules.predefined.repository import predefined_repository
 from src.schedule.modules.predefined.storage import JsonPredefinedUsers
 
@@ -18,7 +18,7 @@ router = APIRouter(prefix="", tags=["Predefined"], route_class=AutoDeriveRespons
         **ForbiddenException.responses,
     },
 )
-async def get_predefined_data(_: VERIFY_PARSER_OR_ADMIN_DEPENDENCY) -> JsonPredefinedUsers:
+async def get_predefined_data(_: VerifyParserOrAdminDep) -> JsonPredefinedUsers:
     return predefined_repository.storage
 
 
@@ -32,17 +32,20 @@ async def get_predefined_data(_: VERIFY_PARSER_OR_ADMIN_DEPENDENCY) -> JsonPrede
         **ForbiddenException.responses,
     },
 )
-async def update_predefined_data(_: VERIFY_PARSER_OR_ADMIN_DEPENDENCY, user_storage: JsonPredefinedUsers) -> list[str]:
+async def update_predefined_data(
+    _: VerifyParserOrAdminDep,
+    user_storage: JsonPredefinedUsers,
+    event_group_repo: EventGroupRepoDep,
+) -> list[str]:
     from src.schedule.modules.predefined.utils import setup_predefined_data_from_object
 
     setup_predefined_data_from_object(user_storage)
 
     user_groups = set()
     for user in user_storage.users:
-        for group in user.groups:
-            user_groups.add(group)
+        user_groups.update(user.groups)
 
-    event_groups = await event_group_repository.read_all()
+    event_groups = await event_group_repo.read_all()
     event_group_aliases = {group.alias for group in event_groups}
 
     non_existent_groups_from_user = user_groups - event_group_aliases

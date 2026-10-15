@@ -1,4 +1,4 @@
-__all__ = ["SqlUserRepository", "user_repository"]
+__all__ = ["SqlUserRepository"]
 
 import secrets
 import string
@@ -13,7 +13,6 @@ from src.schedule.modules.users.linked import LinkedCalendarCreate, LinkedCalend
 from src.schedule.modules.users.schemas import CreateUser, TargetForExport, ViewUser, ViewUserScheduleKey
 from src.schedule.storages.sql.models import LinkedCalendar, User, UserScheduleKeys, UserXFavoriteEventGroup
 from src.schedule.storages.sql.models.event_groups import UserXHiddenEventGroup
-from src.schedule.storages.sql.storage import SQLAlchemyStorage
 
 _get_options = (
     selectinload(User.favorites_association),
@@ -23,7 +22,7 @@ _get_options = (
 
 
 def select_user_by_id(id_: int):
-    return select(User).where(User.id == id_).options(*_get_options)
+    return select(User).where(User.id == id_).options(*_get_options).execution_options(populate_existing=True)
 
 
 MIN_USER_ID = 100_000
@@ -47,56 +46,49 @@ def _generate_random_user_schedule_key() -> str:
 
 
 class SqlUserRepository:
-    storage: SQLAlchemyStorage
-
-    def update_storage(self, storage: SQLAlchemyStorage):
-        self.storage = storage
-
-    def _create_session(self) -> AsyncSession:
-        return self.storage.create_session()
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
 
     async def create(self, user: CreateUser) -> ViewUser:
-        async with self._create_session() as session:
-            available_id = await _get_available_user_ids(session)
-            user.id = available_id if isinstance(available_id, int) else available_id[0]
-            q = insert(User).values(**user.model_dump()).returning(User).options(*_get_options)
-            created = await session.scalar(q)
-            await session.commit()
-            return ViewUser.model_validate(created)
+        session = self.session
+        available_id = await _get_available_user_ids(session)
+        user.id = available_id if isinstance(available_id, int) else available_id[0]
+        q = insert(User).values(**user.model_dump()).returning(User).options(*_get_options)
+        created = await session.scalar(q)
+        return ViewUser.model_validate(created)
 
     async def read(self, user_id: int) -> ViewUser | None:
-        async with self._create_session() as session:
-            user = await session.scalar(select_user_by_id(user_id))
-            return ViewUser.model_validate(user) if user is not None else None
+        session = self.session
+        user = await session.scalar(select_user_by_id(user_id))
+        return ViewUser.model_validate(user) if user is not None else None
 
     async def read_all(self) -> list[ViewUser]:
-        async with self._create_session() as session:
-            users = await session.scalars(select(User).options(*_get_options))
-            return [ViewUser.model_validate(user) for user in users]
+        session = self.session
+        users = await session.scalars(select(User).options(*_get_options))
+        return [ViewUser.model_validate(user) for user in users]
 
     async def read_mapping_by_emails(self, emails: list[str]) -> dict[str, int | None]:
-        async with self._create_session() as session:
-            q = select(User.email, User.id).where(User.email.in_(emails))
-            mapping = (await session.execute(q)).all()
-            result = dict.fromkeys(emails)
-            for email, user_id in mapping:
-                result[email] = user_id
-            return result
+        session = self.session
+        q = select(User.email, User.id).where(User.email.in_(emails))
+        mapping = (await session.execute(q)).all()
+        result = dict.fromkeys(emails)
+        for email, user_id in mapping:
+            result[email] = user_id
+        return result
 
     async def read_id_by_email(self, email: str) -> int | None:
-        async with self._create_session() as session:
-            return await session.scalar(select(User.id).where(User.email == email))
+        session = self.session
+        return await session.scalar(select(User.id).where(User.email == email))
 
     async def read_id_by_innohassle_id(self, innohassle_id: str) -> int | None:
-        async with self._create_session() as session:
-            user_id = await session.scalar(select(User.id).where(User.innohassle_id == innohassle_id))
-            return user_id
+        session = self.session
+        user_id = await session.scalar(select(User.id).where(User.innohassle_id == innohassle_id))
+        return user_id
 
     async def update_innohassle_id(self, user_id: int, innohassle_id: str) -> None:
-        async with self._create_session() as session:
-            q = update(User).where(User.id == user_id).values(innohassle_id=innohassle_id)
-            await session.execute(q)
-            await session.commit()
+        session = self.session
+        q = update(User).where(User.id == user_id).values(innohassle_id=innohassle_id)
+        await session.execute(q)
 
     async def fetch_user_id_or_create(self, innohassle_id: str) -> int | None:
         user_id = await self.read_id_by_innohassle_id(innohassle_id)
@@ -120,216 +112,200 @@ class SqlUserRepository:
         return user_id
 
     async def add_favorite(self, user_id: int, group_alias: str) -> ViewUser:
-        async with self._create_session() as session:
+        session = self.session
+        q = (
+            insert(UserXFavoriteEventGroup)
+            .values(
+                user_id=user_id,
+                group_alias=group_alias,
+            )
+            .on_conflict_do_nothing(
+                index_elements=[UserXFavoriteEventGroup.user_id, UserXFavoriteEventGroup.group_alias]
+            )
+        )
+        await session.execute(q)
+        user = await session.scalar(select_user_by_id(user_id))
+        return ViewUser.model_validate(user)
+
+    async def remove_favorite(self, user_id: int, group_alias: str) -> ViewUser:
+        session = self.session
+        q = (
+            delete(UserXFavoriteEventGroup)
+            .where(
+                UserXFavoriteEventGroup.user_id == user_id,
+            )
+            .where(
+                UserXFavoriteEventGroup.group_alias == group_alias,
+            )
+        )
+        await session.execute(q)
+        user = await session.scalar(select_user_by_id(user_id))
+        return ViewUser.model_validate(user)
+
+    async def set_hidden_event_group(self, user_id: int, group_alias: str, hide: bool = True) -> ViewUser:
+        session = self.session
+        if hide:
             q = (
-                insert(UserXFavoriteEventGroup)
+                insert(UserXHiddenEventGroup)
                 .values(
                     user_id=user_id,
                     group_alias=group_alias,
                 )
                 .on_conflict_do_nothing(
-                    index_elements=[UserXFavoriteEventGroup.user_id, UserXFavoriteEventGroup.group_alias]
+                    index_elements=[UserXHiddenEventGroup.user_id, UserXHiddenEventGroup.group_alias]
                 )
             )
-            await session.execute(q)
-            user = await session.scalar(select_user_by_id(user_id))
-            await session.commit()
-            return ViewUser.model_validate(user)
-
-    async def remove_favorite(self, user_id: int, group_alias: str) -> ViewUser:
-        async with self._create_session() as session:
-            q = (
-                delete(UserXFavoriteEventGroup)
-                .where(
-                    UserXFavoriteEventGroup.user_id == user_id,
-                )
-                .where(
-                    UserXFavoriteEventGroup.group_alias == group_alias,
-                )
+        else:
+            q = delete(UserXHiddenEventGroup).where(
+                UserXHiddenEventGroup.user_id == user_id,
+                UserXHiddenEventGroup.group_alias == group_alias,
             )
-            await session.execute(q)
-            user = await session.scalar(select_user_by_id(user_id))
-            await session.commit()
-            return ViewUser.model_validate(user)
-
-    async def set_hidden_event_group(self, user_id: int, group_alias: str, hide: bool = True) -> ViewUser:
-        async with self._create_session() as session:
-            if hide:
-                q = (
-                    insert(UserXHiddenEventGroup)
-                    .values(
-                        user_id=user_id,
-                        group_alias=group_alias,
-                    )
-                    .on_conflict_do_nothing(
-                        index_elements=[UserXHiddenEventGroup.user_id, UserXHiddenEventGroup.group_alias]
-                    )
-                )
-            else:
-                q = delete(UserXHiddenEventGroup).where(
-                    UserXHiddenEventGroup.user_id == user_id,
-                    UserXHiddenEventGroup.group_alias == group_alias,
-                )
-            await session.execute(q)
-            await session.commit()
-            # from table
-            q = select(User).where(User.id == user_id).options(*_get_options)
-            user = await session.scalar(q)
-            return ViewUser.model_validate(user)
+        await session.execute(q)
+        user = await session.scalar(select_user_by_id(user_id))
+        return ViewUser.model_validate(user)
 
     async def set_hidden(self, user_id: int, target: TargetForExport, hide: bool = True):
-        async with self._create_session() as session:
-            q = (
-                update(User)
-                .where(User.id == user_id)
-                .values(
-                    {
-                        "music_room_hidden": hide if target == TargetForExport.MUSIC_ROOM else User.music_room_hidden,
-                        "sports_hidden": hide if target == TargetForExport.SPORT else User.sports_hidden,
-                        "moodle_hidden": hide if target == TargetForExport.MOODLE else User.moodle_hidden,
-                        "events_hidden": hide if target == TargetForExport.EVENTS else User.events_hidden,
-                        "room_bookings_hidden": hide
-                        if target == TargetForExport.ROOM_BOOKINGS
-                        else User.room_bookings_hidden,
-                    }
-                )
-                .returning(User)
-                .options(*_get_options)
+        session = self.session
+        q = (
+            update(User)
+            .where(User.id == user_id)
+            .values(
+                {
+                    "music_room_hidden": hide if target == TargetForExport.MUSIC_ROOM else User.music_room_hidden,
+                    "sports_hidden": hide if target == TargetForExport.SPORT else User.sports_hidden,
+                    "moodle_hidden": hide if target == TargetForExport.MOODLE else User.moodle_hidden,
+                    "events_hidden": hide if target == TargetForExport.EVENTS else User.events_hidden,
+                    "room_bookings_hidden": hide
+                    if target == TargetForExport.ROOM_BOOKINGS
+                    else User.room_bookings_hidden,
+                }
             )
-            user = await session.scalar(q)
-            await session.commit()
-            return ViewUser.model_validate(user)
+            .returning(User)
+            .options(*_get_options)
+        )
+        user = await session.scalar(q)
+        return ViewUser.model_validate(user)
 
     async def link_calendar(self, user_id: int, linked_calendar: LinkedCalendarCreate) -> LinkedCalendarView:
-        async with self._create_session() as session:
-            q = (
-                insert(LinkedCalendar)
-                .values(
-                    user_id=user_id,
-                    **linked_calendar.model_dump(),
-                )
-                .returning(LinkedCalendar)
+        session = self.session
+        q = (
+            insert(LinkedCalendar)
+            .values(
+                user_id=user_id,
+                **linked_calendar.model_dump(),
             )
+            .returning(LinkedCalendar)
+        )
 
-            created_calendar = await session.scalar(q)
-            await session.commit()
-            return LinkedCalendarView.model_validate(created_calendar)
+        created_calendar = await session.scalar(q)
+        return LinkedCalendarView.model_validate(created_calendar)
 
     async def set_linked_calendar_hidden(self, user_id: int, alias: str, hide: bool = True) -> ViewUser:
-        async with self._create_session() as session:
-            q = (
-                update(LinkedCalendar)
-                .where(
-                    LinkedCalendar.user_id == user_id,
-                    LinkedCalendar.alias == alias,
-                )
-                .values(is_active=not hide)
-            )
-            await session.execute(q)
-            await session.commit()
-
-            user = await session.scalar(select_user_by_id(user_id))
-            return ViewUser.model_validate(user)
-
-    async def delete_linked_calendar(self, user_id: int, alias: str) -> ViewUser:
-        async with self._create_session() as session:
-            q = delete(LinkedCalendar).where(
+        session = self.session
+        q = (
+            update(LinkedCalendar)
+            .where(
                 LinkedCalendar.user_id == user_id,
                 LinkedCalendar.alias == alias,
             )
-            await session.execute(q)
-            await session.commit()
+            .values(is_active=not hide)
+        )
+        await session.execute(q)
 
-            user = await session.scalar(select_user_by_id(user_id))
-            return ViewUser.model_validate(user)
+        user = await session.scalar(select_user_by_id(user_id))
+        return ViewUser.model_validate(user)
+
+    async def delete_linked_calendar(self, user_id: int, alias: str) -> ViewUser:
+        session = self.session
+        q = delete(LinkedCalendar).where(
+            LinkedCalendar.user_id == user_id,
+            LinkedCalendar.alias == alias,
+        )
+        await session.execute(q)
+
+        user = await session.scalar(select_user_by_id(user_id))
+        return ViewUser.model_validate(user)
 
     async def update_linked_calendar(
         self, user_id: int, alias: str, linked_calendar: LinkedCalendarUpdate
     ) -> LinkedCalendarView | None:
-        async with self._create_session() as session:
-            values = linked_calendar.model_dump(exclude_unset=True)
-            if not values:
-                q = select(LinkedCalendar).where(
-                    LinkedCalendar.user_id == user_id,
-                    LinkedCalendar.alias == alias,
-                )
-                calendar = await session.scalar(q)
-                return LinkedCalendarView.model_validate(calendar) if calendar else None
-
-            q = (
-                update(LinkedCalendar)
-                .where(
-                    LinkedCalendar.user_id == user_id,
-                    LinkedCalendar.alias == alias,
-                )
-                .values(**values)
-                .returning(LinkedCalendar)
+        session = self.session
+        values = linked_calendar.model_dump(exclude_unset=True)
+        if not values:
+            q = select(LinkedCalendar).where(
+                LinkedCalendar.user_id == user_id,
+                LinkedCalendar.alias == alias,
             )
             calendar = await session.scalar(q)
-            await session.commit()
             return LinkedCalendarView.model_validate(calendar) if calendar else None
 
-    async def generate_user_schedule_key(self, user_id: int, resource_path: str) -> ViewUserScheduleKey:
-        async with self._create_session() as session:
-            key = _generate_random_user_schedule_key()
-            q = insert(UserScheduleKeys).values(
-                user_id=user_id,
-                access_key=key,
-                resource_path=resource_path,
+        q = (
+            update(LinkedCalendar)
+            .where(
+                LinkedCalendar.user_id == user_id,
+                LinkedCalendar.alias == alias,
             )
-            await session.execute(q)
-            await session.commit()
-            return ViewUserScheduleKey(access_key=key, resource_path=resource_path, user_id=user_id)
+            .values(**values)
+            .returning(LinkedCalendar)
+        )
+        calendar = await session.scalar(q)
+        return LinkedCalendarView.model_validate(calendar) if calendar else None
+
+    async def generate_user_schedule_key(self, user_id: int, resource_path: str) -> ViewUserScheduleKey:
+        session = self.session
+        key = _generate_random_user_schedule_key()
+        q = insert(UserScheduleKeys).values(
+            user_id=user_id,
+            access_key=key,
+            resource_path=resource_path,
+        )
+        await session.execute(q)
+        return ViewUserScheduleKey(access_key=key, resource_path=resource_path, user_id=user_id)
 
     async def get_user_schedule_keys(self, user_id: int) -> list[ViewUserScheduleKey]:
-        async with self._create_session() as session:
-            q = select(UserScheduleKeys).where(UserScheduleKeys.user_id == user_id)
-            keys = await session.scalars(q)
-            return [ViewUserScheduleKey.model_validate(key, from_attributes=True) for key in keys]
+        session = self.session
+        q = select(UserScheduleKeys).where(UserScheduleKeys.user_id == user_id)
+        keys = await session.scalars(q)
+        return [ViewUserScheduleKey.model_validate(key, from_attributes=True) for key in keys]
 
     async def get_user_schedule_key_for_resource(self, user_id: int, resource_path: str) -> ViewUserScheduleKey | None:
-        async with self._create_session() as session:
-            q = select(UserScheduleKeys).where(
-                UserScheduleKeys.user_id == user_id,
-                UserScheduleKeys.resource_path == resource_path,
-            )
-            key = await session.scalar(q)
-            return ViewUserScheduleKey.model_validate(key, from_attributes=True) if key else None
+        session = self.session
+        q = select(UserScheduleKeys).where(
+            UserScheduleKeys.user_id == user_id,
+            UserScheduleKeys.resource_path == resource_path,
+        )
+        key = await session.scalar(q)
+        return ViewUserScheduleKey.model_validate(key, from_attributes=True) if key else None
 
     async def check_user_schedule_key(self, user_id: int, key: str, resource_path: str) -> bool:
-        async with self._create_session() as session:
-            q = select(UserScheduleKeys).where(
-                UserScheduleKeys.user_id == user_id,
-                UserScheduleKeys.access_key == key,
-                UserScheduleKeys.resource_path == resource_path,
-            )
-            keyring = await session.scalar(q)
-            return keyring is not None
+        session = self.session
+        q = select(UserScheduleKeys).where(
+            UserScheduleKeys.user_id == user_id,
+            UserScheduleKeys.access_key == key,
+            UserScheduleKeys.resource_path == resource_path,
+        )
+        keyring = await session.scalar(q)
+        return keyring is not None
 
     async def delete_user_schedule_key(self, user_id: int, key: str, resource_path: str) -> None:
-        async with self._create_session() as session:
-            q = delete(UserScheduleKeys).where(
-                UserScheduleKeys.user_id == user_id,
-                UserScheduleKeys.access_key == key,
-                UserScheduleKeys.resource_path == resource_path,
-            )
-            await session.execute(q)
-            await session.commit()
+        session = self.session
+        q = delete(UserScheduleKeys).where(
+            UserScheduleKeys.user_id == user_id,
+            UserScheduleKeys.access_key == key,
+            UserScheduleKeys.resource_path == resource_path,
+        )
+        await session.execute(q)
 
     async def set_user_moodle_data(self, user_id: int, moodle_userid: int, moodle_calendar_authtoken: str) -> None:
-        async with self._create_session() as session:
-            q = (
-                update(User)
-                .where(User.id == user_id)
-                .values(
-                    {
-                        "moodle_userid": moodle_userid,
-                        "moodle_calendar_authtoken": moodle_calendar_authtoken,
-                    }
-                )
+        session = self.session
+        q = (
+            update(User)
+            .where(User.id == user_id)
+            .values(
+                {
+                    "moodle_userid": moodle_userid,
+                    "moodle_calendar_authtoken": moodle_calendar_authtoken,
+                }
             )
-            await session.execute(q)
-            await session.commit()
-
-
-user_repository: SqlUserRepository = SqlUserRepository()
+        )
+        await session.execute(q)

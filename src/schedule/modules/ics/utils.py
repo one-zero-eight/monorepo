@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from src.inh_accounts_sdk import inh_accounts
 from src.logging_ import logger
 from src.schedule.config import settings
-from src.schedule.modules.event_groups.repository import event_group_repository
+from src.schedule.modules.event_groups.repository import SqlEventGroupRepository
 from src.schedule.modules.predefined.repository import predefined_repository
 from src.schedule.modules.users.schemas import ViewUser
 from src.schedule.utils import aware_utcnow, get_base_calendar, locate_ics_by_path
@@ -166,16 +166,19 @@ async def _generate_ics_from_multiple(
     yield b"END:VCALENDAR"
 
 
-async def get_personal_event_groups_ics(user: ViewUser) -> AsyncGenerator[bytes]:
+async def get_personal_event_groups_ics(
+    user: ViewUser,
+    event_groups: SqlEventGroupRepository,
+) -> AsyncGenerator[bytes]:
     hidden = set(user.hidden_event_groups)
-    predefined = await predefined_repository.get_user_predefined(user.id)
+    predefined = await predefined_repository.get_user_predefined(user.email)
     all_user_event_groups = set(user.favorite_event_groups) | set(predefined)
 
     nonhidden = all_user_event_groups - hidden
     paths = set()
     external_aliases = set(nonhidden)
     for event_group_alias in nonhidden:
-        event_group = await event_group_repository.read_by_alias(event_group_alias)
+        event_group = await event_groups.read_by_alias(event_group_alias)
         if event_group is None:
             continue
         external_aliases.discard(event_group_alias)

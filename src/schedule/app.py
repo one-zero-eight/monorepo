@@ -34,20 +34,12 @@ def setup_predefined_data_from_file() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from src.schedule.modules.event_groups.repository import event_group_repository
-    from src.schedule.modules.tags.repository import tag_repository
-    from src.schedule.modules.users.repository import user_repository
-
     await inh_accounts.update_key_set()
 
     storage = SQLAlchemyStorage.from_url(settings.db_url.get_secret_value())
-    user_repository.update_storage(storage)
-    event_group_repository.update_storage(storage)
-    tag_repository.update_storage(storage)
+    app.state.sql_storage = storage
 
     setup_predefined_data_from_file()
-
-    app.state.sql_storage = storage
 
     yield
 

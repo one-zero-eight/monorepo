@@ -2,6 +2,8 @@ Be concise. Avoid overly long explanations. Provide direct answers, or apply cod
 
 ### Code
 
+If you need to scaffold a new service, use the [NEW_SERVICE.md](NEW_SERVICE.md) guide.
+
 DO NOT CREATE useless md files such as QUICKSTART, TASK and so on.
 DO NOT MAKE ridiculous fallbacks.
 DO NOT MAKE any backward compatibility shit unless requested.
@@ -22,7 +24,80 @@ DO NOT USE response_model= in route decorator, use type hints instead:
         return await repo.get_all_scenes()
     ```
 
-If you need to scaffold a new service, use the [NEW_SERVICE.md](NEW_SERVICE.md) guide.
+**FastAPI Depends** — declare reusable deps as `XxxDep = Annotated[T, Depends(factory)]` (PascalCase + `Dep` suffix). Use the alias as the parameter type; do not write `Depends(...)` in route signatures. Name route params after the value (`users`, `session`), or `_` when the dep is auth-only:
+
+```python
+# dependencies.py / db.py
+def get_user_repository(session: SessionDep) -> SqlUserRepository:
+    return SqlUserRepository(session)
+
+UserRepoDep = Annotated[SqlUserRepository, Depends(get_user_repository)]
+CurrentUserIdDep = Annotated[int, Depends(get_current_user_id)]
+
+# route
+@router.get("/me")
+async def get_me(user_id: CurrentUserIdDep, users: UserRepoDep) -> ViewUser:
+    ...
+```
+
+
+### SQLAlchemy
+
+Used in `schedule` (async) and `schedule_assistant` (sync). Prefer SQLAlchemy 2.0 style.
+
+**Models** — declarative classes with `Mapped[...]` + `mapped_column` / `relationship` (not classic `Column(...)` without annotations):
+
+```python
+class User(Base, IdMixin):
+    __tablename__ = "users"
+
+    email: Mapped[str] = mapped_column(unique=True)
+    name: Mapped[str | None] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    favorites: Mapped[list[Favorite]] = relationship(...)
+```
+
+**Queries** — use model columns in `select` / `where` / `order_by` / `join` / `index_elements` (`User.email`, `EventGroup.alias`), not string names (`"email"`, `["alias"]`):
+
+```python
+select(User).where(User.email == email)
+insert(...).on_conflict_do_update(index_elements=[EventGroup.alias], ...)
+```
+
+`.values(**model_dump(...))` and executemany `params=[{...}, ...]` still use string keys — that is fine; batch UPDATE dicts cannot take Column objects. Avoid raw `text()` in app code except when there is no ORM/Core equivalent.
+
+**Sessions (async FastAPI)** — one `AsyncSession` per request via `Depends`, not per-method `async with create_session()` and not `async_scoped_session` / ContextVar globals:
+
+```python
+# db.py
+async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
+    async with request.app.state.sql_storage.sessionmaker() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+SessionDep = Annotated[AsyncSession, Depends(get_session)]
+
+class SqlUserRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+def get_user_repository(session: SessionDep) -> SqlUserRepository:
+    return SqlUserRepository(session)
+
+UserRepoDep = Annotated[SqlUserRepository, Depends(get_user_repository)]
+
+# route
+@router.get("/me")
+async def get_me(users: UserRepoDep) -> ViewUser:
+    ...
+```
+
+Repos do not commit; the request-scoped session commits once at the end. Outside HTTP (tests, scripts), open a session from `sessionmaker()` and pass it into the repository.
 
 ### Migrations
 

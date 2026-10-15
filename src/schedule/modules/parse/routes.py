@@ -5,9 +5,10 @@ import icalendar
 from fastapi import APIRouter
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 
-from src.schedule.dependencies import VERIFY_PARSER_DEPENDENCY
+from src.schedule.db import EventGroupRepoDep
+from src.schedule.dependencies import VerifyParserDep
 from src.schedule.exceptions import IncorrectCredentialsException
-from src.schedule.modules.event_groups.repository import event_group_repository
+from src.schedule.modules.event_groups.repository import SqlEventGroupRepository
 from src.schedule.modules.event_groups.schemas import CreateEventGroup
 from src.schedule.modules.parse.bootcamp import AcademicGroup, BootcampParser, BootcampParserConfig, BuddyGroup
 from src.schedule.modules.tags.schemas import CreateTag
@@ -16,7 +17,12 @@ from src.schedule.utils import get_base_calendar, locate_ics_by_path, sluggify, 
 router = APIRouter(prefix="/parse", tags=["Parse"], route_class=AutoDeriveResponsesAPIRoute)
 
 
-async def save_ics(calendar: icalendar.Calendar, event_group_path: str, event_group_id: int):
+async def save_ics(
+    calendar: icalendar.Calendar,
+    event_group_path: str,
+    event_group_id: int,
+    event_groups: SqlEventGroupRepository,
+) -> None:
     """
     Load .ics file to event group by event group id and save file to predefined path
     """
@@ -34,14 +40,16 @@ async def save_ics(calendar: icalendar.Calendar, event_group_path: str, event_gr
     async with aiofiles.open(ics_path, "wb") as f:
         await f.write(content)
 
-    await event_group_repository.update_timestamp(event_group_id)
+    await event_groups.update_timestamp(event_group_id)
 
 
 @router.post(
     "/bootcamp",
     responses={**IncorrectCredentialsException.responses},
 )
-async def parse_bootcamp_schedule(_: VERIFY_PARSER_DEPENDENCY, config: BootcampParserConfig) -> None:
+async def parse_bootcamp_schedule(
+    _: VerifyParserDep, config: BootcampParserConfig, event_groups: EventGroupRepoDep
+) -> None:
     bootcamp_tag = CreateTag(alias="bootcamp2026", name="Bootcamp", type="category")
     academic_tag = CreateTag(alias="academic", name="Academic", type="bootcamp2026")
     buddy_tag = CreateTag(alias="buddy", name="Buddy", type="bootcamp2026")
@@ -82,5 +90,5 @@ async def parse_bootcamp_schedule(_: VERIFY_PARSER_DEPENDENCY, config: BootcampP
         else:
             raise NotImplementedError
 
-        event_group_id = await event_group_repository.create_or_update(event_group)
-        await save_ics(calendar, path, event_group_id)
+        event_group_id = await event_groups.create_or_update(event_group)
+        await save_ics(calendar, path, event_group_id, event_groups)

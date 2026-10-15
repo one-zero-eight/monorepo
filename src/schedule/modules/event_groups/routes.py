@@ -9,14 +9,14 @@ from sqlalchemy.exc import IntegrityError
 from starlette.responses import JSONResponse
 
 from src.schedule.config import settings
-from src.schedule.dependencies import VERIFY_PARSER_DEPENDENCY
+from src.schedule.db import EventGroupRepoDep
+from src.schedule.dependencies import VerifyParserDep
 from src.schedule.exceptions import (
     EventGroupNotFoundException,
     EventGroupWithMissingPath,
     ForbiddenException,
     IncorrectCredentialsException,
 )
-from src.schedule.modules.event_groups.repository import event_group_repository
 from src.schedule.modules.event_groups.schemas import (
     CreateEventGroup,
     ListEventGroupsResponse,
@@ -38,12 +38,9 @@ router = APIRouter(prefix="/event-groups", tags=["Event Groups"], route_class=Au
     },
     status_code=201,
 )
-async def create_event_group(
-    event_group: CreateEventGroup,
-    _: VERIFY_PARSER_DEPENDENCY,
-):
+async def create_event_group(event_group: CreateEventGroup, _: VerifyParserDep, event_groups: EventGroupRepoDep):
     try:
-        event_group_view = await event_group_repository.create(event_group)
+        event_group_view = await event_groups.create(event_group)
         return JSONResponse(status_code=201, content=event_group_view.model_dump(mode="json"))
     except IntegrityError as integrity_error:
         detail = integrity_error.args[0]
@@ -59,10 +56,11 @@ async def create_event_group(
     status_code=201,
 )
 async def batch_create_event_groups(
-    _: VERIFY_PARSER_DEPENDENCY,
+    _: VerifyParserDep,
+    event_group_repo: EventGroupRepoDep,
     event_groups: Annotated[list[CreateEventGroup], Body(embed=True)],
 ) -> ListEventGroupsResponse:
-    created_groups = await event_group_repository.batch_create_or_read(event_groups)
+    created_groups = await event_group_repo.batch_create_or_read(event_groups)
     return ListEventGroupsResponse.from_iterable(created_groups)
 
 
@@ -76,11 +74,9 @@ async def batch_create_event_groups(
     },
 )
 async def update_event_group(
-    event_group_id: int,
-    update_scheme: UpdateEventGroup,
-    _: VERIFY_PARSER_DEPENDENCY,
+    event_group_id: int, update_scheme: UpdateEventGroup, _: VerifyParserDep, event_groups: EventGroupRepoDep
 ) -> ViewEventGroup:
-    event_group = await event_group_repository.read(event_group_id)
+    event_group = await event_groups.read(event_group_id)
 
     if event_group is None:
         raise EventGroupNotFoundException()
@@ -88,7 +84,7 @@ async def update_event_group(
     if update_scheme.alias is not None and update_scheme.alias != event_group.alias:
         raise HTTPException(status_code=409, detail="Event group alias cannot be changed")
 
-    event_group = await event_group_repository.update(event_group_id, update_scheme)
+    event_group = await event_groups.update(event_group_id, update_scheme)
     return event_group
 
 
@@ -99,14 +95,12 @@ async def update_event_group(
         **EventGroupNotFoundException.responses,
     },
 )
-async def find_event_group_by_path(
-    path: str,
-) -> ViewEventGroup:
+async def find_event_group_by_path(path: str, event_groups: EventGroupRepoDep) -> ViewEventGroup:
     """
     Get event group info by path
     """
 
-    event_group = await event_group_repository.read_by_path(path)
+    event_group = await event_groups.read_by_path(path)
 
     if event_group is None:
         raise EventGroupNotFoundException()
@@ -120,14 +114,14 @@ async def find_event_group_by_path(
         **EventGroupNotFoundException.responses,
     },
 )
-async def find_event_group_by_alias(alias: str) -> ViewEventGroup:
+async def find_event_group_by_alias(alias: str, event_groups: EventGroupRepoDep) -> ViewEventGroup:
     """
     Get event group info by alias
     """
 
     alias = unquote(alias)
 
-    event_group = await event_group_repository.read_by_alias(alias)
+    event_group = await event_groups.read_by_alias(alias)
 
     if event_group is not None:
         return event_group
@@ -146,37 +140,31 @@ async def find_event_group_by_alias(alias: str) -> ViewEventGroup:
         **EventGroupNotFoundException.responses,
     },
 )
-async def delete_event_group_by_alias(
-    alias: str,
-    _: VERIFY_PARSER_DEPENDENCY,
-) -> None:
+async def delete_event_group_by_alias(alias: str, _: VerifyParserDep, event_groups: EventGroupRepoDep) -> None:
     """
     Delete event group by alias
     """
 
     alias = unquote(alias)
-    event_group = await event_group_repository.read_by_alias(alias)
+    event_group = await event_groups.read_by_alias(alias)
 
     if event_group is None:
         raise EventGroupNotFoundException()
 
-    await event_group_repository.delete_by_alias(alias)
+    await event_groups.delete_by_alias(alias)
 
 
 @router.delete(
     "/by-tag-alias",
     responses={200: {"description": "Event groups deleted successfully"}},
 )
-async def delete_event_group_by_tag_alias(
-    tag_alias: str,
-    _: VERIFY_PARSER_DEPENDENCY,
-) -> int:
+async def delete_event_group_by_tag_alias(tag_alias: str, _: VerifyParserDep, event_groups: EventGroupRepoDep) -> int:
     """
     Delete event groups by its tag alias
     """
 
     tag_alias = unquote(tag_alias)
-    deleted_count = await event_group_repository.delete_by_tag_alias(tag_alias)
+    deleted_count = await event_groups.delete_by_tag_alias(tag_alias)
     return deleted_count
 
 
@@ -187,14 +175,12 @@ async def delete_event_group_by_tag_alias(
         **EventGroupNotFoundException.responses,
     },
 )
-async def get_event_group(
-    event_group_id: int,
-) -> ViewEventGroup:
+async def get_event_group(event_group_id: int, event_groups: EventGroupRepoDep) -> ViewEventGroup:
     """
     Get event group info by id
     """
 
-    event_group = await event_group_repository.read(event_group_id)
+    event_group = await event_groups.read(event_group_id)
 
     if event_group is None:
         raise EventGroupNotFoundException()
@@ -208,12 +194,12 @@ async def get_event_group(
         200: {"description": "List of event groups", "model": ListEventGroupsResponse},
     },
 )
-async def list_event_groups() -> ListEventGroupsResponse:
+async def list_event_groups(event_groups: EventGroupRepoDep) -> ListEventGroupsResponse:
     """
     Get a list of all event groups
     """
 
-    groups = await event_group_repository.read_all()
+    groups = await event_groups.read_all()
     if settings.schedule_assistant is not None:
         local_aliases = {group.alias for group in groups}
         virtual_groups = await schedule_assistant_client.get_event_groups()
@@ -242,9 +228,7 @@ async def list_event_groups() -> ListEventGroupsResponse:
     tags=["ICS"],
 )
 async def set_event_group_ics(
-    event_group_id: int,
-    ics_file: UploadFile,
-    _: VERIFY_PARSER_DEPENDENCY,
+    event_group_id: int, ics_file: UploadFile, _: VerifyParserDep, event_groups: EventGroupRepoDep
 ):
     """
     Load .ics file to event group by event group id and save file to predefined path
@@ -255,7 +239,7 @@ async def set_event_group_ics(
             content={"detail": f"File content type is {ics_file.content_type}, but should be 'text/calendar'"},
         )
 
-    event_group_path = await event_group_repository.get_only_path(event_group_id)
+    event_group_path = await event_groups.get_only_path(event_group_id)
 
     if event_group_path is None:
         raise EventGroupWithMissingPath()
@@ -285,7 +269,7 @@ async def set_event_group_ics(
     async with aiofiles.open(ics_path, "wb") as f:
         await f.write(content)
 
-    await event_group_repository.update_timestamp(event_group_id)
+    await event_groups.update_timestamp(event_group_id)
 
     return JSONResponse(status_code=201, content={"detail": "File uploaded successfully"})
 
