@@ -7,7 +7,10 @@ import pytest
 from exchangelib.items import MOVE_TO_DELETED_ITEMS, SEND_TO_ALL_AND_SAVE_COPY
 from fastapi.testclient import TestClient
 
-from src.room_booking.modules.bmp.repository import BmpBatchItemResult, BmpCalendarRepository
+from src.room_booking.modules.bmp.repository import (
+    BmpBatchItemResult,
+    BmpCalendarRepository,
+)
 from src.room_booking.modules.bookings.schemas import Booking
 from tests.room_booking.datetime_helpers import dt_params, msk
 
@@ -39,7 +42,9 @@ def test_bmp_auto_bookings_requires_api_key(room_booking_client: TestClient):
     assert response.status_code == 401
 
 
-def test_bmp_auto_bookings_date_validation(room_booking_client: TestClient, api_key_headers: dict[str, str]):
+def test_bmp_auto_bookings_date_validation(
+    room_booking_client: TestClient, api_key_headers: dict[str, str]
+):
     response = room_booking_client.get(
         "/bmp/auto-bookings/",
         params=dt_params(start=msk(2025, 6, 2, 12), end=msk(2025, 6, 2, 10)),
@@ -49,7 +54,9 @@ def test_bmp_auto_bookings_date_validation(room_booking_client: TestClient, api_
     assert response.json()["detail"] == "Start must be before end"
 
 
-def test_bmp_batch_invalid_dates(room_booking_client: TestClient, api_key_headers: dict[str, str]):
+def test_bmp_batch_invalid_dates(
+    room_booking_client: TestClient, api_key_headers: dict[str, str]
+):
     response = room_booking_client.post(
         "/bmp/auto-bookings/batch",
         headers=api_key_headers,
@@ -76,7 +83,9 @@ def test_bmp_batch_invalid_dates(room_booking_client: TestClient, api_key_header
     assert events[-1] == {"event": "done"}
 
 
-def test_bmp_batch_unknown_room(room_booking_client: TestClient, api_key_headers: dict[str, str]):
+def test_bmp_batch_unknown_room(
+    room_booking_client: TestClient, api_key_headers: dict[str, str]
+):
     response = room_booking_client.post(
         "/bmp/auto-bookings/batch",
         headers=api_key_headers,
@@ -142,7 +151,9 @@ def test_bmp_batch_valid_entry_streams_sent_then_item(
         yield (None, None, [0])
         yield (0, BmpBatchItemResult(status="ok", booking=booking, error=None), None)
 
-    monkeypatch.setattr(bmp_routes.bmp_repository, "iter_create_bookings_batch", fake_iter)
+    monkeypatch.setattr(
+        bmp_routes.bmp_repository, "iter_create_bookings_batch", fake_iter
+    )
 
     response = room_booking_client.post(
         "/bmp/auto-bookings/batch",
@@ -196,7 +207,9 @@ def test_bmp_batch_emits_ping_while_create_is_idle(
         yield (0, BmpBatchItemResult(status="ok", booking=booking, error=None), None)
 
     monkeypatch.setattr(bmp_routes, "STREAM_PING_INTERVAL_S", 0.02)
-    monkeypatch.setattr(bmp_routes.bmp_repository, "iter_create_bookings_batch", fake_iter)
+    monkeypatch.setattr(
+        bmp_routes.bmp_repository, "iter_create_bookings_batch", fake_iter
+    )
 
     response = room_booking_client.post(
         "/bmp/auto-bookings/batch",
@@ -246,10 +259,16 @@ def test_bmp_batch_creates_in_chunks(
         chunk_sizes.append(len(entries))
         yield (None, None, list(range(len(entries))))
         for index in range(len(entries)):
-            yield (index, BmpBatchItemResult(status="ok", booking=booking, error=None), None)
+            yield (
+                index,
+                BmpBatchItemResult(status="ok", booking=booking, error=None),
+                None,
+            )
 
     monkeypatch.setattr(bmp_repository_module, "BMP_CREATE_CHUNK_SIZE", 1)
-    monkeypatch.setattr(bmp_routes.bmp_repository, "_iter_create_bookings_chunk", fake_chunk)
+    monkeypatch.setattr(
+        bmp_routes.bmp_repository, "_iter_create_bookings_chunk", fake_chunk
+    )
 
     response = room_booking_client.post(
         "/bmp/auto-bookings/batch",
@@ -301,12 +320,18 @@ async def test_batch_cancel_uses_bulk_delete_and_deduplicates_ids():
     repository._recently.is_canceled = AsyncMock(return_value=False)
     repository._recently.mark_canceled = AsyncMock()
     items = {
-        "booking-1": SimpleNamespace(id="booking-1", subject="Auto: First", categories=["Auto"]),
-        "booking-2": SimpleNamespace(id="booking-2", subject="Auto: Second", categories=["Auto"]),
+        "booking-1": SimpleNamespace(
+            id="booking-1", subject="Auto: First", categories=["Auto"]
+        ),
+        "booking-2": SimpleNamespace(
+            id="booking-2", subject="Auto: Second", categories=["Auto"]
+        ),
     }
     repository.get_booking = AsyncMock(side_effect=items.get)
 
-    result = await repository.cancel_bookings_batch(["booking-1", "booking-1", "booking-2"])
+    result = await repository.cancel_bookings_batch(
+        ["booking-1", "booking-1", "booking-2"]
+    )
 
     assert result.cancelled == ["booking-1", "booking-2"]
     assert result.failed == {}
@@ -327,7 +352,9 @@ async def test_batch_cancel_rejects_non_auto_booking():
     repository._recently.is_canceled = AsyncMock(return_value=False)
     repository._recently.mark_canceled = AsyncMock()
     repository.get_booking = AsyncMock(
-        return_value=SimpleNamespace(id="booking-1", subject="Unrelated meeting", categories=[])
+        return_value=SimpleNamespace(
+            id="booking-1", subject="Unrelated meeting", categories=[]
+        )
     )
 
     result = await repository.cancel_bookings_batch(["booking-1"])
@@ -389,7 +416,9 @@ def mock_cancel_extra_by_bmp_slot(monkeypatch: pytest.MonkeyPatch):
     from src.room_booking.modules.bmp import routes as bmp_routes
 
     cancel_slot = AsyncMock(return_value=True)
-    monkeypatch.setattr(bmp_routes.bmp_repository, "cancel_auto_booking_by_slot", cancel_slot)
+    monkeypatch.setattr(
+        bmp_routes.bmp_repository, "cancel_auto_booking_by_slot", cancel_slot
+    )
     return cancel_slot
 
 

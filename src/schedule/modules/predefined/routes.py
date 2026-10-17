@@ -7,7 +7,9 @@ from src.schedule.modules.event_groups.repository import event_group_repository
 from src.schedule.modules.predefined.repository import predefined_repository
 from src.schedule.modules.predefined.storage import JsonPredefinedUsers
 
-router = APIRouter(prefix="", tags=["Predefined"], route_class=AutoDeriveResponsesAPIRoute)
+router = APIRouter(
+    prefix="", tags=["Predefined"], route_class=AutoDeriveResponsesAPIRoute
+)
 
 
 @router.get(
@@ -18,7 +20,9 @@ router = APIRouter(prefix="", tags=["Predefined"], route_class=AutoDeriveRespons
         **ForbiddenException.responses,
     },
 )
-async def get_predefined_data(_: VERIFY_PARSER_OR_ADMIN_DEPENDENCY) -> JsonPredefinedUsers:
+async def get_predefined_data(
+    _: VERIFY_PARSER_OR_ADMIN_DEPENDENCY,
+) -> JsonPredefinedUsers:
     return predefined_repository.storage
 
 
@@ -32,7 +36,9 @@ async def get_predefined_data(_: VERIFY_PARSER_OR_ADMIN_DEPENDENCY) -> JsonPrede
         **ForbiddenException.responses,
     },
 )
-async def update_predefined_data(_: VERIFY_PARSER_OR_ADMIN_DEPENDENCY, user_storage: JsonPredefinedUsers) -> list[str]:
+async def update_predefined_data(
+    _: VERIFY_PARSER_OR_ADMIN_DEPENDENCY, user_storage: JsonPredefinedUsers
+) -> list[str]:
     from src.schedule.modules.predefined.utils import setup_predefined_data_from_object
 
     setup_predefined_data_from_object(user_storage)
@@ -48,7 +54,11 @@ async def update_predefined_data(_: VERIFY_PARSER_OR_ADMIN_DEPENDENCY, user_stor
     non_existent_groups_from_user = user_groups - event_group_aliases
 
     non_existent_groups_from_academic_groups = {
-        group.event_group_alias for group in user_storage.academic_groups if group.event_group_alias
+        group.event_group_alias
+        for group in user_storage.academic_groups
+        if group.event_group_alias
     } - event_group_aliases
 
-    return list(non_existent_groups_from_user) + list(non_existent_groups_from_academic_groups)
+    return list(non_existent_groups_from_user) + list(
+        non_existent_groups_from_academic_groups
+    )

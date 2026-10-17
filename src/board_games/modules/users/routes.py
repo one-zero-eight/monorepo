@@ -30,7 +30,9 @@ async def get_me(current_user: INH_TOKEN_AUTH) -> UserSchema:
     responses={
         status.HTTP_200_OK: {"description": "Role changed successfully"},
         status.HTTP_403_FORBIDDEN: {"description": "Only superadmins can change role"},
-        status.HTTP_404_NOT_FOUND: {"description": "User not found in InNoHassle Accounts"},
+        status.HTTP_404_NOT_FOUND: {
+            "description": "User not found in InNoHassle Accounts"
+        },
     },
 )
 async def change_role(

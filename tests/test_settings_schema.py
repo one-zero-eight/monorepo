@@ -72,10 +72,16 @@ def test_settings_from_yaml(tmp_path):
         yaml.safe_dump(
             {
                 "$schema": "./settings.schema.yaml",
-                "accounts": {"api_url": "https://api.innohassle.ru/accounts/v0", "api_jwt_token": "token"},
+                "accounts": {
+                    "api_url": "https://api.innohassle.ru/accounts/v0",
+                    "api_jwt_token": "token",
+                },
                 "maps_service": {"environment": "testing"},
                 "clubs_service": {"environment": "testing"},
-                "student_affairs_service": {"environment": "testing", "omnidesk": {"jwt_marker": "marker-0123456789"}},
+                "student_affairs_service": {
+                    "environment": "testing",
+                    "omnidesk": {"jwt_marker": "marker-0123456789"},
+                },
             },
             sort_keys=False,
         ),
@@ -88,7 +94,10 @@ def test_settings_from_yaml(tmp_path):
     assert loaded.clubs_service is not None
     assert loaded.clubs_service.environment == "testing"
     assert loaded.student_affairs_service is not None
-    assert loaded.student_affairs_service.omnidesk.jwt_marker.get_secret_value() == "marker-0123456789"
+    assert (
+        loaded.student_affairs_service.omnidesk.jwt_marker.get_secret_value()
+        == "marker-0123456789"
+    )
 
 
 @pytest.mark.parametrize("in_docker", [False, True], ids=["host", "docker"])
@@ -97,17 +106,27 @@ def test_postgres_connection_settings(monkeypatch, in_docker, explicit_url):
     monkeypatch.setattr(common_config, "is_running_in_docker", lambda: in_docker)
     host = "postgres" if in_docker else "127.0.0.1"
     schedule_url = f"postgresql+asyncpg://postgres:postgres@{host}:5432/schedule"
-    assistant_url = f"postgresql+psycopg://postgres:postgres@{host}:5432/schedule_assistant"
+    assistant_url = (
+        f"postgresql+psycopg://postgres:postgres@{host}:5432/schedule_assistant"
+    )
     schedule = {}
     assistant = {"api_key": "test-key", "booking": {"api_key": "test-booking-key"}}
     if explicit_url:
-        schedule_url = "postgresql+asyncpg://custom:secret@db.example:5433/custom_schedule"
-        assistant_url = "postgresql+psycopg://custom:secret@db.example:5433/custom_assistant"
+        schedule_url = (
+            "postgresql+asyncpg://custom:secret@db.example:5433/custom_schedule"
+        )
+        assistant_url = (
+            "postgresql+psycopg://custom:secret@db.example:5433/custom_assistant"
+        )
         schedule["db_url"] = schedule_url
         assistant["db_url"] = assistant_url
 
     loaded = Settings.model_validate(
-        {"accounts": _TEST_ACCOUNTS, "schedule_service": schedule, "schedule_assistant_service": assistant}
+        {
+            "accounts": _TEST_ACCOUNTS,
+            "schedule_service": schedule,
+            "schedule_assistant_service": assistant,
+        }
     )
 
     assert loaded.schedule_service is not None

@@ -22,13 +22,17 @@ class DescriptionImagesRepo:
     @property
     def minio_client(self) -> Minio:
         if self._minio_store is None:  # pragma: no cover
-            raise RuntimeError("DescriptionImagesRepo.post_init was not called from app lifespan")
+            raise RuntimeError(
+                "DescriptionImagesRepo.post_init was not called from app lifespan"
+            )
         return self._minio_store.client
 
     @property
     def bucket(self) -> str:
         if self._minio_store is None:  # pragma: no cover
-            raise RuntimeError("DescriptionImagesRepo.post_init was not called from app lifespan")
+            raise RuntimeError(
+                "DescriptionImagesRepo.post_init was not called from app lifespan"
+            )
         return self._minio_store.bucket_name
 
     def get_object_name(self, image_id: str) -> str:

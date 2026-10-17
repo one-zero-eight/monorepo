@@ -20,7 +20,9 @@ async def get_booking_review(_moderator: ModeratorDep) -> BookingReview:
 
 @router.get("/tasks")
 async def list_booking_tasks(
-    _moderator: ModeratorDep, limit: int = Query(100, ge=1, le=100), offset: int = Query(0, ge=0)
+    _moderator: ModeratorDep,
+    limit: int = Query(100, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ) -> list[BookingTask]:
     return service.list_tasks(limit=limit, offset=offset)
 
@@ -31,7 +33,9 @@ async def reconcile_booking_task(_moderator: ModeratorDep, task_id: str) -> Book
 
 
 @router.post("/cancel")
-async def cancel_bookings(_moderator: ModeratorDep, request: CancelBookingRequest) -> BookingTask:
+async def cancel_bookings(
+    _moderator: ModeratorDep, request: CancelBookingRequest
+) -> BookingTask:
     return await service.start_cancel_booking(request)
 
 
@@ -41,10 +45,14 @@ async def get_booking_task(_moderator: ModeratorDep, task_id: str) -> BookingTas
 
 
 @router.post("/batch")
-async def batch_book_slots(_moderator: ModeratorDep, request: BatchBookRequest) -> BookingTask:
+async def batch_book_slots(
+    _moderator: ModeratorDep, request: BatchBookRequest
+) -> BookingTask:
     return await service.start_batch_book(request)
 
 
 @router.post("/cancel-extra")
-async def cancel_extra_bookings(_moderator: ModeratorDep, request: CancelExtraRequest) -> BookingTask:
+async def cancel_extra_bookings(
+    _moderator: ModeratorDep, request: CancelExtraRequest
+) -> BookingTask:
     return await service.start_cancel_extra(request)

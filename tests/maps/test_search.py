@@ -13,7 +13,14 @@ cases = [
     ("411", [("university-floor-4", "411"), ("university-floor-4", "411a")]),
     ("309", [("university-floor-3", "309"), ("university-floor-3", "309a")]),
     ("450", [("university-floor-4", "450"), ("university-floor-4", "450a")]),
-    ("504", [("university-floor-5", "504a"), ("university-floor-5", "504b"), ("university-floor-5", "504c")]),
+    (
+        "504",
+        [
+            ("university-floor-5", "504a"),
+            ("university-floor-5", "504b"),
+            ("university-floor-5", "504c"),
+        ],
+    ),
     ("105", [("university-floor-1", "105")]),
     ("105a", [("university-floor-0", "105a")]),
     (("Canteen", "Столовая"), [("university-floor-1", "canteen")]),
@@ -51,5 +58,7 @@ def test_location_parser(inputs, desired: list[tuple[str, str]]):
 
     for input_ in inputs:
         results = maps_repo.search_areas(input_)
-        to_compare = {(result.scene_id, result.area.svg_polygon_id) for result in results}
+        to_compare = {
+            (result.scene_id, result.area.svg_polygon_id) for result in results
+        }
         tc.assertSetEqual(set(desired), to_compare)

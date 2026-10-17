@@ -55,7 +55,9 @@ def test_get_player(tabletennis_client: TestClient, user_headers: dict[str, str]
     assert data["nickname"] == "TestPlayer"
 
 
-def test_get_player_not_found(tabletennis_client: TestClient, user_headers: dict[str, str]):
+def test_get_player_not_found(
+    tabletennis_client: TestClient, user_headers: dict[str, str]
+):
     response = tabletennis_client.get("/get-player", headers=user_headers)
     assert response.status_code == 404
 
@@ -95,15 +97,21 @@ def seeded_games(tabletennis_client: TestClient):
         portal.call(g.insert)
 
 
-def test_list_games(tabletennis_client: TestClient, seeded_games, user_headers: dict[str, str]):
+def test_list_games(
+    tabletennis_client: TestClient, seeded_games, user_headers: dict[str, str]
+):
     response = tabletennis_client.get("/get-games", headers=user_headers)
     assert response.status_code == 200
     data = response.json()
     assert len(data) >= 2
 
 
-def test_get_game_by_id(tabletennis_client: TestClient, seeded_games, user_headers: dict[str, str]):
-    response = tabletennis_client.get("/get-games-by-id", params={"ids": ["game-1"]}, headers=user_headers)
+def test_get_game_by_id(
+    tabletennis_client: TestClient, seeded_games, user_headers: dict[str, str]
+):
+    response = tabletennis_client.get(
+        "/get-games-by-id", params={"ids": ["game-1"]}, headers=user_headers
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["total_found"] == 1
@@ -111,8 +119,12 @@ def test_get_game_by_id(tabletennis_client: TestClient, seeded_games, user_heade
     assert data["games"][0]["player1"]["score"] == 11
 
 
-def test_get_game_not_found(tabletennis_client: TestClient, seeded_games, user_headers: dict[str, str]):
-    response = tabletennis_client.get("/get-games-by-id", params={"ids": ["nonexistent"]}, headers=user_headers)
+def test_get_game_not_found(
+    tabletennis_client: TestClient, seeded_games, user_headers: dict[str, str]
+):
+    response = tabletennis_client.get(
+        "/get-games-by-id", params={"ids": ["nonexistent"]}, headers=user_headers
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["total_found"] == 0

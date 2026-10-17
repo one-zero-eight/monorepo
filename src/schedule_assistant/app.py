@@ -12,7 +12,11 @@ from pydantic import ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 
-from src.common_fastapi import generate_unique_operation_id, popule_openapi_tags, tune_fastapi
+from src.common_fastapi import (
+    generate_unique_operation_id,
+    popule_openapi_tags,
+    tune_fastapi,
+)
 from src.inh_accounts_sdk import inh_accounts
 from src.logging_ import logger
 from src.schedule_assistant import docs
@@ -21,7 +25,10 @@ from src.schedule_assistant.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from src.schedule_assistant.modules.bookings.service import start_recovery, stop_background_tasks
+    from src.schedule_assistant.modules.bookings.service import (
+        start_recovery,
+        stop_background_tasks,
+    )
 
     await inh_accounts.update_key_set()
     start_recovery()
@@ -99,12 +106,18 @@ app.add_middleware(
 
 from src.schedule_assistant.modules.bookings import routes as bookings_routes  # noqa: E402
 from src.schedule_assistant.modules.distributions import routes as distributions_routes  # noqa: E402
-from src.schedule_assistant.modules.instructor_preferences import routes as instructor_preferences_routes  # noqa: E402
+from src.schedule_assistant.modules.instructor_preferences import (
+    routes as instructor_preferences_routes,
+)  # noqa: E402
 from src.schedule_assistant.modules.issues import routes as issues_routes  # noqa: E402
 from src.schedule_assistant.modules.parser import routes as parser_routes  # noqa: E402
-from src.schedule_assistant.modules.public_timetable import routes as public_timetable_routes  # noqa: E402
+from src.schedule_assistant.modules.public_timetable import (
+    routes as public_timetable_routes,
+)  # noqa: E402
 from src.schedule_assistant.modules.schedule import routes as schedule_routes  # noqa: E402
-from src.schedule_assistant.modules.schedule_config import routes as schedule_config_routes  # noqa: E402
+from src.schedule_assistant.modules.schedule_config import (
+    routes as schedule_config_routes,
+)  # noqa: E402
 from src.schedule_assistant.modules.users import routes as users_routes  # noqa: E402
 
 app.include_router(bookings_routes.router)

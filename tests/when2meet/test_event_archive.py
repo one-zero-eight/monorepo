@@ -2,7 +2,11 @@ import datetime as dtm
 
 import pytest
 
-from src.when2meet.modules.events.archive import SLOT_DURATION, archive_state, calculate_archive_after
+from src.when2meet.modules.events.archive import (
+    SLOT_DURATION,
+    archive_state,
+    calculate_archive_after,
+)
 from src.when2meet.modules.events.schemas import MeetingTime
 
 
@@ -34,7 +38,10 @@ def test_archive_after_uses_end_of_latest_slot() -> None:
 
     archive_after = calculate_archive_after(slots, selected_time=None)
 
-    assert archive_after == dtm.datetime(2026, 8, 22, 17, 30, tzinfo=dtm.UTC) + SLOT_DURATION
+    assert (
+        archive_after
+        == dtm.datetime(2026, 8, 22, 17, 30, tzinfo=dtm.UTC) + SLOT_DURATION
+    )
 
 
 def test_archive_after_requires_slots_without_selected_time() -> None:
@@ -55,7 +62,9 @@ def test_archive_state_is_active_before_deadline() -> None:
 def test_archive_state_is_automatic_at_deadline() -> None:
     archive_after = dtm.datetime(2026, 8, 25, 15, 30, tzinfo=dtm.UTC)
 
-    assert archive_state(archive_after, manually_archived_at=None, now=archive_after) == (True, archive_after)
+    assert archive_state(
+        archive_after, manually_archived_at=None, now=archive_after
+    ) == (True, archive_after)
 
 
 def test_manual_archive_takes_priority_over_automatic_deadline() -> None:

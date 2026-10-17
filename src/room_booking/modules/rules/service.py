@@ -32,7 +32,9 @@ def can_book(
     if start >= end:
         return False, "Start must be before end."
 
-    if (start < current and not is_update) or end < current:  # Allow to change currently-running booking
+    if (
+        start < current and not is_update
+    ) or end < current:  # Allow to change currently-running booking
         return False, "Booking cannot be in the past."
 
     if abs((start - current).total_seconds()) > 14 * 24 * 3600:
@@ -94,7 +96,10 @@ def check_rules(
 ) -> tuple[bool, str]:
     # Только staff и students имеют доступ к бронированию
     if highest_role == "none":
-        return False, "You must be a student or staff to book rooms (college students can't book rooms)."
+        return (
+            False,
+            "You must be a student or staff to book rooms (college students can't book rooms).",
+        )
 
     if room.id == "309A" and in_access_list and booking_longer_than_3_hours:
         return False, "309A can't be booked for more than 3 hours."

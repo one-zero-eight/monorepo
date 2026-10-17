@@ -93,7 +93,9 @@ def test_can_book_more_than_two_weeks_in_future():
 
 
 def test_can_book_college_student_denied(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(rules_service.room_repository, "user_has_access_to_room", lambda *_: False)
+    monkeypatch.setattr(
+        rules_service.room_repository, "user_has_access_to_room", lambda *_: False
+    )
     now = msk(2025, 1, 6, 20)
     ok, msg = can_book(
         user=_user(is_student=False, is_staff=False),
@@ -107,7 +109,9 @@ def test_can_book_college_student_denied(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_can_book_staff_yellow_allowed(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(rules_service.room_repository, "user_has_access_to_room", lambda *_: False)
+    monkeypatch.setattr(
+        rules_service.room_repository, "user_has_access_to_room", lambda *_: False
+    )
     now = msk(2025, 1, 6, 20)
     ok, msg = can_book(
         user=_user(is_student=False, is_staff=True),
@@ -121,7 +125,9 @@ def test_can_book_staff_yellow_allowed(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_can_book_student_yellow_allowed(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(rules_service.room_repository, "user_has_access_to_room", lambda *_: False)
+    monkeypatch.setattr(
+        rules_service.room_repository, "user_has_access_to_room", lambda *_: False
+    )
     now = msk(2025, 1, 6, 20)
     ok, msg = can_book(
         user=_user(),
@@ -135,7 +141,9 @@ def test_can_book_student_yellow_allowed(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_can_book_uses_access_list(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(rules_service.room_repository, "user_has_access_to_room", lambda *_: True)
+    monkeypatch.setattr(
+        rules_service.room_repository, "user_has_access_to_room", lambda *_: True
+    )
     now = msk(2025, 1, 6, 20)
     ok, msg = can_book(
         user=_user(),
@@ -178,7 +186,9 @@ def test_is_restricted_time_cross_midnight_outside_lecture_window():
     assert rules_service._is_restricted_time(start=start, end=end) is False
 
 
-def _user_schema(*, is_staff: bool = False, innohassle_admin: bool = False) -> UserSchema:
+def _user_schema(
+    *, is_staff: bool = False, innohassle_admin: bool = False
+) -> UserSchema:
     return UserSchema(
         id="u1",
         innopolis_info=InnopolisInfo(
@@ -195,12 +205,25 @@ def test_can_use_recurrence_none_user():
 
 
 def test_can_use_recurrence_admin():
-    assert can_use_recurrence(email="admin@innopolis.university", user=_user_schema(innohassle_admin=True)) is True
+    assert (
+        can_use_recurrence(
+            email="admin@innopolis.university", user=_user_schema(innohassle_admin=True)
+        )
+        is True
+    )
 
 
 def test_can_use_recurrence_staff():
-    assert can_use_recurrence(email="staff@innopolis.university", user=_user_schema(is_staff=True)) is True
+    assert (
+        can_use_recurrence(
+            email="staff@innopolis.university", user=_user_schema(is_staff=True)
+        )
+        is True
+    )
 
 
 def test_can_use_recurrence_student_denied():
-    assert can_use_recurrence(email="student@innopolis.university", user=_user_schema()) is False
+    assert (
+        can_use_recurrence(email="student@innopolis.university", user=_user_schema())
+        is False
+    )

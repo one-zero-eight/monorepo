@@ -14,7 +14,9 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
-from src.schedule_assistant.modules.distributions.mapping import iter_section_group_codes
+from src.schedule_assistant.modules.distributions.mapping import (
+    iter_section_group_codes,
+)
 from src.schedule_assistant.modules.schedule_config.schemas import (
     CourseConfig,
     ScheduleConfig,
@@ -27,8 +29,14 @@ from src.schedule_assistant.modules.schedule_config.semester_windows import (
     resolve_audience_semester,
     union_semester_window,
 )
-from src.schedule_assistant.modules.schedule_config.validation import build_selector_map, expand_group_tokens
-from src.schedule_assistant.modules.schedule_config.weekly_dates import expand_weekly_slot, normalize_alternation
+from src.schedule_assistant.modules.schedule_config.validation import (
+    build_selector_map,
+    expand_group_tokens,
+)
+from src.schedule_assistant.modules.schedule_config.weekly_dates import (
+    expand_weekly_slot,
+    normalize_alternation,
+)
 from src.schedule_assistant.weekday import Weekday, week_start_for_date
 
 from .course_colors import course_color
@@ -73,7 +81,15 @@ DISTRIBUTIONS_SHEET_NAME = "Distributions"
 DISTRIBUTIONS_HEADERS = ("E-mail", "Group", "Section")
 DISTRIBUTIONS_COL_WIDTHS = (36, 28, 18)
 INSTRUCTORS_SHEET_NAME = "Instructors"
-INSTRUCTORS_HEADERS = ("Name EN", "Name RU", "Email", "Alias", "Position", "Courses", "ID")
+INSTRUCTORS_HEADERS = (
+    "Name EN",
+    "Name RU",
+    "Email",
+    "Alias",
+    "Position",
+    "Courses",
+    "ID",
+)
 INSTRUCTORS_COL_WIDTHS = (28, 28, 32, 16, 22, 48, 18)
 SUBJECTS_SHEET_NAME = "Subjects"
 SUBJECTS_HEADERS = ("Section", "Short name", "Name", "Name RU", "Groups", "Instructors")
@@ -170,9 +186,13 @@ def _instructor_ids(value: str | list[str] | None) -> tuple[str, ...]:
     return (value,) if value else ()
 
 
-def _normalize_tracks(program: SectionConfig.SectionProgram) -> list[tuple[str, list[str]]]:
+def _normalize_tracks(
+    program: SectionConfig.SectionProgram,
+) -> list[tuple[str, list[str]]]:
     if program.tracks:
-        return [(track.name, list(track.groups)) for track in program.tracks if track.groups]
+        return [
+            (track.name, list(track.groups)) for track in program.tracks if track.groups
+        ]
     if program.groups:
         return [(program.code or program.name or "—", list(program.groups))]
     return []
@@ -198,13 +218,19 @@ def filter_meetings_for_groups(
 ) -> list[ExportMeeting]:
     if not groups:
         return []
-    return [meeting for meeting in meetings if any(group in groups for group in meeting.groups)]
+    return [
+        meeting
+        for meeting in meetings
+        if any(group in groups for group in meeting.groups)
+    ]
 
 
 def _instructor_label_by_id(config: ScheduleConfig) -> dict[str, str]:
     out: dict[str, str] = {}
     for instructor in config.instructors:
-        label = (instructor.name_en or instructor.name_ru or instructor.id or "").strip()
+        label = (
+            instructor.name_en or instructor.name_ru or instructor.id or ""
+        ).strip()
         out[instructor.id] = label or instructor.id
         if instructor.email:
             out[instructor.email] = label or instructor.email
@@ -219,7 +245,9 @@ def meeting_title(meeting: ExportMeeting) -> str:
     course = meeting.course.strip() or "—"
     tag = meeting.tag.strip()
     title = f"{course} ({tag})" if tag else course
-    return "\n".join(part for part in (title, alternation_label(meeting), meeting.notes) if part)
+    return "\n".join(
+        part for part in (title, alternation_label(meeting), meeting.notes) if part
+    )
 
 
 def alternation_label(meeting: ExportMeeting) -> str:
@@ -249,7 +277,9 @@ def course_fill_color(course: str, configured_color: str | None = None) -> str:
 
 def expand_meetings(config: ScheduleConfig) -> list[ExportMeeting]:
     term = config.term
-    selector_map = build_selector_map(SectionsConfig(sections=term.sections, students_groups=config.students_groups))
+    selector_map = build_selector_map(
+        SectionsConfig(sections=term.sections, students_groups=config.students_groups)
+    )
     meetings: list[ExportMeeting] = []
 
     for course in config.courses:
@@ -271,7 +301,9 @@ def expand_meetings(config: ScheduleConfig) -> list[ExportMeeting]:
                             end=occurrence.end_time,
                             room=(occurrence.room or "").strip(),
                             instructors=_instructor_ids(occurrence.instructor),
-                            notes=occurrence.notes if occurrence.notes is not None else session.notes,
+                            notes=occurrence.notes
+                            if occurrence.notes is not None
+                            else session.notes,
                         )
                     )
 
@@ -281,7 +313,9 @@ def expand_meetings(config: ScheduleConfig) -> list[ExportMeeting]:
                     window = resolve_audience_semester(term, list(tokens))
                     if window is None:
                         continue
-                    alternation = normalize_alternation(slot.alternation, term.starting_day)
+                    alternation = normalize_alternation(
+                        slot.alternation, term.starting_day
+                    )
                     for resolved in expand_weekly_slot(slot, window, term.starting_day):
                         occurrence = resolved.occurrence
                         if occurrence is None:
@@ -297,8 +331,12 @@ def expand_meetings(config: ScheduleConfig) -> list[ExportMeeting]:
                                 end=occurrence.end_time,
                                 room=(occurrence.room or "").strip(),
                                 instructors=_instructor_ids(occurrence.instructor),
-                                notes=occurrence.notes if occurrence.notes is not None else session.notes,
-                                alternation_anchor=alternation.anchor_week if alternation else None,
+                                notes=occurrence.notes
+                                if occurrence.notes is not None
+                                else session.notes,
+                                alternation_anchor=alternation.anchor_week
+                                if alternation
+                                else None,
                             )
                         )
     return meetings
@@ -319,7 +357,9 @@ def build_columns(
     include_unused: bool = False,
 ) -> list[ExportColumn]:
     used_groups = {group for meeting in meetings for group in meeting.groups}
-    group_names = {group.code: (group.name or group.code) for group in config.students_groups}
+    group_names = {
+        group.code: (group.name or group.code) for group in config.students_groups
+    }
     columns: list[ExportColumn] = []
     seen: set[str] = set()
 
@@ -367,7 +407,11 @@ def _compact_occupied_slots(
     occupied: set[tuple[Weekday, dtm.time]] = set()
     extra_slots: dict[dtm.time, TermTimeSlot] = {}
     for meeting in meetings:
-        row_start = meeting.start if meeting.start in slot_starts else _nearest_slot_start(meeting.start, slots)
+        row_start = (
+            meeting.start
+            if meeting.start in slot_starts
+            else _nearest_slot_start(meeting.start, slots)
+        )
         if row_start is None:
             row_start = meeting.start
             extra_slots.setdefault(
@@ -380,7 +424,12 @@ def _compact_occupied_slots(
         [*slots, *extra_slots.values()],
         key=lambda slot: (slot.start_time, slot.end_time),
     )
-    return [(day, slot) for day in _term_days(term) for slot in ordered_slots if (day, slot.start_time) in occupied]
+    return [
+        (day, slot)
+        for day in _term_days(term)
+        for slot in ordered_slots
+        if (day, slot.start_time) in occupied
+    ]
 
 
 def _nearest_slot_start(start: dtm.time, slots: list[TermTimeSlot]) -> dtm.time | None:
@@ -388,7 +437,10 @@ def _nearest_slot_start(start: dtm.time, slots: list[TermTimeSlot]) -> dtm.time 
         return None
     best = min(
         slots,
-        key=lambda slot: abs((slot.start_time.hour * 60 + slot.start_time.minute) - (start.hour * 60 + start.minute)),
+        key=lambda slot: abs(
+            (slot.start_time.hour * 60 + slot.start_time.minute)
+            - (start.hour * 60 + start.minute)
+        ),
     )
     return best.start_time
 
@@ -410,12 +462,18 @@ def _collapse_weekly_cells(
     slots: list[TermTimeSlot],
 ) -> dict[tuple[Weekday, dtm.time, str], list[ExportMeeting]]:
     """Map (weekday, slot_start, group) -> representative meetings (most frequent patterns)."""
-    buckets: dict[tuple[Weekday, dtm.time, str], list[ExportMeeting]] = defaultdict(list)
+    buckets: dict[tuple[Weekday, dtm.time, str], list[ExportMeeting]] = defaultdict(
+        list
+    )
     slot_starts = {slot.start_time for slot in slots}
 
     for meeting in meetings:
         weekday = list(Weekday)[meeting.date.weekday()]
-        row_start = meeting.start if meeting.start in slot_starts else _nearest_slot_start(meeting.start, slots)
+        row_start = (
+            meeting.start
+            if meeting.start in slot_starts
+            else _nearest_slot_start(meeting.start, slots)
+        )
         if row_start is None:
             continue
         for group_id in meeting.groups:
@@ -450,7 +508,9 @@ def _apply_fill(
         cell.alignment = align
 
 
-def _triple_block_border(*, row_offset: int, col: int, start_col: int, end_col: int) -> Border:
+def _triple_block_border(
+    *, row_offset: int, col: int, start_col: int, end_col: int
+) -> Border:
     """Outer border around a 3-row event/time block; no internal grid lines."""
     return Border(
         left=THIN if col == start_col else None,
@@ -460,7 +520,9 @@ def _triple_block_border(*, row_offset: int, col: int, start_col: int, end_col: 
     )
 
 
-def _section_block_border(*, row: int, col: int, start_row: int, end_row: int, start_col: int, end_col: int) -> Border:
+def _section_block_border(
+    *, row: int, col: int, start_row: int, end_row: int, start_col: int, end_col: int
+) -> Border:
     """Thick outer border for a section block; thin internal cell grid."""
     return Border(
         left=THICK if col == start_col else THIN,
@@ -559,7 +621,10 @@ def _wrapped_line_count(text: str, width_chars: float) -> int:
 
 def _row_height_for_text(text: str, col_span: int) -> float:
     width = GROUPS_COL_WIDTH * max(1, col_span)
-    return max(GROUPS_EVENT_ROW_HEIGHT_MIN, _wrapped_line_count(text, width) * GROUPS_LINE_HEIGHT)
+    return max(
+        GROUPS_EVENT_ROW_HEIGHT_MIN,
+        _wrapped_line_count(text, width) * GROUPS_LINE_HEIGHT,
+    )
 
 
 def _write_event_block(
@@ -589,13 +654,18 @@ def _write_event_block(
     title = meeting_title(meeting)
     instructors = format_instructors(meeting.instructors, instructor_labels)
     room = meeting.room
-    fill = PatternFill("solid", fgColor=course_fill_color(meeting.course, course_colors.get(meeting.course)))
+    fill = PatternFill(
+        "solid",
+        fgColor=course_fill_color(meeting.course, course_colors.get(meeting.course)),
+    )
     ws.cell(start_row, start_col, title)
     ws.cell(start_row + 1, start_col, instructors)
     ws.cell(start_row + 2, start_col, room)
     for r in range(start_row, start_row + 3):
         if end_col > start_col:
-            ws.merge_cells(start_row=r, start_column=start_col, end_row=r, end_column=end_col)
+            ws.merge_cells(
+                start_row=r, start_column=start_col, end_row=r, end_column=end_col
+            )
     _style_triple_block(
         ws,
         start_row=start_row,
@@ -625,9 +695,16 @@ def _write_groups_sheet(
         # Time column header (merged over rows 1–2), like Core A1:A2
         time_header = ws.cell(1, block.time_col)
         _apply_fill(time_header, TIME_HEADER_FILL, HEADER_FONT, CENTER)
-        ws.merge_cells(start_row=1, start_column=block.time_col, end_row=2, end_column=block.time_col)
+        ws.merge_cells(
+            start_row=1,
+            start_column=block.time_col,
+            end_row=2,
+            end_column=block.time_col,
+        )
         _apply_fill(ws.cell(2, block.time_col), TIME_HEADER_FILL, HEADER_FONT, CENTER)
-        ws.column_dimensions[get_column_letter(block.time_col)].width = GROUPS_TIME_COL_WIDTH
+        ws.column_dimensions[
+            get_column_letter(block.time_col)
+        ].width = GROUPS_TIME_COL_WIDTH
 
         # Program / year label across group columns only
         year_cell = ws.cell(1, block.group_start, block.year_label)
@@ -649,7 +726,9 @@ def _write_groups_sheet(
                 label = f"{label} ({size})"
             cell = ws.cell(2, block.group_start + offset, label)
             _apply_fill(cell, HEADER_FILL, HEADER_FONT, CENTER)
-            ws.column_dimensions[get_column_letter(block.group_start + offset)].width = GROUPS_COL_WIDTH
+            ws.column_dimensions[
+                get_column_letter(block.group_start + offset)
+            ].width = GROUPS_COL_WIDTH
 
     row = 3
     for day in days:
@@ -669,10 +748,18 @@ def _write_groups_sheet(
 
         for slot in slots:
             block_start = row
-            row_heights = [GROUPS_EVENT_ROW_HEIGHT_MIN, GROUPS_EVENT_ROW_HEIGHT_MIN, GROUPS_EVENT_ROW_HEIGHT_MIN]
+            row_heights = [
+                GROUPS_EVENT_ROW_HEIGHT_MIN,
+                GROUPS_EVENT_ROW_HEIGHT_MIN,
+                GROUPS_EVENT_ROW_HEIGHT_MIN,
+            ]
 
             for block in blocks:
-                ws.cell(block_start, block.time_col, _slot_label(slot.start_time, slot.end_time))
+                ws.cell(
+                    block_start,
+                    block.time_col,
+                    _slot_label(slot.start_time, slot.end_time),
+                )
                 ws.merge_cells(
                     start_row=block_start,
                     start_column=block.time_col,
@@ -696,7 +783,16 @@ def _write_groups_sheet(
                     span = 1
                     while (
                         i + span < len(block.columns)
-                        and cell_signature(cells.get((day, slot.start_time, block.columns[i + span].group_id), []))
+                        and cell_signature(
+                            cells.get(
+                                (
+                                    day,
+                                    slot.start_time,
+                                    block.columns[i + span].group_id,
+                                ),
+                                [],
+                            )
+                        )
                         == sign
                         and sign
                     ):
@@ -713,9 +809,15 @@ def _write_groups_sheet(
                         course_colors=course_colors,
                     )
                     if meetings:
-                        row_heights[0] = max(row_heights[0], _row_height_for_text(title, span))
-                        row_heights[1] = max(row_heights[1], _row_height_for_text(instructors, span))
-                        row_heights[2] = max(row_heights[2], _row_height_for_text(room, span))
+                        row_heights[0] = max(
+                            row_heights[0], _row_height_for_text(title, span)
+                        )
+                        row_heights[1] = max(
+                            row_heights[1], _row_height_for_text(instructors, span)
+                        )
+                        row_heights[2] = max(
+                            row_heights[2], _row_height_for_text(room, span)
+                        )
                     i += span
 
             for offset, height in enumerate(row_heights):
@@ -746,7 +848,10 @@ def _write_compact_groups_sheet(
     index = 0
     while index < len(columns):
         end_index = index + 1
-        while end_index < len(columns) and columns[end_index].year_label == columns[index].year_label:
+        while (
+            end_index < len(columns)
+            and columns[end_index].year_label == columns[index].year_label
+        ):
             end_index += 1
         group_start = index + 2
         group_end = end_index + 1
@@ -766,7 +871,9 @@ def _write_compact_groups_sheet(
             label = column.group_label
             cell = ws.cell(2, group_start + offset, label)
             _apply_fill(cell, HEADER_FILL, HEADER_FONT, CENTER)
-            ws.column_dimensions[get_column_letter(group_start + offset)].width = COMPACT_GROUPS_COL_WIDTH
+            ws.column_dimensions[
+                get_column_letter(group_start + offset)
+            ].width = COMPACT_GROUPS_COL_WIDTH
         index = end_index
 
     for row, (day, slot) in enumerate(occupied_slots, start=3):
@@ -784,7 +891,12 @@ def _write_compact_groups_sheet(
             while (
                 index + span < len(columns)
                 and columns[index + span].year_label == column.year_label
-                and cell_signature(cells.get((day, slot.start_time, columns[index + span].group_id), [])) == signature
+                and cell_signature(
+                    cells.get(
+                        (day, slot.start_time, columns[index + span].group_id), []
+                    )
+                )
+                == signature
                 and signature
             ):
                 span += 1
@@ -796,16 +908,28 @@ def _write_compact_groups_sheet(
                 title = meeting.course_short_name or meeting.course
                 instructors = format_instructors(meeting.instructors, instructor_labels)
                 details = [
-                    part for part in (instructors, meeting.room, alternation_label(meeting), meeting.notes) if part
+                    part
+                    for part in (
+                        instructors,
+                        meeting.room,
+                        alternation_label(meeting),
+                        meeting.notes,
+                    )
+                    if part
                 ]
                 text = "\n".join((title, *details))
                 fill = PatternFill(
                     "solid",
-                    fgColor=course_fill_color(meeting.course, course_colors.get(meeting.course)),
+                    fgColor=course_fill_color(
+                        meeting.course, course_colors.get(meeting.course)
+                    ),
                 )
                 rich_text = CellRichText(
                     TextBlock(COMPACT_TITLE_INLINE_FONT, title),
-                    *(TextBlock(COMPACT_DETAIL_INLINE_FONT, f"\n{detail}") for detail in details),
+                    *(
+                        TextBlock(COMPACT_DETAIL_INLINE_FONT, f"\n{detail}")
+                        for detail in details
+                    ),
                 )
                 ws.cell(row, start_col, rich_text)
                 if end_col > start_col:
@@ -912,7 +1036,10 @@ def build_calendar_course_legend(
 
     rows: list[tuple[str, str, str]] = []
     for course in courses:
-        if section_code is not None and (course.section_code or "").strip() != section_code:
+        if (
+            section_code is not None
+            and (course.section_code or "").strip() != section_code
+        ):
             continue
         tokens = _course_audience_tokens(course)
         expanded = expand_group_tokens(tokens, selector_map)
@@ -944,7 +1071,9 @@ def _write_calendar_course_legend(
     for offset, header in enumerate(CALENDAR_LEGEND_HEADERS):
         cell = ws.cell(1, start_col + offset, header)
         _apply_fill(cell, HEADER_FILL, HEADER_FONT, CENTER)
-        ws.column_dimensions[get_column_letter(start_col + offset)].width = CALENDAR_LEGEND_COL_WIDTHS[offset]
+        ws.column_dimensions[
+            get_column_letter(start_col + offset)
+        ].width = CALENDAR_LEGEND_COL_WIDTHS[offset]
 
     for row_index, values in enumerate(rows, start=2):
         for offset, value in enumerate(values):
@@ -968,7 +1097,11 @@ def _write_calendar_sheet(
     slot_starts = {slot.start_time for slot in slots}
     by_key: dict[tuple[dtm.date, dtm.time], list[ExportMeeting]] = defaultdict(list)
     for meeting in meetings:
-        row_start = meeting.start if meeting.start in slot_starts else _nearest_slot_start(meeting.start, slots)
+        row_start = (
+            meeting.start
+            if meeting.start in slot_starts
+            else _nearest_slot_start(meeting.start, slots)
+        )
         if row_start is None:
             continue
         by_key[(meeting.date, row_start)].append(meeting)
@@ -984,9 +1117,9 @@ def _write_calendar_sheet(
         week_cell = ws.cell(row, 1, f"Week {week_number}")
         _apply_fill(week_cell, WEEK_HEADER_FILL, TITLE_FONT, CENTER)
         for i, day in enumerate(days):
-            day_date = week_start_for_date(week_start, term.starting_day) + dtm.timedelta(
-                days=(day.index - term.starting_day.index) % 7
-            )
+            day_date = week_start_for_date(
+                week_start, term.starting_day
+            ) + dtm.timedelta(days=(day.index - term.starting_day.index) % 7)
             label = day_date.strftime("%B ") + str(day_date.day)
             cell = ws.cell(row, i + 2, label)
             _apply_fill(cell, WEEK_HEADER_FILL, TITLE_FONT, CENTER)
@@ -996,14 +1129,16 @@ def _write_calendar_sheet(
             time_cell = ws.cell(row, 1, _slot_label(slot.start_time, slot.end_time))
             _apply_fill(time_cell, WHITE_FILL, NORMAL_FONT, CENTER)
             for i, day in enumerate(days):
-                day_date = week_start_for_date(week_start, term.starting_day) + dtm.timedelta(
-                    days=(day.index - term.starting_day.index) % 7
-                )
+                day_date = week_start_for_date(
+                    week_start, term.starting_day
+                ) + dtm.timedelta(days=(day.index - term.starting_day.index) % 7)
                 cell_meetings = by_key.get((day_date, slot.start_time), [])
                 unique: dict[str, ExportMeeting] = {}
                 for meeting in cell_meetings:
                     unique.setdefault(pattern_signature(meeting), meeting)
-                text = "\n".join(_compact_meeting_label(m, slot) for m in unique.values())
+                text = "\n".join(
+                    _compact_meeting_label(m, slot) for m in unique.values()
+                )
                 cell = ws.cell(row, i + 2, text or None)
                 unique_meetings = list(unique.values())
                 fill = (
@@ -1054,7 +1189,9 @@ def _write_table_sheet(
     ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}{last_row}"
 
 
-def _track_group_maps(sections: list[SectionConfig]) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
+def _track_group_maps(
+    sections: list[SectionConfig],
+) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
     """Return ``group→tracks`` and ``track→groups`` maps (``Program/Track`` labels)."""
     group_to_tracks: dict[str, set[str]] = defaultdict(set)
     track_to_groups: dict[str, set[str]] = {}
@@ -1193,7 +1330,9 @@ def _write_subjects_sheet(
     instructor_labels: dict[str, str],
 ) -> None:
     selector_map = build_selector_map(
-        SectionsConfig(sections=config.term.sections, students_groups=config.students_groups)
+        SectionsConfig(
+            sections=config.term.sections, students_groups=config.students_groups
+        )
     )
     rows: list[tuple[object, ...]] = []
     matched_course_names: set[str] = set()
@@ -1249,7 +1388,9 @@ def _write_subjects_sheet(
     for col, header in enumerate(SUBJECTS_HEADERS, start=1):
         cell = ws.cell(1, col, header)
         _apply_fill(cell, HEADER_FILL, HEADER_FONT, CENTER)
-        ws.column_dimensions[get_column_letter(col)].width = SUBJECTS_COL_WIDTHS[col - 1]
+        ws.column_dimensions[get_column_letter(col)].width = SUBJECTS_COL_WIDTHS[
+            col - 1
+        ]
 
     # Contiguous rows sharing the Section value get one outer border.
     block_ranges: list[tuple[int, int]] = []
@@ -1357,7 +1498,9 @@ def _write_section_sheet(
         )
         return
     selector_map = build_selector_map(
-        SectionsConfig(sections=config.term.sections, students_groups=config.students_groups)
+        SectionsConfig(
+            sections=config.term.sections, students_groups=config.students_groups
+        )
     )
     legend_rows = build_calendar_course_legend(
         courses=config.courses,
@@ -1391,7 +1534,9 @@ def build_export_workbook(config: ScheduleConfig) -> Workbook:
     group_sizes = _group_sizes(config)
     course_colors = {course.name: course.color for course in config.courses}
     selector_map = build_selector_map(
-        SectionsConfig(sections=config.term.sections, students_groups=config.students_groups)
+        SectionsConfig(
+            sections=config.term.sections, students_groups=config.students_groups
+        )
     )
     wb = Workbook()
     used_names: set[str] = set()
@@ -1403,7 +1548,9 @@ def build_export_workbook(config: ScheduleConfig) -> Workbook:
         assert ws is not None
         ws.title = "Schedule"
         used_names.add("Schedule")
-        _append_summary_sheets(wb, config, used_names=used_names, instructor_labels=instructor_labels)
+        _append_summary_sheets(
+            wb, config, used_names=used_names, instructor_labels=instructor_labels
+        )
         return wb
 
     for section in sections:
@@ -1420,7 +1567,9 @@ def build_export_workbook(config: ScheduleConfig) -> Workbook:
                 ws = _next_sheet(wb, title, first=first_sheet)
                 first_sheet = False
                 program_groups = program_group_set(program)
-                program_meetings = filter_meetings_for_groups(all_meetings, program_groups)
+                program_meetings = filter_meetings_for_groups(
+                    all_meetings, program_groups
+                )
                 legend_rows = build_calendar_course_legend(
                     courses=config.courses,
                     meetings=program_meetings,
@@ -1452,7 +1601,9 @@ def build_export_workbook(config: ScheduleConfig) -> Workbook:
             course_colors=course_colors,
         )
 
-    _append_summary_sheets(wb, config, used_names=used_names, instructor_labels=instructor_labels)
+    _append_summary_sheets(
+        wb, config, used_names=used_names, instructor_labels=instructor_labels
+    )
     return wb
 
 

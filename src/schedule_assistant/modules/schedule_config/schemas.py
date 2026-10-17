@@ -11,7 +11,9 @@ from src.schedule_assistant.weekday import Weekday
 
 
 class SettingBaseModel(BaseModel):
-    model_config = ConfigDict(use_attribute_docstrings=True, extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(
+        use_attribute_docstrings=True, extra="forbid", populate_by_name=True
+    )
 
 
 class InstructorSlotPreferenceLevel(StrEnum):
@@ -139,7 +141,9 @@ class InstructorConfig(SettingBaseModel):
         "Short handle or Telegram-style alias from staff roster"
         position: str | None = None
         "Staff position from roster (for example, Full Professor, Visiting)"
-        slot_preferences: list[InstructorSlotPreferenceEntry] = Field(default_factory=list)
+        slot_preferences: list[InstructorSlotPreferenceEntry] = Field(
+            default_factory=list
+        )
         "Sparse weekday+slot preference grid; omitted cells are neutral"
 
     instructors: list[Instructor] = Field(default_factory=list)

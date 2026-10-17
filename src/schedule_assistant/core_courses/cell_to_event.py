@@ -15,7 +15,11 @@ from src.logging_ import logger
 
 from ..utils import MOSCOW_TZ, WEEKDAYS, remove_repeating_spaces_and_trailing_spaces
 from .config import Target, override_matches_row
-from .location_parser import Item, extract_room_from_location_string, parse_location_string
+from .location_parser import (
+    Item,
+    extract_room_from_location_string,
+    parse_location_string,
+)
 from .parser import CoreCourseCell
 
 
@@ -88,7 +92,9 @@ class CoreCourseEvent(BaseModel):
         for match in matches:
             inside_brackets = match.group(1)
 
-            if re.match(r"^(?:lec|tut|lab|тут|лек|лаб)$", inside_brackets, flags=re.IGNORECASE):
+            if re.match(
+                r"^(?:lec|tut|lab|тут|лек|лаб)$", inside_brackets, flags=re.IGNORECASE
+            ):
                 # if inside_brackets is "lec" or "tut" or "lab" then it is class type
                 subject = subject.replace(match[0], "", 1)
                 self.class_type = inside_brackets.lower()  # type: ignore
@@ -137,7 +143,9 @@ class CoreCourseEvent(BaseModel):
         location = re.sub(r"\s+AND\s+", ", ", location)
         self.location = location
 
-        if not re.match(r"ELECTIVE COURSES? ON PHYSICAL EDUCATION", location):  # no need to parse this location
+        if not re.match(
+            r"ELECTIVE COURSES? ON PHYSICAL EDUCATION", location
+        ):  # no need to parse this location
             if self.dont_care_location_string:
                 self.location = extract_room_from_location_string(location)
                 self.location_item = None
@@ -151,7 +159,9 @@ class CoreCourseEvent(BaseModel):
                 warnings.warn(f"Location `{location}` is not parsed properly")
 
     def __str__(self):
-        timeslot = f"{self.start_time.strftime('%H:%M')}-{self.start_time.strftime('%H:%M')}"
+        timeslot = (
+            f"{self.start_time.strftime('%H:%M')}-{self.start_time.strftime('%H:%M')}"
+        )
         return f"{self.course} / {self.group} | {self.subject} {timeslot}"
 
 
@@ -208,7 +218,9 @@ def convert_cell_to_event(
 
         sheet_name = cell.google_sheet_name or target.sheet_name
         for override in target.override:
-            if override_matches_row(override, group=group, course=course, sheet_name=sheet_name):
+            if override_matches_row(
+                override, group=group, course=course, sheet_name=sheet_name
+            ):
                 starts = override.start_date
                 ends = override.end_date
                 break
@@ -216,7 +228,9 @@ def convert_cell_to_event(
         event = CoreCourseEvent(
             start_time=start_time,
             end_time=end_time,
-            dtstamp=dtm.datetime.combine(target.start_date, dtm.time.min, tzinfo=MOSCOW_TZ),
+            dtstamp=dtm.datetime.combine(
+                target.start_date, dtm.time.min, tzinfo=MOSCOW_TZ
+            ),
             starts=starts,
             ends=ends,
             weekday=weekday_int,
@@ -236,5 +250,8 @@ def convert_cell_to_event(
         )
         return event
     except ValueError:
-        logger.error(f"Error parsing cell {cell.value!r} for {course} {group} {weekday} {timeslot}", exc_info=True)
+        logger.error(
+            f"Error parsing cell {cell.value!r} for {course} {group} {weekday} {timeslot}",
+            exc_info=True,
+        )
         return None

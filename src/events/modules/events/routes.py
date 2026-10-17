@@ -13,7 +13,12 @@ from src.events.ics import build_events_ics
 from src.events.images_repo import images_repo
 from src.events.mongo import EnrollmentType, Event, PublicEvent
 from src.events.schemas import EventListItem, EventOut
-from src.events.service import load_clubs_for_hosts, resolve_public_hosts, to_public_hosts, utcnow
+from src.events.service import (
+    load_clubs_for_hosts,
+    resolve_public_hosts,
+    to_public_hosts,
+    utcnow,
+)
 from src.events.time_utils import TZAwareDateTime
 from src.events.views import build_event_list_item, build_event_out
 
@@ -54,7 +59,9 @@ async def list_events(
     all_hosts = [host for _, public in published for host in public.data.hosts]
     clubs = await load_clubs_for_hosts(all_hosts)
     return [
-        build_event_list_item(event, public, auth, to_public_hosts(public.data.hosts, clubs))
+        build_event_list_item(
+            event, public, auth, to_public_hosts(public.data.hosts, clubs)
+        )
         for event, public in published
     ]
 
@@ -64,7 +71,9 @@ async def get_events_ics() -> Response:
     """ICS feed of all published events (no event description, no enrollment filtering)."""
     events = await events_repo.list_all_published()
     published = [event for event in events if event.public is not None]
-    all_hosts = [host for event in published if event.public for host in event.public.data.hosts]
+    all_hosts = [
+        host for event in published if event.public for host in event.public.data.hosts
+    ]
     clubs = await load_clubs_for_hosts(all_hosts)
     hosts_by_event = {
         str(event.id): to_public_hosts(event.public.data.hosts, clubs)
@@ -72,13 +81,17 @@ async def get_events_ics() -> Response:
         if event.public is not None
     }
     return Response(
-        content=build_events_ics(published, hosts_by_event, "Events from innohassle.ru"),
+        content=build_events_ics(
+            published, hosts_by_event, "Events from innohassle.ru"
+        ),
         media_type="text/calendar",
     )
 
 
 @router.get("/{id}")
-async def get_event(id: PydanticObjectId, auth: OPTIONAL_INH_TOKEN_AUTH, roles: OPTIONAL_ROLES) -> EventOut:
+async def get_event(
+    id: PydanticObjectId, auth: OPTIONAL_INH_TOKEN_AUTH, roles: OPTIONAL_ROLES
+) -> EventOut:
     """Get a published event."""
     event, public = await _get_published_or_404(id)
     hosts = await resolve_public_hosts(public.data.hosts)
@@ -105,7 +118,9 @@ async def enroll(id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLES) -> Ev
 
 
 @router.post("/{id}/unenroll")
-async def unenroll(id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLES) -> EventOut:
+async def unenroll(
+    id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLES
+) -> EventOut:
     """Unenroll the current user from the event."""
     event, public = await _get_published_or_404(id)
     if auth.email in public.enrolled_emails:

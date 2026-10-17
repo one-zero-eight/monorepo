@@ -46,7 +46,9 @@ class RoomsRepository:
                 raise ValueError(f"Room {room_id} not found in rooms")
 
     def get_all(self, include_red: bool = False) -> list[Room]:
-        return [room for room in self.rooms if room.access_level != "red" or include_red]
+        return [
+            room for room in self.rooms if room.access_level != "red" or include_red
+        ]
 
     def get_by_id(self, room_id: str) -> Room | None:
         return self.room_by_id.get(room_id)

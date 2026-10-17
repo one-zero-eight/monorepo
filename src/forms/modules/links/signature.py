@@ -25,9 +25,9 @@ def _sign(data: str) -> bytes:
 
 
 def sign_payload(payload: SignaturePayload) -> str:
-    payload_json = json.dumps(payload.model_dump(), ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode(
-        "utf-8"
-    )
+    payload_json = json.dumps(
+        payload.model_dump(), ensure_ascii=True, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
     payload_b64 = _to_base64url(payload_json)
     signature_b64 = _to_base64url(_sign(payload_b64))
     return f"{payload_b64}.{signature_b64}"

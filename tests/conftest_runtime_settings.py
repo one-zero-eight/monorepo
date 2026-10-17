@@ -32,7 +32,10 @@ from src.schedule_assistant.config_schema import (
 )
 from src.student_affairs.config_schema import OmnideskSettings, StudentAffairsSettings
 from src.tabletennis.config_schema import TabletennisSettings
-from src.when2meet.config_schema import RoomBookingIntegrationSettings, When2MeetSettings
+from src.when2meet.config_schema import (
+    RoomBookingIntegrationSettings,
+    When2MeetSettings,
+)
 from tests.metrics import METRICS_API_KEY
 
 # Host ports for docker-compose.test.yaml and CI service containers; override via SUITE_* env.
@@ -113,7 +116,9 @@ def load_root_settings() -> Settings:
         ),
         student_affairs_service=StudentAffairsSettings(
             environment=Environment.TESTING,
-            omnidesk=OmnideskSettings(jwt_marker=SecretStr("test-marker-0123456789abcdef")),
+            omnidesk=OmnideskSettings(
+                jwt_marker=SecretStr("test-marker-0123456789abcdef")
+            ),
         ),
         board_games_service=BoardGamesSettings(
             environment=Environment.TESTING,
@@ -184,7 +189,9 @@ def load_root_settings() -> Settings:
             db_url=SecretStr(
                 f"postgresql+psycopg://postgres:test@{SUITE_POSTGRES_NETLOC}/{schedule_assistant_test_database_name()}"
             ),
-            booking=ScheduleAssistantRoomBookingSettings(api_key=SecretStr("test-room-booking-api-key")),
+            booking=ScheduleAssistantRoomBookingSettings(
+                api_key=SecretStr("test-room-booking-api-key")
+            ),
         ),
     )
 
@@ -194,7 +201,9 @@ def _wait_mongo_ready(uri: str, timeout_s: float = 1) -> None:
     try:
         hello = client.admin.command("hello")
         if hello.get("setName") != "rs0" or not hello.get("isWritablePrimary"):
-            raise ServerSelectionTimeoutError("Test MongoDB must be a writable primary in replica set rs0")
+            raise ServerSelectionTimeoutError(
+                "Test MongoDB must be a writable primary in replica set rs0"
+            )
     finally:
         client.close()
 
@@ -217,7 +226,9 @@ def _wait_postgres_ready(dsn: str, timeout_s: float = 1) -> None:
 
 
 def _wait_minio_ready(timeout_s: float = 1) -> None:
-    http = urllib3.PoolManager(timeout=urllib3.Timeout(connect=timeout_s, read=timeout_s))
+    http = urllib3.PoolManager(
+        timeout=urllib3.Timeout(connect=timeout_s, read=timeout_s)
+    )
     mc = Minio(
         endpoint=SUITE_MINIO_ENDPOINT,
         access_key=SUITE_MINIO_ACCESS_KEY,
@@ -269,7 +280,9 @@ def pytest_configure(config: pytest.Config) -> None:
         from sqlalchemy.exc import SQLAlchemyError
 
         try:
-            _wait_postgres_ready(f"postgresql+asyncpg://postgres:test@{SUITE_POSTGRES_NETLOC}/postgres")
+            _wait_postgres_ready(
+                f"postgresql+asyncpg://postgres:test@{SUITE_POSTGRES_NETLOC}/postgres"
+            )
         except (OSError, SQLAlchemyError) as exc:
             pytest.exit(
                 f"PostgreSQL not ready, run it with `docker compose -f docker-compose.test.yaml up --wait` and try again:\n{exc}",
@@ -295,7 +308,9 @@ def pytest_unconfigure(config: pytest.Config) -> None:
         del config.stash[suite_monkeypatch_stash_key]
 
 
-def pytest_terminal_summary(terminalreporter: pytest.TerminalReporter, exitstatus: int, config: pytest.Config) -> None:
+def pytest_terminal_summary(
+    terminalreporter: pytest.TerminalReporter, exitstatus: int, config: pytest.Config
+) -> None:
     timings = config.stash.get(suite_timings_stash_key, None)
     if not timings:
         return

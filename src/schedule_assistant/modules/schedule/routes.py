@@ -10,7 +10,10 @@ from src.schedule_assistant.modules.schedule.schemas import (
     ListVirtualEventGroupsResponse,
     PredefinedAliasesResponse,
 )
-from src.schedule_assistant.modules.schedule_config.schemas import CoursesConfig, StudentsGroups
+from src.schedule_assistant.modules.schedule_config.schemas import (
+    CoursesConfig,
+    StudentsGroups,
+)
 
 router = APIRouter(prefix="/schedule", tags=["Schedule"])
 integration_router = APIRouter(prefix="/integration", tags=["Schedule Integration"])
@@ -30,12 +33,18 @@ async def get_my_groups(user_and_token: VerifyTokenDep) -> list[StudentsGroups]:
 
 
 @integration_router.get("/event-groups")
-async def list_event_groups(_api_key: ServiceApiKeyDep) -> ListVirtualEventGroupsResponse:
-    return ListVirtualEventGroupsResponse(event_groups=service.list_virtual_event_groups())
+async def list_event_groups(
+    _api_key: ServiceApiKeyDep,
+) -> ListVirtualEventGroupsResponse:
+    return ListVirtualEventGroupsResponse(
+        event_groups=service.list_virtual_event_groups()
+    )
 
 
 @integration_router.get("/users/{email}/predefined")
-async def get_predefined_aliases(email: str, _api_key: ServiceApiKeyDep) -> PredefinedAliasesResponse:
+async def get_predefined_aliases(
+    email: str, _api_key: ServiceApiKeyDep
+) -> PredefinedAliasesResponse:
     return PredefinedAliasesResponse(event_groups=service.get_predefined_aliases(email))
 
 
@@ -44,21 +53,31 @@ async def get_event_groups_ics(
     request: BatchAliasesIcsRequest,
     _api_key: ServiceApiKeyDep,
 ) -> FastAPIResponse:
-    return FastAPIResponse(content=service.get_aliases_ics(request.aliases), media_type=ICS_MEDIA_TYPE)
+    return FastAPIResponse(
+        content=service.get_aliases_ics(request.aliases), media_type=ICS_MEDIA_TYPE
+    )
 
 
 @integration_router.get("/event-groups/{alias}/schedule.ics")
-async def get_event_group_ics(alias: str, _api_key: ServiceApiKeyDep) -> FastAPIResponse:
-    return FastAPIResponse(content=service.get_group_ics(alias), media_type=ICS_MEDIA_TYPE)
+async def get_event_group_ics(
+    alias: str, _api_key: ServiceApiKeyDep
+) -> FastAPIResponse:
+    return FastAPIResponse(
+        content=service.get_group_ics(alias), media_type=ICS_MEDIA_TYPE
+    )
 
 
 @router.get("/groups/{group_code}")
-async def get_group_schedule(group_code: str, _user_and_token: VerifyTokenDep) -> CoursesConfig:
+async def get_group_schedule(
+    group_code: str, _user_and_token: VerifyTokenDep
+) -> CoursesConfig:
     return service.get_group_schedule(group_code)
 
 
 @router.get("/instructors/{instructor_id}")
-async def get_instructor_schedule(instructor_id: str, _user_and_token: VerifyTokenDep) -> CoursesConfig:
+async def get_instructor_schedule(
+    instructor_id: str, _user_and_token: VerifyTokenDep
+) -> CoursesConfig:
     return service.get_instructor_schedule(instructor_id)
 
 

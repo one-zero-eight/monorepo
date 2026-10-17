@@ -54,7 +54,9 @@ from src.guard.modules.google_.service import (
 )
 from src.logging_ import logger
 
-router = APIRouter(prefix="/google", tags=["Google"], route_class=AutoDeriveResponsesAPIRoute)
+router = APIRouter(
+    prefix="/google", tags=["Google"], route_class=AutoDeriveResponsesAPIRoute
+)
 
 
 @router.get("/health")
@@ -75,7 +77,9 @@ def get_service_account_email() -> ServiceAccountEmailResponse:
         email = service_email()
         return ServiceAccountEmailResponse(email=email)
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(status_code=500, detail=f"Service account not configured: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Service account not configured: {e}"
+        )
 
 
 @router.post("/files")
@@ -161,7 +165,9 @@ async def copy_file(
             file_type = "document"
         else:
             delete_google_file(new_file_id)
-            raise HTTPException(status_code=400, detail=f"Unsupported mimeType: {mime_type}")
+            raise HTTPException(
+                status_code=400, detail=f"Unsupported mimeType: {mime_type}"
+            )
 
         # Grant owner permission
         owner_permission_id = grant_owner_permission(new_file_id, request.owner_gmail)
@@ -242,7 +248,9 @@ async def update_file(
 
         update_file_title(file.file_id, request.title)
 
-        updated_file = await google_file_repository.update_file_title(slug, request.title)
+        updated_file = await google_file_repository.update_file_title(
+            slug, request.title
+        )
         if not updated_file:
             raise HTTPException(status_code=404, detail="File not found")
 
@@ -266,7 +274,9 @@ async def get_files(
 ) -> list[GoogleFile]:
     """Get all files for the user (brief info without joins and banned)."""
     try:
-        files = await google_file_repository.get_by_author_id(user_token_data.innohassle_id)
+        files = await google_file_repository.get_by_author_id(
+            user_token_data.innohassle_id
+        )
         result: list[GoogleFile] = []
         for file in files:
             if file.id is None:
@@ -289,7 +299,9 @@ async def get_files(
             )
         return result
     except Exception as e:  # noqa: BLE001
-        logger.error(f"Error getting files | user_id={user_token_data.innohassle_id} error={e}")
+        logger.error(
+            f"Error getting files | user_id={user_token_data.innohassle_id} error={e}"
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -394,7 +406,9 @@ async def join_file(
         raise HTTPException(status_code=e.resp.status, detail=str(e))
     except UserBannedException as e:
         logger.error(f"User banned: {e}")
-        raise HTTPException(status_code=403, detail="Permission denied. You are banned from this file.")
+        raise HTTPException(
+            status_code=403, detail="Permission denied. You are banned from this file."
+        )
     except InvalidGmailException as e:
         logger.error(f"Invalid gmail: {e}")
         raise HTTPException(
@@ -403,10 +417,14 @@ async def join_file(
         )
     except FileNotFoundException as e:
         logger.error(f"File not found: {e}")
-        raise HTTPException(status_code=404, detail=f"File with slug {e.slug} not found")
+        raise HTTPException(
+            status_code=404, detail=f"File with slug {e.slug} not found"
+        )
     except GmailAlreadyUsedException as e:
         logger.error(f"Gmail already used: {e}")
-        raise HTTPException(status_code=400, detail=f"Gmail {e.gmail} is already used by another user")
+        raise HTTPException(
+            status_code=400, detail=f"Gmail {e.gmail} is already used by another user"
+        )
     except Exception as e:  # noqa: BLE001
         logger.error(
             f"Error joining file | user_id={user_token_data.innohassle_id} gmail={request.gmail} slug={slug} error={e}"
@@ -430,10 +448,15 @@ async def ban_user(
 
         verify_file_ownership(file, user_token_data.innohassle_id)
 
-        joins_to_ban = [join for join in file.sso_joins if join.user_id == request.user_id]
+        joins_to_ban = [
+            join for join in file.sso_joins if join.user_id == request.user_id
+        ]
 
         if not joins_to_ban:
-            raise HTTPException(status_code=404, detail=f"User with user_id {request.user_id} not found in joins")
+            raise HTTPException(
+                status_code=404,
+                detail=f"User with user_id {request.user_id} not found in joins",
+            )
 
         for join_to_ban in joins_to_ban:
             logger.info(
@@ -513,7 +536,11 @@ async def cleanup_file_permissions(
         from src.guard.modules.google_.service import drive_service
 
         drive = drive_service()
-        perms = drive.permissions().list(fileId=file.file_id, fields="permissions(id,type,emailAddress)").execute()
+        perms = (
+            drive.permissions()
+            .list(fileId=file.file_id, fields="permissions(id,type,emailAddress)")
+            .execute()
+        )
 
         allowed_emails = {j.gmail for j in file.sso_joins}
         removed = 0
@@ -525,10 +552,14 @@ async def cleanup_file_permissions(
                 continue
             if email not in allowed_emails:
                 try:
-                    drive.permissions().delete(fileId=file.file_id, permissionId=p["id"]).execute()
+                    drive.permissions().delete(
+                        fileId=file.file_id, permissionId=p["id"]
+                    ).execute()
                     removed += 1
                 except Exception as e:  # noqa: BLE001
-                    logger.error(f"Error removing permission {p['id']} from {email}: {e}")
+                    logger.error(
+                        f"Error removing permission {p['id']} from {email}: {e}"
+                    )
 
         return CleanupResponse(removed=removed)
     except HTTPException:
@@ -565,10 +596,15 @@ async def update_user_role(
                 break
 
         if not join_to_update:
-            raise HTTPException(status_code=404, detail=f"User with user_id {user_id} not found in joins")
+            raise HTTPException(
+                status_code=404,
+                detail=f"User with user_id {user_id} not found in joins",
+            )
 
         if not join_to_update.permission_id:
-            raise HTTPException(status_code=400, detail="User does not have a permission_id")
+            raise HTTPException(
+                status_code=400, detail="User does not have a permission_id"
+            )
 
         logger.info(
             f"Updating user role | author_id={user_token_data.innohassle_id} "
@@ -577,11 +613,17 @@ async def update_user_role(
 
         update_user_permission(file.file_id, join_to_update.permission_id, request.role)
 
-        await google_file_repository.update_user_role(slug=slug, user_id=user_oid, role=request.role)
+        await google_file_repository.update_user_role(
+            slug=slug, user_id=user_oid, role=request.role
+        )
 
-        logger.info(f"User role updated successfully | user_id={user_id} slug={slug} role={request.role}")
+        logger.info(
+            f"User role updated successfully | user_id={user_id} slug={slug} role={request.role}"
+        )
 
-        return UpdateUserRoleResponse(message=f"Successfully updated role for user {user_id}")
+        return UpdateUserRoleResponse(
+            message=f"Successfully updated role for user {user_id}"
+        )
 
     except HTTPException:
         raise
@@ -589,7 +631,9 @@ async def update_user_role(
         logger.error(f"Google API error while updating user role: {e}")
         raise HTTPException(status_code=e.resp.status, detail=str(e))
     except Exception as e:  # noqa: BLE001
-        logger.error(f"Error updating user role | slug={slug} user_id={user_id} error={e}")
+        logger.error(
+            f"Error updating user role | slug={slug} user_id={user_id} error={e}"
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -611,12 +655,16 @@ async def update_default_role(
             f"Updating default role | author_id={user_token_data.innohassle_id} slug={slug} new_role={request.role}"
         )
 
-        updated_count = update_all_user_permissions(file.file_id, request.role, file.sso_joins)
+        updated_count = update_all_user_permissions(
+            file.file_id, request.role, file.sso_joins
+        )
 
         await google_file_repository.update_default_role(slug=slug, role=request.role)
 
         for join in file.sso_joins:
-            await google_file_repository.update_user_role(slug=slug, user_id=join.user_id, role=request.role)
+            await google_file_repository.update_user_role(
+                slug=slug, user_id=join.user_id, role=request.role
+            )
 
         logger.info(
             f"Default role updated successfully | slug={slug} role={request.role} updated_permissions={updated_count}"

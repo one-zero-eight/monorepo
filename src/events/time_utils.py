@@ -9,7 +9,9 @@ from typing import Annotated, Any
 
 from pydantic import BeforeValidator
 
-NAIVE_DATETIME_ERROR = "Datetime must be timezone-aware, e.g. '2026-07-30T19:00:00+03:00'"
+NAIVE_DATETIME_ERROR = (
+    "Datetime must be timezone-aware, e.g. '2026-07-30T19:00:00+03:00'"
+)
 
 
 def to_utc_aware(value: Any) -> dtm.datetime:
@@ -23,7 +25,9 @@ def to_utc_aware(value: Any) -> dtm.datetime:
         try:
             parsed = dtm.datetime.fromisoformat(raw)
         except ValueError:
-            raise ValueError("Input should be a valid datetime, e.g. '2026-07-30T19:00:00+03:00'")
+            raise ValueError(
+                "Input should be a valid datetime, e.g. '2026-07-30T19:00:00+03:00'"
+            )
         if parsed.tzinfo is None or parsed.utcoffset() is None:
             raise ValueError(NAIVE_DATETIME_ERROR)
         return parsed.astimezone(dtm.UTC)

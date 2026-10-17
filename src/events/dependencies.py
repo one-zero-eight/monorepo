@@ -50,7 +50,9 @@ OPTIONAL_ROLES = Annotated[UserRoles | None, Depends(get_optional_user_roles)]
 
 async def ensure_moderator(auth: INH_TOKEN_AUTH) -> UserTokenData:
     if not _email_in_list(auth.email, settings.moderator_emails):
-        raise HTTPException(status_code=403, detail="Only moderators can perform this action")
+        raise HTTPException(
+            status_code=403, detail="Only moderators can perform this action"
+        )
     return auth
 
 

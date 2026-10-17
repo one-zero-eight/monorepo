@@ -12,7 +12,14 @@ from src.events import repo as events_repo
 from src.events.config import settings
 from src.events.dependencies import ROLES
 from src.events.images_repo import images_repo
-from src.events.mongo import EventData, EventLink, Host, HostType, Locale, ModerationStatus
+from src.events.mongo import (
+    EventData,
+    EventLink,
+    Host,
+    HostType,
+    Locale,
+    ModerationStatus,
+)
 from src.events.schemas import (
     AddClubHostBody,
     AddExternalHostBody,
@@ -54,7 +61,8 @@ def _validate_locale_codes(codes: list[str]) -> None:
     for code in codes:
         if code not in allowed:
             raise HTTPException(
-                status_code=400, detail=f"Locale {code!r} is not in the allowed list: {settings.locales}"
+                status_code=400,
+                detail=f"Locale {code!r} is not in the allowed list: {settings.locales}",
             )
 
 
@@ -66,10 +74,15 @@ def _find_host(hosts: list[Host], host_id: str) -> Host | None:
 
 
 @router.post("/")
-async def create_draft(body: CreateDraft, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
+async def create_draft(
+    body: CreateDraft, auth: INH_TOKEN_AUTH, roles: ROLES
+) -> DraftOut:
     """Create a draft event."""
     if not roles.is_club_leader and not roles.is_event_manager:
-        raise HTTPException(status_code=403, detail="Only club leaders or event managers can create drafts")
+        raise HTTPException(
+            status_code=403,
+            detail="Only club leaders or event managers can create drafts",
+        )
     _validate_locale_codes(body.locales or [])
     data = EventData(
         starts_at=body.starts_at,
@@ -97,14 +110,18 @@ async def list_drafts(auth: INH_TOKEN_AUTH, roles: ROLES) -> list[DraftListItem]
 
 
 @router.get("/{id}")
-async def get_draft(id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
+async def get_draft(
+    id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLES
+) -> DraftOut:
     """Get a draft the user can view."""
     event = await get_viewable_draft(id, roles)
     return build_draft_out(event, roles)
 
 
 @router.patch("/{id}")
-async def patch_draft(id: PydanticObjectId, body: PatchDraft, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
+async def patch_draft(
+    id: PydanticObjectId, body: PatchDraft, auth: INH_TOKEN_AUTH, roles: ROLES
+) -> DraftOut:
     """Change draft data (starts_at / location / duration / enrollment)."""
     event = await get_editable_draft(id, roles)
     if "starts_at" in body.model_fields_set:
@@ -122,19 +139,27 @@ async def patch_draft(id: PydanticObjectId, body: PatchDraft, auth: INH_TOKEN_AU
 
 @router.put("/{id}/locales/{locale}")
 async def put_locale(
-    id: PydanticObjectId, locale: str, body: PutLocale, auth: INH_TOKEN_AUTH, roles: ROLES
+    id: PydanticObjectId,
+    locale: str,
+    body: PutLocale,
+    auth: INH_TOKEN_AUTH,
+    roles: ROLES,
 ) -> DraftOut:
     """Replace name and description in a locale; auto-creates the locale if missing."""
     event = await get_editable_draft(id, roles)
     _validate_locale_codes([locale])
-    event.draft.data.locales[locale] = Locale(name=body.name, description=body.description)
+    event.draft.data.locales[locale] = Locale(
+        name=body.name, description=body.description
+    )
     event.draft.revision = utcnow()
     await event.save()
     return build_draft_out(event, roles)
 
 
 @router.delete("/{id}/locales/{locale}")
-async def delete_locale(id: PydanticObjectId, locale: str, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
+async def delete_locale(
+    id: PydanticObjectId, locale: str, auth: INH_TOKEN_AUTH, roles: ROLES
+) -> DraftOut:
     """Delete a locale from the draft."""
     event = await get_editable_draft(id, roles)
     _validate_locale_codes([locale])
@@ -150,9 +175,13 @@ async def add_external_host(
 ) -> DraftOut:
     """Add an external host (event managers only)."""
     if not roles.is_event_manager:
-        raise HTTPException(status_code=403, detail="Only event managers can add external hosts")
+        raise HTTPException(
+            status_code=403, detail="Only event managers can add external hosts"
+        )
     event = await get_editable_draft(id, roles)
-    event.draft.data.hosts.append(Host(id=new_host_id(), type=HostType.EXTERNAL, name=body.name, url=body.url))
+    event.draft.data.hosts.append(
+        Host(id=new_host_id(), type=HostType.EXTERNAL, name=body.name, url=body.url)
+    )
     event.draft.revision = utcnow()
     await event.save()
     return build_draft_out(event, roles)
@@ -160,7 +189,11 @@ async def add_external_host(
 
 @router.patch("/{id}/hosts/external/{host_id}")
 async def patch_external_host(
-    id: PydanticObjectId, host_id: str, body: PatchExternalHostBody, auth: INH_TOKEN_AUTH, roles: ROLES
+    id: PydanticObjectId,
+    host_id: str,
+    body: PatchExternalHostBody,
+    auth: INH_TOKEN_AUTH,
+    roles: ROLES,
 ) -> DraftOut:
     """Patch an external host."""
     event = await get_editable_draft(id, roles)
@@ -179,26 +212,42 @@ async def patch_external_host(
 
 
 @router.post("/{id}/hosts/clubs")
-async def add_club_host(id: PydanticObjectId, body: AddClubHostBody, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
+async def add_club_host(
+    id: PydanticObjectId, body: AddClubHostBody, auth: INH_TOKEN_AUTH, roles: ROLES
+) -> DraftOut:
     """Add one of the caller's clubs as a host."""
     if body.club_id not in owned_club_ids(roles):
-        raise HTTPException(status_code=400, detail="You are not a leader of the specified club")
+        raise HTTPException(
+            status_code=400, detail="You are not a leader of the specified club"
+        )
     event = await get_editable_draft(id, roles)
-    if any(h.type == HostType.CLUB and h.club_id == body.club_id for h in event.draft.data.hosts):
+    if any(
+        h.type == HostType.CLUB and h.club_id == body.club_id
+        for h in event.draft.data.hosts
+    ):
         raise HTTPException(status_code=400, detail="Club is already a host")
     if body.club_id in event.invitations:
-        event.invitations = [club_id for club_id in event.invitations if club_id != body.club_id]
-    event.draft.data.hosts.append(Host(id=new_host_id(), type=HostType.CLUB, club_id=body.club_id))
+        event.invitations = [
+            club_id for club_id in event.invitations if club_id != body.club_id
+        ]
+    event.draft.data.hosts.append(
+        Host(id=new_host_id(), type=HostType.CLUB, club_id=body.club_id)
+    )
     event.draft.revision = utcnow()
     await event.save()
     return build_draft_out(event, roles)
 
 
 @router.post("/{id}/hosts/invitations")
-async def invite_club(id: PydanticObjectId, body: InviteClubBody, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
+async def invite_club(
+    id: PydanticObjectId, body: InviteClubBody, auth: INH_TOKEN_AUTH, roles: ROLES
+) -> DraftOut:
     """Invite another club as a host (pending until accept)."""
     event = await get_editable_draft(id, roles)
-    if any(h.type == HostType.CLUB and h.club_id == body.club_id for h in event.draft.data.hosts):
+    if any(
+        h.type == HostType.CLUB and h.club_id == body.club_id
+        for h in event.draft.data.hosts
+    ):
         raise HTTPException(status_code=400, detail="Club is already a host")
     if body.club_id in event.invitations:
         raise HTTPException(status_code=400, detail="Club is already invited")
@@ -209,7 +258,9 @@ async def invite_club(id: PydanticObjectId, body: InviteClubBody, auth: INH_TOKE
 
 
 @router.delete("/{id}/hosts/invitations/{club_id}")
-async def delete_invitation(id: PydanticObjectId, club_id: str, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
+async def delete_invitation(
+    id: PydanticObjectId, club_id: str, auth: INH_TOKEN_AUTH, roles: ROLES
+) -> DraftOut:
     """Remove a pending club invitation."""
     event = await get_editable_draft(id, roles)
     if club_id not in event.invitations:
@@ -221,11 +272,15 @@ async def delete_invitation(id: PydanticObjectId, club_id: str, auth: INH_TOKEN_
 
 
 @router.delete("/{id}/hosts/{host_id}")
-async def delete_host(id: PydanticObjectId, host_id: str, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
+async def delete_host(
+    id: PydanticObjectId, host_id: str, auth: INH_TOKEN_AUTH, roles: ROLES
+) -> DraftOut:
     """Remove a host from the draft."""
     event = await get_editable_draft(id, roles)
     before = len(event.draft.data.hosts)
-    event.draft.data.hosts = [host for host in event.draft.data.hosts if host.id != host_id]
+    event.draft.data.hosts = [
+        host for host in event.draft.data.hosts if host.id != host_id
+    ]
     if len(event.draft.data.hosts) == before:
         raise HTTPException(status_code=404, detail="Host not found")
     event.draft.revision = utcnow()
@@ -234,12 +289,18 @@ async def delete_host(id: PydanticObjectId, host_id: str, auth: INH_TOKEN_AUTH, 
 
 
 @router.put("/{id}/hosts/order")
-async def order_hosts(id: PydanticObjectId, body: OrderHostsBody, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
+async def order_hosts(
+    id: PydanticObjectId, body: OrderHostsBody, auth: INH_TOKEN_AUTH, roles: ROLES
+) -> DraftOut:
     """Reorder hosts; body must list every current host id exactly once."""
     event = await get_editable_draft(id, roles)
     current_ids = [host.id for host in event.draft.data.hosts]
-    if sorted(body.host_ids) != sorted(current_ids) or len(body.host_ids) != len(set(body.host_ids)):
-        raise HTTPException(status_code=400, detail="host_ids must be a permutation of current host ids")
+    if sorted(body.host_ids) != sorted(current_ids) or len(body.host_ids) != len(
+        set(body.host_ids)
+    ):
+        raise HTTPException(
+            status_code=400, detail="host_ids must be a permutation of current host ids"
+        )
     by_id = {host.id: host for host in event.draft.data.hosts}
     event.draft.data.hosts = [by_id[host_id] for host_id in body.host_ids]
     event.draft.revision = utcnow()
@@ -255,12 +316,16 @@ def _find_link(links: list[EventLink], link_id: str) -> EventLink | None:
 
 
 @router.post("/{id}/links")
-async def add_link(id: PydanticObjectId, body: AddLinkBody, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
+async def add_link(
+    id: PydanticObjectId, body: AddLinkBody, auth: INH_TOKEN_AUTH, roles: ROLES
+) -> DraftOut:
     """Add a related link to the draft."""
     if not (body.url or "").strip():
         raise HTTPException(status_code=400, detail="Link url is required")
     event = await get_editable_draft(id, roles)
-    event.draft.data.links.append(EventLink(id=new_link_id(), url=body.url.strip(), name=body.name))
+    event.draft.data.links.append(
+        EventLink(id=new_link_id(), url=body.url.strip(), name=body.name)
+    )
     event.draft.revision = utcnow()
     await event.save()
     return build_draft_out(event, roles)
@@ -268,7 +333,11 @@ async def add_link(id: PydanticObjectId, body: AddLinkBody, auth: INH_TOKEN_AUTH
 
 @router.patch("/{id}/links/{link_id}")
 async def patch_link(
-    id: PydanticObjectId, link_id: str, body: PatchLinkBody, auth: INH_TOKEN_AUTH, roles: ROLES
+    id: PydanticObjectId,
+    link_id: str,
+    body: PatchLinkBody,
+    auth: INH_TOKEN_AUTH,
+    roles: ROLES,
 ) -> DraftOut:
     """Patch a related link."""
     event = await get_editable_draft(id, roles)
@@ -287,11 +356,15 @@ async def patch_link(
 
 
 @router.delete("/{id}/links/{link_id}")
-async def delete_link(id: PydanticObjectId, link_id: str, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
+async def delete_link(
+    id: PydanticObjectId, link_id: str, auth: INH_TOKEN_AUTH, roles: ROLES
+) -> DraftOut:
     """Remove a related link from the draft."""
     event = await get_editable_draft(id, roles)
     before = len(event.draft.data.links)
-    event.draft.data.links = [link for link in event.draft.data.links if link.id != link_id]
+    event.draft.data.links = [
+        link for link in event.draft.data.links if link.id != link_id
+    ]
     if len(event.draft.data.links) == before:
         raise HTTPException(status_code=404, detail="Link not found")
     event.draft.revision = utcnow()
@@ -300,12 +373,18 @@ async def delete_link(id: PydanticObjectId, link_id: str, auth: INH_TOKEN_AUTH, 
 
 
 @router.put("/{id}/links/order")
-async def order_links(id: PydanticObjectId, body: OrderLinksBody, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
+async def order_links(
+    id: PydanticObjectId, body: OrderLinksBody, auth: INH_TOKEN_AUTH, roles: ROLES
+) -> DraftOut:
     """Reorder links; body must list every current link id exactly once."""
     event = await get_editable_draft(id, roles)
     current_ids = [link.id for link in event.draft.data.links]
-    if sorted(body.link_ids) != sorted(current_ids) or len(body.link_ids) != len(set(body.link_ids)):
-        raise HTTPException(status_code=400, detail="link_ids must be a permutation of current link ids")
+    if sorted(body.link_ids) != sorted(current_ids) or len(body.link_ids) != len(
+        set(body.link_ids)
+    ):
+        raise HTTPException(
+            status_code=400, detail="link_ids must be a permutation of current link ids"
+        )
     by_id = {link.id: link for link in event.draft.data.links}
     event.draft.data.links = [by_id[link_id] for link_id in body.link_ids]
     event.draft.revision = utcnow()
@@ -314,30 +393,42 @@ async def order_links(id: PydanticObjectId, body: OrderLinksBody, auth: INH_TOKE
 
 
 @router.post("/{id}/accept")
-async def accept_invitation(id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
+async def accept_invitation(
+    id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLES
+) -> DraftOut:
     """Accept a pending host invitation for one of the caller's clubs."""
     event = await get_viewable_draft(id, roles)
     owned = owned_club_ids(roles)
     invited = owned & set(event.invitations)
     if not invited:
-        raise HTTPException(status_code=400, detail="No pending invitation for your clubs")
+        raise HTTPException(
+            status_code=400, detail="No pending invitation for your clubs"
+        )
     club_id = next(iter(invited))
     event.invitations = [item for item in event.invitations if item != club_id]
-    if not any(h.type == HostType.CLUB and h.club_id == club_id for h in event.draft.data.hosts):
-        event.draft.data.hosts.append(Host(id=new_host_id(), type=HostType.CLUB, club_id=club_id))
+    if not any(
+        h.type == HostType.CLUB and h.club_id == club_id for h in event.draft.data.hosts
+    ):
+        event.draft.data.hosts.append(
+            Host(id=new_host_id(), type=HostType.CLUB, club_id=club_id)
+        )
     event.draft.revision = utcnow()
     await event.save()
     return build_draft_out(event, roles)
 
 
 @router.post("/{id}/decline")
-async def decline_invitation(id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
+async def decline_invitation(
+    id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLES
+) -> DraftOut:
     """Decline a pending host invitation for one of the caller's clubs."""
     event = await get_viewable_draft(id, roles)
     owned = owned_club_ids(roles)
     invited = owned & set(event.invitations)
     if not invited:
-        raise HTTPException(status_code=400, detail="No pending invitation for your clubs")
+        raise HTTPException(
+            status_code=400, detail="No pending invitation for your clubs"
+        )
     club_id = next(iter(invited))
     event.invitations = [item for item in event.invitations if item != club_id]
     event.draft.revision = utcnow()
@@ -359,7 +450,9 @@ async def upload_image(
         content_type = kind.mime if kind else None
 
     if content_type not in ("image/jpeg", "image/png", "image/webp"):
-        raise HTTPException(status_code=400, detail=f"Invalid content type ({content_type})")
+        raise HTTPException(
+            status_code=400, detail=f"Invalid content type ({content_type})"
+        )
 
     # Convert to webp and downscale (same pattern as clubs logos)
     image = Image.open(BytesIO(bytes_))
@@ -390,7 +483,9 @@ async def get_draft_image(id: PydanticObjectId) -> RedirectResponse:
 
 
 @router.post("/{id}/restore")
-async def restore_draft(id: PydanticObjectId, body: RestoreBody, auth: INH_TOKEN_AUTH, roles: ROLES) -> DraftOut:
+async def restore_draft(
+    id: PydanticObjectId, body: RestoreBody, auth: INH_TOKEN_AUTH, roles: ROLES
+) -> DraftOut:
     """Copy the revision and data from submission or public back into the draft."""
     event = await get_editable_draft(id, roles)
     source = event.submission if body.source == "submission" else event.public
@@ -403,13 +498,25 @@ async def restore_draft(id: PydanticObjectId, body: RestoreBody, auth: INH_TOKEN
 
 
 @router.delete("/{id}")
-async def delete_draft(id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLES) -> None:
+async def delete_draft(
+    id: PydanticObjectId, auth: INH_TOKEN_AUTH, roles: ROLES
+) -> None:
     """Delete the draft; allowed only when the event is not published and no submission is pending."""
     event = await get_editable_draft(id, roles)
     if event.creator_id != auth.innohassle_id:
-        raise HTTPException(status_code=403, detail="Only the creator can delete the draft")
+        raise HTTPException(
+            status_code=403, detail="Only the creator can delete the draft"
+        )
     if event.public is not None:
-        raise HTTPException(status_code=400, detail="Cannot delete a draft while the event is published")
-    if event.submission is not None and event.submission.moderation.status == ModerationStatus.PENDING:
-        raise HTTPException(status_code=400, detail="Cannot delete a draft while a submission is pending")
+        raise HTTPException(
+            status_code=400, detail="Cannot delete a draft while the event is published"
+        )
+    if (
+        event.submission is not None
+        and event.submission.moderation.status == ModerationStatus.PENDING
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete a draft while a submission is pending",
+        )
     await event.delete()

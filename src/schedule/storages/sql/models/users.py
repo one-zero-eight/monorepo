@@ -10,7 +10,10 @@ from src.schedule.storages.sql.models.__mixin__ import IdMixin
 from src.schedule.storages.sql.models.base import Base
 
 if TYPE_CHECKING:
-    from src.schedule.storages.sql.models.event_groups import UserXFavoriteEventGroup, UserXHiddenEventGroup
+    from src.schedule.storages.sql.models.event_groups import (
+        UserXFavoriteEventGroup,
+        UserXHiddenEventGroup,
+    )
     from src.schedule.storages.sql.models.linked import LinkedCalendar
 
 
@@ -47,11 +50,21 @@ class User(Base, IdMixin):
         passive_deletes=True,
     )
 
-    music_room_hidden: Mapped[bool] = mapped_column(nullable=False, default=False, server_default=false())
-    sports_hidden: Mapped[bool] = mapped_column(nullable=False, default=False, server_default=false())
-    moodle_hidden: Mapped[bool] = mapped_column(nullable=False, default=False, server_default=false())
-    workshops_hidden: Mapped[bool] = mapped_column(nullable=False, default=False, server_default=false())
-    room_bookings_hidden: Mapped[bool] = mapped_column(nullable=False, default=False, server_default=false())
+    music_room_hidden: Mapped[bool] = mapped_column(
+        nullable=False, default=False, server_default=false()
+    )
+    sports_hidden: Mapped[bool] = mapped_column(
+        nullable=False, default=False, server_default=false()
+    )
+    moodle_hidden: Mapped[bool] = mapped_column(
+        nullable=False, default=False, server_default=false()
+    )
+    workshops_hidden: Mapped[bool] = mapped_column(
+        nullable=False, default=False, server_default=false()
+    )
+    room_bookings_hidden: Mapped[bool] = mapped_column(
+        nullable=False, default=False, server_default=false()
+    )
     moodle_userid: Mapped[int | None] = mapped_column(nullable=True)
     moodle_calendar_authtoken: Mapped[str | None] = mapped_column(nullable=True)
 

@@ -125,7 +125,9 @@ def _group_sections(sections: Any) -> dict[str, set[str]]:
                 continue
             group_lists = [program.get("groups") or []]
             group_lists.extend(
-                track.get("groups") or [] for track in program.get("tracks") or [] if isinstance(track, dict)
+                track.get("groups") or []
+                for track in program.get("tracks") or []
+                if isinstance(track, dict)
             )
             for groups in group_lists:
                 for group_code in groups:
@@ -137,7 +139,13 @@ def _group_sections(sections: Any) -> dict[str, set[str]]:
 
 def upgrade() -> None:
     connection = op.get_bind()
-    events = connection.execute(sa.text("SELECT id, snapshot, patch FROM config_history_events")).mappings().all()
+    events = (
+        connection.execute(
+            sa.text("SELECT id, snapshot, patch FROM config_history_events")
+        )
+        .mappings()
+        .all()
+    )
     for event in events:
         snapshot = _rewrite_snapshot(event.get("snapshot"))
         patch = _rewrite_patch(event.get("patch"))
@@ -159,10 +167,16 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.add_column("student_groups", sa.Column("kind", sa.String(), nullable=True))
     connection = op.get_bind()
-    term = connection.execute(sa.text("SELECT sections FROM term LIMIT 1")).mappings().first()
+    term = (
+        connection.execute(sa.text("SELECT sections FROM term LIMIT 1"))
+        .mappings()
+        .first()
+    )
     memberships = _group_sections((term or {}).get("sections"))
     ambiguous: list[str] = []
-    for row in connection.execute(sa.text("SELECT code FROM student_groups")).mappings():
+    for row in connection.execute(
+        sa.text("SELECT code FROM student_groups")
+    ).mappings():
         sections = memberships.get(row["code"], set())
         if len(sections) != 1:
             ambiguous.append(f"{row['code']!r} -> {sorted(sections)}")
@@ -175,14 +189,21 @@ def downgrade() -> None:
         )
     if ambiguous:
         raise RuntimeError(
-            "Cannot restore student_groups.kind; each group must belong to exactly one section: " + "; ".join(ambiguous)
+            "Cannot restore student_groups.kind; each group must belong to exactly one section: "
+            + "; ".join(ambiguous)
         )
     op.alter_column("student_groups", "kind", existing_type=sa.String(), nullable=False)
 
-    events = connection.execute(sa.text("SELECT id, snapshot FROM config_history_events")).mappings().all()
+    events = (
+        connection.execute(sa.text("SELECT id, snapshot FROM config_history_events"))
+        .mappings()
+        .all()
+    )
     for event in events:
         snapshot = _restore_snapshot_group_kinds(event.get("snapshot"))
         connection.execute(
-            sa.text("UPDATE config_history_events SET snapshot = CAST(:snapshot AS json) WHERE id = :id"),
+            sa.text(
+                "UPDATE config_history_events SET snapshot = CAST(:snapshot AS json) WHERE id = :id"
+            ),
             {"snapshot": _json_param(snapshot), "id": event["id"]},
         )

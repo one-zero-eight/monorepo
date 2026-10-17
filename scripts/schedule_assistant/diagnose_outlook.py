@@ -26,7 +26,9 @@ def identity_token(value: str | None) -> str | None:
     return hashlib.sha256(value.encode()).hexdigest()[:20]
 
 
-def calendar_records(account: exchangelib.Account, start: dtm.datetime, end: dtm.datetime) -> list[Any]:
+def calendar_records(
+    account: exchangelib.Account, start: dtm.datetime, end: dtm.datetime
+) -> list[Any]:
     """Split full or capped CalendarViews until completeness is established.
 
     Exact-limit responses are treated as potentially truncated. A single unresolvable
@@ -56,9 +58,14 @@ def calendar_records(account: exchangelib.Account, start: dtm.datetime, end: dtm
     if records is not None and len(records) < READ_LIMIT:
         return records
     if end - start <= dtm.timedelta(minutes=1):
-        raise RuntimeError("CalendarView cannot establish complete coverage of this interval")
+        raise RuntimeError(
+            "CalendarView cannot establish complete coverage of this interval"
+        )
     middle = start + (end - start) / 2
-    combined = [*calendar_records(account, start, middle), *calendar_records(account, middle, end)]
+    combined = [
+        *calendar_records(account, start, middle),
+        *calendar_records(account, middle, end),
+    ]
     return list({(item.id, item.start): item for item in combined}.values())
 
 
@@ -76,24 +83,39 @@ def item_record(item: Any, *, response: str | None) -> dict[str, Any]:
     }
 
 
-def compare_items(organizer: list[Any], room: list[Any], room_email: str) -> list[dict[str, Any]]:
+def compare_items(
+    organizer: list[Any], room: list[Any], room_email: str
+) -> list[dict[str, Any]]:
     result = []
     for item in organizer:
         attendees = [*(item.required_attendees or []), *(item.resources or [])]
         attendee = next(
-            (a for a in attendees if (a.mailbox.email_address or "").casefold() == room_email.casefold()), None
+            (
+                a
+                for a in attendees
+                if (a.mailbox.email_address or "").casefold() == room_email.casefold()
+            ),
+            None,
         )
         if attendee is None:
             continue
-        matches = [other for other in room if item.uid and other.uid == item.uid and other.start == item.start]
+        matches = [
+            other
+            for other in room
+            if item.uid and other.uid == item.uid and other.start == item.start
+        ]
         record = item_record(item, response=attendee.response_type)
         record["room_presence"] = "present" if matches else "absent"
-        record["room_copies"] = [item_record(other, response=other.my_response_type) for other in matches]
+        record["room_copies"] = [
+            item_record(other, response=other.my_response_type) for other in matches
+        ]
         result.append(record)
     return result
 
 
-def build_report(start: dtm.date, end: dtm.date, room_ids: list[str], course: str | None) -> dict[str, Any]:
+def build_report(
+    start: dtm.date, end: dtm.date, room_ids: list[str], course: str | None
+) -> dict[str, Any]:
     from src.room_booking.config import settings
     from src.room_booking.modules.rooms.repository import room_repository
 
@@ -101,13 +123,18 @@ def build_report(start: dtm.date, end: dtm.date, room_ids: list[str], course: st
     exchange = settings.exchange
     config = exchangelib.Configuration(
         service_endpoint=exchange.ews_endpoint,
-        credentials=exchangelib.Credentials(exchange.bmp.username, exchange.bmp.password.get_secret_value()),
+        credentials=exchangelib.Credentials(
+            exchange.bmp.username, exchange.bmp.password.get_secret_value()
+        ),
         auth_type=exchangelib.BASIC,
         version=exchangelib.Version(exchangelib.version.EXCHANGE_2016),
         max_connections=1,
     )
     organizer = exchangelib.Account(
-        exchange.bmp.username, autodiscover=False, access_type=exchangelib.DELEGATE, config=config
+        exchange.bmp.username,
+        autodiscover=False,
+        access_type=exchangelib.DELEGATE,
+        config=config,
     )
     report: dict[str, Any] = {
         "checked_at": dtm.datetime.now(MSK).isoformat(),
@@ -131,22 +158,38 @@ def build_report(start: dtm.date, end: dtm.date, room_ids: list[str], course: st
             organizer_items = calendar_records(organizer, day_start, day_end)
         except Exception as error:  # noqa: BLE001 — report incomplete evidence without leaking server credentials
             report["complete"] = False
-            report["days"].append({"date": date.isoformat(), "source": "organizer", "error": type(error).__name__})
+            report["days"].append(
+                {
+                    "date": date.isoformat(),
+                    "source": "organizer",
+                    "error": type(error).__name__,
+                }
+            )
             date += dtm.timedelta(days=1)
             continue
         for room_id, description in rooms.items():
             try:
                 room_account = exchangelib.Account(
-                    description.resource_email, autodiscover=False, access_type=exchangelib.DELEGATE, config=config
+                    description.resource_email,
+                    autodiscover=False,
+                    access_type=exchangelib.DELEGATE,
+                    config=config,
                 )
                 room_items = calendar_records(room_account, day_start, day_end)
-                comparisons = compare_items(organizer_items, room_items, description.resource_email)
+                comparisons = compare_items(
+                    organizer_items, room_items, description.resource_email
+                )
                 if course:
-                    comparisons = [row for row in comparisons if course.casefold() in (row["subject"] or "").casefold()]
+                    comparisons = [
+                        row
+                        for row in comparisons
+                        if course.casefold() in (row["subject"] or "").casefold()
+                    ]
                 displayed_room = [
                     item_record(item, response=item.my_response_type)
                     for item in room_items
-                    if not course or course.casefold() in (item.subject or "").casefold()
+                    if not course
+                    or course.casefold() in (item.subject or "").casefold()
                 ]
                 report["days"].append(
                     {
@@ -155,7 +198,9 @@ def build_report(start: dtm.date, end: dtm.date, room_ids: list[str], course: st
                         "complete": True,
                         "organizer_events": comparisons,
                         "room_events": displayed_room,
-                        "presence_counts": dict(Counter(row["room_presence"] for row in comparisons)),
+                        "presence_counts": dict(
+                            Counter(row["room_presence"] for row in comparisons)
+                        ),
                     }
                 )
             except Exception as error:  # noqa: BLE001 — report incomplete evidence without leaking server credentials
@@ -176,9 +221,17 @@ def build_report(start: dtm.date, end: dtm.date, room_ids: list[str], course: st
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--start", type=dtm.date.fromisoformat, required=True)
-    parser.add_argument("--end", type=dtm.date.fromisoformat, required=True, help="Inclusive end, at most 62 days")
+    parser.add_argument(
+        "--end",
+        type=dtm.date.fromisoformat,
+        required=True,
+        help="Inclusive end, at most 62 days",
+    )
     parser.add_argument("--room", action="append", required=True)
-    parser.add_argument("--course", help="Optional subject substring; identity matching still uses UID and start")
+    parser.add_argument(
+        "--course",
+        help="Optional subject substring; identity matching still uses UID and start",
+    )
     args = parser.parse_args()
     if not 0 <= (args.end - args.start).days < 62:
         parser.error("Choose an inclusive interval of 1–62 days")

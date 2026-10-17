@@ -7,9 +7,14 @@ from httpx import AsyncClient
 from pydantic import SecretStr
 
 from src.schedule_assistant.modules.schedule import service
-from src.schedule_assistant.modules.schedule.course_colors import course_color, ics_color_name
+from src.schedule_assistant.modules.schedule.course_colors import (
+    course_color,
+    ics_color_name,
+)
 from src.schedule_assistant.modules.schedule.ics import teacher_alias
-from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
+from src.schedule_assistant.modules.schedule_config.repository import (
+    ScheduleConfigRepository,
+)
 from src.schedule_assistant.modules.schedule_config.schemas import (
     ComponentSessionSeries,
     CourseConfig,
@@ -26,7 +31,9 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
 from src.schedule_assistant.weekday import Weekday
 
 
-def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@test.com") -> None:
+def _seed_config(
+    repo: ScheduleConfigRepository, *, student_email: str = "test@test.com"
+) -> None:
     repo.set_term(
         TermConfig(
             name="Summer 2026",
@@ -175,7 +182,8 @@ async def test_my_groups_returns_membership(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "src.schedule_assistant.dependencies.settings.moderator_emails", ["moderator@innopolis.university"]
+        "src.schedule_assistant.dependencies.settings.moderator_emails",
+        ["moderator@innopolis.university"],
     )
     _seed_config(schedule_data_repo)
 
@@ -198,7 +206,8 @@ async def test_group_schedule_accessible_for_any_authenticated_user(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "src.schedule_assistant.dependencies.settings.moderator_emails", ["moderator@innopolis.university"]
+        "src.schedule_assistant.dependencies.settings.moderator_emails",
+        ["moderator@innopolis.university"],
     )
     _seed_config(schedule_data_repo)
 
@@ -207,8 +216,12 @@ async def test_group_schedule_accessible_for_any_authenticated_user(
     payload = response.json()
     assert len(payload["courses"]) == 1
     assert payload["courses"][0]["name"] == "Agentic AI"
-    assert payload["courses"][0]["components"][0]["sessions"][0]["audience"] == ["SUM26-AAI"]
-    assert len(payload["courses"][0]["components"][0]["sessions"][0]["dates_pattern"]) == 2
+    assert payload["courses"][0]["components"][0]["sessions"][0]["audience"] == [
+        "SUM26-AAI"
+    ]
+    assert (
+        len(payload["courses"][0]["components"][0]["sessions"][0]["dates_pattern"]) == 2
+    )
 
 
 @pytest.mark.asyncio
@@ -217,7 +230,10 @@ async def test_group_schedule_not_found(
     schedule_data_repo: ScheduleConfigRepository,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    monkeypatch.setattr(
+        "src.schedule_assistant.dependencies.settings.moderator_emails",
+        ["test@test.com"],
+    )
     _seed_config(schedule_data_repo)
 
     response = await authenticated_client.get("/schedule/groups/UNKNOWN-GROUP")
@@ -231,18 +247,27 @@ async def test_instructor_schedule_returns_only_their_meetings(
 ) -> None:
     _seed_config(schedule_data_repo)
 
-    response = await authenticated_client.get("/schedule/instructors/teacher@innopolis.ru")
+    response = await authenticated_client.get(
+        "/schedule/instructors/teacher@innopolis.ru"
+    )
     assert response.status_code == 200
     payload = response.json()
     assert len(payload["courses"]) == 2
     assert payload["courses"][0]["name"] == "Agentic AI"
-    assert len(payload["courses"][0]["components"][0]["sessions"][0]["dates_pattern"]) == 1
     assert (
-        payload["courses"][0]["components"][0]["sessions"][0]["dates_pattern"][0]["instructor"]
+        len(payload["courses"][0]["components"][0]["sessions"][0]["dates_pattern"]) == 1
+    )
+    assert (
+        payload["courses"][0]["components"][0]["sessions"][0]["dates_pattern"][0][
+            "instructor"
+        ]
         == "teacher@innopolis.ru"
     )
     assert payload["courses"][1]["name"] == "Algorithms"
-    assert len(payload["courses"][1]["components"][0]["sessions"][0]["weekly_pattern"]) == 1
+    assert (
+        len(payload["courses"][1]["components"][0]["sessions"][0]["weekly_pattern"])
+        == 1
+    )
 
 
 @pytest.mark.asyncio
@@ -263,7 +288,9 @@ async def test_instructor_schedule_not_found(
 ) -> None:
     _seed_config(schedule_data_repo)
 
-    response = await authenticated_client.get("/schedule/instructors/unknown@innopolis.ru")
+    response = await authenticated_client.get(
+        "/schedule/instructors/unknown@innopolis.ru"
+    )
     assert response.status_code == 404
 
 
@@ -273,7 +300,9 @@ def _service_headers() -> dict[str, str]:
 
 def test_teacher_alias_only_strips_email() -> None:
     assert teacher_alias(" Teacher@Innopolis.RU ") == "teacher-Teacher@Innopolis.RU"
-    assert teacher_alias("Teacher@Innopolis.RU") != teacher_alias("teacher@innopolis.ru")
+    assert teacher_alias("Teacher@Innopolis.RU") != teacher_alias(
+        "teacher@innopolis.ru"
+    )
 
 
 @pytest.mark.asyncio
@@ -295,7 +324,9 @@ async def test_virtual_event_groups_publish_english_section_groups(
         "src.schedule_assistant.dependencies.settings.api_key",
         SecretStr("test-schedule-assistant-api-key"),
     )
-    response = await fastapi_test_client.get("/integration/event-groups", headers=_service_headers())
+    response = await fastapi_test_client.get(
+        "/integration/event-groups", headers=_service_headers()
+    )
     assert response.status_code == 200
     assert response.json() == {
         "event_groups": [
@@ -342,10 +373,14 @@ async def test_missing_english_section_publishes_no_student_groups(
 ) -> None:
     _seed_config(schedule_data_repo)
     sections = schedule_data_repo.get_sections()
-    sections.sections = [section for section in sections.sections if section.code != "english"]
+    sections.sections = [
+        section for section in sections.sections if section.code != "english"
+    ]
     schedule_data_repo.set_sections(sections)
 
-    response = await fastapi_test_client.get("/integration/event-groups", headers=_service_headers())
+    response = await fastapi_test_client.get(
+        "/integration/event-groups", headers=_service_headers()
+    )
     assert response.status_code == 200
     assert [group["alias"] for group in response.json()["event_groups"]] == [
         teacher_alias("other@innopolis.university"),
@@ -403,7 +438,9 @@ async def test_instructor_ics_contains_only_matching_meetings(
         get_instructors_calls += 1
         return original_get_instructors()
 
-    monkeypatch.setattr(schedule_data_repo, "get_instructors", count_get_instructors_calls)
+    monkeypatch.setattr(
+        schedule_data_repo, "get_instructors", count_get_instructors_calls
+    )
 
     response = await fastapi_test_client.get(
         f"/integration/event-groups/{alias}/schedule.ics",
@@ -418,7 +455,9 @@ async def test_instructor_ics_contains_only_matching_meetings(
         "Agentic AI (class)",
         "Algorithms (lec)",
     }
-    assert {str(event["description"]).splitlines()[0] for event in events} == {"Instructor: Teacher One"}
+    assert {str(event["description"]).splitlines()[0] for event in events} == {
+        "Instructor: Teacher One"
+    }
     recurring_events = [event for event in events if event.get("RRULE")]
     assert len(recurring_events) == 1
     assert cast(Any, recurring_events[0]["RRULE"])["FREQ"] == ["WEEKLY"]
@@ -450,7 +489,8 @@ async def test_batch_aliases_ics_deduplicates_student_and_instructor_match(
     matching_agentic_events = [
         event
         for event in events
-        if str(event["summary"]) == "Agentic AI (class)" and "Instructor: Teacher One" in str(event["description"])
+        if str(event["summary"]) == "Agentic AI (class)"
+        and "Instructor: Teacher One" in str(event["description"])
     ]
     assert len(matching_agentic_events) == 1
 
@@ -482,7 +522,10 @@ async def test_group_ics_is_valid_and_deterministic(
         "Instructor: Teacher Two",
     }
     assert all(event.decoded("dtstart").tzname() == "MSK" for event in events)
-    assert all(event.decoded("dtstart").utcoffset() == dtm.timedelta(hours=3) for event in events)
+    assert all(
+        event.decoded("dtstart").utcoffset() == dtm.timedelta(hours=3)
+        for event in events
+    )
     assert len({str(event["uid"]) for event in events}) == 2
     assert {str(event["color"]) for event in events} == {"green"}
 
@@ -497,14 +540,19 @@ def test_group_ics_handles_database_times_with_mixed_timezone_awareness(
     algorithms_session = algorithms_component.sessions[0]
     assert algorithms_session.weekly_pattern is not None
     slot = algorithms_session.weekly_pattern[0]
-    slot.start_time = slot.start_time.replace(tzinfo=dtm.timezone(dtm.timedelta(hours=3)))
+    slot.start_time = slot.start_time.replace(
+        tzinfo=dtm.timezone(dtm.timedelta(hours=3))
+    )
     schedule_data_repo.set_courses(courses)
 
     calendar = icalendar.Calendar.from_ical(service.get_group_ics("english-b25-cse-01"))
     events = [cast(icalendar.Event, component) for component in calendar.walk("VEVENT")]
 
     assert events
-    assert all(event.decoded("dtstart").utcoffset() == dtm.timedelta(hours=3) for event in events)
+    assert all(
+        event.decoded("dtstart").utcoffset() == dtm.timedelta(hours=3)
+        for event in events
+    )
 
 
 def test_weekly_ics_uses_rrule_exdate_and_recurrence_override(

@@ -11,21 +11,33 @@ from .core_courses_adapter import _as_audience_list
 from .schemas import ElectiveLessonOccurrence, GroupedElective, Lesson
 
 
-async def get_grouped_elective_lessons(parser_config: ElectivesParserConfig) -> list[GroupedElective]:
+async def get_grouped_elective_lessons(
+    parser_config: ElectivesParserConfig,
+) -> list[GroupedElective]:
     flat_lessons = await _collect_elective_lessons(parser_config)
     grouped = group_elective_lessons(flat_lessons)
     logger.info(f"Grouped elective lessons: {len(flat_lessons)} -> {len(grouped)}")
     return grouped
 
 
-async def _collect_elective_lessons(parser_config: ElectivesParserConfig) -> list[Lesson]:
+async def _collect_elective_lessons(
+    parser_config: ElectivesParserConfig,
+) -> list[Lesson]:
     parser = ElectiveParser()
-    xlsx_file = await fetch_xlsx_spreadsheet(spreadsheet_id=parser_config.spreadsheet_id)
-    original_target_sheet_names = [target.sheet_name for target in parser_config.targets]
+    xlsx_file = await fetch_xlsx_spreadsheet(
+        spreadsheet_id=parser_config.spreadsheet_id
+    )
+    original_target_sheet_names = [
+        target.sheet_name for target in parser_config.targets
+    ]
     sheet_gids = await get_sheet_gids(parser_config.spreadsheet_id)
     pipeline_result = list(
         parser.pipeline(
-            xlsx_file, original_target_sheet_names, parser_config.electives, sheet_gids, parser_config.spreadsheet_id
+            xlsx_file,
+            original_target_sheet_names,
+            parser_config.electives,
+            sheet_gids,
+            parser_config.spreadsheet_id,
         )
     )
 
@@ -147,7 +159,9 @@ def group_elective_lessons(lessons: list[Lesson]) -> list[GroupedElective]:
     return grouped
 
 
-def _audience_to_course_and_group(audience: list[str]) -> tuple[str | None, str | tuple[str, ...] | None]:
+def _audience_to_course_and_group(
+    audience: list[str],
+) -> tuple[str | None, str | tuple[str, ...] | None]:
     if not audience:
         return None, None
     if len(audience) == 1:

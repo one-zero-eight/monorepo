@@ -1,14 +1,19 @@
 import datetime as dtm
 from collections.abc import Iterable
 
-from src.schedule_assistant.modules.schedule_config.helpers import expand_groups, resolve_selector_map
+from src.schedule_assistant.modules.schedule_config.helpers import (
+    expand_groups,
+    resolve_selector_map,
+)
 from src.schedule_assistant.modules.schedule_config.schemas import (
     InstructorConfig,
     InstructorSlotPreferenceLevel,
     ScheduleConfig,
     TermConfig,
 )
-from src.schedule_assistant.modules.schedule_config.validation import teaching_days_from_term_config
+from src.schedule_assistant.modules.schedule_config.validation import (
+    teaching_days_from_term_config,
+)
 from src.schedule_assistant.weekday import Weekday
 
 DISCOURAGED_BASE_WEIGHT = 1
@@ -34,7 +39,9 @@ def _slot_index_by_start(term: TermConfig) -> dict[dtm.time, int]:
     return {slot.start_time: index for index, slot in enumerate(term.time_slots)}
 
 
-def _cell_key(weekday: Weekday | str, start_time: dtm.time, term: TermConfig) -> tuple[int, int] | None:
+def _cell_key(
+    weekday: Weekday | str, start_time: dtm.time, term: TermConfig
+) -> tuple[int, int] | None:
     day_name = weekday.value if isinstance(weekday, Weekday) else str(weekday).upper()
     day_indices = _day_index_by_name(term)
     slot_indices = _slot_index_by_start(term)
@@ -61,7 +68,9 @@ def resolve_preference_grids(
             if entry.level == InstructorSlotPreferenceLevel.BANNED:
                 banned.setdefault(instructor.id, set()).add(cell)
             elif entry.level == InstructorSlotPreferenceLevel.DISCOURAGED:
-                weight = DISCOURAGED_BASE_WEIGHT * instructor_role_multiplier(instructor.position)
+                weight = DISCOURAGED_BASE_WEIGHT * instructor_role_multiplier(
+                    instructor.position
+                )
                 discouraged.setdefault(instructor.id, {})[cell] = weight
     return banned, discouraged
 
@@ -97,10 +106,14 @@ def validate_instructor_slot_preferences(
         if day_name not in day_indices:
             errors.append(f"{prefix}.weekday {day_name!r} is not in term.days")
         if entry.start_time not in slot_indices:
-            errors.append(f"{prefix}.start_time {entry.start_time!r} does not match any term.time_slots start_time")
+            errors.append(
+                f"{prefix}.start_time {entry.start_time!r} does not match any term.time_slots start_time"
+            )
         key = (day_name, entry.start_time)
         if key in seen:
-            errors.append(f"{prefix}: duplicate weekday+start_time ({day_name!r}, {entry.start_time!r})")
+            errors.append(
+                f"{prefix}: duplicate weekday+start_time ({day_name!r}, {entry.start_time!r})"
+            )
         seen.add(key)
         if entry.level == InstructorSlotPreferenceLevel.NEUTRAL:
             errors.append(f"{prefix}.level should be omitted instead of neutral")

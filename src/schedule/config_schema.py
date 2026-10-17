@@ -54,7 +54,9 @@ class ScheduleSettings(ServiceSettingsBase):
 
     app_root_path: str = "/schedule/v0"
     db_url: SecretStr = Field(
-        default_factory=lambda: default_postgres_url(driver="asyncpg", database="schedule"),
+        default_factory=lambda: default_postgres_url(
+            driver="asyncpg", database="schedule"
+        ),
         examples=[
             "postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/schedule",
             "postgresql+asyncpg://postgres:postgres@postgres:5432/schedule",

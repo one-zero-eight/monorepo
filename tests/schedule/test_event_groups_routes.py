@@ -14,9 +14,15 @@ def test_create_requires_parser(schedule_client: TestClient):
     assert response.json()["detail"] == AUTH_REQUIRED_DETAIL
 
 
-def test_create_and_read_by_alias(schedule_client: TestClient, parser_headers: dict[str, str]):
-    created = create_event_group(schedule_client, parser_headers, alias="read-by-alias-group")
-    response = schedule_client.get("/event-groups/by-alias", params={"alias": "read-by-alias-group"})
+def test_create_and_read_by_alias(
+    schedule_client: TestClient, parser_headers: dict[str, str]
+):
+    created = create_event_group(
+        schedule_client, parser_headers, alias="read-by-alias-group"
+    )
+    response = schedule_client.get(
+        "/event-groups/by-alias", params={"alias": "read-by-alias-group"}
+    )
     assert response.status_code == 200
     body = response.json()
     assert body["alias"] == created["alias"]
@@ -39,7 +45,9 @@ def test_create_rejects_reserved_virtual_alias(
 
 
 def test_read_by_alias_not_found(schedule_client: TestClient):
-    response = schedule_client.get("/event-groups/by-alias", params={"alias": "missing-group"})
+    response = schedule_client.get(
+        "/event-groups/by-alias", params={"alias": "missing-group"}
+    )
     assert response.status_code == 404
     assert response.json()["detail"] == "Event group not found"
 
@@ -52,8 +60,12 @@ def test_list_event_groups(schedule_client: TestClient, parser_headers: dict[str
     assert created["alias"] in aliases
 
 
-def test_update_event_group(schedule_client: TestClient, parser_headers: dict[str, str]):
-    created = create_event_group(schedule_client, parser_headers, alias="update-me-group")
+def test_update_event_group(
+    schedule_client: TestClient, parser_headers: dict[str, str]
+):
+    created = create_event_group(
+        schedule_client, parser_headers, alias="update-me-group"
+    )
     response = schedule_client.put(
         f"/event-groups/{created['id']}",
         json={"name": "Updated Name"},
@@ -63,8 +75,12 @@ def test_update_event_group(schedule_client: TestClient, parser_headers: dict[st
     assert response.json()["name"] == "Updated Name"
 
 
-def test_update_event_group_rejects_alias_rename(schedule_client: TestClient, parser_headers: dict[str, str]):
-    created = create_event_group(schedule_client, parser_headers, alias="stable-alias-group")
+def test_update_event_group_rejects_alias_rename(
+    schedule_client: TestClient, parser_headers: dict[str, str]
+):
+    created = create_event_group(
+        schedule_client, parser_headers, alias="stable-alias-group"
+    )
     response = schedule_client.put(
         f"/event-groups/{created['id']}",
         json={"alias": "renamed-group"},
@@ -73,11 +89,15 @@ def test_update_event_group_rejects_alias_rename(schedule_client: TestClient, pa
     assert response.status_code == 409
     assert response.json()["detail"] == "Event group alias cannot be changed"
 
-    read_response = schedule_client.get("/event-groups/by-alias", params={"alias": "stable-alias-group"})
+    read_response = schedule_client.get(
+        "/event-groups/by-alias", params={"alias": "stable-alias-group"}
+    )
     assert read_response.status_code == 200
 
 
-def test_batch_create_or_read(schedule_client: TestClient, parser_headers: dict[str, str]):
+def test_batch_create_or_read(
+    schedule_client: TestClient, parser_headers: dict[str, str]
+):
     groups = [
         {**SAMPLE_EVENT_GROUP, "alias": "batch-group-a"},
         {**SAMPLE_EVENT_GROUP, "alias": "batch-group-b"},
@@ -101,7 +121,9 @@ def test_batch_create_or_read(schedule_client: TestClient, parser_headers: dict[
     assert second_ids == first_ids
 
 
-def test_list_and_read_include_assistant_groups(schedule_client: TestClient, monkeypatch: pytest.MonkeyPatch):
+def test_list_and_read_include_assistant_groups(
+    schedule_client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
     from src.schedule.config import settings
     from src.schedule.config_schema import ScheduleAssistantIntegrationSettings
 
@@ -109,14 +131,22 @@ def test_list_and_read_include_assistant_groups(schedule_client: TestClient, mon
     monkeypatch.setattr(
         settings,
         "schedule_assistant",
-        ScheduleAssistantIntegrationSettings(api_url=api_url, api_key=SecretStr("service-key")),
+        ScheduleAssistantIntegrationSettings(
+            api_url=api_url, api_key=SecretStr("service-key")
+        ),
     )
-    payload = [{"alias": "virtual-group", "name": "Virtual Group", "description": "Assistant"}]
+    payload = [
+        {"alias": "virtual-group", "name": "Virtual Group", "description": "Assistant"}
+    ]
 
     with respx.mock(assert_all_called=True) as mock:
-        route = mock.get(f"{api_url}/integration/event-groups").mock(return_value=httpx.Response(200, json=payload))
+        route = mock.get(f"{api_url}/integration/event-groups").mock(
+            return_value=httpx.Response(200, json=payload)
+        )
         list_response = schedule_client.get("/event-groups/")
-        read_response = schedule_client.get("/event-groups/by-alias", params={"alias": "virtual-group"})
+        read_response = schedule_client.get(
+            "/event-groups/by-alias", params={"alias": "virtual-group"}
+        )
 
     assert route.call_count == 2
     assert list_response.status_code == 200

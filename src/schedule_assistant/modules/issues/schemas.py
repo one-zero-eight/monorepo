@@ -5,7 +5,10 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, model_validator
 
 from src.schedule_assistant.modules.bookings.client import BookingDTO
-from src.schedule_assistant.modules.schedule_config.schemas import WeeklyAlternation, WeeklyPatternSlotEdit
+from src.schedule_assistant.modules.schedule_config.schemas import (
+    WeeklyAlternation,
+    WeeklyPatternSlotEdit,
+)
 from src.schedule_assistant.schema_base import ScheduleAssistantSchema
 from src.schedule_assistant.weekday import Weekday
 

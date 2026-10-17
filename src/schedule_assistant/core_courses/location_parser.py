@@ -136,7 +136,9 @@ class Item(BaseModel):
     "List of dates to exclude from recurrence (creates EXDATE)"
     NEST: list[Item] | None = None
     "List of nested Item objects for complex location patterns"
-    model_config = ConfigDict(arbitrary_types_allowed=True, use_attribute_docstrings=True)
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True, use_attribute_docstrings=True
+    )
 
     def describe_calendar_behavior(self, include_summary: bool = True) -> str:
         """
@@ -178,7 +180,9 @@ class Item(BaseModel):
             recurrence_type = "RDATE (specific dates only)"
         elif self.on_weeks:
             weeks_str = ", ".join(str(w) for w in sorted(self.on_weeks))
-            parts.append(f"Occurs on weeks: {weeks_str} (will be converted to specific dates during ICS generation)")
+            parts.append(
+                f"Occurs on weeks: {weeks_str} (will be converted to specific dates during ICS generation)"
+            )
             recurrence_type = "RDATE (converted from weeks)"
         else:
             recurrence_type = "RRULE (weekly recurrence)"
@@ -186,8 +190,12 @@ class Item(BaseModel):
 
         # Exclusions
         if self.except_:
-            except_dates = ", ".join(d.strftime("%d/%m/%Y") for d in sorted(self.except_))
-            parts.append(f"Excluded dates: {except_dates} (EXDATE - these dates will be excluded from recurrence)")
+            except_dates = ", ".join(
+                d.strftime("%d/%m/%Y") for d in sorted(self.except_)
+            )
+            parts.append(
+                f"Excluded dates: {except_dates} (EXDATE - these dates will be excluded from recurrence)"
+            )
 
         # Nested items
         if self.NEST:
@@ -195,22 +203,32 @@ class Item(BaseModel):
             nested_without_dates = [n for n in self.NEST if not n.on]
 
             if nested_with_dates:
-                parts.append(f"\nNested overrides ({len(nested_with_dates)} with specific dates):")
+                parts.append(
+                    f"\nNested overrides ({len(nested_with_dates)} with specific dates):"
+                )
                 for i, nested in enumerate(nested_with_dates, 1):
-                    nested_desc = nested.describe_calendar_behavior(include_summary=False)
+                    nested_desc = nested.describe_calendar_behavior(
+                        include_summary=False
+                    )
                     # Indent nested descriptions
                     nested_lines = nested_desc.split("\n")
                     indented = "\n".join(f"    {line}" for line in nested_lines)
                     parts.append(f"  Override {i}:\n{indented}")
 
             if nested_without_dates:
-                parts.append(f"\nNested items without dates ({len(nested_without_dates)}):")
+                parts.append(
+                    f"\nNested items without dates ({len(nested_without_dates)}):"
+                )
                 for i, nested in enumerate(nested_without_dates, 1):
-                    nested_desc = nested.describe_calendar_behavior(include_summary=False)
+                    nested_desc = nested.describe_calendar_behavior(
+                        include_summary=False
+                    )
                     nested_lines = nested_desc.split("\n")
                     indented = "\n".join(f"    {line}" for line in nested_lines)
                     parts.append(f"  Item {i}:\n{indented}")
-                parts.append("  Note: These nested items are not yet fully implemented in ICS generation")
+                parts.append(
+                    "  Note: These nested items are not yet fully implemented in ICS generation"
+                )
 
             # Explain how nested items work
             if self.on or self.on_weeks:
@@ -233,9 +251,13 @@ class Item(BaseModel):
             if self.NEST:
                 nested_count = len([n for n in self.NEST if n.on]) if self.NEST else 0
                 if nested_count > 0:
-                    summary_parts.append(f"Total events: 1 base + {nested_count} nested = {1 + nested_count} events")
+                    summary_parts.append(
+                        f"Total events: 1 base + {nested_count} nested = {1 + nested_count} events"
+                    )
                 else:
-                    summary_parts.append(f"Total events: 1 base event (+ {len(self.NEST)} nested items without dates)")
+                    summary_parts.append(
+                        f"Total events: 1 base event (+ {len(self.NEST)} nested items without dates)"
+                    )
             else:
                 summary_parts.append("Total events: 1 event")
 
@@ -276,7 +298,9 @@ def parse_location_string(x: str, from_parent: bool = False) -> Item | None:
         if m := re.fullmatch(r"^(ONLINE|ОНЛАЙН)\s{0,8}\(TBA\)$", y):
             return m.group(0)
 
-        if m := re.fullmatch(r"^((\d|ONLINE|ОНЛАЙН)+(?:\s{0,8}/\s{0,8}(\d|ONLINE|ОНЛАЙН)+)+)$", y):
+        if m := re.fullmatch(
+            r"^((\d|ONLINE|ОНЛАЙН)+(?:\s{0,8}/\s{0,8}(\d|ONLINE|ОНЛАЙН)+)+)$", y
+        ):
             locations = m.group(1)
             locations = locations.split("/")
             locations = [location.strip() for location in locations]
@@ -317,7 +341,9 @@ def parse_location_string(x: str, from_parent: bool = False) -> Item | None:
 
             return Item(ends_on=ydate(day=int(day), month=int(month)))
 
-    _starts_at_pattern = r"\(?(STARTS|STARTS AT|НАЧАЛО В|НАЧАЛО)\s*(\d{1,2}[:.]\d{1,2})\)?"
+    _starts_at_pattern = (
+        r"\(?(STARTS|STARTS AT|НАЧАЛО В|НАЧАЛО)\s*(\d{1,2}[:.]\d{1,2})\)?"
+    )
 
     def starts_at(y: str):
         if m := re.fullmatch(_starts_at_pattern, y):
@@ -326,14 +352,19 @@ def parse_location_string(x: str, from_parent: bool = False) -> Item | None:
 
             return Item(starts_at=time(hour=int(hour), minute=int(minute)))
 
-    _week_pattern = r"\(?WEEK\s*(?P<weeks>\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*)(?:\s+ONLY)?\)?"
+    _week_pattern = (
+        r"\(?WEEK\s*(?P<weeks>\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*)(?:\s+ONLY)?\)?"
+    )
 
     def week(y: str):
         if m := re.fullmatch(_week_pattern, y):
             weeks = m.group("weeks")
             weeks = weeks.split(",")
             weeks = [w.split("-") for w in weeks]
-            weeks = [list(range(int(w[0]), int(w[1]) + 1)) if len(w) == 2 else [int(w[0])] for w in weeks]
+            weeks = [
+                list(range(int(w[0]), int(w[1]) + 1)) if len(w) == 2 else [int(w[0])]
+                for w in weeks
+            ]
             weeks = [item for sublist in weeks for item in sublist]
             return Item(on_weeks=weeks)
 
@@ -418,7 +449,9 @@ def parse_location_string(x: str, from_parent: bool = False) -> Item | None:
 
     # replace all named groups with non-capturing groups
     _mod_noname = re.sub(r"\(\?P<[^>]+>", "(?:", _mod)
-    _two_modifiers_pattern = rf"\(?(?P<first>{_mod_noname})\)?\s*\(?(?P<second>{_mod_noname})\)?"
+    _two_modifiers_pattern = (
+        rf"\(?(?P<first>{_mod_noname})\)?\s*\(?(?P<second>{_mod_noname})\)?"
+    )
 
     def two_modifiers(y: str):
         if m := re.fullmatch(_two_modifiers_pattern, y):
@@ -426,20 +459,22 @@ def parse_location_string(x: str, from_parent: bool = False) -> Item | None:
             as_z1 = any_modifier(z1)
             as_z2 = any_modifier(z2)
             if as_z1 and as_z2:
-                combined = as_z1.model_dump(exclude_none=True) | as_z2.model_dump(exclude_none=True)
+                combined = as_z1.model_dump(exclude_none=True) | as_z2.model_dump(
+                    exclude_none=True
+                )
                 return Item.model_validate(combined)
 
     if as_two_modifiers := two_modifiers(x):
         return as_two_modifiers
 
-    if m := re.fullmatch(location_plus_pattern("two_modifiers", _two_modifiers_pattern), x):
+    if m := re.fullmatch(
+        location_plus_pattern("two_modifiers", _two_modifiers_pattern), x
+    ):
         location = get_location(m.group("location"))
         as_two_modifiers = two_modifiers(m.group("two_modifiers"))
         as_two_modifiers.location = location
         return as_two_modifiers
-    _three_modifiers_pattern = (
-        rf"\(?(?P<first>{_mod_noname})\)?\s*\(?(?P<second>{_mod_noname})\)?\s*\(?(?P<third>{_mod_noname})\)?"
-    )
+    _three_modifiers_pattern = rf"\(?(?P<first>{_mod_noname})\)?\s*\(?(?P<second>{_mod_noname})\)?\s*\(?(?P<third>{_mod_noname})\)?"
 
     def three_modifiers(y: str):
         if m := re.fullmatch(_three_modifiers_pattern, y):
@@ -458,7 +493,9 @@ def parse_location_string(x: str, from_parent: bool = False) -> Item | None:
     if as_three_modifiers := three_modifiers(x):
         return as_three_modifiers
 
-    if m := re.fullmatch(location_plus_pattern("three_modifiers", _three_modifiers_pattern), x):
+    if m := re.fullmatch(
+        location_plus_pattern("three_modifiers", _three_modifiers_pattern), x
+    ):
         location = get_location(m.group("location"))
         as_three_modifiers = three_modifiers(m.group("three_modifiers"))
         as_three_modifiers.location = location

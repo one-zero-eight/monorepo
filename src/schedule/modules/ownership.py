@@ -16,7 +16,11 @@ class OwnershipEnum(StrEnum):
 
 
 async def setup_ownership_method(
-    ownership_model, session: AsyncSession, object_id: int, user_id: int, role_alias: OwnershipEnum
+    ownership_model,
+    session: AsyncSession,
+    object_id: int,
+    user_id: int,
+    role_alias: OwnershipEnum,
 ) -> None:
     if role_alias is OwnershipEnum.delete:
         q = (

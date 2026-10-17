@@ -3,24 +3,48 @@ from fastapi import HTTPException, status
 from src.logging_ import logger
 from src.schedule_assistant.modules.bookings.client import RoomDTO, booking_client
 from src.schedule_assistant.modules.issues.checker import IssueChecker
-from src.schedule_assistant.modules.issues.instructor_ids import instructor_id_issues_from_schedule_config
-from src.schedule_assistant.modules.issues.instructor_preferences import instructor_preference_issues_from_meetings
+from src.schedule_assistant.modules.issues.instructor_ids import (
+    instructor_id_issues_from_schedule_config,
+)
+from src.schedule_assistant.modules.issues.instructor_preferences import (
+    instructor_preference_issues_from_meetings,
+)
 from src.schedule_assistant.modules.issues.meetings import (
     build_group_to_studying_teachers,
     missing_assignment_issues_from_meetings,
     unplaced_issues_from_schedule_config,
 )
-from src.schedule_assistant.modules.issues.per_week import per_week_issues_from_schedule_config
-from src.schedule_assistant.modules.issues.schemas import CheckParameters, CheckResults, Issue, IssueTypeEnum
-from src.schedule_assistant.modules.issues.student_emails import student_email_issues_from_sections
+from src.schedule_assistant.modules.issues.per_week import (
+    per_week_issues_from_schedule_config,
+)
+from src.schedule_assistant.modules.issues.schemas import (
+    CheckParameters,
+    CheckResults,
+    Issue,
+    IssueTypeEnum,
+)
+from src.schedule_assistant.modules.issues.student_emails import (
+    student_email_issues_from_sections,
+)
 from src.schedule_assistant.modules.schedule.domain import meetings_from_schedule_config
-from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
-from src.schedule_assistant.modules.schedule_config.schemas import RoomConfig, TermConfig
-from src.schedule_assistant.modules.schedule_config.semester_windows import union_semester_window
+from src.schedule_assistant.modules.schedule_config.repository import (
+    schedule_config_repository,
+)
+from src.schedule_assistant.modules.schedule_config.schemas import (
+    RoomConfig,
+    TermConfig,
+)
+from src.schedule_assistant.modules.schedule_config.semester_windows import (
+    union_semester_window,
+)
 
 
-def _merge_room_capacities(config_rooms: RoomConfig, booking_rooms: list[RoomDTO]) -> dict[str, int | None]:
-    capacities: dict[str, int | None] = {room.id: room.capacity for room in config_rooms.rooms}
+def _merge_room_capacities(
+    config_rooms: RoomConfig, booking_rooms: list[RoomDTO]
+) -> dict[str, int | None]:
+    capacities: dict[str, int | None] = {
+        room.id: room.capacity for room in config_rooms.rooms
+    }
     for room in booking_rooms:
         capacities.setdefault(room.id, room.capacity)
     return capacities
@@ -56,13 +80,17 @@ async def check_schedule_issues(params: CheckParameters) -> CheckResults:
         sections=sections,
         term=term,
         room_to_capacity=room_capacities,
-        group_to_studying_teachers=build_group_to_studying_teachers(sections, instructors),
+        group_to_studying_teachers=build_group_to_studying_teachers(
+            sections, instructors
+        ),
         valid_room_ids=valid_room_ids,
     )
 
     issues: list[Issue] = []
     if params.check_instructor_id:
-        instructor_id_issues = instructor_id_issues_from_schedule_config(instructors, courses)
+        instructor_id_issues = instructor_id_issues_from_schedule_config(
+            instructors, courses
+        )
         logger.info(f"Found {len(instructor_id_issues)} instructor_id issues")
         issues.extend(instructor_id_issues)
     if params.check_student_email:
@@ -70,8 +98,12 @@ async def check_schedule_issues(params: CheckParameters) -> CheckResults:
         logger.info(f"Found {len(student_email_issues)} student_email issues")
         issues.extend(student_email_issues)
     if params.check_instructor_preference:
-        instructor_preference_issues = instructor_preference_issues_from_meetings(meetings, instructors, term)
-        logger.info(f"Found {len(instructor_preference_issues)} instructor_preference issues")
+        instructor_preference_issues = instructor_preference_issues_from_meetings(
+            meetings, instructors, term
+        )
+        logger.info(
+            f"Found {len(instructor_preference_issues)} instructor_preference issues"
+        )
         issues.extend(instructor_preference_issues)
     if params.check_unplaced:
         unplaced_issues = unplaced_issues_from_schedule_config(courses, sections)
@@ -80,10 +112,16 @@ async def check_schedule_issues(params: CheckParameters) -> CheckResults:
     if params.check_missing_room or params.check_missing_instructor:
         assignment_issues = missing_assignment_issues_from_meetings(meetings)
         if not params.check_missing_room:
-            assignment_issues = [issue for issue in assignment_issues if issue.issue_type != IssueTypeEnum.MISSING_ROOM]
+            assignment_issues = [
+                issue
+                for issue in assignment_issues
+                if issue.issue_type != IssueTypeEnum.MISSING_ROOM
+            ]
         if not params.check_missing_instructor:
             assignment_issues = [
-                issue for issue in assignment_issues if issue.issue_type != IssueTypeEnum.MISSING_INSTRUCTOR
+                issue
+                for issue in assignment_issues
+                if issue.issue_type != IssueTypeEnum.MISSING_INSTRUCTOR
             ]
         logger.info(f"Found {len(assignment_issues)} missing assignment issues")
         issues.extend(assignment_issues)

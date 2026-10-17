@@ -15,6 +15,8 @@ router = APIRouter(prefix="/issues", tags=["Issues"])
         401: {"description": "Invalid token OR no credentials provided"},
     },
 )
-async def check_schedule_issues(_user_and_token: VerifyTokenDep, params: CheckParameters) -> CheckResults:
+async def check_schedule_issues(
+    _user_and_token: VerifyTokenDep, params: CheckParameters
+) -> CheckResults:
     logger.info(f"Checking schedule issues with options: {params}")
     return await service.check_schedule_issues(params)

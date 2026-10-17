@@ -29,7 +29,9 @@ class Event(BeanieDocumentMixin, Document):
     "All possible slots for the event"
     participants: list[Participant] = Field(default_factory=list)
     "List of participants and their availability"
-    created_at: dtm.datetime = Field(default_factory=lambda: dtm.datetime.now(dtm.UTC).replace(microsecond=0))
+    created_at: dtm.datetime = Field(
+        default_factory=lambda: dtm.datetime.now(dtm.UTC).replace(microsecond=0)
+    )
     "Time when the event was created"
 
     timezone: str = "UTC"

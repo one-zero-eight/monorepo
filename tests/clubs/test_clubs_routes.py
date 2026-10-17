@@ -14,11 +14,16 @@ def _white_png() -> bytes:
 
 
 def _admin_headers(
-    clubs_client: TestClient, superadmin_headers: dict[str, str], user_headers: dict[str, str]
+    clubs_client: TestClient,
+    superadmin_headers: dict[str, str],
+    user_headers: dict[str, str],
 ) -> dict[str, str]:
     response = clubs_client.post(
         "/users/change_role",
-        params={"role": "admin", "user_to_change_email": "test-user-1@innopolis.university"},
+        params={
+            "role": "admin",
+            "user_to_change_email": "test-user-1@innopolis.university",
+        },
         headers=superadmin_headers,
     )
     assert response.status_code == 200
@@ -41,13 +46,19 @@ def test_create_club_requires_auth(clubs_client: TestClient):
     assert response.json()["detail"] == "Credentials not provided"
 
 
-def test_create_club_forbidden_for_non_admin(clubs_client: TestClient, user_headers: dict[str, str]):
-    response = clubs_client.post("/clubs/", json=_club_payload("clubs-access-test"), headers=user_headers)
+def test_create_club_forbidden_for_non_admin(
+    clubs_client: TestClient, user_headers: dict[str, str]
+):
+    response = clubs_client.post(
+        "/clubs/", json=_club_payload("clubs-access-test"), headers=user_headers
+    )
     assert response.status_code == 403
     assert response.json()["detail"] == "You are not an admin in clubs service"
 
 
-def test_create_club(clubs_client: TestClient, make_user_token, superadmin_headers: dict[str, str]):
+def test_create_club(
+    clubs_client: TestClient, make_user_token, superadmin_headers: dict[str, str]
+):
     promote_response = clubs_client.post(
         "/users/change_role",
         params={
@@ -58,7 +69,9 @@ def test_create_club(clubs_client: TestClient, make_user_token, superadmin_heade
     )
     assert promote_response.status_code == 200
 
-    admin_token = make_user_token(uid="test-user-1", email="test-user-1@innopolis.university")
+    admin_token = make_user_token(
+        uid="test-user-1", email="test-user-1@innopolis.university"
+    )
     create_response = clubs_client.post(
         "/clubs/",
         json={
@@ -88,7 +101,9 @@ def test_clubs_list_and_read_endpoints(
     assert list_before.status_code == 200
     count_before = len(list_before.json())
 
-    create_response = clubs_client.post("/clubs/", json=_club_payload("club-read"), headers=admin_headers)
+    create_response = clubs_client.post(
+        "/clubs/", json=_club_payload("club-read"), headers=admin_headers
+    )
     assert create_response.status_code == 200
     created = create_response.json()
 
@@ -127,7 +142,10 @@ def test_club_leader_edit_creates_pending_update(
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
     create_response = clubs_client.post(
         "/clubs/",
-        json={**_club_payload(f"leader-edit-{route_kind}"), "leader_innohassle_id": "test-user-1"},
+        json={
+            **_club_payload(f"leader-edit-{route_kind}"),
+            "leader_innohassle_id": "test-user-1",
+        },
         headers=admin_headers,
     )
     assert create_response.status_code == 200
@@ -135,15 +153,25 @@ def test_club_leader_edit_creates_pending_update(
 
     demote_response = clubs_client.post(
         "/users/change_role",
-        params={"role": "default", "user_to_change_email": "test-user-1@innopolis.university"},
+        params={
+            "role": "default",
+            "user_to_change_email": "test-user-1@innopolis.university",
+        },
         headers=superadmin_headers,
     )
     assert demote_response.status_code == 200
 
-    route = f"/clubs/by-id/{created['id']}" if route_kind == "id" else f"/clubs/by-slug/{created['slug']}"
+    route = (
+        f"/clubs/by-id/{created['id']}"
+        if route_kind == "id"
+        else f"/clubs/by-slug/{created['slug']}"
+    )
     update_response = clubs_client.post(
         route,
-        json={**_club_payload(created["slug"], title="Leader proposed title"), "is_active": False},
+        json={
+            **_club_payload(created["slug"], title="Leader proposed title"),
+            "is_active": False,
+        },
         headers=user_headers,
     )
 
@@ -163,7 +191,9 @@ def test_clubs_edit_and_delete_flow(
 ):
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
 
-    create_response = clubs_client.post("/clubs/", json=_club_payload("club-edit"), headers=admin_headers)
+    create_response = clubs_client.post(
+        "/clubs/", json=_club_payload("club-edit"), headers=admin_headers
+    )
     assert create_response.status_code == 200
     created = create_response.json()
 
@@ -183,7 +213,9 @@ def test_clubs_edit_and_delete_flow(
     assert edit_by_slug.status_code == 200
     assert edit_by_slug.json()["title"] == "Updated Again"
 
-    delete_response = clubs_client.delete(f"/clubs/by-id/{created['id']}", headers=admin_headers)
+    delete_response = clubs_client.delete(
+        f"/clubs/by-id/{created['id']}", headers=admin_headers
+    )
     assert delete_response.status_code == 200
 
     get_after_delete = clubs_client.get(f"/clubs/by-id/{created['id']}")
@@ -197,7 +229,10 @@ def test_edit_club_rejects_unknown_new_leader(
 ):
     promote_response = clubs_client.post(
         "/users/change_role",
-        params={"role": "admin", "user_to_change_email": "test-user-1@innopolis.university"},
+        params={
+            "role": "admin",
+            "user_to_change_email": "test-user-1@innopolis.university",
+        },
         headers=superadmin_headers,
     )
     assert promote_response.status_code == 200
@@ -229,7 +264,10 @@ def test_edit_club_by_slug_rejects_unknown_new_leader(
 ):
     promote_response = clubs_client.post(
         "/users/change_role",
-        params={"role": "admin", "user_to_change_email": "test-user-1@innopolis.university"},
+        params={
+            "role": "admin",
+            "user_to_change_email": "test-user-1@innopolis.university",
+        },
         headers=superadmin_headers,
     )
     assert promote_response.status_code == 200
@@ -289,13 +327,18 @@ def test_edit_club_sets_new_leader_by_id(
     user_headers: dict[str, str],
 ):
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
-    create_response = clubs_client.post("/clubs/", json=_club_payload("leader-by-id"), headers=admin_headers)
+    create_response = clubs_client.post(
+        "/clubs/", json=_club_payload("leader-by-id"), headers=admin_headers
+    )
     assert create_response.status_code == 200
     created = create_response.json()
 
     update_response = clubs_client.post(
         f"/clubs/by-id/{created['id']}",
-        json={**_club_payload("leader-by-id"), "new_leader_email": "test-user-1@innopolis.university"},
+        json={
+            **_club_payload("leader-by-id"),
+            "new_leader_email": "test-user-1@innopolis.university",
+        },
         headers=admin_headers,
     )
     assert update_response.status_code == 200
@@ -308,12 +351,17 @@ def test_edit_club_sets_new_leader_by_slug(
     user_headers: dict[str, str],
 ):
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
-    create_response = clubs_client.post("/clubs/", json=_club_payload("leader-by-slug"), headers=admin_headers)
+    create_response = clubs_client.post(
+        "/clubs/", json=_club_payload("leader-by-slug"), headers=admin_headers
+    )
     assert create_response.status_code == 200
 
     update_response = clubs_client.post(
         "/clubs/by-slug/leader-by-slug",
-        json={**_club_payload("leader-by-slug"), "new_leader_email": "test-user-1@innopolis.university"},
+        json={
+            **_club_payload("leader-by-slug"),
+            "new_leader_email": "test-user-1@innopolis.university",
+        },
         headers=admin_headers,
     )
     assert update_response.status_code == 200
@@ -326,13 +374,17 @@ def test_delete_club_returns_404_for_missing_club(
     user_headers: dict[str, str],
 ):
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
-    response = clubs_client.delete("/clubs/by-id/64b7de000000000000000001", headers=admin_headers)
+    response = clubs_client.delete(
+        "/clubs/by-id/64b7de000000000000000001", headers=admin_headers
+    )
     assert response.status_code == 404
     assert response.json()["detail"] == "Club not found"
 
 
 def test_get_logo_returns_404_for_missing_club(clubs_client: TestClient):
-    response = clubs_client.get("/clubs/by-id/64b7de000000000000000001/logo", follow_redirects=False)
+    response = clubs_client.get(
+        "/clubs/by-id/64b7de000000000000000001/logo", follow_redirects=False
+    )
     assert response.status_code == 404
     assert response.json()["detail"] == "Club not found"
 
@@ -343,11 +395,15 @@ def test_get_logo_returns_404_when_logo_is_missing(
     user_headers: dict[str, str],
 ):
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
-    create_response = clubs_client.post("/clubs/", json=_club_payload("no-logo"), headers=admin_headers)
+    create_response = clubs_client.post(
+        "/clubs/", json=_club_payload("no-logo"), headers=admin_headers
+    )
     assert create_response.status_code == 200
     created = create_response.json()
 
-    response = clubs_client.get(f"/clubs/by-id/{created['id']}/logo", follow_redirects=False)
+    response = clubs_client.get(
+        f"/clubs/by-id/{created['id']}/logo", follow_redirects=False
+    )
     assert response.status_code == 404
     assert response.json()["detail"] == "No logo available"
 
@@ -358,7 +414,9 @@ def test_get_logo_redirects_when_logo_exists(
     user_headers: dict[str, str],
 ):
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
-    create_response = clubs_client.post("/clubs/", json=_club_payload("has-logo"), headers=admin_headers)
+    create_response = clubs_client.post(
+        "/clubs/", json=_club_payload("has-logo"), headers=admin_headers
+    )
     assert create_response.status_code == 200
     created = create_response.json()
 
@@ -369,7 +427,9 @@ def test_get_logo_redirects_when_logo_exists(
     )
     assert edit_response.status_code == 200
 
-    response = clubs_client.get(f"/clubs/by-id/{created['id']}/logo", follow_redirects=False)
+    response = clubs_client.get(
+        f"/clubs/by-id/{created['id']}/logo", follow_redirects=False
+    )
     assert response.status_code == 307
     loc = response.headers["location"]
     parsed = urlparse(loc)
@@ -398,7 +458,9 @@ def test_set_logo_returns_400_for_invalid_content_type(
     user_headers: dict[str, str],
 ):
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
-    create_response = clubs_client.post("/clubs/", json=_club_payload("invalid-logo"), headers=admin_headers)
+    create_response = clubs_client.post(
+        "/clubs/", json=_club_payload("invalid-logo"), headers=admin_headers
+    )
     assert create_response.status_code == 200
     created = create_response.json()
 
@@ -419,7 +481,9 @@ def test_set_logo_success(
     from src.clubs.modules.clubs.logos_repo import logos_repo
 
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
-    create_response = clubs_client.post("/clubs/", json=_club_payload("good-logo"), headers=admin_headers)
+    create_response = clubs_client.post(
+        "/clubs/", json=_club_payload("good-logo"), headers=admin_headers
+    )
     assert create_response.status_code == 200
     created = create_response.json()
 
@@ -458,7 +522,9 @@ def test_set_logo_content_type_detected_from_buffer(
     from src.clubs.modules.clubs.logos_repo import logos_repo
 
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
-    create_response = clubs_client.post("/clubs/", json=_club_payload("detected-mime-logo"), headers=admin_headers)
+    create_response = clubs_client.post(
+        "/clubs/", json=_club_payload("detected-mime-logo"), headers=admin_headers
+    )
     assert create_response.status_code == 200
     club_id = create_response.json()["id"]
 
@@ -493,9 +559,13 @@ def test_edit_club_by_slug_returns_400_when_revision_conflicts(
     user_headers: dict[str, str],
 ):
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
-    create_first = clubs_client.post("/clubs/", json=_club_payload("update-conflict-a"), headers=admin_headers)
+    create_first = clubs_client.post(
+        "/clubs/", json=_club_payload("update-conflict-a"), headers=admin_headers
+    )
     assert create_first.status_code == 200
-    create_second = clubs_client.post("/clubs/", json=_club_payload("update-conflict-b"), headers=admin_headers)
+    create_second = clubs_client.post(
+        "/clubs/", json=_club_payload("update-conflict-b"), headers=admin_headers
+    )
     assert create_second.status_code == 200
 
     response = clubs_client.post(
@@ -516,7 +586,10 @@ def _pending_logo_club(
     """Create a club led by the leader and upload a leader logo awaiting approval."""
     create_response = clubs_client.post(
         "/clubs/",
-        json={**_club_payload(slug), "leader_innohassle_id": "507f1f77bcf86cd799439012"},
+        json={
+            **_club_payload(slug),
+            "leader_innohassle_id": "507f1f77bcf86cd799439012",
+        },
         headers=admin_headers,
     )
     assert create_response.status_code == 200
@@ -537,7 +610,9 @@ def _pending_logo_club(
 
 
 def test_get_pending_logo_requires_auth(clubs_client: TestClient):
-    response = clubs_client.get("/clubs/by-id/64b7de000000000000000001/pending-logo", follow_redirects=False)
+    response = clubs_client.get(
+        "/clubs/by-id/64b7de000000000000000001/pending-logo", follow_redirects=False
+    )
     assert response.status_code == 401
 
 
@@ -563,17 +638,26 @@ def test_get_pending_logo_forbidden_for_outsider(
     auth_header_factory,
 ):
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
-    leader_headers = auth_header_factory("507f1f77bcf86cd799439012", "guard-other@innopolis.university")
-    club_id, _ = _pending_logo_club(clubs_client, admin_headers, leader_headers, "pending-logo-forbidden")
+    leader_headers = auth_header_factory(
+        "507f1f77bcf86cd799439012", "guard-other@innopolis.university"
+    )
+    club_id, _ = _pending_logo_club(
+        clubs_client, admin_headers, leader_headers, "pending-logo-forbidden"
+    )
 
-    outsider_headers = auth_header_factory("507f1f77bcf86cd799439011", "guard-author@innopolis.university")
+    outsider_headers = auth_header_factory(
+        "507f1f77bcf86cd799439011", "guard-author@innopolis.university"
+    )
     response = clubs_client.get(
         f"/clubs/by-id/{club_id}/pending-logo",
         headers=outsider_headers,
         follow_redirects=False,
     )
     assert response.status_code == 403
-    assert response.json()["detail"] == "Only admin or leader can view the pending club logo"
+    assert (
+        response.json()["detail"]
+        == "Only admin or leader can view the pending club logo"
+    )
 
 
 def test_get_pending_logo_returns_404_without_pending_update(
@@ -582,7 +666,9 @@ def test_get_pending_logo_returns_404_without_pending_update(
     user_headers: dict[str, str],
 ):
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
-    create_response = clubs_client.post("/clubs/", json=_club_payload("no-pending-logo"), headers=admin_headers)
+    create_response = clubs_client.post(
+        "/clubs/", json=_club_payload("no-pending-logo"), headers=admin_headers
+    )
     assert create_response.status_code == 200
     club_id = create_response.json()["id"]
 
@@ -602,7 +688,9 @@ def test_get_pending_logo_returns_404_when_pending_logo_matches_current(
     auth_header_factory,
 ):
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
-    leader_headers = auth_header_factory("507f1f77bcf86cd799439012", "guard-other@innopolis.university")
+    leader_headers = auth_header_factory(
+        "507f1f77bcf86cd799439012", "guard-other@innopolis.university"
+    )
     create_response = clubs_client.post(
         "/clubs/",
         json={
@@ -617,7 +705,10 @@ def test_get_pending_logo_returns_404_when_pending_logo_matches_current(
 
     edit_response = clubs_client.post(
         f"/clubs/by-id/{club_id}",
-        json={**_club_payload("pending-logo-same", title="Leader title"), "logo_file_id": "logo-same"},
+        json={
+            **_club_payload("pending-logo-same", title="Leader title"),
+            "logo_file_id": "logo-same",
+        },
         headers=leader_headers,
     )
     assert edit_response.status_code == 200
@@ -641,7 +732,9 @@ def test_get_pending_logo_redirects_when_pending_logo_exists(
     requester: str,
 ):
     admin_headers = _admin_headers(clubs_client, superadmin_headers, user_headers)
-    leader_headers = auth_header_factory("507f1f77bcf86cd799439012", "guard-other@innopolis.university")
+    leader_headers = auth_header_factory(
+        "507f1f77bcf86cd799439012", "guard-other@innopolis.university"
+    )
     club_id, pending_logo_file_id = _pending_logo_club(
         clubs_client, admin_headers, leader_headers, f"pending-logo-{requester}"
     )

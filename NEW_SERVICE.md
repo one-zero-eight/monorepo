@@ -152,7 +152,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount(settings.static_mount_path, StaticFiles(directory=settings.static_directory), name="static")
+app.mount(
+    settings.static_mount_path,
+    StaticFiles(directory=settings.static_directory),
+    name="static",
+)
 
 import src.my_service.routes  # noqa: E402
 import src.my_service.modules.items.routes  # noqa: E402
@@ -437,7 +441,9 @@ def my_service_client(request: pytest.FixtureRequest):
     request.getfixturevalue("mock_inh_accounts_http")
     from src.my_service.config import settings
 
-    asyncio.run(migrate_mongo("my_service", settings.mongo.uri.get_secret_value(), "my_service"))
+    asyncio.run(
+        migrate_mongo("my_service", settings.mongo.uri.get_secret_value(), "my_service")
+    )
 
     from src.my_service import app as my_service_module
 
@@ -519,7 +525,9 @@ def load_root_settings() -> Settings:
         # ...
         my_service_service=MyServiceSettings(
             environment=Environment.TESTING,
-            mongo=MongoDatabaseSettings(uri=SecretStr(mongo_uri.replace("<service_name>", "my_service"))),
+            mongo=MongoDatabaseSettings(
+                uri=SecretStr(mongo_uri.replace("<service_name>", "my_service"))
+            ),
             minio=MinioSettings(
                 endpoint=SUITE_MINIO_ENDPOINT,
                 access_key=SUITE_MINIO_ACCESS_KEY,

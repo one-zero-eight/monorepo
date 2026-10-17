@@ -3,7 +3,14 @@ import datetime as dtm
 import exchangelib.folders.base
 
 
-def get_free_busy_info(self, accounts, start, end, merged_free_busy_interval=30, requested_view="DetailedMerged"):
+def get_free_busy_info(
+    self,
+    accounts,
+    start,
+    end,
+    merged_free_busy_interval=30,
+    requested_view="DetailedMerged",
+):
     """Return free/busy information for a list of accounts.
 
     :param accounts: A list of (account, attendee_type, exclude_conflicts) tuples, where account is either an
@@ -30,15 +37,21 @@ def get_free_busy_info(self, accounts, start, end, merged_free_busy_interval=30,
 
     timezone = TimeZone(
         bias=-180,
-        standard_time=StandardTime(bias=0, time=dtm.time(0, 0), occurrence=1, iso_month=1, weekday="Monday"),
-        daylight_time=DaylightTime(bias=0, time=dtm.time(0, 0), occurrence=5, iso_month=12, weekday="Sunday"),
+        standard_time=StandardTime(
+            bias=0, time=dtm.time(0, 0), occurrence=1, iso_month=1, weekday="Monday"
+        ),
+        daylight_time=DaylightTime(
+            bias=0, time=dtm.time(0, 0), occurrence=5, iso_month=12, weekday="Sunday"
+        ),
     )
 
     return GetUserAvailability(self).call(
         tzinfo=start.tzinfo,
         mailbox_data=[
             MailboxData(
-                email=account.primary_smtp_address if isinstance(account, Account) else account,
+                email=account.primary_smtp_address
+                if isinstance(account, Account)
+                else account,
                 attendee_type=attendee_type,
                 exclude_conflicts=exclude_conflicts,
             )
@@ -63,7 +76,10 @@ def normalize_fields(self, fields):
     additional_fields = original_normalize_fields(self, fields)
     result = []
     for field in additional_fields:
-        if field.field.field_uri == "calendar:StartTimeZone" or field.field.field_uri == "calendar:EndTimeZone":
+        if (
+            field.field.field_uri == "calendar:StartTimeZone"
+            or field.field.field_uri == "calendar:EndTimeZone"
+        ):
             continue
         result.append(field)
     return result

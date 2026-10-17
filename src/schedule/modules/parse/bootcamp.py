@@ -69,7 +69,9 @@ class BootcampEvent(BaseModel):
         if self.buddy:
             string_to_hash = str(("bootcamp", "buddy", self.dtstart))
         else:
-            string_to_hash = str(("bootcamp", self.summary, self.location, self.dtstart))
+            string_to_hash = str(
+                ("bootcamp", self.summary, self.location, self.dtstart)
+            )
         hash_ = crc32(string_to_hash.encode("utf-8"))
         return f"{abs(hash_):x}#bootcamp@innohassle.ru"
 
@@ -80,7 +82,10 @@ class BootcampEvent(BaseModel):
         summary = self.summary.lower()
 
         # Meals
-        if any(meal in summary for meal in ["breakfast", "завтрак", "lunch", "обед", "dinner", "ужин"]):
+        if any(
+            meal in summary
+            for meal in ["breakfast", "завтрак", "lunch", "обед", "dinner", "ужин"]
+        ):
             return "gray"
 
         # Academic subjects
@@ -144,7 +149,9 @@ class BootcampParser:
 
     def __init__(self, config: BootcampParserConfig):
         self.config = config
-        self.bootcamp_date = dtm.datetime.strptime(self.config.when, "%Y.%m").replace(tzinfo=dtm.UTC)
+        self.bootcamp_date = dtm.datetime.strptime(self.config.when, "%Y.%m").replace(
+            tzinfo=dtm.UTC
+        )
 
     def parse_general_events(self, ru: bool = False) -> list[BootcampEvent]:
         events = []
@@ -158,18 +165,24 @@ class BootcampParser:
             for when in entry.when:
                 dtstart, dtend, rrule = self.when_str_to_datetimes(when)
                 event = BootcampEvent(
-                    summary=(entry.subject_ru or entry.subject or "") if ru else (entry.subject or ""),
+                    summary=(entry.subject_ru or entry.subject or "")
+                    if ru
+                    else (entry.subject or ""),
                     dtstart=dtstart,
                     dtend=dtend,
                     rrule=rrule,
                     description=entry.instructor,
-                    location=(entry.location_ru or entry.location) if ru else entry.location,
+                    location=(entry.location_ru or entry.location)
+                    if ru
+                    else entry.location,
                     buddy=entry.buddy,
                 )
                 events.append(event)
         return events
 
-    def when_str_to_datetimes(self, when: str) -> tuple[dtm.datetime, dtm.datetime, icalendar.vRecur | None]:
+    def when_str_to_datetimes(
+        self, when: str
+    ) -> tuple[dtm.datetime, dtm.datetime, icalendar.vRecur | None]:
         day, period = when.split(" ")
         (start, end) = period.split("-")
         (start_hour, start_minute) = map(int, start.split(":"))
@@ -177,7 +190,9 @@ class BootcampParser:
         if "-" in day:
             start_day, end_day = map(int, day.split("-"))
             start_day = self.bootcamp_date.replace(day=start_day)
-            end_day = self.bootcamp_date.replace(day=end_day, hour=end_hour, minute=end_minute)
+            end_day = self.bootcamp_date.replace(
+                day=end_day, hour=end_hour, minute=end_minute
+            )
             rrule = icalendar.vRecur({"FREQ": "DAILY", "INTERVAL": 1, "UNTIL": end_day})
         else:
             start_day = self.bootcamp_date.replace(day=int(day))
@@ -188,7 +203,10 @@ class BootcampParser:
         return dtstart, dtend, rrule
 
     def parse_academic_group(
-        self, academic_group: AcademicGroup, general_events: list[BootcampEvent], ru_general_events: list[BootcampEvent]
+        self,
+        academic_group: AcademicGroup,
+        general_events: list[BootcampEvent],
+        ru_general_events: list[BootcampEvent],
     ) -> list[BootcampEvent]:
         events = []
 
@@ -270,12 +288,16 @@ class BootcampParser:
 
         return events
 
-    def parse(self) -> Generator[tuple[AcademicGroup | BuddyGroup, list[BootcampEvent]]]:
+    def parse(
+        self,
+    ) -> Generator[tuple[AcademicGroup | BuddyGroup, list[BootcampEvent]]]:
         general_events = self.parse_general_events()
         ru_general_events = self.parse_general_events(ru=True)
 
         for academic_group in self.config.academic_groups:
-            events = self.parse_academic_group(academic_group, general_events, ru_general_events)
+            events = self.parse_academic_group(
+                academic_group, general_events, ru_general_events
+            )
             yield academic_group, events
 
         for buddy_group in self.config.buddy_groups:

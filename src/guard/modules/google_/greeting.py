@@ -3,7 +3,9 @@ from typing import Literal
 Role = Literal["writer", "reader"]
 
 
-def setup_greeting_sheet(sheets_service, spreadsheet_id: str, join_link: str, respondent_role: Role) -> str:
+def setup_greeting_sheet(
+    sheets_service, spreadsheet_id: str, join_link: str, respondent_role: Role
+) -> str:
     target_title = "Hello from InNoHassle Guard"
 
     meta = (
@@ -17,14 +19,20 @@ def setup_greeting_sheet(sheets_service, spreadsheet_id: str, join_link: str, re
     if target_title not in titles:
         reqs.append({"addSheet": {"properties": {"title": target_title}}})
     if reqs:
-        sheets_service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body={"requests": reqs}).execute()
+        sheets_service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id, body={"requests": reqs}
+        ).execute()
 
     description_text = [
         ["📋 InNoHassle Guard Service"],
         [""],
-        ["Welcome! This service helps manage secure access to your Google Spreadsheet."],
+        [
+            "Welcome! This service helps manage secure access to your Google Spreadsheet."
+        ],
         [""],
-        ["═══════════════════════════════════════════════════════════════════════════════"],
+        [
+            "═══════════════════════════════════════════════════════════════════════════════"
+        ],
         [""],
         ["📝 INSTRUCTIONS FOR RESPONDENTS:"],
         [""],
@@ -33,13 +41,17 @@ def setup_greeting_sheet(sheets_service, spreadsheet_id: str, join_link: str, re
         ["   2️⃣  Connect your Gmail account (required - only Gmail addresses work!)"],
         ["   3️⃣  After connecting, you'll get access to edit this spreadsheet"],
         [""],
-        ["⚠️  Important: You MUST use a Gmail address (@gmail.com) to access this spreadsheet."],
+        [
+            "⚠️  Important: You MUST use a Gmail address (@gmail.com) to access this spreadsheet."
+        ],
         ["              Other email providers will not work."],
         [""],
         ["🔗 Join Link:"],
         [join_link],
         [""],
-        ["═══════════════════════════════════════════════════════════════════════════════"],
+        [
+            "═══════════════════════════════════════════════════════════════════════════════"
+        ],
         [""],
         ["📊 Access level for respondents: " + respondent_role.upper()],
         [""],
@@ -59,7 +71,11 @@ def setup_greeting_sheet(sheets_service, spreadsheet_id: str, join_link: str, re
             sheet_id = sheet["properties"]["sheetId"]
             break
     if sheet_id is None:
-        meta = sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id, fields="sheets(properties)").execute()
+        meta = (
+            sheets_service.spreadsheets()
+            .get(spreadsheetId=spreadsheet_id, fields="sheets(properties)")
+            .execute()
+        )
         for sheet in meta.get("sheets", []):
             if sheet["properties"]["title"] == target_title:
                 sheet_id = sheet["properties"]["sheetId"]
@@ -86,7 +102,12 @@ def setup_greeting_sheet(sheets_service, spreadsheet_id: str, join_link: str, re
         },
         {
             "updateDimensionProperties": {
-                "range": {"sheetId": sheet_id, "dimension": "ROWS", "startIndex": 0, "endIndex": 1},
+                "range": {
+                    "sheetId": sheet_id,
+                    "dimension": "ROWS",
+                    "startIndex": 0,
+                    "endIndex": 1,
+                },
                 "properties": {"pixelSize": 40},
                 "fields": "pixelSize",
             }
@@ -185,7 +206,12 @@ def setup_greeting_sheet(sheets_service, spreadsheet_id: str, join_link: str, re
         },
         {
             "updateDimensionProperties": {
-                "range": {"sheetId": sheet_id, "dimension": "COLUMNS", "startIndex": 0, "endIndex": 1},
+                "range": {
+                    "sheetId": sheet_id,
+                    "dimension": "COLUMNS",
+                    "startIndex": 0,
+                    "endIndex": 1,
+                },
                 "properties": {"pixelSize": 900},
                 "fields": "pixelSize",
             }

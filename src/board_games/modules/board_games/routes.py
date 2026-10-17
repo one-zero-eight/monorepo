@@ -38,7 +38,9 @@ async def get_all_board_games_admin(
 
 
 @router.post("/admin/board-games")
-async def add_board_game(body: board_games_repo.CreateBoardGame, _: BOARD_GAMES_ADMIN_AUTH) -> BoardGame:
+async def add_board_game(
+    body: board_games_repo.CreateBoardGame, _: BOARD_GAMES_ADMIN_AUTH
+) -> BoardGame:
     return await board_games_repo.create(body)
 
 
@@ -70,7 +72,9 @@ async def set_board_game_photo(
         kind = filetype.guess(bytes_)
         content_type = kind.mime if kind else None
     if content_type not in ("image/jpeg", "image/png", "image/webp"):
-        raise HTTPException(status_code=400, detail=f"Invalid content type ({content_type})")
+        raise HTTPException(
+            status_code=400, detail=f"Invalid content type ({content_type})"
+        )
 
     image = Image.open(BytesIO(bytes_))
     full_buf = BytesIO()
@@ -97,7 +101,9 @@ async def remove_board_game(id: PydanticObjectId, _: BOARD_GAMES_ADMIN_AUTH) -> 
 
 
 @router.get("/admin/board-games/{id}/reservations")
-async def get_board_games_reservations(id: PydanticObjectId, _: BOARD_GAMES_ADMIN_AUTH) -> list[Reservation]:
+async def get_board_games_reservations(
+    id: PydanticObjectId, _: BOARD_GAMES_ADMIN_AUTH
+) -> list[Reservation]:
     reservations = await board_games_repo.read_board_games_reservations(id)
     if reservations is None:
         raise HTTPException(status_code=404, detail="Board Game not found")
@@ -128,7 +134,9 @@ async def edit_reservation(
     body: board_games_repo.UpdateReservationAdmin,
     _: BOARD_GAMES_ADMIN_AUTH,
 ) -> Reservation:
-    reservation = await board_games_repo.update_reservation_admin(id, body.status, body.borrower_name, body.return_date)
+    reservation = await board_games_repo.update_reservation_admin(
+        id, body.status, body.borrower_name, body.return_date
+    )
     if reservation is None:
         raise HTTPException(status_code=404, detail="Reservation not found")
     return reservation
@@ -142,7 +150,9 @@ async def remove_reservation(id: PydanticObjectId, _: BOARD_GAMES_ADMIN_AUTH) ->
 
 
 @router.get("/board-games")
-async def get_all_board_games(_: INH_TOKEN_AUTH) -> list[board_games_repo.BoardGameWithAvailability]:
+async def get_all_board_games(
+    _: INH_TOKEN_AUTH,
+) -> list[board_games_repo.BoardGameWithAvailability]:
     return await board_games_repo.read_all_with_availability()
 
 
@@ -161,7 +171,9 @@ async def get_users_reservations(
     current_user: INH_TOKEN_AUTH, how: str = Query("current", pattern="^(current|all)$")
 ) -> list[Reservation]:
     if how == "current":
-        return await board_games_repo.read_user_current_reservations(current_user.innohassle_id)
+        return await board_games_repo.read_user_current_reservations(
+            current_user.innohassle_id
+        )
     else:  # type == "all"
         return await board_games_repo.read_user_reservations(current_user.innohassle_id)
 

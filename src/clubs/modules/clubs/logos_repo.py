@@ -30,7 +30,9 @@ class LogosRepo:
             raise RuntimeError("ClubsLogos.post_init was not called from app lifespan")
         return self._minio_store.bucket_name
 
-    def get_club_logo_object_name(self, logo_file_id: str, size: int | None = None) -> str:
+    def get_club_logo_object_name(
+        self, logo_file_id: str, size: int | None = None
+    ) -> str:
         size_postfix = f"-{size}" if size else ""
         return f"{settings.minio.club_logos_prefix}{logo_file_id}{size_postfix}"
 
@@ -46,7 +48,9 @@ class LogosRepo:
             )
         )
 
-    def put_club_logo(self, logo_file_id: str, size: int | None, data: bytes, content_type: str) -> None:
+    def put_club_logo(
+        self, logo_file_id: str, size: int | None, data: bytes, content_type: str
+    ) -> None:
         object_name = self.get_club_logo_object_name(logo_file_id, size)
         self.minio_client.put_object(
             bucket_name=self.bucket,

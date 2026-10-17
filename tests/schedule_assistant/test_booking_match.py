@@ -2,7 +2,10 @@ from src.schedule_assistant.modules.bookings.match import (
     find_extra_auto_bookings,
     payload_matches_auto_booking,
 )
-from src.schedule_assistant.modules.issues.booking_match import booking_matches_payload, slot_has_matching_booking
+from src.schedule_assistant.modules.issues.booking_match import (
+    booking_matches_payload,
+    slot_has_matching_booking,
+)
 
 
 def _payload() -> dict:
@@ -51,7 +54,9 @@ def test_room_title_without_stable_identity_does_not_prove_ownership() -> None:
             "categories": ["Auto", "core", "BS_Y1", "Algorithms"],
         },
     ]
-    assert not slot_has_matching_booking(payload, auto_bookings=[], existing_bookings=existing)
+    assert not slot_has_matching_booking(
+        payload, auto_bookings=[], existing_bookings=existing
+    )
 
 
 def test_slot_has_no_matching_booking() -> None:
@@ -65,7 +70,9 @@ def test_slot_has_no_matching_booking() -> None:
             "categories": ["core", "BS_Y1", "Other course"],
         },
     ]
-    assert not slot_has_matching_booking(payload, auto_bookings=[], existing_bookings=existing)
+    assert not slot_has_matching_booking(
+        payload, auto_bookings=[], existing_bookings=existing
+    )
 
 
 def test_weekly_payload_matches_single_calendar_instance() -> None:

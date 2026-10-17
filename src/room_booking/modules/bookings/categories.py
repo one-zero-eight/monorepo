@@ -20,5 +20,9 @@ def sanitize_exchange_category(value: str) -> str:
 def sanitize_exchange_categories(categories: list[str] | None) -> list[str] | None:
     if not categories:
         return categories
-    cleaned = [sanitized for category in categories if (sanitized := sanitize_exchange_category(str(category)))]
+    cleaned = [
+        sanitized
+        for category in categories
+        if (sanitized := sanitize_exchange_category(str(category)))
+    ]
     return cleaned or None

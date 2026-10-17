@@ -2,11 +2,16 @@ from fastapi.testclient import TestClient
 
 
 def _admin_headers(
-    clubs_client: TestClient, superadmin_headers: dict[str, str], user_headers: dict[str, str]
+    clubs_client: TestClient,
+    superadmin_headers: dict[str, str],
+    user_headers: dict[str, str],
 ) -> dict[str, str]:
     response = clubs_client.post(
         "/users/change_role",
-        params={"role": "admin", "user_to_change_email": "test-user-1@innopolis.university"},
+        params={
+            "role": "admin",
+            "user_to_change_email": "test-user-1@innopolis.university",
+        },
         headers=superadmin_headers,
     )
     assert response.status_code == 200

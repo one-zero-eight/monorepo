@@ -13,17 +13,27 @@ from src.schedule_assistant.dependencies import is_moderator_email, verify_moder
         ("bob@innopolis.university", ["alice@innopolis.university"], False),
     ],
 )
-def test_is_moderator_email(email: str, moderators: list[str], expected: bool, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", moderators)
+def test_is_moderator_email(
+    email: str, moderators: list[str], expected: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "src.schedule_assistant.dependencies.settings.moderator_emails", moderators
+    )
     assert is_moderator_email(email) is expected
 
 
 @pytest.mark.asyncio
-async def test_verify_moderator_dep_rejects_non_moderator(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_verify_moderator_dep_rejects_non_moderator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(
-        "src.schedule_assistant.dependencies.settings.moderator_emails", ["moderator@innopolis.university"]
+        "src.schedule_assistant.dependencies.settings.moderator_emails",
+        ["moderator@innopolis.university"],
     )
-    user_and_token = (UserTokenData(innohassle_id="1", email="user@innopolis.university"), "token")
+    user_and_token = (
+        UserTokenData(innohassle_id="1", email="user@innopolis.university"),
+        "token",
+    )
 
     with pytest.raises(HTTPException) as exc_info:
         await verify_moderator_dep(user_and_token)
@@ -32,11 +42,17 @@ async def test_verify_moderator_dep_rejects_non_moderator(monkeypatch: pytest.Mo
 
 
 @pytest.mark.asyncio
-async def test_verify_moderator_dep_allows_moderator(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_verify_moderator_dep_allows_moderator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(
-        "src.schedule_assistant.dependencies.settings.moderator_emails", ["moderator@innopolis.university"]
+        "src.schedule_assistant.dependencies.settings.moderator_emails",
+        ["moderator@innopolis.university"],
     )
-    user_and_token = (UserTokenData(innohassle_id="1", email="moderator@innopolis.university"), "token")
+    user_and_token = (
+        UserTokenData(innohassle_id="1", email="moderator@innopolis.university"),
+        "token",
+    )
 
     result = await verify_moderator_dep(user_and_token)
 

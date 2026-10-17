@@ -21,9 +21,14 @@ def booking_as_dict(booking: BookingDTO) -> dict[str, Any]:
 
 def booking_matches_payload(booking: dict[str, Any], payload: dict[str, Any]) -> bool:
     """A candidate occurrence match, not evidence of complete series coverage."""
-    if not (booking_matches_payload_identity(booking, payload) or payload_matches_auto_booking(payload, booking)):
+    if not (
+        booking_matches_payload_identity(booking, payload)
+        or payload_matches_auto_booking(payload, booking)
+    ):
         return False
-    return bool(set(iter_payload_occurrences(payload)) & set(iter_booking_occurrences(booking)))
+    return bool(
+        set(iter_payload_occurrences(payload)) & set(iter_booking_occurrences(booking))
+    )
 
 
 def slot_has_matching_booking(
@@ -48,10 +53,14 @@ def detect_payload_conflicts(
         conflicts = []
         for booking in existing_bookings:
             data = booking_as_dict(booking)
-            if str(booking.room_id) != str(room_id) or str(data.get("busy_type") or "").lower() == "free":
+            if (
+                str(booking.room_id) != str(room_id)
+                or str(data.get("busy_type") or "").lower() == "free"
+            ):
                 continue
             if not any(
-                occurrence_start < end and start < occurrence_end for start, end in iter_booking_occurrences(data)
+                occurrence_start < end and start < occurrence_end
+                for start, end in iter_booking_occurrences(data)
             ):
                 continue
             if booking_in_own_auto_series(data, payload, []):

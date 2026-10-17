@@ -43,7 +43,12 @@ def _play_game(
 ) -> dict:
     reg_response = client.post(
         "/reg-game",
-        params={"tour_id": tour_id, "tip": "val", "player1_id": p1_id, "player2_id": p2_id},
+        params={
+            "tour_id": tour_id,
+            "tip": "val",
+            "player1_id": p1_id,
+            "player2_id": p2_id,
+        },
         headers=admin_headers,
     )
     assert reg_response.status_code == 200, reg_response.text
@@ -58,7 +63,9 @@ def _play_game(
     return finish_response.json()
 
 
-def test_finish_game_requires_admin(tabletennis_client: TestClient, user_headers: dict[str, str]):
+def test_finish_game_requires_admin(
+    tabletennis_client: TestClient, user_headers: dict[str, str]
+):
     response = tabletennis_client.post(
         "/finish-game",
         params={"game_id": "whatever", "s1": 3, "s2": 0, "tour_id": "whatever"},
@@ -67,7 +74,9 @@ def test_finish_game_requires_admin(tabletennis_client: TestClient, user_headers
     assert response.status_code == 403
 
 
-def test_finish_game_rejects_draw(tabletennis_client: TestClient, admin_headers: dict[str, str]):
+def test_finish_game_rejects_draw(
+    tabletennis_client: TestClient, admin_headers: dict[str, str]
+):
     portal = tabletennis_client.portal
     assert portal is not None
 
@@ -78,7 +87,12 @@ def test_finish_game_rejects_draw(tabletennis_client: TestClient, admin_headers:
 
     response = tabletennis_client.post(
         "/reg-game",
-        params={"tour_id": "tour-draw", "tip": "val", "player1_id": "p1", "player2_id": "p2"},
+        params={
+            "tour_id": "tour-draw",
+            "tip": "val",
+            "player1_id": "p1",
+            "player2_id": "p2",
+        },
         headers=admin_headers,
     )
     game_id = response.json()["game_id"]
@@ -91,7 +105,9 @@ def test_finish_game_rejects_draw(tabletennis_client: TestClient, admin_headers:
     assert response.status_code == 400
 
 
-def test_finish_game_twice_is_rejected(tabletennis_client: TestClient, admin_headers: dict[str, str]):
+def test_finish_game_twice_is_rejected(
+    tabletennis_client: TestClient, admin_headers: dict[str, str]
+):
     portal = tabletennis_client.portal
     assert portal is not None
 
@@ -99,7 +115,9 @@ def test_finish_game_twice_is_rejected(tabletennis_client: TestClient, admin_hea
     portal.call(_mk_player("p2").insert)
     portal.call(_mk_tournament("tour-twice", ["p1", "p2"]).insert)
 
-    result = _play_game(tabletennis_client, admin_headers, "tour-twice", "p1", "p2", 3, 0)
+    result = _play_game(
+        tabletennis_client, admin_headers, "tour-twice", "p1", "p2", 3, 0
+    )
     game_id = result["game_id"]
 
     response = tabletennis_client.post(
@@ -146,7 +164,9 @@ def test_finish_game_beginner_winner_does_not_leak_coefficients_to_opponent(
     portal.call(_mk_player("advanced", rating=300, status="Advanced").insert)
     portal.call(_mk_tournament("tour-mix", ["beginner", "advanced"]).insert)
 
-    result = _play_game(tabletennis_client, admin_headers, "tour-mix", "beginner", "advanced", 3, 0)
+    result = _play_game(
+        tabletennis_client, admin_headers, "tour-mix", "beginner", "advanced", 3, 0
+    )
 
     assert result["player1"]["delta"] == 10  # beginner winner: k=1, D=1 -> base 10
     assert result["player2"]["delta"] == -3  # advanced loser: k=0.25, D=1.2 -> base 10
@@ -167,7 +187,9 @@ def test_finish_game_no_delta_when_rating_gap_at_least_100(
     portal.call(_mk_player("weak", rating=1000, status="Advanced").insert)
     portal.call(_mk_tournament("tour-gap", ["strong", "weak"]).insert)
 
-    result = _play_game(tabletennis_client, admin_headers, "tour-gap", "strong", "weak", 3, 0)
+    result = _play_game(
+        tabletennis_client, admin_headers, "tour-gap", "strong", "weak", 3, 0
+    )
 
     assert result["player1"]["delta"] == 0
     assert result["player2"]["delta"] == 0
@@ -178,7 +200,9 @@ def test_finish_game_no_delta_when_rating_gap_at_least_100(
     assert weak.rating == 1000
 
 
-def test_finish_game_rating_never_drops_below_one(tabletennis_client: TestClient, admin_headers: dict[str, str]):
+def test_finish_game_rating_never_drops_below_one(
+    tabletennis_client: TestClient, admin_headers: dict[str, str]
+):
     portal = tabletennis_client.portal
     assert portal is not None
 
@@ -192,7 +216,9 @@ def test_finish_game_rating_never_drops_below_one(tabletennis_client: TestClient
     assert loser.rating >= 1
 
 
-def test_tournament_bonus_requires_at_least_16_players(tabletennis_client: TestClient, admin_headers: dict[str, str]):
+def test_tournament_bonus_requires_at_least_16_players(
+    tabletennis_client: TestClient, admin_headers: dict[str, str]
+):
     portal = tabletennis_client.portal
     assert portal is not None
 
@@ -237,7 +263,10 @@ def test_tournament_bonus_applies_once_even_for_below_average_prize_winners(
 
     partial_top = {"1": "first", "2": "second", "3": "third"}
     response = tabletennis_client.post(
-        "/reg-tour/change-qual-top", params={"tour_id": "tour-bonus"}, json=partial_top, headers=admin_headers
+        "/reg-tour/change-qual-top",
+        params={"tour_id": "tour-bonus"},
+        json=partial_top,
+        headers=admin_headers,
     )
     assert response.status_code == 200
     # standings are incomplete: the tournament is not over, no bonus yet
@@ -245,7 +274,10 @@ def test_tournament_bonus_applies_once_even_for_below_average_prize_winners(
 
     top = {str(place): uid for place, uid in enumerate(prize_ids + filler_ids, start=1)}
     response = tabletennis_client.post(
-        "/reg-tour/change-qual-top", params={"tour_id": "tour-bonus"}, json=top, headers=admin_headers
+        "/reg-tour/change-qual-top",
+        params={"tour_id": "tour-bonus"},
+        json=top,
+        headers=admin_headers,
     )
     assert response.status_code == 200
 
@@ -259,7 +291,10 @@ def test_tournament_bonus_applies_once_even_for_below_average_prize_winners(
     # Re-sending the same standings (change-qual-top is a full overwrite, not a patch)
     # must not grant the bonus a second time.
     response = tabletennis_client.post(
-        "/reg-tour/change-qual-top", params={"tour_id": "tour-bonus"}, json=top, headers=admin_headers
+        "/reg-tour/change-qual-top",
+        params={"tour_id": "tour-bonus"},
+        json=top,
+        headers=admin_headers,
     )
     assert response.status_code == 200
 

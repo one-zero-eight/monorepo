@@ -11,19 +11,25 @@ from sqlalchemy.sql.base import ExecutableOption
 from src.schedule.storages.sql.models.base import Base
 
 
-class AbstractCRUDRepository[CreateType: PydanticModel, ViewType: PydanticModel, UpdateType: PydanticModel](
-    metaclass=ABCMeta
-):
+class AbstractCRUDRepository[
+    CreateType: PydanticModel,
+    ViewType: PydanticModel,
+    UpdateType: PydanticModel,
+](metaclass=ABCMeta):
     @abstractmethod
     async def create(self, session: AsyncSession, data: CreateType) -> ViewType:
         pass
 
     @abstractmethod
-    async def create_if_not_exists(self, session: AsyncSession, data: CreateType) -> ViewType | None:
+    async def create_if_not_exists(
+        self, session: AsyncSession, data: CreateType
+    ) -> ViewType | None:
         pass
 
     @abstractmethod
-    async def batch_create(self, session: AsyncSession, data: list[CreateType]) -> list[ViewType]:
+    async def batch_create(
+        self, session: AsyncSession, data: list[CreateType]
+    ) -> list[ViewType]:
         pass
 
     @abstractmethod
@@ -31,7 +37,9 @@ class AbstractCRUDRepository[CreateType: PydanticModel, ViewType: PydanticModel,
         pass
 
     @abstractmethod
-    async def batch_read(self, session: AsyncSession, pkeys: list[dict[str, Any]]) -> list[ViewType]:
+    async def batch_read(
+        self, session: AsyncSession, pkeys: list[dict[str, Any]]
+    ) -> list[ViewType]:
         pass
 
     @abstractmethod
@@ -39,10 +47,14 @@ class AbstractCRUDRepository[CreateType: PydanticModel, ViewType: PydanticModel,
         pass
 
     @overload
-    async def read_by(self, session: AsyncSession, only_first: Literal[True], **columns: Any) -> ViewType | None: ...
+    async def read_by(
+        self, session: AsyncSession, only_first: Literal[True], **columns: Any
+    ) -> ViewType | None: ...
 
     @overload
-    async def read_by(self, session: AsyncSession, only_first: Literal[False], **columns: Any) -> list[ViewType]: ...
+    async def read_by(
+        self, session: AsyncSession, only_first: Literal[False], **columns: Any
+    ) -> list[ViewType]: ...
 
     @overload
     async def read_by(
@@ -56,7 +68,9 @@ class AbstractCRUDRepository[CreateType: PydanticModel, ViewType: PydanticModel,
         pass
 
     @abstractmethod
-    async def update(self, session: AsyncSession, data: UpdateType, **pkeys) -> ViewType:
+    async def update(
+        self, session: AsyncSession, data: UpdateType, **pkeys
+    ) -> ViewType:
         pass
 
     @abstractmethod
@@ -70,9 +84,12 @@ class AbstractCRUDRepository[CreateType: PydanticModel, ViewType: PydanticModel,
         pass
 
 
-class _CRUDImpl[ModelT: Base, CreateT: PydanticModel, ViewT: PydanticModel, UpdateT: PydanticModel](
-    AbstractCRUDRepository[CreateT, ViewT, UpdateT]
-):
+class _CRUDImpl[
+    ModelT: Base,
+    CreateT: PydanticModel,
+    ViewT: PydanticModel,
+    UpdateT: PydanticModel,
+](AbstractCRUDRepository[CreateT, ViewT, UpdateT]):
     def __init__(
         self,
         model: type[ModelT],
@@ -91,7 +108,9 @@ class _CRUDImpl[ModelT: Base, CreateT: PydanticModel, ViewT: PydanticModel, Upda
         _ = (create_schema, update_schema)
 
     def _pkey_clause(self, pkeys: dict[str, int]) -> ColumnElement[bool]:
-        return and_(*[getattr(self._model, pk) == pkeys[pk] for pk in self._primary_keys])
+        return and_(
+            *[getattr(self._model, pk) == pkeys[pk] for pk in self._primary_keys]
+        )
 
     async def create(self, session: AsyncSession, data: CreateT) -> ViewT:
         from sqlalchemy import insert
@@ -103,10 +122,17 @@ class _CRUDImpl[ModelT: Base, CreateT: PydanticModel, ViewT: PydanticModel, Upda
         await session.commit()
         return self._view_schema.model_validate(obj)
 
-    async def create_if_not_exists(self, session: AsyncSession, data: CreateT) -> ViewT | None:
+    async def create_if_not_exists(
+        self, session: AsyncSession, data: CreateT
+    ) -> ViewT | None:
         from sqlalchemy.dialects.postgresql import insert as postgres_insert
 
-        q = postgres_insert(self._model).values(**data.model_dump()).on_conflict_do_nothing().returning(self._model)
+        q = (
+            postgres_insert(self._model)
+            .values(**data.model_dump())
+            .on_conflict_do_nothing()
+            .returning(self._model)
+        )
         if self._get_options:
             q = q.options(*self._get_options)
         obj = await session.scalar(q)
@@ -115,7 +141,9 @@ class _CRUDImpl[ModelT: Base, CreateT: PydanticModel, ViewT: PydanticModel, Upda
             return self._view_schema.model_validate(obj)
         return None
 
-    async def batch_create(self, session: AsyncSession, data: list[CreateT]) -> list[ViewT]:
+    async def batch_create(
+        self, session: AsyncSession, data: list[CreateT]
+    ) -> list[ViewT]:
         from sqlalchemy import insert
 
         if not data:
@@ -123,7 +151,9 @@ class _CRUDImpl[ModelT: Base, CreateT: PydanticModel, ViewT: PydanticModel, Upda
         _insert_query = insert(self._model).returning(self._model)
         if self._get_options:
             _insert_query = _insert_query.options(*self._get_options)
-        objs = await session.scalars(_insert_query, params=[obj.model_dump() for obj in data])
+        objs = await session.scalars(
+            _insert_query, params=[obj.model_dump() for obj in data]
+        )
         await session.commit()
         return [self._view_schema.model_validate(obj) for obj in objs]
 
@@ -138,7 +168,9 @@ class _CRUDImpl[ModelT: Base, CreateT: PydanticModel, ViewT: PydanticModel, Upda
             return self._view_schema.model_validate(obj)
         return None
 
-    async def batch_read(self, session: AsyncSession, pkeys: list[dict[str, Any]]) -> list[ViewT]:
+    async def batch_read(
+        self, session: AsyncSession, pkeys: list[dict[str, Any]]
+    ) -> list[ViewT]:
         from sqlalchemy import select
 
         if not pkeys:
@@ -166,18 +198,31 @@ class _CRUDImpl[ModelT: Base, CreateT: PydanticModel, ViewT: PydanticModel, Upda
         return [self._view_schema.model_validate(obj) for obj in objs]
 
     @overload
-    async def read_by(self, session: AsyncSession, only_first: Literal[True], **columns: Any) -> ViewT | None: ...
+    async def read_by(
+        self, session: AsyncSession, only_first: Literal[True], **columns: Any
+    ) -> ViewT | None: ...
 
     @overload
-    async def read_by(self, session: AsyncSession, only_first: Literal[False], **columns: Any) -> list[ViewT]: ...
+    async def read_by(
+        self, session: AsyncSession, only_first: Literal[False], **columns: Any
+    ) -> list[ViewT]: ...
 
     @overload
-    async def read_by(self, session: AsyncSession, only_first: bool, **columns: Any) -> list[ViewT] | ViewT | None: ...
+    async def read_by(
+        self, session: AsyncSession, only_first: bool, **columns: Any
+    ) -> list[ViewT] | ViewT | None: ...
 
-    async def read_by(self, session: AsyncSession, only_first: bool, **columns: Any) -> list[ViewT] | ViewT | None:
+    async def read_by(
+        self, session: AsyncSession, only_first: bool, **columns: Any
+    ) -> list[ViewT] | ViewT | None:
         from sqlalchemy import select
 
-        q = select(self._model).where(*[getattr(self._model, column) == value for column, value in columns.items()])
+        q = select(self._model).where(
+            *[
+                getattr(self._model, column) == value
+                for column, value in columns.items()
+            ]
+        )
         if self._get_options:
             q = q.options(*self._get_options)
         if only_first:
@@ -189,7 +234,11 @@ class _CRUDImpl[ModelT: Base, CreateT: PydanticModel, ViewT: PydanticModel, Upda
     async def update(self, session: AsyncSession, data: UpdateT, **pkeys) -> ViewT:
         from sqlalchemy import update as sql_update
 
-        q = sql_update(self._model).values(**pkeys, **data.model_dump(exclude_unset=True)).returning(self._model)
+        q = (
+            sql_update(self._model)
+            .values(**pkeys, **data.model_dump(exclude_unset=True))
+            .returning(self._model)
+        )
         if self._get_options:
             q = q.options(*self._get_options)
         obj = await session.scalar(q)
@@ -206,7 +255,10 @@ class _CRUDImpl[ModelT: Base, CreateT: PydanticModel, ViewT: PydanticModel, Upda
 
         await session.execute(
             sql_update(self._model),
-            params=[{**pkey, **obj.model_dump(exclude_unset=True)} for pkey, obj in zip(pkeys, data)],
+            params=[
+                {**pkey, **obj.model_dump(exclude_unset=True)}
+                for pkey, obj in zip(pkeys, data)
+            ],
         )
         await session.commit()
 

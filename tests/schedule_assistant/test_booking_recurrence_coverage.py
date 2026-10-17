@@ -17,7 +17,11 @@ from src.schedule_assistant.modules.bookings.review import (
     split_payloads_around_conflicts,
 )
 from src.schedule_assistant.modules.issues.booking_slots import build_bookable_slots
-from src.schedule_assistant.modules.schedule_config.schemas import CoursesConfig, SectionsConfig, TermConfig
+from src.schedule_assistant.modules.schedule_config.schemas import (
+    CoursesConfig,
+    SectionsConfig,
+    TermConfig,
+)
 
 
 def payload() -> dict:
@@ -27,7 +31,11 @@ def payload() -> dict:
         "start": "2026-09-11T12:40:00+03:00",
         "end": "2026-09-11T14:10:00+03:00",
         "categories": ["core", "B26-MFAI-03", "Algebra"],
-        "recurrence": {"weekday": "friday", "start_date": "2026-09-11", "until_date": "2026-09-25"},
+        "recurrence": {
+            "weekday": "friday",
+            "start_date": "2026-09-11",
+            "until_date": "2026-09-25",
+        },
     }
 
 
@@ -50,13 +58,18 @@ def test_single_occurrence_does_not_cover_whole_series() -> None:
     own = booking(recurrence=None)
     result = booking_coverage(payload(), [own])
     assert {start.date().isoformat() for start, _ in result.covered} == {"2026-09-11"}
-    assert {start.date().isoformat() for start, _ in result.missing} == {"2026-09-18", "2026-09-25"}
+    assert {start.date().isoformat() for start, _ in result.missing} == {
+        "2026-09-18",
+        "2026-09-25",
+    }
     assert find_matching_auto_booking(payload(), [own]) is None
 
 
 def test_interval_start_and_exceptions_change_exact_coverage() -> None:
     own = booking(recurrence={**payload()["recurrence"], "interval": 2})
-    assert {start.day for start, _ in booking_coverage(payload(), [own]).missing} == {18}
+    assert {start.day for start, _ in booking_coverage(payload(), [own]).missing} == {
+        18
+    }
     own = booking(
         deleted_occurrences=["2026-09-18T12:40:00+03:00"],
         modified_occurrences=[
@@ -67,7 +80,10 @@ def test_interval_start_and_exceptions_change_exact_coverage() -> None:
             }
         ],
     )
-    assert {start.day for start, _ in booking_coverage(payload(), [own]).missing} == {18, 25}
+    assert {start.day for start, _ in booking_coverage(payload(), [own]).missing} == {
+        18,
+        25,
+    }
     assert {start.day for start, _ in iter_booking_occurrences(own)} == {11, 26}
     late = booking(recurrence={**payload()["recurrence"], "start_date": "2026-09-18"})
     assert find_matching_auto_booking(payload(), [late]) is None
@@ -89,9 +105,13 @@ def test_xml_interval_and_incomplete_recurrence_are_not_assumed_weekly() -> None
 
 def test_same_course_conflict_requires_uid_not_title_or_time() -> None:
     own = booking()
-    other = booking(uid="other-series", outlook_booking_id="other-master", recurrence=None)
+    other = booking(
+        uid="other-series", outlook_booking_id="other-master", recurrence=None
+    )
     assert detect_payload_conflicts(payload(), [other], auto_bookings=[own])
-    room_copy = booking(title="Organizer name", recurrence=None, outlook_booking_id="room-copy")
+    room_copy = booking(
+        title="Organizer name", recurrence=None, outlook_booking_id="room-copy"
+    )
     assert not detect_payload_conflicts(payload(), [room_copy], auto_bookings=[own])
     room_copy["organizer_mailbox"] = "different@example.com"
     assert detect_payload_conflicts(payload(), [room_copy], auto_bookings=[own])
@@ -110,13 +130,22 @@ def zubkova_slots():
                 {
                     "code": "core",
                     "name": "Core",
-                    "programs": [{"code": "Y1", "name": "Y1", "groups": [f"B26-MFAI-0{i}" for i in range(1, 6)]}],
+                    "programs": [
+                        {
+                            "code": "Y1",
+                            "name": "Y1",
+                            "groups": [f"B26-MFAI-0{i}" for i in range(1, 6)],
+                        }
+                    ],
                 }
             ]
         }
     )
     term = TermConfig.model_validate(
-        {"name": "Fall", "semester": {"start_date": "2026-09-11", "end_date": "2026-09-25"}}
+        {
+            "name": "Fall",
+            "semester": {"start_date": "2026-09-11", "end_date": "2026-09-25"},
+        }
     )
     sessions = []
     for group, start, end in [
@@ -201,14 +230,26 @@ def test_zubkova_209_four_slots_only_first_last_pending() -> None:
     assert by_time["17:40:00"].review_kind == "pending_approval"
     for clock in ("14:20:00", "16:00:00"):
         assert by_time[clock].review_kind == "ready"
-        assert by_time[clock].missing_dates == ["2026-09-11", "2026-09-18", "2026-09-25"]
+        assert by_time[clock].missing_dates == [
+            "2026-09-11",
+            "2026-09-18",
+            "2026-09-25",
+        ]
     submitted = collect_booking_payloads(index, [slot.slot_id for slot in slots], {})
-    assert [dtm.datetime.fromisoformat(item["start"]).strftime("%H:%M") for item in submitted] == ["14:20", "16:00"]
+    assert [
+        dtm.datetime.fromisoformat(item["start"]).strftime("%H:%M")
+        for item in submitted
+    ] == ["14:20", "16:00"]
 
 
 @pytest.mark.parametrize(
     ("response", "kind"),
-    [("Accept", "booked"), ("Tentative", "pending_approval"), ("Unknown", "unknown"), ("Decline", "declined")],
+    [
+        ("Accept", "booked"),
+        ("Tentative", "pending_approval"),
+        ("Unknown", "unknown"),
+        ("Decline", "declined"),
+    ],
 )
 def test_review_keeps_room_response_separate_from_presence(response, kind) -> None:
     slot = zubkova_slots()[0]
@@ -223,7 +264,11 @@ def test_review_keeps_room_response_separate_from_presence(response, kind) -> No
 
 def test_review_deleted_instance_is_missing_and_cannot_resubmit_master() -> None:
     slot = zubkova_slots()[0]
-    own = as_dto(booking(**slot.payload, room_response="Accept", deleted_occurrences=["2026-09-18"]))
+    own = as_dto(
+        booking(
+            **slot.payload, room_response="Accept", deleted_occurrences=["2026-09-18"]
+        )
+    )
     index = build_review_index([slot], auto_bookings=[own], existing_bookings=[])
     row = index.tree.programs[0].courses[0].components[0].slots[0]
     assert row.review_kind == "unknown"
@@ -236,7 +281,9 @@ def test_missing_master_exception_metadata_is_unknown() -> None:
     slot = zubkova_slots()[0]
     data = booking(**slot.payload, room_response="Accept")
     data.pop("recurrence_complete")
-    index = build_review_index([slot], auto_bookings=[as_dto(data)], existing_bookings=[])
+    index = build_review_index(
+        [slot], auto_bookings=[as_dto(data)], existing_bookings=[]
+    )
     row = index.tree.programs[0].courses[0].components[0].slots[0]
     assert row.review_kind == "unknown"
     assert row.missing_dates == row.occurrence_dates
@@ -244,7 +291,9 @@ def test_missing_master_exception_metadata_is_unknown() -> None:
 
 def test_accepted_but_absent_room_is_unknown_not_booked() -> None:
     slot = zubkova_slots()[0]
-    own = as_dto(booking(**slot.payload, room_response="Accept", room_presence="absent"))
+    own = as_dto(
+        booking(**slot.payload, room_response="Accept", room_presence="absent")
+    )
     index = build_review_index([slot], auto_bookings=[own], existing_bookings=[])
     assert index.slots[slot.slot_id].review_kind == "unknown"
 
@@ -253,7 +302,9 @@ def test_excess_series_retaining_teaching_dates_cannot_cancel_master() -> None:
     slot = zubkova_slots()[0]
     data = booking(**slot.payload, can_cancel=True)
     data["recurrence"] = {**data["recurrence"], "until_date": "2026-10-02"}
-    index = build_review_index([slot], auto_bookings=[as_dto(data)], existing_bookings=[])
+    index = build_review_index(
+        [slot], auto_bookings=[as_dto(data)], existing_bookings=[]
+    )
     assert len(index.extras) == 1
     assert next(iter(index.extras.values()))["can_cancel"] is False
 
@@ -265,5 +316,7 @@ def test_split_preserves_biweekly_anchor_and_exact_exception_dates() -> None:
     original = iter_payload_occurrences(slot.payload)
     conflict = original[1]
     split = split_payloads_around_conflicts(slot, [(conflict[0], conflict[1], [])])
-    actual = {occurrence for part in split for occurrence in iter_payload_occurrences(part)}
+    actual = {
+        occurrence for part in split for occurrence in iter_payload_occurrences(part)
+    }
     assert actual == set(original) - {conflict}

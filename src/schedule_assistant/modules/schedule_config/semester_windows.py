@@ -9,13 +9,17 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
 )
 
 
-def _section_list(source: SectionsConfig | TermConfig | list[SectionConfig]) -> list[SectionConfig]:
+def _section_list(
+    source: SectionsConfig | TermConfig | list[SectionConfig],
+) -> list[SectionConfig]:
     if isinstance(source, list):
         return source
     return list(source.sections)
 
 
-def build_audience_to_program_code(sections: SectionsConfig | TermConfig | list[SectionConfig]) -> dict[str, str]:
+def build_audience_to_program_code(
+    sections: SectionsConfig | TermConfig | list[SectionConfig],
+) -> dict[str, str]:
     """Map group codes and @selectors to program.code."""
     mapping: dict[str, str] = {}
     for section in _section_list(sections):
@@ -49,7 +53,11 @@ def program_semester_or_term(
     *,
     program_semesters: dict[str, TermConfig.DateRange] | None = None,
 ) -> TermConfig.DateRange:
-    overrides = program_semesters if program_semesters is not None else build_program_semester_by_code(term)
+    overrides = (
+        program_semesters
+        if program_semesters is not None
+        else build_program_semester_by_code(term)
+    )
     if program_code and program_code in overrides:
         return overrides[program_code]
     return term.semester
@@ -67,15 +75,27 @@ def resolve_audience_semester(
     if not audiences:
         return term.semester
 
-    section_source: SectionsConfig | TermConfig = sections if sections is not None else term
-    mapping = audience_to_program if audience_to_program is not None else build_audience_to_program_code(section_source)
-    overrides = program_semesters if program_semesters is not None else build_program_semester_by_code(section_source)
+    section_source: SectionsConfig | TermConfig = (
+        sections if sections is not None else term
+    )
+    mapping = (
+        audience_to_program
+        if audience_to_program is not None
+        else build_audience_to_program_code(section_source)
+    )
+    overrides = (
+        program_semesters
+        if program_semesters is not None
+        else build_program_semester_by_code(section_source)
+    )
 
     windows: list[TermConfig.DateRange] = []
     for audience in audiences:
         token = audience.strip()
         program_code = mapping.get(token)
-        windows.append(program_semester_or_term(term, program_code, program_semesters=overrides))
+        windows.append(
+            program_semester_or_term(term, program_code, program_semesters=overrides)
+        )
 
     start = max(window.start_date for window in windows)
     end = min(window.end_date for window in windows)
@@ -84,7 +104,9 @@ def resolve_audience_semester(
     return TermConfig.DateRange(start_date=start, end_date=end)
 
 
-def union_semester_window(term: TermConfig, *, sections: SectionsConfig | None = None) -> TermConfig.DateRange:
+def union_semester_window(
+    term: TermConfig, *, sections: SectionsConfig | None = None
+) -> TermConfig.DateRange:
     """Bounding box of term.semester and all program.semester overrides."""
     start = term.semester.start_date
     end = term.semester.end_date

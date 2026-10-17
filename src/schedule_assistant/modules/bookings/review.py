@@ -56,7 +56,9 @@ class ReviewedSlot:
     slot: BookableSlot
     review_kind: ReviewKind | None
     partially_booked: bool
-    conflicts: list[tuple[dtm.datetime, dtm.datetime, list[dict[str, Any]]]] = field(default_factory=list)
+    conflicts: list[tuple[dtm.datetime, dtm.datetime, list[dict[str, Any]]]] = field(
+        default_factory=list
+    )
     coverage: BookingCoverage = field(default_factory=BookingCoverage)
 
 
@@ -108,11 +110,15 @@ def _slot_times(payload: dict[str, Any]) -> tuple[str, str]:
     return start.strftime("%H:%M:%S"), end.strftime("%H:%M:%S")
 
 
-def slot_label(payload: dict[str, Any], *, room: str | None, disabled_reason: str | None) -> str:
+def slot_label(
+    payload: dict[str, Any], *, room: str | None, disabled_reason: str | None
+) -> str:
     recurrence = payload.get("recurrence")
     if isinstance(recurrence, dict):
         start_time, end_time = _slot_times(payload)
-        label = _weekly_when(str(recurrence.get("weekday") or ""), start_time, end_time, room)
+        label = _weekly_when(
+            str(recurrence.get("weekday") or ""), start_time, end_time, room
+        )
         if int(recurrence.get("interval", 1)) == 2:
             label += f" · Every other week (first: {recurrence['start_date']})"
     else:
@@ -138,15 +144,29 @@ def classify_slot(
     payload = slot.payload
     coverage = booking_coverage(payload, auto_bookings, existing_bookings)
     if not slot.bookable:
-        return ReviewedSlot(slot=slot, review_kind=None, partially_booked=False, coverage=coverage)
-    conflicts = detect_payload_conflicts(payload, existing_bookings, auto_bookings=auto_bookings)
-    responses = {str(booking.get("room_response") or "unknown").casefold() for booking in coverage.bookings}
-    if any(booking.get("cancellation_status") == "cancelling" for booking in coverage.bookings):
+        return ReviewedSlot(
+            slot=slot, review_kind=None, partially_booked=False, coverage=coverage
+        )
+    conflicts = detect_payload_conflicts(
+        payload, existing_bookings, auto_bookings=auto_bookings
+    )
+    responses = {
+        str(booking.get("room_response") or "unknown").casefold()
+        for booking in coverage.bookings
+    }
+    if any(
+        booking.get("cancellation_status") == "cancelling"
+        for booking in coverage.bookings
+    ):
         kind = ReviewKind.CANCELLING
     elif conflicts:
         kind = ReviewKind.CONFLICT
     elif any(booking.get("room_presence") == "absent" for booking in coverage.bookings):
-        kind = ReviewKind.DECLINED if responses & {"declined", "decline"} else ReviewKind.UNKNOWN
+        kind = (
+            ReviewKind.DECLINED
+            if responses & {"declined", "decline"}
+            else ReviewKind.UNKNOWN
+        )
     elif coverage.uncertain or (coverage.bookings and coverage.missing):
         kind = ReviewKind.UNKNOWN
     elif coverage.bookings:
@@ -182,7 +202,11 @@ def _conflict_hits(reviewed: ReviewedSlot) -> list[ConflictHit]:
                     start=start,
                     end=end,
                     title=str(booking.get("title") or "booking"),
-                    room_id=str(booking.get("room_id") or reviewed.slot.payload.get("room_id") or ""),
+                    room_id=str(
+                        booking.get("room_id")
+                        or reviewed.slot.payload.get("room_id")
+                        or ""
+                    ),
                 )
             )
     return hits
@@ -196,14 +220,22 @@ def _to_review_slot(reviewed: ReviewedSlot) -> ReviewSlot:
     bookings = coverage.bookings
     responses = {booking.get("room_response") or "unknown" for booking in bookings}
     presences = {booking.get("room_presence") or "unknown" for booking in bookings}
-    checked = [booking["checked_at"] for booking in bookings if booking.get("checked_at")]
+    checked = [
+        booking["checked_at"] for booking in bookings if booking.get("checked_at")
+    ]
     booking_ids = sorted(
-        {str(booking["outlook_booking_id"]) for booking in bookings if booking.get("outlook_booking_id")}
+        {
+            str(booking["outlook_booking_id"])
+            for booking in bookings
+            if booking.get("outlook_booking_id")
+        }
     )
     dates = sorted({start.date().isoformat() for start, _ in coverage.expected})
     return ReviewSlot(
         slot_id=slot.slot_id,
-        label=slot_label(payload, room=payload.get("room_id"), disabled_reason=slot.disabled_reason),
+        label=slot_label(
+            payload, room=payload.get("room_id"), disabled_reason=slot.disabled_reason
+        ),
         date=_slot_date_label(payload),
         start_time=start_time,
         end_time=end_time,
@@ -216,19 +248,32 @@ def _to_review_slot(reviewed: ReviewedSlot) -> ReviewSlot:
         can_split=_can_split(slot) and reviewed.review_kind == ReviewKind.CONFLICT,
         conflicts=_conflict_hits(reviewed),
         room_response=next(iter(responses)) if len(responses) == 1 else "unknown",
-        room_presence="present" if presences == {"present"} else "absent" if presences == {"absent"} else "unknown",
+        room_presence="present"
+        if presences == {"present"}
+        else "absent"
+        if presences == {"absent"}
+        else "unknown",
         checked_at=min(checked) if len(checked) == len(bookings) and checked else None,
         message_body="\n\n".join(
-            dict.fromkeys(str(booking["message_body"]) for booking in bookings if booking.get("message_body"))
+            dict.fromkeys(
+                str(booking["message_body"])
+                for booking in bookings
+                if booking.get("message_body")
+            )
         )
         or None,
         booking_ids=booking_ids,
         recurrence_start=dates[0] if dates and _can_split(slot) else None,
         recurrence_end=dates[-1] if dates and _can_split(slot) else None,
         occurrence_dates=dates,
-        covered_dates=sorted({start.date().isoformat() for start, _ in coverage.covered}),
-        missing_dates=sorted({start.date().isoformat() for start, _ in coverage.missing}),
-        can_cancel=bool(bookings) and all(booking.get("can_cancel", False) for booking in bookings),
+        covered_dates=sorted(
+            {start.date().isoformat() for start, _ in coverage.covered}
+        ),
+        missing_dates=sorted(
+            {start.date().isoformat() for start, _ in coverage.missing}
+        ),
+        can_cancel=bool(bookings)
+        and all(booking.get("can_cancel", False) for booking in bookings),
     )
 
 
@@ -269,40 +314,65 @@ def build_review_index(
         lambda: defaultdict(lambda: defaultdict(list))
     )
     for slot in slots:
-        reviewed = classify_slot(slot, auto_bookings=auto_dicts, existing_bookings=existing_dicts)
+        reviewed = classify_slot(
+            slot, auto_bookings=auto_dicts, existing_bookings=existing_dicts
+        )
         reviewed_by_id[slot.slot_id] = reviewed
-        grouped[slot.program_name or "Unknown program"][slot.meeting.course_name][slot.component_id].append(reviewed)
+        grouped[slot.program_name or "Unknown program"][slot.meeting.course_name][
+            slot.component_id
+        ].append(reviewed)
 
     programs: list[ReviewProgram] = []
     for program_name in sorted(grouped, key=str.casefold):
         courses: list[ReviewCourse] = []
         for course_name in sorted(grouped[program_name], key=str.casefold):
             components: list[ReviewComponent] = []
-            for component_id, component_slots in grouped[program_name][course_name].items():
+            for component_id, component_slots in grouped[program_name][
+                course_name
+            ].items():
                 first = component_slots[0].slot
                 components.append(
                     ReviewComponent(
                         component_id=component_id,
-                        label=_component_label(first.meeting.component_tag, first.audiences),
+                        label=_component_label(
+                            first.meeting.component_tag, first.audiences
+                        ),
                         slots=[_to_review_slot(item) for item in component_slots],
                     )
                 )
-            courses.append(ReviewCourse(course_id=course_name, name=course_name, components=components))
-        programs.append(ReviewProgram(program_id=program_name, name=program_name, courses=courses))
+            courses.append(
+                ReviewCourse(
+                    course_id=course_name, name=course_name, components=components
+                )
+            )
+        programs.append(
+            ReviewProgram(program_id=program_name, name=program_name, courses=courses)
+        )
 
     extras: dict[str, dict[str, Any]] = {}
     extra_models: list[ExtraAutoBooking] = []
     for index, booking in enumerate(
-        find_extra_auto_bookings(auto_dicts, slot_payloads, existing_bookings=existing_dicts)
+        find_extra_auto_bookings(
+            auto_dicts, slot_payloads, existing_bookings=existing_dicts
+        )
     ):
         extra_id = _extra_id(booking, index)
-        retained = set().union(*(booking_coverage(payload, [booking]).covered for payload in slot_payloads))
-        extras[extra_id] = {**booking, "can_cancel": bool(booking.get("can_cancel")) and not retained}
+        retained = set().union(
+            *(booking_coverage(payload, [booking]).covered for payload in slot_payloads)
+        )
+        extras[extra_id] = {
+            **booking,
+            "can_cancel": bool(booking.get("can_cancel")) and not retained,
+        }
         extra_models.append(
             ExtraAutoBooking(
                 extra_id=extra_id,
                 label=_extra_label(booking)
-                + (" · Требуется проверка лишних повторений; не отменять всю серию" if retained else ""),
+                + (
+                    " · Требуется проверка лишних повторений; не отменять всю серию"
+                    if retained
+                    else ""
+                ),
                 room_id=str(booking.get("room_id") or ""),
                 start=parse_booking_datetime(str(booking["start"])),
                 end=parse_booking_datetime(str(booking["end"])),
@@ -329,12 +399,18 @@ def split_payloads_around_conflicts(
         return []
     conflict_dates = {start.date() for start, _, _ in conflicts}
     occurrences = [
-        (start, end) for start, end in iter_payload_occurrences(payload) if start.date() not in conflict_dates
+        (start, end)
+        for start, end in iter_payload_occurrences(payload)
+        if start.date() not in conflict_dates
     ]
     segments: list[list[tuple[dtm.datetime, dtm.datetime]]] = []
     step = dtm.timedelta(weeks=int(recurrence_base.get("interval", 1)))
     for start, end in occurrences:
-        if not segments or start - segments[-1][-1][0] != step or end - segments[-1][-1][1] != step:
+        if (
+            not segments
+            or start - segments[-1][-1][0] != step
+            or end - segments[-1][-1][1] != step
+        ):
             segments.append([])
         segments[-1].append((start, end))
     payloads = []
@@ -346,7 +422,12 @@ def split_payloads_around_conflicts(
             "start_date": start.date().isoformat(),
             "until_date": segment[-1][0].date().isoformat(),
         }
-        split_payload = {**payload, "start": start.isoformat(), "end": end.isoformat(), "recurrence": recurrence}
+        split_payload = {
+            **payload,
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+            "recurrence": recurrence,
+        }
         split_payload.pop("deleted_occurrences", None)
         split_payload.pop("modified_occurrences", None)
         payloads.append(split_payload)
@@ -382,7 +463,9 @@ def collect_booking_payloads(
             if mode == ConflictMode.SPLIT:
                 if not _can_split(reviewed.slot):
                     continue
-                payloads.extend(split_payloads_around_conflicts(reviewed.slot, reviewed.conflicts))
+                payloads.extend(
+                    split_payloads_around_conflicts(reviewed.slot, reviewed.conflicts)
+                )
                 continue
         payloads.append(dict(reviewed.slot.payload))
     return payloads

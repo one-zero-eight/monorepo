@@ -6,7 +6,9 @@ from src.room_booking.modules.bookings.caching import CacheEntry, CacheForBookin
 from src.room_booking.modules.bookings.schemas import Attendee, Booking
 
 
-def _booking(room_id: str = "r1", start_offset: int = 0, end_offset: int = 3600) -> Booking:
+def _booking(
+    room_id: str = "r1", start_offset: int = 0, end_offset: int = 3600
+) -> Booking:
     base = dtm.datetime(2025, 2, 14, 10, 0, 0, tzinfo=dtm.UTC)
     return Booking(
         room_id=room_id,
@@ -167,7 +169,9 @@ async def test_get_cached_bookings_returns_hits_and_misses():
     now = 1000.0
 
     await cache.update_cache("r1", [b], start, end, now=now)
-    room_x_cache, cache_misses = await cache.get_cached_bookings(["r1", "r2"], start, end, now=now)
+    room_x_cache, cache_misses = await cache.get_cached_bookings(
+        ["r1", "r2"], start, end, now=now
+    )
     assert room_x_cache.keys() == {"r1"}
     assert len(room_x_cache["r1"]) == 1
     assert room_x_cache["r1"][0].room_id == "r1"
@@ -180,7 +184,9 @@ async def test_get_cached_bookings_all_miss():
     start = dtm.datetime(2025, 2, 14, 9, 0, tzinfo=dtm.UTC)
     end = dtm.datetime(2025, 2, 14, 12, 0, tzinfo=dtm.UTC)
     now = 1000.0
-    room_x_cache, cache_misses = await cache.get_cached_bookings(["r1", "r2"], start, end, now=now)
+    room_x_cache, cache_misses = await cache.get_cached_bookings(
+        ["r1", "r2"], start, end, now=now
+    )
     assert room_x_cache == {}
     assert cache_misses == {"r1", "r2"}
 
@@ -194,7 +200,9 @@ async def test_get_cached_bookings_all_hit():
 
     await cache.update_cache("r1", [_booking(room_id="r1")], start, end, now=now)
     await cache.update_cache("r2", [_booking(room_id="r2")], start, end, now=now)
-    room_x_cache, cache_misses = await cache.get_cached_bookings(["r1", "r2"], start, end, now=now)
+    room_x_cache, cache_misses = await cache.get_cached_bookings(
+        ["r1", "r2"], start, end, now=now
+    )
     assert set(room_x_cache.keys()) == {"r1", "r2"}
     assert len(cache_misses) == 0
 
@@ -233,7 +241,9 @@ async def test_evict_oldest_when_over_max_slots():
     base_end = dtm.datetime(2025, 2, 14, 10, 0, tzinfo=dtm.UTC)
 
     for i in range(3):
-        await cache.update_cache("r1", [_booking()], base_start, base_end, now=1000.0 + i)
+        await cache.update_cache(
+            "r1", [_booking()], base_start, base_end, now=1000.0 + i
+        )
     entry = await cache.get_cached_entry("r1", base_start, base_end, now=1000.0)
     assert len(cache.cache["r1"]) == 2
     assert entry is not None
@@ -248,7 +258,9 @@ async def test_expired_slot_skipped_fresh_slot_used():
     new_now = 1070.0  # 70s later, first slot expired
 
     await cache.update_cache("r1", [_booking(room_id="r1")], start, end, now=old_now)
-    await cache.update_cache("r1", [_booking(room_id="r1", start_offset=3600)], start, end, now=new_now)
+    await cache.update_cache(
+        "r1", [_booking(room_id="r1", start_offset=3600)], start, end, now=new_now
+    )
     entry = await cache.get_cached_entry("r1", start, end, now=new_now)
     assert entry is not None
     assert len(cache.cache["r1"]) == 1

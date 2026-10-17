@@ -26,14 +26,23 @@ from src.schedule.modules.event_groups.schemas import (
 from src.schedule.modules.schedule_assistant.client import schedule_assistant_client
 from src.schedule.utils import locate_ics_by_path
 
-router = APIRouter(prefix="/event-groups", tags=["Event Groups"], route_class=AutoDeriveResponsesAPIRoute)
+router = APIRouter(
+    prefix="/event-groups",
+    tags=["Event Groups"],
+    route_class=AutoDeriveResponsesAPIRoute,
+)
 
 
 @router.post(
     "/",
     responses={
-        201: {"description": "Event group created successfully", "model": ViewEventGroup},
-        409: {"description": "Integrity error, unique constraint violation. Return existing event group"},
+        201: {
+            "description": "Event group created successfully",
+            "model": ViewEventGroup,
+        },
+        409: {
+            "description": "Integrity error, unique constraint violation. Return existing event group"
+        },
         **IncorrectCredentialsException.responses,
     },
     status_code=201,
@@ -46,7 +55,9 @@ async def create_event_group(
     try:
         event_group_view = await event_group_repository.create(event_group)
         # await event_group_repository.setup_ownership(event_group_view.id, current_user_id, OwnershipEnum.owner)
-        return JSONResponse(status_code=201, content=event_group_view.model_dump(mode="json"))
+        return JSONResponse(
+            status_code=201, content=event_group_view.model_dump(mode="json")
+        )
     except IntegrityError as integrity_error:
         detail = integrity_error.args[0]
         raise HTTPException(status_code=409, detail=detail)
@@ -55,7 +66,10 @@ async def create_event_group(
 @router.post(
     "/batch-create-or-read",
     responses={
-        201: {"description": "List of created or existing event groups", "model": ListEventGroupsResponse},
+        201: {
+            "description": "List of created or existing event groups",
+            "model": ListEventGroupsResponse,
+        },
         **IncorrectCredentialsException.responses,
     },
     status_code=201,
@@ -72,7 +86,10 @@ async def batch_create_event_groups(
 @router.put(
     "/{event_group_id}",
     responses={
-        200: {"description": "Event group updated successfully", "model": ViewEventGroup},
+        200: {
+            "description": "Event group updated successfully",
+            "model": ViewEventGroup,
+        },
         **EventGroupNotFoundException.responses,
         **ForbiddenException.responses,
         **IncorrectCredentialsException.responses,
@@ -90,7 +107,9 @@ async def update_event_group(
         raise EventGroupNotFoundException()
 
     if update_scheme.alias is not None and update_scheme.alias != event_group.alias:
-        raise HTTPException(status_code=409, detail="Event group alias cannot be changed")
+        raise HTTPException(
+            status_code=409, detail="Event group alias cannot be changed"
+        )
 
     # owners_and_moderators = {ownership.user_id for ownership in event_group.ownerships}
     #
@@ -142,7 +161,9 @@ async def find_event_group_by_alias(alias: str) -> ViewEventGroup:
         return event_group
     if settings.schedule_assistant is not None:
         virtual_groups = await schedule_assistant_client.get_event_groups()
-        virtual_group = next((group for group in virtual_groups if group.alias == alias), None)
+        virtual_group = next(
+            (group for group in virtual_groups if group.alias == alias), None
+        )
         if virtual_group is not None:
             return ViewEventGroup(**virtual_group.model_dump(), virtual=True)
     raise EventGroupNotFoundException()
@@ -262,7 +283,9 @@ async def set_event_group_ics(
     if ics_file.content_type != "text/calendar":
         return JSONResponse(
             status_code=400,
-            content={"detail": f"File content type is {ics_file.content_type}, but should be 'text/calendar'"},
+            content={
+                "detail": f"File content type is {ics_file.content_type}, but should be 'text/calendar'"
+            },
         )
 
     event_group_path = await event_group_repository.get_only_path(event_group_id)
@@ -281,7 +304,9 @@ async def set_event_group_ics(
         calendar = icalendar.Calendar.from_ical(await ics_file.read())
         validate_calendar(calendar)
     except ValueError as e:
-        return JSONResponse(status_code=400, content={"detail": f"File is not valid:\n{e}"})
+        return JSONResponse(
+            status_code=400, content={"detail": f"File is not valid:\n{e}"}
+        )
 
     content = calendar.to_ical()
 
@@ -294,7 +319,10 @@ async def set_event_group_ics(
         async with aiofiles.open(ics_path, "rb") as f:
             old_content = await f.read()
             if old_content == content:
-                return JSONResponse(status_code=200, content={"detail": "File already exists and content is the same"})
+                return JSONResponse(
+                    status_code=200,
+                    content={"detail": "File already exists and content is the same"},
+                )
     # make directory if not exists
     ics_path.parent.mkdir(parents=True, exist_ok=True)
     async with aiofiles.open(ics_path, "wb") as f:
@@ -302,7 +330,9 @@ async def set_event_group_ics(
 
     await event_group_repository.update_timestamp(event_group_id)
 
-    return JSONResponse(status_code=201, content={"detail": "File uploaded successfully"})
+    return JSONResponse(
+        status_code=201, content={"detail": "File uploaded successfully"}
+    )
 
 
 # ^^^^^^^^^^^^^ ICS-related ^^^^^^^^^^^^^^^^^^^^^^^^ #

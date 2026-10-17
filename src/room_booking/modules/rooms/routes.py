@@ -11,8 +11,15 @@ from pydantic import BaseModel
 
 from src.inh_accounts_sdk import inh_accounts
 from src.room_booking.config_schema import AccessToRoom, Room
-from src.room_booking.dependencies import VerifiedDep, VerifiedOrApiKeyDep, VerifiedOrApiKeyOrRoomTvDep
-from src.room_booking.modules.bookings.exchange_repository import Booking, exchange_booking_repository
+from src.room_booking.dependencies import (
+    VerifiedDep,
+    VerifiedOrApiKeyDep,
+    VerifiedOrApiKeyOrRoomTvDep,
+)
+from src.room_booking.modules.bookings.exchange_repository import (
+    Booking,
+    exchange_booking_repository,
+)
 from src.room_booking.modules.bookings.service import apply_related_to_me
 from src.room_booking.modules.rooms.repository import room_repository
 from src.room_booking.modules.rules.service import can_book
@@ -46,7 +53,9 @@ async def my_access_list(user: VerifiedDep) -> list[Room]:
     return rooms
 
 
-@router.get("/rooms/all-access-lists", responses={200: {"description": "All access lists"}})
+@router.get(
+    "/rooms/all-access-lists", responses={200: {"description": "All access lists"}}
+)
 async def all_access_lists(user: VerifiedDep) -> dict[str, list[AccessToRoom]]:
     innohassle_user = await inh_accounts.get_user(innohassle_id=user.innohassle_id)
     if innohassle_user is None:
@@ -80,7 +89,11 @@ async def room_route(id: str, _: VerifiedDep) -> Room:
     },
 )
 async def room_can_book_route(
-    id: str, user: VerifiedDep, start: dtm.datetime, end: dtm.datetime, is_update: bool = False
+    id: str,
+    user: VerifiedDep,
+    start: dtm.datetime,
+    end: dtm.datetime,
+    is_update: bool = False,
 ) -> CanBookResponse:
     """
     Check if the user can book a room for the given time range.
@@ -93,7 +106,13 @@ async def room_can_book_route(
     if innohassle_user is None:
         raise HTTPException(403, "Invalid user")
 
-    can, reason = can_book(user=innohassle_user.innopolis_info, room=room, start=start, end=end, is_update=is_update)
+    can, reason = can_book(
+        user=innohassle_user.innopolis_info,
+        room=room,
+        start=start,
+        end=end,
+        is_update=is_update,
+    )
     return CanBookResponse(can_book=can, reason_why_cannot=reason)
 
 
@@ -113,5 +132,7 @@ async def room_bookings_route(
     obj = room_repository.get_by_id(id)
     if obj is None:
         raise HTTPException(404, "Room not found")
-    bookings = await exchange_booking_repository.get_bookings_for_room(room_id=id, from_dt=start, to_dt=end)
+    bookings = await exchange_booking_repository.get_bookings_for_room(
+        room_id=id, from_dt=start, to_dt=end
+    )
     return apply_related_to_me(bookings, auth)

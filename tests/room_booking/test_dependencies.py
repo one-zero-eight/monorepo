@@ -20,7 +20,9 @@ def test_rooms_requires_auth(room_booking_client: TestClient):
 
 
 def test_rooms_wrong_bearer(room_booking_client: TestClient):
-    response = room_booking_client.get("/rooms/", headers={"Authorization": "Bearer wrong-token"})
+    response = room_booking_client.get(
+        "/rooms/", headers={"Authorization": "Bearer wrong-token"}
+    )
     assert response.status_code == 401
     assert response.json()["detail"] == "Unable to verify credentials"
 
@@ -33,7 +35,9 @@ def test_rooms_with_jwt(room_booking_client: TestClient, user_headers: dict[str,
     assert "107" not in room_ids
 
 
-def test_rooms_with_api_key(room_booking_client: TestClient, api_key_headers: dict[str, str]):
+def test_rooms_with_api_key(
+    room_booking_client: TestClient, api_key_headers: dict[str, str]
+):
     response = room_booking_client.get("/rooms/", headers=api_key_headers)
     assert response.status_code == 200
 

@@ -11,12 +11,16 @@ def test_list_tags_empty(schedule_client: TestClient):
 
 
 def test_batch_create_requires_parser(schedule_client: TestClient):
-    response = schedule_client.post("/tags/batch-create-or-read", json={"tags": [SAMPLE_TAG]})
+    response = schedule_client.post(
+        "/tags/batch-create-or-read", json={"tags": [SAMPLE_TAG]}
+    )
     assert response.status_code == 401
     assert response.json()["detail"] == AUTH_REQUIRED_DETAIL
 
 
-def test_batch_create_or_read_idempotent(schedule_client: TestClient, parser_headers: dict[str, str]):
+def test_batch_create_or_read_idempotent(
+    schedule_client: TestClient, parser_headers: dict[str, str]
+):
     first = create_tag(schedule_client, parser_headers, alias="idempotent-tag")
     second = create_tag(schedule_client, parser_headers, alias="idempotent-tag")
     assert second["id"] == first["id"]

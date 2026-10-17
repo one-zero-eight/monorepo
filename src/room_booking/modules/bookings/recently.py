@@ -21,9 +21,19 @@ class RecentBookings:
         self._lock = asyncio.Lock()
 
     def _prune(self, now: float) -> None:
-        self._canceled = {k: ts for k, ts in self._canceled.items() if now - ts < self.ttl_sec}
-        self._created = {k: (ts, b) for k, (ts, b) in self._created.items() if now - ts < self.ttl_sec}
-        self._updated = {k: (ts, b) for k, (ts, b) in self._updated.items() if now - ts < self.ttl_sec}
+        self._canceled = {
+            k: ts for k, ts in self._canceled.items() if now - ts < self.ttl_sec
+        }
+        self._created = {
+            k: (ts, b)
+            for k, (ts, b) in self._created.items()
+            if now - ts < self.ttl_sec
+        }
+        self._updated = {
+            k: (ts, b)
+            for k, (ts, b) in self._updated.items()
+            if now - ts < self.ttl_sec
+        }
 
     async def mark_canceled(self, item_id: str, now: float | None = None) -> None:
         now = tm.monotonic() if now is None else now
@@ -44,7 +54,9 @@ class RecentBookings:
             self._prune(now)
             return set(self._canceled.keys())
 
-    async def mark_created(self, item_id: str, booking: Booking, now: float | None = None) -> None:
+    async def mark_created(
+        self, item_id: str, booking: Booking, now: float | None = None
+    ) -> None:
         now = tm.monotonic() if now is None else now
         async with self._lock:
             self._prune(now)
@@ -63,7 +75,9 @@ class RecentBookings:
             self._prune(now)
             return {k: b for k, (_, b) in self._created.items()}
 
-    async def mark_updated(self, item_id: str, booking: Booking, now: float | None = None) -> None:
+    async def mark_updated(
+        self, item_id: str, booking: Booking, now: float | None = None
+    ) -> None:
         now = tm.monotonic() if now is None else now
         async with self._lock:
             self._prune(now)
@@ -76,7 +90,9 @@ class RecentBookings:
             entry = self._updated.get(item_id)
             return entry is not None and (now - entry[0]) < self.ttl_sec
 
-    async def get_updated_with_ts(self, now: float | None = None) -> dict[str, tuple[float, Booking]]:
+    async def get_updated_with_ts(
+        self, now: float | None = None
+    ) -> dict[str, tuple[float, Booking]]:
         now = tm.monotonic() if now is None else now
         async with self._lock:
             self._prune(now)

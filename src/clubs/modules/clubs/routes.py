@@ -15,7 +15,11 @@ from pymongo.errors import DuplicateKeyError
 from starlette import status
 from starlette.responses import RedirectResponse
 
-from src.clubs.dependencies import CLUB_LEADER_OR_ADMIN, CLUBS_ADMIN_AUTH, CLUBS_SERVICE_API_KEY
+from src.clubs.dependencies import (
+    CLUB_LEADER_OR_ADMIN,
+    CLUBS_ADMIN_AUTH,
+    CLUBS_SERVICE_API_KEY,
+)
 from src.clubs.modules.users import users_repo
 from src.clubs.mongo import Club, PendingClubUpdate, UserRole
 from src.common_pydantic import BaseSchema
@@ -47,7 +51,9 @@ class OwnedClub(BaseSchema):
         status.HTTP_401_UNAUTHORIZED: {"description": "Invalid service API key"},
     },
 )
-async def get_clubs_owned_by(innohassle_id: str, _: CLUBS_SERVICE_API_KEY) -> list[OwnedClub]:
+async def get_clubs_owned_by(
+    innohassle_id: str, _: CLUBS_SERVICE_API_KEY
+) -> list[OwnedClub]:
     """Get clubs owned by a user (service-to-service integration)."""
     clubs = await clubs_repo.read_by_leader_innohassle_id(innohassle_id)
     return [OwnedClub(club_id=str(club.id), title=club.title) for club in clubs]
@@ -64,7 +70,9 @@ async def get_clubs_list(auth: OPTIONAL_INH_TOKEN_AUTH) -> list[Club]:
         is_admin = clubs_user and clubs_user.role == UserRole.ADMIN
 
     for club in clubs:
-        if not is_admin and (not auth or club.leader_innohassle_id != auth.innohassle_id):
+        if not is_admin and (
+            not auth or club.leader_innohassle_id != auth.innohassle_id
+        ):
             club.pending_update = None
 
     return clubs
@@ -134,11 +142,15 @@ async def get_club_info_by_slug(slug: str, auth: OPTIONAL_INH_TOKEN_AUTH) -> Clu
     "/by-id/{id}",
     responses={
         status.HTTP_200_OK: {"description": "Changed club info successfully"},
-        status.HTTP_403_FORBIDDEN: {"description": "Only admin or leader can change club info"},
+        status.HTTP_403_FORBIDDEN: {
+            "description": "Only admin or leader can change club info"
+        },
         status.HTTP_404_NOT_FOUND: {"description": "Club not found"},
     },
 )
-async def edit_club_info(id: PydanticObjectId, club_info: clubs_repo.UpdateClub, auth: INH_TOKEN_AUTH) -> Club:
+async def edit_club_info(
+    id: PydanticObjectId, club_info: clubs_repo.UpdateClub, auth: INH_TOKEN_AUTH
+) -> Club:
     """Edit a club info."""
     club = await clubs_repo.read(id)
     if not club:
@@ -149,7 +161,9 @@ async def edit_club_info(id: PydanticObjectId, club_info: clubs_repo.UpdateClub,
     is_leader = club.leader_innohassle_id == auth.innohassle_id
 
     if not is_admin and not is_leader:
-        raise HTTPException(status_code=403, detail="Only admin or leader can change club info")
+        raise HTTPException(
+            status_code=403, detail="Only admin or leader can change club info"
+        )
 
     if club_info.new_leader_email:
         new_leader_data = await inh_accounts.get_user(email=club_info.new_leader_email)
@@ -166,7 +180,9 @@ async def edit_club_info(id: PydanticObjectId, club_info: clubs_repo.UpdateClub,
     else:
         club.pending_update = PendingClubUpdate(
             submitted_at=dtm.datetime.now(dtm.UTC),
-            **club_info.model_dump(exclude={"new_leader_email", "pending_update", "slug", "is_active"}),
+            **club_info.model_dump(
+                exclude={"new_leader_email", "pending_update", "slug", "is_active"}
+            ),
         )
         await club.save()
         return club
@@ -177,11 +193,15 @@ async def edit_club_info(id: PydanticObjectId, club_info: clubs_repo.UpdateClub,
     responses={
         status.HTTP_200_OK: {"description": "Changed club info successfully"},
         status.HTTP_400_BAD_REQUEST: {"description": "Slug already exists"},
-        status.HTTP_403_FORBIDDEN: {"description": "Only admin or leader can change club info"},
+        status.HTTP_403_FORBIDDEN: {
+            "description": "Only admin or leader can change club info"
+        },
         status.HTTP_404_NOT_FOUND: {"description": "Club not found"},
     },
 )
-async def edit_club_info_by_slug(slug: str, update_club: clubs_repo.UpdateClub, auth: INH_TOKEN_AUTH) -> Club:
+async def edit_club_info_by_slug(
+    slug: str, update_club: clubs_repo.UpdateClub, auth: INH_TOKEN_AUTH
+) -> Club:
     """Edit a club info."""
     club = await clubs_repo.read_by_slug(slug)
     if not club:
@@ -192,10 +212,14 @@ async def edit_club_info_by_slug(slug: str, update_club: clubs_repo.UpdateClub, 
     is_leader = club.leader_innohassle_id == auth.innohassle_id
 
     if not is_admin and not is_leader:
-        raise HTTPException(status_code=403, detail="Only admin or leader can change club info")
+        raise HTTPException(
+            status_code=403, detail="Only admin or leader can change club info"
+        )
 
     if update_club.new_leader_email:
-        new_leader_data = await inh_accounts.get_user(email=update_club.new_leader_email)
+        new_leader_data = await inh_accounts.get_user(
+            email=update_club.new_leader_email
+        )
         if not new_leader_data:
             raise HTTPException(status_code=404, detail="New leader email not found")
         update_club.leader_innohassle_id = new_leader_data.id
@@ -204,10 +228,16 @@ async def edit_club_info_by_slug(slug: str, update_club: clubs_repo.UpdateClub, 
     if is_admin:
         try:
             if club.id is None:  # pragma: no cover
-                raise HTTPException(status_code=500, detail="Stored club is missing its document ID")
-            updated_club = await clubs_repo.update(club.id, update_club.to_club_schema())
+                raise HTTPException(
+                    status_code=500, detail="Stored club is missing its document ID"
+                )
+            updated_club = await clubs_repo.update(
+                club.id, update_club.to_club_schema()
+            )
             if updated_club is None:  # pragma: no cover
-                raise HTTPException(status_code=400, detail="Failed to update club info")  # pragma: no cover
+                raise HTTPException(
+                    status_code=400, detail="Failed to update club info"
+                )  # pragma: no cover
             return updated_club
         except beanie.exceptions.RevisionIdWasChanged:
             raise HTTPException(status_code=400, detail="Slug already exists")
@@ -216,7 +246,9 @@ async def edit_club_info_by_slug(slug: str, update_club: clubs_repo.UpdateClub, 
     else:
         club.pending_update = PendingClubUpdate(
             submitted_at=dtm.datetime.now(dtm.UTC),
-            **update_club.model_dump(exclude={"new_leader_email", "pending_update", "slug", "is_active"}),
+            **update_club.model_dump(
+                exclude={"new_leader_email", "pending_update", "slug", "is_active"}
+            ),
         )
         await club.save()
         return club
@@ -242,7 +274,9 @@ CLUB_LOGO_SIZE = 512
 
 
 def _club_logo_redirect(logo_file_id: str) -> RedirectResponse:
-    return RedirectResponse(url=logos_repo.get_club_logo_url(logo_file_id, CLUB_LOGO_SIZE))
+    return RedirectResponse(
+        url=logos_repo.get_club_logo_url(logo_file_id, CLUB_LOGO_SIZE)
+    )
 
 
 async def _resolve_club_access(club: Club, innohassle_id: str) -> tuple[bool, bool]:
@@ -256,8 +290,12 @@ async def _resolve_club_access(club: Club, innohassle_id: str) -> tuple[bool, bo
 @router.get(
     "/by-id/{id}/logo",
     responses={
-        status.HTTP_307_TEMPORARY_REDIRECT: {"description": "Redirect to the club logo"},
-        status.HTTP_404_NOT_FOUND: {"description": "Club not found or no logo available"},
+        status.HTTP_307_TEMPORARY_REDIRECT: {
+            "description": "Redirect to the club logo"
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Club not found or no logo available"
+        },
     },
     response_class=RedirectResponse,
 )
@@ -277,14 +315,24 @@ async def get_club_logo(id: PydanticObjectId) -> RedirectResponse:
     "/by-id/{id}/pending-logo",
     summary="Get pending club logo",
     responses={
-        status.HTTP_307_TEMPORARY_REDIRECT: {"description": "Redirect to the pending club logo"},
-        status.HTTP_401_UNAUTHORIZED: {"description": "Credentials not provided or invalid"},
-        status.HTTP_403_FORBIDDEN: {"description": "Only admin or leader can view the pending club logo"},
-        status.HTTP_404_NOT_FOUND: {"description": "Club not found or no pending logo available"},
+        status.HTTP_307_TEMPORARY_REDIRECT: {
+            "description": "Redirect to the pending club logo"
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Credentials not provided or invalid"
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "Only admin or leader can view the pending club logo"
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Club not found or no pending logo available"
+        },
     },
     response_class=RedirectResponse,
 )
-async def get_pending_club_logo(id: PydanticObjectId, auth: INH_TOKEN_AUTH) -> RedirectResponse:
+async def get_pending_club_logo(
+    id: PydanticObjectId, auth: INH_TOKEN_AUTH
+) -> RedirectResponse:
     """Get the logo from a club pending update, waiting for admin approval.
 
     Behaves exactly like the approved logo endpoint, but serves
@@ -297,9 +345,14 @@ async def get_pending_club_logo(id: PydanticObjectId, auth: INH_TOKEN_AUTH) -> R
 
     is_admin, is_leader = await _resolve_club_access(club, auth.innohassle_id)
     if not is_admin and not is_leader:
-        raise HTTPException(status_code=403, detail="Only admin or leader can view the pending club logo")
+        raise HTTPException(
+            status_code=403,
+            detail="Only admin or leader can view the pending club logo",
+        )
 
-    pending_logo_file_id = club.pending_update.logo_file_id if club.pending_update else None
+    pending_logo_file_id = (
+        club.pending_update.logo_file_id if club.pending_update else None
+    )
     if not pending_logo_file_id or pending_logo_file_id == club.logo_file_id:
         raise HTTPException(status_code=404, detail="No pending logo available")
 
@@ -311,11 +364,15 @@ async def get_pending_club_logo(id: PydanticObjectId, auth: INH_TOKEN_AUTH) -> R
     responses={
         status.HTTP_200_OK: {"description": "Changed club logo successfully"},
         status.HTTP_400_BAD_REQUEST: {"description": "Invalid content type"},
-        status.HTTP_403_FORBIDDEN: {"description": "Only admin or leader can change club logo"},
+        status.HTTP_403_FORBIDDEN: {
+            "description": "Only admin or leader can change club logo"
+        },
         status.HTTP_404_NOT_FOUND: {"description": "Club not found"},
     },
 )
-async def set_club_logo(id: PydanticObjectId, logo_file: UploadFile, auth: INH_TOKEN_AUTH) -> Club:
+async def set_club_logo(
+    id: PydanticObjectId, logo_file: UploadFile, auth: INH_TOKEN_AUTH
+) -> Club:
     """Set a club logo picture."""
     club = await clubs_repo.read(id)
     if club is None:
@@ -324,7 +381,9 @@ async def set_club_logo(id: PydanticObjectId, logo_file: UploadFile, auth: INH_T
     is_admin, is_leader = await _resolve_club_access(club, auth.innohassle_id)
 
     if not is_admin and not is_leader:
-        raise HTTPException(status_code=403, detail="Only admin or leader can change club logo")
+        raise HTTPException(
+            status_code=403, detail="Only admin or leader can change club logo"
+        )
 
     bytes_ = await logo_file.read()
     content_type = logo_file.content_type
@@ -333,7 +392,9 @@ async def set_club_logo(id: PydanticObjectId, logo_file: UploadFile, auth: INH_T
         content_type = kind.mime if kind else None
 
     if content_type not in ("image/jpeg", "image/png", "image/webp"):
-        raise HTTPException(status_code=400, detail=f"Invalid content type ({content_type})")
+        raise HTTPException(
+            status_code=400, detail=f"Invalid content type ({content_type})"
+        )
 
     # Convert to webp and resize to 512
     image = Image.open(BytesIO(bytes_))
@@ -376,7 +437,9 @@ class DescriptionImageUploadResponse(BaseSchema):
 @router.get(
     "/description-images/{image_id}",
     responses={
-        status.HTTP_307_TEMPORARY_REDIRECT: {"description": "Redirect to the description image"},
+        status.HTTP_307_TEMPORARY_REDIRECT: {
+            "description": "Redirect to the description image"
+        },
         status.HTTP_404_NOT_FOUND: {"description": "Image not found"},
     },
     response_class=RedirectResponse,
@@ -394,7 +457,9 @@ async def get_description_image(image_id: str) -> RedirectResponse:
     responses={
         status.HTTP_200_OK: {"description": "Description image uploaded successfully"},
         status.HTTP_400_BAD_REQUEST: {"description": "Invalid content type"},
-        status.HTTP_403_FORBIDDEN: {"description": "Only club leader or admin can upload description images"},
+        status.HTTP_403_FORBIDDEN: {
+            "description": "Only club leader or admin can upload description images"
+        },
         status.HTTP_404_NOT_FOUND: {"description": "Club not found"},
     },
 )
@@ -410,7 +475,9 @@ async def upload_description_image(
         content_type = kind.mime if kind else None
 
     if content_type not in ("image/jpeg", "image/png", "image/webp"):
-        raise HTTPException(status_code=400, detail=f"Invalid content type ({content_type})")
+        raise HTTPException(
+            status_code=400, detail=f"Invalid content type ({content_type})"
+        )
 
     image = Image.open(BytesIO(bytes_))
     buf = BytesIO()
@@ -427,7 +494,9 @@ async def upload_description_image(
     "/pending-updates",
     responses={
         status.HTTP_200_OK: {"description": "List of clubs with pending updates"},
-        status.HTTP_403_FORBIDDEN: {"description": "Only admin can view all pending updates"},
+        status.HTTP_403_FORBIDDEN: {
+            "description": "Only admin can view all pending updates"
+        },
     },
 )
 async def get_pending_updates(_: CLUBS_ADMIN_AUTH) -> list[Club]:

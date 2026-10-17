@@ -32,7 +32,9 @@ def _validate_event_group_path(path: str | None) -> str | None:
 
 def _validate_local_event_group_alias(alias: str | None) -> str | None:
     if alias is not None and alias.startswith(VIRTUAL_EVENT_GROUP_ALIAS_PREFIXES):
-        raise ValueError(f"Aliases starting with {VIRTUAL_EVENT_GROUP_ALIAS_PREFIXES!r} are reserved")
+        raise ValueError(
+            f"Aliases starting with {VIRTUAL_EVENT_GROUP_ALIAS_PREFIXES!r} are reserved"
+        )
     return alias
 
 

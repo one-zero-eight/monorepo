@@ -32,7 +32,9 @@ def _rename_session_keys(session: dict[str, Any], *, forward: bool) -> dict[str,
     return session
 
 
-def _rename_component_keys(component: dict[str, Any], *, forward: bool) -> dict[str, Any]:
+def _rename_component_keys(
+    component: dict[str, Any], *, forward: bool
+) -> dict[str, Any]:
     if forward:
         old, new = "student_groups", "audience"
     else:
@@ -54,7 +56,9 @@ def _rewrite_components(components: Any, *, forward: bool) -> Any:
     if not isinstance(components, list):
         return components
     return [
-        _rename_component_keys(dict(component), forward=forward) if isinstance(component, dict) else component
+        _rename_component_keys(dict(component), forward=forward)
+        if isinstance(component, dict)
+        else component
         for component in components
     ]
 
@@ -67,7 +71,9 @@ def _rewrite_schedule_dump(payload: Any, *, forward: bool) -> Any:
         return payload
     for course in courses:
         if isinstance(course, dict) and "components" in course:
-            course["components"] = _rewrite_components(course.get("components"), forward=forward)
+            course["components"] = _rewrite_components(
+                course.get("components"), forward=forward
+            )
     return payload
 
 
@@ -83,7 +89,9 @@ def _rewrite_json_patch_path(path: str, *, forward: bool) -> str:
 
 def _rewrite_patch_value(value: Any, *, forward: bool) -> Any:
     if isinstance(value, dict):
-        if "tag" in value and ("student_groups" in value or "audience" in value or "sessions" in value):
+        if "tag" in value and (
+            "student_groups" in value or "audience" in value or "sessions" in value
+        ):
             return _rename_component_keys(dict(value), forward=forward)
         if ("occurrences" in value or "dates_pattern" in value) and "tag" not in value:
             return _rename_session_keys(dict(value), forward=forward)
@@ -91,9 +99,14 @@ def _rewrite_patch_value(value: Any, *, forward: bool) -> Any:
             return _rewrite_schedule_dump(dict(value), forward=forward)
         if "components" in value and isinstance(value.get("components"), list):
             course = dict(value)
-            course["components"] = _rewrite_components(course.get("components"), forward=forward)
+            course["components"] = _rewrite_components(
+                course.get("components"), forward=forward
+            )
             return course
-        return {key: _rewrite_patch_value(item, forward=forward) for key, item in value.items()}
+        return {
+            key: _rewrite_patch_value(item, forward=forward)
+            for key, item in value.items()
+        }
     if isinstance(value, list):
         return [_rewrite_patch_value(item, forward=forward) for item in value]
     return value
@@ -125,46 +138,82 @@ def _json_param(value: Any) -> str:
 def upgrade() -> None:
     connection = op.get_bind()
 
-    courses = connection.execute(sa.text("SELECT name, components FROM courses")).mappings().all()
+    courses = (
+        connection.execute(sa.text("SELECT name, components FROM courses"))
+        .mappings()
+        .all()
+    )
     for course in courses:
         components = _rewrite_components(course.get("components"), forward=True)
         connection.execute(
-            sa.text("UPDATE courses SET components = CAST(:components AS json) WHERE name = :name"),
+            sa.text(
+                "UPDATE courses SET components = CAST(:components AS json) WHERE name = :name"
+            ),
             {"components": _json_param(components), "name": course["name"]},
         )
 
-    events = connection.execute(sa.text("SELECT id, snapshot, patch FROM config_history_events")).mappings().all()
+    events = (
+        connection.execute(
+            sa.text("SELECT id, snapshot, patch FROM config_history_events")
+        )
+        .mappings()
+        .all()
+    )
     for event in events:
-        snapshot = event.get("snapshot") if isinstance(event.get("snapshot"), dict) else {}
+        snapshot = (
+            event.get("snapshot") if isinstance(event.get("snapshot"), dict) else {}
+        )
         snapshot = _rewrite_schedule_dump(snapshot, forward=True)
         patch = _rewrite_patch_ops(event.get("patch"), forward=True)
         connection.execute(
             sa.text(
                 "UPDATE config_history_events SET snapshot = CAST(:snapshot AS json), patch = CAST(:patch AS json) WHERE id = :id"
             ),
-            {"snapshot": _json_param(snapshot), "patch": _json_param(patch), "id": event["id"]},
+            {
+                "snapshot": _json_param(snapshot),
+                "patch": _json_param(patch),
+                "id": event["id"],
+            },
         )
 
 
 def downgrade() -> None:
     connection = op.get_bind()
 
-    courses = connection.execute(sa.text("SELECT name, components FROM courses")).mappings().all()
+    courses = (
+        connection.execute(sa.text("SELECT name, components FROM courses"))
+        .mappings()
+        .all()
+    )
     for course in courses:
         components = _rewrite_components(course.get("components"), forward=False)
         connection.execute(
-            sa.text("UPDATE courses SET components = CAST(:components AS json) WHERE name = :name"),
+            sa.text(
+                "UPDATE courses SET components = CAST(:components AS json) WHERE name = :name"
+            ),
             {"components": _json_param(components), "name": course["name"]},
         )
 
-    events = connection.execute(sa.text("SELECT id, snapshot, patch FROM config_history_events")).mappings().all()
+    events = (
+        connection.execute(
+            sa.text("SELECT id, snapshot, patch FROM config_history_events")
+        )
+        .mappings()
+        .all()
+    )
     for event in events:
-        snapshot = event.get("snapshot") if isinstance(event.get("snapshot"), dict) else {}
+        snapshot = (
+            event.get("snapshot") if isinstance(event.get("snapshot"), dict) else {}
+        )
         snapshot = _rewrite_schedule_dump(snapshot, forward=False)
         patch = _rewrite_patch_ops(event.get("patch"), forward=False)
         connection.execute(
             sa.text(
                 "UPDATE config_history_events SET snapshot = CAST(:snapshot AS json), patch = CAST(:patch AS json) WHERE id = :id"
             ),
-            {"snapshot": _json_param(snapshot), "patch": _json_param(patch), "id": event["id"]},
+            {
+                "snapshot": _json_param(snapshot),
+                "patch": _json_param(patch),
+                "id": event["id"],
+            },
         )

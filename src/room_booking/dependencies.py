@@ -14,7 +14,11 @@ from typing import Annotated
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from src.dependencies import INH_TOKEN_AUTH, IncorrectCredentialsException, get_innohassle_token_auth
+from src.dependencies import (
+    INH_TOKEN_AUTH,
+    IncorrectCredentialsException,
+    get_innohassle_token_auth,
+)
 from src.inh_accounts_sdk import UserTokenData, inh_accounts
 from src.room_booking.config import settings
 from src.room_booking.config_schema import Room
@@ -136,7 +140,9 @@ VerifiedOrRoomTvDep = Annotated[AuthContext, Depends(verify_user_or_room_tv)]
 Dependency that accepts either a user JWT or a room TV JWT.
 """
 
-VerifiedOrApiKeyOrRoomTvDep = Annotated[AuthContext, Depends(verify_user_or_api_key_or_room_tv)]
+VerifiedOrApiKeyOrRoomTvDep = Annotated[
+    AuthContext, Depends(verify_user_or_api_key_or_room_tv)
+]
 """
 Dependency that accepts either a user JWT or the service api_key or a room TV JWT.
 """

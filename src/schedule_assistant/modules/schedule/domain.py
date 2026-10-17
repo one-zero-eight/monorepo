@@ -14,9 +14,17 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     TermConfig,
     WeeklyPatternSlot,
 )
-from src.schedule_assistant.modules.schedule_config.semester_windows import resolve_audience_semester
-from src.schedule_assistant.modules.schedule_config.validation import build_selector_map, expand_group_tokens
-from src.schedule_assistant.modules.schedule_config.weekly_dates import expand_weekly_slot, normalize_alternation
+from src.schedule_assistant.modules.schedule_config.semester_windows import (
+    resolve_audience_semester,
+)
+from src.schedule_assistant.modules.schedule_config.validation import (
+    build_selector_map,
+    expand_group_tokens,
+)
+from src.schedule_assistant.modules.schedule_config.weekly_dates import (
+    expand_weekly_slot,
+    normalize_alternation,
+)
 from src.schedule_assistant.weekday import Weekday
 
 
@@ -29,7 +37,9 @@ def _group_codes_for_session(
     return tuple(sorted(expand_group_tokens(tokens, selector_map)))
 
 
-def _enrollment_size(group_codes: tuple[str, ...], sections: SectionsConfig) -> int | None:
+def _enrollment_size(
+    group_codes: tuple[str, ...], sections: SectionsConfig
+) -> int | None:
     groups_by_code = {group.code: group for group in sections.students_groups}
     sizes: list[int] = []
     for code in group_codes:
@@ -103,7 +113,9 @@ def _meeting_from_weekly_slot(
     term: TermConfig | None = None,
     audiences: list[str] | None = None,
 ) -> ScheduledMeeting:
-    window = resolve_audience_semester(term, audiences or []) if term is not None else None
+    window = (
+        resolve_audience_semester(term, audiences or []) if term is not None else None
+    )
     return _base_meeting(
         course=course,
         component_tag=component_tag,
@@ -111,7 +123,9 @@ def _meeting_from_weekly_slot(
         students_number=students_number,
         placement=WeeklyPatternPlacement(
             weekday=slot.weekday,
-            alternation=normalize_alternation(slot.alternation, term.starting_day if term else Weekday.MONDAY),
+            alternation=normalize_alternation(
+                slot.alternation, term.starting_day if term else Weekday.MONDAY
+            ),
             edits=slot.edits or [],
             start_date=window.start_date if window is not None else None,
             end_date=window.end_date if window is not None else None,
@@ -141,7 +155,14 @@ def _meetings_from_weekly_slot_concrete(
         return []
 
     return [
-        _meeting_from_occurrence(course, component_tag, group_codes, students_number, resolved.occurrence, series_notes)
+        _meeting_from_occurrence(
+            course,
+            component_tag,
+            group_codes,
+            students_number,
+            resolved.occurrence,
+            series_notes,
+        )
         for resolved in expand_weekly_slot(slot, window, term.starting_day)
         if resolved.occurrence is not None
     ]
@@ -164,7 +185,9 @@ def meetings_from_schedule_config(
             if not component.sessions:
                 continue
             for session in component.sessions:
-                group_codes = _group_codes_for_session(component.audience, session, selector_map)
+                group_codes = _group_codes_for_session(
+                    component.audience, session, selector_map
+                )
                 students_number = component.expected_enrollment
                 if students_number is None:
                     students_number = _enrollment_size(group_codes, sections)

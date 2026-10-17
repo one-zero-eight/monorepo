@@ -36,7 +36,10 @@ def test_fix_moodle_events_orphan_close_becomes_deadline():
     fixed = fix_moodle_events(raw)
     summaries = _summaries(fixed)
 
-    assert any("Exercise Physiology Quiz закрывается" in s and "PhyEduAndSpoEn" in s for s in summaries)
+    assert any(
+        "Exercise Physiology Quiz закрывается" in s and "PhyEduAndSpoEn" in s
+        for s in summaries
+    )
 
 
 def test_fix_moodle_events_keeps_assignment_deadlines():

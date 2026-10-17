@@ -23,7 +23,9 @@ class LinkSchema(BaseSchema):
 
 
 class Link(LinkSchema, BeanieDocumentMixin, Document):
-    created_at: dtm.datetime = Field(default_factory=lambda: dtm.datetime.now(tz=dtm.UTC))
+    created_at: dtm.datetime = Field(
+        default_factory=lambda: dtm.datetime.now(tz=dtm.UTC)
+    )
 
     class Settings(BeanieDocumentMixin.Settings):
         indexes: ClassVar = [

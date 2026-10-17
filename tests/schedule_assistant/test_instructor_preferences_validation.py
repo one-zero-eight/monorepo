@@ -6,7 +6,9 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     InstructorSlotPreferenceLevel,
     TermConfig,
 )
-from src.schedule_assistant.modules.schedule_config.validation import validate_instructors
+from src.schedule_assistant.modules.schedule_config.validation import (
+    validate_instructors,
+)
 from src.schedule_assistant.modules.solver.instructor_preferences import (
     count_discouraged_placement_violations,
     list_banned_placement_violations,

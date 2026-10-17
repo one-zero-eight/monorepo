@@ -1,7 +1,11 @@
 import datetime as dtm
 
 from src.schedule_assistant.modules.issues.placement import meetings_overlap
-from src.schedule_assistant.modules.issues.schemas import OccurrencePlacement, ScheduledMeeting, WeeklyPatternPlacement
+from src.schedule_assistant.modules.issues.schemas import (
+    OccurrencePlacement,
+    ScheduledMeeting,
+    WeeklyPatternPlacement,
+)
 from src.schedule_assistant.modules.schedule.domain import meetings_from_schedule_config
 from src.schedule_assistant.modules.schedule_config.schemas import (
     ComponentSessionSeries,
@@ -17,7 +21,10 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     WeeklyPatternSlot,
     WeeklyPatternSlotEdit,
 )
-from src.schedule_assistant.modules.schedule_config.validation import ValidationContext, validate_courses
+from src.schedule_assistant.modules.schedule_config.validation import (
+    ValidationContext,
+    validate_courses,
+)
 from src.schedule_assistant.modules.schedule_config.visibility import (
     filter_courses_for_instructor,
     filter_scheduled_instructors,
@@ -33,14 +40,22 @@ def _term() -> TermConfig:
             start_date=dtm.date(2026, 9, 1),
             end_date=dtm.date(2026, 9, 28),
         ),
-        days=[Weekday.MONDAY, Weekday.TUESDAY, Weekday.WEDNESDAY, Weekday.THURSDAY, Weekday.FRIDAY],
+        days=[
+            Weekday.MONDAY,
+            Weekday.TUESDAY,
+            Weekday.WEDNESDAY,
+            Weekday.THURSDAY,
+            Weekday.FRIDAY,
+        ],
         starting_day=Weekday.MONDAY,
         time_slots=[TermTimeSlot(start_time=dtm.time(9, 0), end_time=dtm.time(10, 30))],
         sections=[
             SectionConfig(
                 code="core",
                 name="Core",
-                programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])],
+                programs=[
+                    SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])
+                ],
             )
         ],
     )
@@ -60,7 +75,12 @@ def _sections() -> SectionsConfig:
 def _ctx() -> ValidationContext:
     return ValidationContext(
         sections=_sections(),
-        rooms=RoomConfig(rooms=[RoomConfig.Room(id="108", name="108"), RoomConfig.Room(id="107", name="107")]),
+        rooms=RoomConfig(
+            rooms=[
+                RoomConfig.Room(id="108", name="108"),
+                RoomConfig.Room(id="107", name="107"),
+            ]
+        ),
         instructors=InstructorConfig(
             instructors=[
                 InstructorConfig.Instructor(id="a@iu.ru"),
@@ -158,7 +178,9 @@ def test_validate_rejects_cancel_with_overrides_and_invalid_resolved_time() -> N
     )
     errors = validate_courses(courses, _ctx())
     assert any("cancel cannot be combined" in error for error in errors)
-    assert any("resolved start_time must be before end_time" in error for error in errors)
+    assert any(
+        "resolved start_time must be before end_time" in error for error in errors
+    )
 
 
 def test_meetings_expand_weekly_overrides_and_cancellations() -> None:
@@ -209,13 +231,17 @@ def test_meetings_expand_weekly_overrides_and_cancellations() -> None:
     moved = next(
         meeting
         for meeting in meetings
-        if isinstance(meeting.placement, OccurrencePlacement) and meeting.placement.date == dtm.date(2026, 9, 22)
+        if isinstance(meeting.placement, OccurrencePlacement)
+        and meeting.placement.date == dtm.date(2026, 9, 22)
     )
     assert moved.start_time == dtm.time(10, 40)
     assert moved.room == "107"
     assert moved.instructor == "b@iu.ru"
     assert all(
-        not (isinstance(meeting.placement, OccurrencePlacement) and meeting.placement.date == dtm.date(2026, 9, 14))
+        not (
+            isinstance(meeting.placement, OccurrencePlacement)
+            and meeting.placement.date == dtm.date(2026, 9, 14)
+        )
         for meeting in meetings
     )
 
@@ -294,7 +320,10 @@ def test_visibility_includes_edit_only_instructor() -> None:
         ),
     ]
     filtered = filter_scheduled_instructors(instructors, courses)
-    assert {instructor.id for instructor in filtered.instructors} == {"a@iu.ru", "b@iu.ru"}
+    assert {instructor.id for instructor in filtered.instructors} == {
+        "a@iu.ru",
+        "b@iu.ru",
+    }
 
     identity = instructor_identity_values(instructors.instructors[1])
     visible = filter_courses_for_instructor(courses, identity)

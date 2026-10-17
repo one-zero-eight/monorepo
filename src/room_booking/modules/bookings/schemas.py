@@ -7,7 +7,9 @@ from pydantic import BaseModel, Field, computed_field
 from src.room_booking.modules.bookings.recurrence import RecurrencePattern
 from src.room_booking.modules.bookings.tz_utils import MSKDatetime
 
-type BookingStatus = Literal["Accept", "Tentative", "Decline", "Unknown", "NoResponseReceived"]
+type BookingStatus = Literal[
+    "Accept", "Tentative", "Decline", "Unknown", "NoResponseReceived"
+]
 type Presence = Literal["present", "absent", "unknown"]
 
 
@@ -60,9 +62,16 @@ class Booking(BaseModel):
     @property
     def id(self) -> str:
         "Source-scoped identity, including the occurrence window. Never merge by slot alone."
-        identity = self.uid or self.outlook_booking_id or self.outlook_entry_id or self.source_item_id
+        identity = (
+            self.uid
+            or self.outlook_booking_id
+            or self.outlook_entry_id
+            or self.source_item_id
+        )
         if identity is None:
-            identity = sha256(f"{self.title}:{self.busy_type}:{self.attendees}".encode()).hexdigest()[:24]
+            identity = sha256(
+                f"{self.title}:{self.busy_type}:{self.attendees}".encode()
+            ).hexdigest()[:24]
         return (
             f"{self.source}:{self.organizer_mailbox or ''}:{identity}:"
             f"{self.room_id}-{round(self.start.timestamp())}-{round(self.end.timestamp())}"
@@ -70,7 +79,9 @@ class Booking(BaseModel):
 
 
 class CreateBookingRequest(BaseModel):
-    operation_id: str | None = Field(default=None, min_length=1, max_length=200, pattern=r"^[A-Za-z0-9_.:-]+$")
+    operation_id: str | None = Field(
+        default=None, min_length=1, max_length=200, pattern=r"^[A-Za-z0-9_.:-]+$"
+    )
     room_id: str
     "ID of the room to book"
     title: str
@@ -87,6 +98,8 @@ class CreateBookingRequest(BaseModel):
     "Optional Outlook categories"
     description: str | None = None
     "Optional text appended to the calendar item body after the standard notice"
+    is_public: bool = False
+    "Flag to detect if room is available for everybody to join"
 
 
 class PatchBookingRequest(BaseModel):
@@ -124,7 +137,9 @@ class ReconcileBookingResult(BaseModel):
     booking: Booking | None = None
     evidence: list[str] = Field(default_factory=list)
     error: str | None = None
-    cancellation_status: Literal["cancelling", "cancelled", "requires_review"] | None = None
+    cancellation_status: (
+        Literal["cancelling", "cancelled", "requires_review"] | None
+    ) = None
 
 
 class ScopedCancelBookingRequest(ReconcileBookingEntry):

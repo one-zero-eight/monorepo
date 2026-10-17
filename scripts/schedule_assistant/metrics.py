@@ -127,7 +127,10 @@ sys.path.insert(0, str(ROOT))
 
 import itertools
 
-from src.schedule_assistant.modules.schedule_config.helpers import expand_groups, resolve_selector_map
+from src.schedule_assistant.modules.schedule_config.helpers import (
+    expand_groups,
+    resolve_selector_map,
+)
 from src.schedule_assistant.modules.schedule_config.schemas import (
     CourseConfig,
     CoursesConfig,
@@ -247,7 +250,9 @@ def _is_consecutive(a: FlatMeeting, b: FlatMeeting, time_slots: list[dtm.time]) 
 
 def _lec_tut_same_room_stats(events: list[FlatMeeting], cfg: ScheduleConfig) -> int:
     time_slots = [slot.start_time for slot in cfg.term.time_slots]
-    tuts_by_slot_room: dict[tuple[int, str, int, str], list[FlatMeeting]] = defaultdict(list)
+    tuts_by_slot_room: dict[tuple[int, str, int, str], list[FlatMeeting]] = defaultdict(
+        list
+    )
     same_room_pairs: set[tuple[int, int, int]] = set()
     for e in events:
         if str(e.component_tag).lower() == "tut":
@@ -261,13 +266,17 @@ def _lec_tut_same_room_stats(events: list[FlatMeeting], cfg: ScheduleConfig) -> 
         if lec_slot is None:
             continue
         lec_groups = set(e.groups)
-        for tut in tuts_by_slot_room.get((e.course_idx, e.day, lec_slot + 1, e.room), ()):
+        for tut in tuts_by_slot_room.get(
+            (e.course_idx, e.day, lec_slot + 1, e.room), ()
+        ):
             if lec_groups & set(tut.groups):
                 same_room_pairs.add((e.course_idx, e.component_idx, tut.component_idx))
     return len(same_room_pairs)
 
 
-def _instructor_room_swaps_consecutive(events: list[FlatMeeting], time_slots: list[dtm.time]) -> tuple[int, int]:
+def _instructor_room_swaps_consecutive(
+    events: list[FlatMeeting], time_slots: list[dtm.time]
+) -> tuple[int, int]:
     class_lab_tags = {"class", "lab"}
     by_instructor_day: dict[tuple[str, str], list[FlatMeeting]] = defaultdict(list)
     for e in events:
@@ -298,7 +307,9 @@ def _normalize_instructors(raw_inst: str | list[str] | None) -> tuple[str, ...]:
     return ()
 
 
-def _iter_flat_meetings(schedule: CoursesConfig, cfg: ScheduleConfig) -> Iterator[FlatMeeting]:
+def _iter_flat_meetings(
+    schedule: CoursesConfig, cfg: ScheduleConfig
+) -> Iterator[FlatMeeting]:
     rank = {d: i for i, d in enumerate(teaching_days(cfg))}
     for c_idx, course in enumerate(schedule.courses):
         for comp_idx, comp in enumerate(course.components):
@@ -337,7 +348,9 @@ def _iter_flat_meetings(schedule: CoursesConfig, cfg: ScheduleConfig) -> Iterato
                         )
 
 
-def _pairwise_overlap(intervals: list[tuple[dtm.time, dtm.time, str]], label: str) -> list[str]:
+def _pairwise_overlap(
+    intervals: list[tuple[dtm.time, dtm.time, str]], label: str
+) -> list[str]:
     out: list[str] = []
     for i, (s1, e1, l1) in enumerate(intervals):
         for s2, e2, l2 in intervals[i + 1 :]:
@@ -367,7 +380,9 @@ def _group_students_map(cfg: ScheduleConfig) -> dict[str, set[str]]:
     return out
 
 
-def _meeting_expected_students(comp_cfg: CourseConfig.Component, groups: tuple[str, ...], sizes: dict[str, int]) -> int:
+def _meeting_expected_students(
+    comp_cfg: CourseConfig.Component, groups: tuple[str, ...], sizes: dict[str, int]
+) -> int:
     if comp_cfg.expected_enrollment is not None:
         return max(0, int(comp_cfg.expected_enrollment))
     return max(0, sum(sizes.get(g, 0) for g in groups))
@@ -401,7 +416,9 @@ def _back_to_back_lec_tut_counts(cfg: ScheduleConfig) -> tuple[int, int]:
     return possible, total
 
 
-def _back_to_back_lecture_tutorial_scheduled(events: list[FlatMeeting], cfg: ScheduleConfig) -> int:
+def _back_to_back_lecture_tutorial_scheduled(
+    events: list[FlatMeeting], cfg: ScheduleConfig
+) -> int:
     # A (course, lec_component, tut_component) pair is "back-to-back" if at
     # least one lec instance and one tut instance share a student group, fall
     # on the same day, and the tut occupies the slot immediately after the
@@ -428,13 +445,27 @@ def _back_to_back_lecture_tutorial_scheduled(events: list[FlatMeeting], cfg: Sch
     return len(satisfied_pairs)
 
 
-def _lec_tut_lab_rows(cfg: ScheduleConfig) -> list[tuple[int, int, int, int | None, str]]:
+def _lec_tut_lab_rows(
+    cfg: ScheduleConfig,
+) -> list[tuple[int, int, int, int | None, str]]:
     selector_map = resolve_selector_map(cfg)
     rows: list[tuple[int, int, int, int | None, str]] = []
     for c_idx, course in enumerate(cfg.courses):
-        lecs = [(i, c) for i, c in enumerate(course.components) if str(c.tag).lower() == "lec"]
-        tuts = [(i, c) for i, c in enumerate(course.components) if str(c.tag).lower() == "tut"]
-        labs = [(i, c) for i, c in enumerate(course.components) if str(c.tag).lower() == "lab"]
+        lecs = [
+            (i, c)
+            for i, c in enumerate(course.components)
+            if str(c.tag).lower() == "lec"
+        ]
+        tuts = [
+            (i, c)
+            for i, c in enumerate(course.components)
+            if str(c.tag).lower() == "tut"
+        ]
+        labs = [
+            (i, c)
+            for i, c in enumerate(course.components)
+            if str(c.tag).lower() == "lab"
+        ]
         if not tuts or len(lecs) != 1:
             continue
         lec_i, lec = lecs[0]
@@ -483,7 +514,9 @@ def _same_day_lec_tut_lab_total(cfg: ScheduleConfig) -> int:
     return total
 
 
-def _same_day_lec_tut_lab_satisfied(events: list[FlatMeeting], cfg: ScheduleConfig) -> int:
+def _same_day_lec_tut_lab_satisfied(
+    events: list[FlatMeeting], cfg: ScheduleConfig
+) -> int:
     by_key: dict[tuple[int, str, str], dict[int, str]] = defaultdict(dict)
     for e in events:
         tag = str(e.component_tag).lower()
@@ -491,7 +524,9 @@ def _same_day_lec_tut_lab_satisfied(events: list[FlatMeeting], cfg: ScheduleConf
             continue
         for g in e.groups:
             by_key[(e.course_idx, g, e.day)][e.component_idx] = tag
-    triples: dict[tuple[int, str], list[tuple[int, int, int | None]]] = defaultdict(list)
+    triples: dict[tuple[int, str], list[tuple[int, int, int | None]]] = defaultdict(
+        list
+    )
     for c, li, ti, bi, g in _lec_tut_lab_rows(cfg):
         triples[(c, g)].append((li, ti, bi))
     satisfied: set[tuple[int, int, int, int | None, str]] = set()
@@ -504,20 +539,39 @@ def _same_day_lec_tut_lab_satisfied(events: list[FlatMeeting], cfg: ScheduleConf
     return len(satisfied)
 
 
-def _component_relation_allows_pair(cfg: ScheduleConfig, course_idx: int, early_idx: int, late_idx: int) -> bool:
-    comps = cfg.courses[course_idx].components if 0 <= course_idx < len(cfg.courses) else []
-    if early_idx < 0 or late_idx < 0 or early_idx >= len(comps) or late_idx >= len(comps):
+def _component_relation_allows_pair(
+    cfg: ScheduleConfig, course_idx: int, early_idx: int, late_idx: int
+) -> bool:
+    comps = (
+        cfg.courses[course_idx].components if 0 <= course_idx < len(cfg.courses) else []
+    )
+    if (
+        early_idx < 0
+        or late_idx < 0
+        or early_idx >= len(comps)
+        or late_idx >= len(comps)
+    ):
         return False
     early_rel = comps[early_idx].relates_to
     late_rel = comps[late_idx].relates_to
     if early_rel is None and late_rel is None:
         return True
-    early_set = set(early_rel if isinstance(early_rel, list) else [early_rel]) if early_rel is not None else set()
-    late_set = set(late_rel if isinstance(late_rel, list) else [late_rel]) if late_rel is not None else set()
+    early_set = (
+        set(early_rel if isinstance(early_rel, list) else [early_rel])
+        if early_rel is not None
+        else set()
+    )
+    late_set = (
+        set(late_rel if isinstance(late_rel, list) else [late_rel])
+        if late_rel is not None
+        else set()
+    )
     return late_idx in early_set or early_idx in late_set
 
 
-def _count_tag_before_tag(events: list[FlatMeeting], cfg: ScheduleConfig, early_tag: str, late_tag: str) -> int:
+def _count_tag_before_tag(
+    events: list[FlatMeeting], cfg: ScheduleConfig, early_tag: str, late_tag: str
+) -> int:
     by_course: dict[int, list[FlatMeeting]] = defaultdict(list)
     for e in events:
         by_course[e.course_idx].append(e)
@@ -529,7 +583,9 @@ def _count_tag_before_tag(events: list[FlatMeeting], cfg: ScheduleConfig, early_
             for b in late_events:
                 if (a.day_index, a.start_time) >= (b.day_index, b.start_time):
                     continue
-                if not _component_relation_allows_pair(cfg, c_idx, a.component_idx, b.component_idx):
+                if not _component_relation_allows_pair(
+                    cfg, c_idx, a.component_idx, b.component_idx
+                ):
                     continue
                 if set(a.groups) & set(b.groups):
                     count += 1
@@ -537,13 +593,25 @@ def _count_tag_before_tag(events: list[FlatMeeting], cfg: ScheduleConfig, early_
 
 
 def list_conflicts(result: SolveResult, cfg: ScheduleConfig | None = None) -> list[str]:
-    if cfg is None or result.status not in ("OPTIMAL", "FEASIBLE") or not result.schedule.courses:
+    if (
+        cfg is None
+        or result.status not in ("OPTIMAL", "FEASIBLE")
+        or not result.schedule.courses
+    ):
         return []
     events = list(_iter_flat_meetings(result.schedule, cfg))
-    by_room: dict[tuple[str, str], list[tuple[dtm.time, dtm.time, str]]] = defaultdict(list)
-    by_group: dict[tuple[str, str], list[tuple[dtm.time, dtm.time, str]]] = defaultdict(list)
-    by_inst: dict[tuple[str, str], list[tuple[dtm.time, dtm.time, str]]] = defaultdict(list)
-    by_student: dict[tuple[str, str], list[tuple[dtm.time, dtm.time, str]]] = defaultdict(list)
+    by_room: dict[tuple[str, str], list[tuple[dtm.time, dtm.time, str]]] = defaultdict(
+        list
+    )
+    by_group: dict[tuple[str, str], list[tuple[dtm.time, dtm.time, str]]] = defaultdict(
+        list
+    )
+    by_inst: dict[tuple[str, str], list[tuple[dtm.time, dtm.time, str]]] = defaultdict(
+        list
+    )
+    by_student: dict[tuple[str, str], list[tuple[dtm.time, dtm.time, str]]] = (
+        defaultdict(list)
+    )
 
     group_students = _group_students_map(cfg)
     student_groups: dict[str, set[str]] = defaultdict(set)
@@ -588,7 +656,9 @@ def list_conflicts(result: SolveResult, cfg: ScheduleConfig | None = None) -> li
     return out
 
 
-def _expected_audience_meeting_counts(cfg: ScheduleConfig) -> dict[tuple[str, str, tuple[str, ...]], int]:
+def _expected_audience_meeting_counts(
+    cfg: ScheduleConfig,
+) -> dict[tuple[str, str, tuple[str, ...]], int]:
     selector_map = resolve_selector_map(cfg)
     out: dict[tuple[str, str, tuple[str, ...]], int] = {}
     for course in cfg.courses:
@@ -603,13 +673,17 @@ def _expected_audience_meeting_counts(cfg: ScheduleConfig) -> dict[tuple[str, st
     return out
 
 
-def _actual_audience_meeting_counts(schedule: CoursesConfig) -> dict[tuple[str, str, tuple[str, ...]], int]:
+def _actual_audience_meeting_counts(
+    schedule: CoursesConfig,
+) -> dict[tuple[str, str, tuple[str, ...]], int]:
     out: dict[tuple[str, str, tuple[str, ...]], int] = {}
     for course in schedule.courses:
         for comp in course.components:
             for series in comp.sessions or []:
                 key = (course.name, str(comp.tag), tuple(series.audience))
-                meeting_count = len(series.weekly_pattern or []) + len(series.dates_pattern or [])
+                meeting_count = len(series.weekly_pattern or []) + len(
+                    series.dates_pattern or []
+                )
                 out[key] = out.get(key, 0) + meeting_count
     return out
 
@@ -618,7 +692,9 @@ def list_unsatisfied(result: SolveResult, cfg: ScheduleConfig) -> list[str]:
     expected = _expected_audience_meeting_counts(cfg)
     if result.status not in ("OPTIMAL", "FEASIBLE"):
         return (
-            [f"solve status is {result.status!r} but config implies meetings for {len(expected)} keys"]
+            [
+                f"solve status is {result.status!r} but config implies meetings for {len(expected)} keys"
+            ]
             if expected
             else []
         )
@@ -631,27 +707,43 @@ def list_unsatisfied(result: SolveResult, cfg: ScheduleConfig) -> list[str]:
         if exp == act:
             continue
         if exp is None:
-            issues.append(f"unexpected scheduled meetings for key={key!r}: actual={act}")
+            issues.append(
+                f"unexpected scheduled meetings for key={key!r}: actual={act}"
+            )
         elif act is None:
-            issues.append(f"missing scheduled meetings for key={key!r}: expected={exp}, actual=0")
+            issues.append(
+                f"missing scheduled meetings for key={key!r}: expected={exp}, actual=0"
+            )
         else:
-            issues.append(f"meeting count mismatch for key={key!r}: expected={exp}, actual={act}")
+            issues.append(
+                f"meeting count mismatch for key={key!r}: expected={exp}, actual={act}"
+            )
     return issues
 
 
-def calculate_schedule_metrics(result: SolveResult, cfg: ScheduleConfig) -> ScheduleMetrics:
+def calculate_schedule_metrics(
+    result: SolveResult, cfg: ScheduleConfig
+) -> ScheduleMetrics:
     objective_value: float | None = None
     for phase in result.stats.phase_stats:
         if phase.objective_value is not None:
             objective_value = float(phase.objective_value)
 
-    events = list(_iter_flat_meetings(result.schedule, cfg)) if result.status in ("OPTIMAL", "FEASIBLE") else []
+    events = (
+        list(_iter_flat_meetings(result.schedule, cfg))
+        if result.status in ("OPTIMAL", "FEASIBLE")
+        else []
+    )
     group_sizes = _group_size_map(cfg)
     room_caps = {room.id: room.capacity for room in cfg.rooms}
     total_slots = len(teaching_days(cfg)) * len(cfg.term.time_slots)
 
-    per_group_day_load: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
-    per_group_day_subjects: dict[str, dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
+    per_group_day_load: dict[str, dict[str, int]] = defaultdict(
+        lambda: defaultdict(int)
+    )
+    per_group_day_subjects: dict[str, dict[str, set[str]]] = defaultdict(
+        lambda: defaultdict(set)
+    )
     per_inst_day_load: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     saturday_event_count = 0
     total_weighted_group_hours = 0.0
@@ -676,10 +768,15 @@ def calculate_schedule_metrics(result: SolveResult, cfg: ScheduleConfig) -> Sche
         room_capacity = room_caps.get(e.room, 0)
         comp_cfg = (
             cfg.courses[e.course_idx].components[e.component_idx]
-            if e.course_idx < len(cfg.courses) and e.component_idx < len(cfg.courses[e.course_idx].components)
+            if e.course_idx < len(cfg.courses)
+            and e.component_idx < len(cfg.courses[e.course_idx].components)
             else None
         )
-        expected_students = _meeting_expected_students(comp_cfg, e.groups, group_sizes) if comp_cfg is not None else 0
+        expected_students = (
+            _meeting_expected_students(comp_cfg, e.groups, group_sizes)
+            if comp_cfg is not None
+            else 0
+        )
         wasted_seat_hours += max(0, room_capacity - expected_students) * event_hours
 
         allowed_capacity = (
@@ -689,18 +786,28 @@ def calculate_schedule_metrics(result: SolveResult, cfg: ScheduleConfig) -> Sche
         )
         if expected_students > allowed_capacity:
             events_exceeding_room_capacity_count += 1
-            total_capacity_overflow_students += max(0, expected_students - room_capacity)
+            total_capacity_overflow_students += max(
+                0, expected_students - room_capacity
+            )
 
         feasible_for_full = any(cap >= expected_students for cap in room_caps.values())
-        required_capacity = max(1, expected_students if feasible_for_full else math.ceil(expected_students * 0.9))
+        required_capacity = max(
+            1,
+            expected_students
+            if feasible_for_full
+            else math.ceil(expected_students * 0.9),
+        )
         is_oversize_here = False
         if room_capacity > required_capacity:
-            oversize_pct = ((room_capacity - required_capacity) * 100) // max(1, required_capacity)
+            oversize_pct = ((room_capacity - required_capacity) * 100) // max(
+                1, required_capacity
+            )
             if oversize_pct > ROOM_OVERSIZE_PCT_THRESHOLD:
                 is_oversize_here = True
         had_non_oversize_option = any(
             cap >= required_capacity
-            and ((cap - required_capacity) * 100) // max(1, required_capacity) <= ROOM_OVERSIZE_PCT_THRESHOLD
+            and ((cap - required_capacity) * 100) // max(1, required_capacity)
+            <= ROOM_OVERSIZE_PCT_THRESHOLD
             for cap in room_caps.values()
         )
         if had_non_oversize_option:
@@ -708,7 +815,9 @@ def calculate_schedule_metrics(result: SolveResult, cfg: ScheduleConfig) -> Sche
             if is_oversize_here:
                 events_with_room_much_larger_than_students_count += 1
 
-    core_course_idx = {i for i, c in enumerate(cfg.courses) if c.section_code.strip() == "core"}
+    core_course_idx = {
+        i for i, c in enumerate(cfg.courses) if c.section_code.strip() == "core"
+    }
     core_events_per_group_day: dict[tuple[str, str], int] = defaultdict(int)
     core_subjects_per_group_day: dict[tuple[str, str], set[str]] = defaultdict(set)
     for e in events:
@@ -730,7 +839,10 @@ def calculate_schedule_metrics(result: SolveResult, cfg: ScheduleConfig) -> Sche
         for d in days:
             if core_events_per_group_day[(g, d)] > BAD_DAY_EVENT_THRESHOLD:
                 gbad_events += 1
-            if len(core_subjects_per_group_day[(g, d)]) > BAD_DAY_DISTINCT_SUBJECTS_THRESHOLD:
+            if (
+                len(core_subjects_per_group_day[(g, d)])
+                > BAD_DAY_DISTINCT_SUBJECTS_THRESHOLD
+            ):
                 gbad_distinct += 1
         bad_events_total += gbad_events
         bad_distinct_total += gbad_distinct
@@ -776,9 +888,13 @@ def calculate_schedule_metrics(result: SolveResult, cfg: ScheduleConfig) -> Sche
     (
         instructor_room_swaps_consecutive_opportunities,
         instructor_room_swaps_consecutive,
-    ) = _instructor_room_swaps_consecutive(events, [slot.start_time for slot in cfg.term.time_slots])
+    ) = _instructor_room_swaps_consecutive(
+        events, [slot.start_time for slot in cfg.term.time_slots]
+    )
     b2b_possible, b2b_total = _back_to_back_lec_tut_counts(cfg)
-    back_to_back_lec_tut_scheduled = _back_to_back_lecture_tutorial_scheduled(events, cfg)
+    back_to_back_lec_tut_scheduled = _back_to_back_lecture_tutorial_scheduled(
+        events, cfg
+    )
     same_day_lec_tut_lab_possible = _same_day_lec_tut_lab_possible(cfg)
     same_day_lec_tut_lab_total = _same_day_lec_tut_lab_total(cfg)
     same_day_lec_tut_lab_satisfied = _same_day_lec_tut_lab_satisfied(events, cfg)
@@ -799,12 +915,14 @@ def calculate_schedule_metrics(result: SolveResult, cfg: ScheduleConfig) -> Sche
     preference_instructors_hit: set[str] = set()
     if events:
         preference_meetings = [(e.day, e.instructors, e.start_time) for e in events]
-        preference_weighted_total, preference_violation_count, preference_instructors_hit = (
-            count_discouraged_placement_violations(
-                instructors=cfg.instructors,
-                term=cfg.term,
-                meetings=preference_meetings,
-            )
+        (
+            preference_weighted_total,
+            preference_violation_count,
+            preference_instructors_hit,
+        ) = count_discouraged_placement_violations(
+            instructors=cfg.instructors,
+            term=cfg.term,
+            meetings=preference_meetings,
         )
 
     return ScheduleMetrics(
@@ -822,22 +940,33 @@ def calculate_schedule_metrics(result: SolveResult, cfg: ScheduleConfig) -> Sche
         quality_back_to_back_lec_tut_total=b2b_total,
         quality_back_to_back_lec_tut_possible=b2b_possible,
         quality_back_to_back_lec_tut_scheduled=back_to_back_lec_tut_scheduled,
-        quality_back_to_back_lec_tut_ratio=(back_to_back_lec_tut_scheduled / b2b_possible if b2b_possible > 0 else 0.0),
+        quality_back_to_back_lec_tut_ratio=(
+            back_to_back_lec_tut_scheduled / b2b_possible if b2b_possible > 0 else 0.0
+        ),
         quality_same_day_lec_tut_lab_total=same_day_lec_tut_lab_total,
         quality_same_day_lec_tut_lab_possible=same_day_lec_tut_lab_possible,
         quality_same_day_lec_tut_lab_satisfied=same_day_lec_tut_lab_satisfied,
         quality_same_day_lec_tut_lab_ratio=(
-            same_day_lec_tut_lab_satisfied / same_day_lec_tut_lab_possible if same_day_lec_tut_lab_possible > 0 else 0.0
+            same_day_lec_tut_lab_satisfied / same_day_lec_tut_lab_possible
+            if same_day_lec_tut_lab_possible > 0
+            else 0.0
         ),
-        quality_labs_before_tutorial_count=_count_tag_before_tag(events, cfg, "lab", "tut"),
-        quality_labs_before_lecture_count=_count_tag_before_tag(events, cfg, "lab", "lec"),
-        quality_tutorials_before_lecture_count=_count_tag_before_tag(events, cfg, "tut", "lec"),
+        quality_labs_before_tutorial_count=_count_tag_before_tag(
+            events, cfg, "lab", "tut"
+        ),
+        quality_labs_before_lecture_count=_count_tag_before_tag(
+            events, cfg, "lab", "lec"
+        ),
+        quality_tutorials_before_lecture_count=_count_tag_before_tag(
+            events, cfg, "tut", "lec"
+        ),
         rooms_events_exceeding_capacity_count=events_exceeding_room_capacity_count,
         rooms_events_much_larger_than_students_count=events_with_room_much_larger_than_students_count,
         rooms_events_much_larger_than_students_possible=events_with_oversize_avoidance_opportunity_count,
         rooms_events_much_larger_than_students_total=len(events),
         rooms_events_much_larger_than_students_ratio=(
-            events_with_room_much_larger_than_students_count / events_with_oversize_avoidance_opportunity_count
+            events_with_room_much_larger_than_students_count
+            / events_with_oversize_avoidance_opportunity_count
             if events_with_oversize_avoidance_opportunity_count > 0
             else 0.0
         ),
@@ -846,19 +975,26 @@ def calculate_schedule_metrics(result: SolveResult, cfg: ScheduleConfig) -> Sche
         room_continuity_lec_tut_same_room_total=b2b_total,
         room_continuity_lec_tut_same_room_possible=b2b_possible,
         room_continuity_lec_tut_same_room_count=lec_tut_same_room_count,
-        room_continuity_lec_tut_same_room_ratio=(lec_tut_same_room_count / b2b_possible if b2b_possible > 0 else 0.0),
+        room_continuity_lec_tut_same_room_ratio=(
+            lec_tut_same_room_count / b2b_possible if b2b_possible > 0 else 0.0
+        ),
         room_continuity_instructor_room_swaps_consecutive_possible=instructor_room_swaps_consecutive_opportunities,
         room_continuity_instructor_room_swaps_consecutive_total=instructor_room_swaps_consecutive_opportunities,
         room_continuity_instructor_room_swaps_consecutive=instructor_room_swaps_consecutive,
         room_continuity_instructor_room_swaps_consecutive_ratio=(
-            instructor_room_swaps_consecutive / instructor_room_swaps_consecutive_opportunities
+            instructor_room_swaps_consecutive
+            / instructor_room_swaps_consecutive_opportunities
             if instructor_room_swaps_consecutive_opportunities > 0
             else 0.0
         ),
         hatred_global_saturday_event_count=saturday_event_count,
         hatred_global_late_events_count=len(late_events),
-        hatred_global_late_events_lec_count=sum(1 for e in late_events if str(e.component_tag).lower() == "lec"),
-        hatred_global_late_events_tut_count=sum(1 for e in late_events if str(e.component_tag).lower() == "tut"),
+        hatred_global_late_events_lec_count=sum(
+            1 for e in late_events if str(e.component_tag).lower() == "lec"
+        ),
+        hatred_global_late_events_tut_count=sum(
+            1 for e in late_events if str(e.component_tag).lower() == "tut"
+        ),
         hatred_global_late_events_lab_or_class_count=sum(
             1 for e in late_events if str(e.component_tag).lower() in {"lab", "class"}
         ),
@@ -875,14 +1011,18 @@ def calculate_schedule_metrics(result: SolveResult, cfg: ScheduleConfig) -> Sche
         hatred_instructor_preference_violations_weighted=preference_weighted_total,
         hatred_instructor_preference_violations_count=preference_violation_count,
         hatred_instructor_preference_violations_opportunities=preference_opportunities,
-        hatred_instructor_with_preference_violations_count=len(preference_instructors_hit),
+        hatred_instructor_with_preference_violations_count=len(
+            preference_instructors_hit
+        ),
     )
 
 
 def assert_no_conflicts(result: SolveResult, cfg: ScheduleConfig | None = None) -> None:
     conflicts = list_conflicts(result, cfg)
     if conflicts:
-        raise AssertionError(f"{len(conflicts)} scheduling conflict(s):\n" + "\n".join(conflicts))
+        raise AssertionError(
+            f"{len(conflicts)} scheduling conflict(s):\n" + "\n".join(conflicts)
+        )
 
 
 def assert_all_satisfied(result: SolveResult, cfg: ScheduleConfig) -> None:
@@ -923,7 +1063,9 @@ def _latest_results_output_path(results_dir: Path) -> Path:
 
     output_path = latest_dir / "output.yaml"
     if not output_path.exists():
-        raise FileNotFoundError(f"latest run directory has no output.yaml: {latest_dir}")
+        raise FileNotFoundError(
+            f"latest run directory has no output.yaml: {latest_dir}"
+        )
     return output_path
 
 
@@ -962,15 +1104,23 @@ def _print_human_report(metrics: ScheduleMetrics) -> None:
     print(f"- elapsed seconds: {metrics.run_elapsed_seconds}")
     print(f"- solution objective value: {metrics.run_objective_value}")
     print(f"- total scheduled events: {metrics.ctx_total_events}")
-    print(f"- total available timeslots (teaching days x day slots): {metrics.ctx_total_timeslots_count}")
-    print(f"- total meeting hours weighted by group count: {metrics.ctx_total_weighted_group_hours:.1f}")
-    print(f"- total Core Courses groups count: {metrics.ctx_total_core_course_groups_count}")
+    print(
+        f"- total available timeslots (teaching days x day slots): {metrics.ctx_total_timeslots_count}"
+    )
+    print(
+        f"- total meeting hours weighted by group count: {metrics.ctx_total_weighted_group_hours:.1f}"
+    )
+    print(
+        f"- total Core Courses groups count: {metrics.ctx_total_core_course_groups_count}"
+    )
     print(f"- total English groups count: {metrics.ctx_total_english_groups_count}")
     print(f"- total Electives groups count: {metrics.ctx_total_electives_groups_count}")
     print("---")
     print("Metrics:")
     print(f"- hard conflicts (should be 0): {len(metrics.hard_conflicts)}")
-    print(f"- unsatisfied constraints (should be 0): {len(metrics.hard_unsatisfied_constraints)}")
+    print(
+        f"- unsatisfied constraints (should be 0): {len(metrics.hard_unsatisfied_constraints)}"
+    )
     print(
         _fmt_coverage(
             "lec+tut(+lab) same-day coverage",
@@ -1004,7 +1154,9 @@ def _print_human_report(metrics: ScheduleMetrics) -> None:
         f"  - labs-before-lecture={metrics.quality_labs_before_lecture_count}\n"
         f"  - tutorials-before-lecture={metrics.quality_tutorials_before_lecture_count}"
     )
-    print(f"- undersized-room events (should be 0): {metrics.rooms_events_exceeding_capacity_count}")
+    print(
+        f"- undersized-room events (should be 0): {metrics.rooms_events_exceeding_capacity_count}"
+    )
     print(
         _fmt_coverage(
             "oversized-room events",
@@ -1049,8 +1201,12 @@ def _print_json_report(metrics: ScheduleMetrics) -> None:
 
 
 def cli_main() -> None:
-    parser = argparse.ArgumentParser(description="Compute schedule metrics from config and solution YAML files.")
-    parser.add_argument("--config", required=True, type=Path, help="Path to schedule config YAML.")
+    parser = argparse.ArgumentParser(
+        description="Compute schedule metrics from config and solution YAML files."
+    )
+    parser.add_argument(
+        "--config", required=True, type=Path, help="Path to schedule config YAML."
+    )
     parser.add_argument(
         "--solution",
         type=Path,

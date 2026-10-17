@@ -34,7 +34,9 @@ router = APIRouter(
     tags=["BMP Specialist"],
     prefix="/bmp",
     responses={
-        401: {"description": "Unable to verify credentials OR Credentials not provided"},
+        401: {
+            "description": "Unable to verify credentials OR Credentials not provided"
+        },
         403: {"description": "Room declined the booking OR Recurrence not allowed"},
         404: {
             "description": "Booking or calendar item not found (unknown id, already cancelled, or not a calendar item)"
@@ -70,12 +72,16 @@ class BmpReconcileRequest(BaseModel):
 
 
 @router.post("/auto-bookings/reconcile")
-async def reconcile_auto_bookings(_: ApiKeyDep, request: BmpReconcileRequest) -> list[ReconcileBookingResult]:
+async def reconcile_auto_bookings(
+    _: ApiKeyDep, request: BmpReconcileRequest
+) -> list[ReconcileBookingResult]:
     return [await bmp_repository.reconcile_booking(entry) for entry in request.entries]
 
 
 @router.post("/auto-bookings/cancel")
-async def cancel_scoped_auto_booking(_: ApiKeyDep, request: ScopedCancelBookingRequest) -> ReconcileBookingResult:
+async def cancel_scoped_auto_booking(
+    _: ApiKeyDep, request: ScopedCancelBookingRequest
+) -> ReconcileBookingResult:
     return await bmp_repository.cancel_scoped_booking(request)
 
 
@@ -166,7 +172,9 @@ async def get_auto_booking(
 async def cancel_all_auto_bookings(
     _: ApiKeyDep,
 ) -> CancelAllAutoBookingsResult:
-    raise HTTPException(409, "Unscoped cancellation is disabled; use /bmp/auto-bookings/cancel")
+    raise HTTPException(
+        409, "Unscoped cancellation is disabled; use /bmp/auto-bookings/cancel"
+    )
 
 
 @router.delete("/auto-bookings/batch")
@@ -174,7 +182,9 @@ async def batch_cancel_auto_bookings(
     _: ApiKeyDep,
     request: BmpBatchCancelRequest,
 ) -> CancelAllAutoBookingsResult:
-    raise HTTPException(409, "Unscoped cancellation is disabled; use /bmp/auto-bookings/cancel")
+    raise HTTPException(
+        409, "Unscoped cancellation is disabled; use /bmp/auto-bookings/cancel"
+    )
 
 
 @router.delete(
@@ -185,7 +195,9 @@ async def delete_auto_booking(
     _: ApiKeyDep,
     outlook_booking_id: str,
 ) -> None:
-    raise HTTPException(409, "Unscoped cancellation is disabled; use /bmp/auto-bookings/cancel")
+    raise HTTPException(
+        409, "Unscoped cancellation is disabled; use /bmp/auto-bookings/cancel"
+    )
 
 
 @router.post(
@@ -196,8 +208,12 @@ async def delete_auto_booking(
         404: {"description": "Booking not found OR Room not found"},
     },
 )
-async def cancel_extra_auto_booking(_: ApiKeyDep, request: CancelExtraBookingRequest) -> None:
-    raise HTTPException(409, "Use /bmp/auto-bookings/cancel with organizer identity and explicit scope")
+async def cancel_extra_auto_booking(
+    _: ApiKeyDep, request: CancelExtraBookingRequest
+) -> None:
+    raise HTTPException(
+        409, "Use /bmp/auto-bookings/cancel with organizer identity and explicit scope"
+    )
 
 
 @router.post(
@@ -205,7 +221,9 @@ async def cancel_extra_auto_booking(_: ApiKeyDep, request: CancelExtraBookingReq
     responses={
         400: {"description": "Start must be before end or invalid recurrence"},
         403: {"description": "Room declined the booking OR Recurrence not allowed"},
-        404: {"description": "Room not found, booking was removed, or room attendee not found"},
+        404: {
+            "description": "Room not found, booking was removed, or room attendee not found"
+        },
     },
 )
 async def create_auto_booking(
@@ -235,7 +253,9 @@ def _ndjson_line(payload: dict) -> str:
     return json.dumps(payload, ensure_ascii=False) + "\n"
 
 
-async def iter_with_idle_pings[T](source: AsyncIterator[T], interval_s: float) -> AsyncIterator[T | None]:
+async def iter_with_idle_pings[T](
+    source: AsyncIterator[T], interval_s: float
+) -> AsyncIterator[T | None]:
     """Yield items from `source`, and `None` whenever it stays idle longer than `interval_s`."""
     iterator = aiter(source)
 
@@ -309,10 +329,14 @@ def _item_event(
 
 
 @router.post("/auto-bookings/batch")
-async def batch_auto_bookings(_: ApiKeyDep, request: BmpBatchRequest) -> StreamingResponse:
+async def batch_auto_bookings(
+    _: ApiKeyDep, request: BmpBatchRequest
+) -> StreamingResponse:
     actor_email = bmp_repository.account_email
     t_route = tm.monotonic()
-    logger.info(f"BMP batch auto bookings started: user={actor_email} count={len(request.bookings)}")
+    logger.info(
+        f"BMP batch auto bookings started: user={actor_email} count={len(request.bookings)}"
+    )
 
     async def events() -> AsyncIterator[str]:
         yield _ndjson_line({"event": "started", "total": len(request.bookings)})
@@ -370,10 +394,15 @@ async def batch_auto_bookings(_: ApiKeyDep, request: BmpBatchRequest) -> Streami
                                 {
                                     "index": pending_keys[index],
                                     **(
-                                        cast(Booking, pending_entries[index].sent_booking).model_dump(mode="json")
-                                        if pending_entries[index].sent_booking is not None
+                                        cast(
+                                            Booking, pending_entries[index].sent_booking
+                                        ).model_dump(mode="json")
+                                        if pending_entries[index].sent_booking
+                                        is not None
                                         else {
-                                            "operation_id": pending_entries[index].operation_id,
+                                            "operation_id": pending_entries[
+                                                index
+                                            ].operation_id,
                                             "room_id": pending_entries[index].room.id,
                                             "outlook_booking_id": None,
                                             "uid": None,

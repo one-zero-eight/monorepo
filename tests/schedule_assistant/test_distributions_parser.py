@@ -11,7 +11,9 @@ from src.schedule_assistant.modules.schedule_config.schemas import StudentsGroup
 FIXTURES = Path(__file__).parent / "fixtures" / "distributions"
 REAL_ENGLISH = Path(__file__).resolve().parents[2] / "Foreign language.xlsx"
 REAL_CORE = Path(__file__).resolve().parents[2] / "КонтингентИДвижение_13_03_26.xlsx"
-REAL_ELECTIVES = Path(__file__).resolve().parents[2] / "Spring26 Electives Distribution.xlsx"
+REAL_ELECTIVES = (
+    Path(__file__).resolve().parents[2] / "Spring26 Electives Distribution.xlsx"
+)
 
 
 def test_parse_core_contingent_detects_email_and_group() -> None:
@@ -63,7 +65,9 @@ def test_parse_electives_bs3_ignores_academic_group_column() -> None:
     )
     assert parsed.membership_columns == ["Tech Elective"]
     assert "B23-AI-01" not in parsed.emails_by_label
-    assert parsed.emails_by_label["Introduction to DevOps"] == ["s.four@innopolis.university"]
+    assert parsed.emails_by_label["Introduction to DevOps"] == [
+        "s.four@innopolis.university"
+    ]
     assert parsed.emails_by_label["CPython Advanced"] == ["s.five@innopolis.university"]
 
 
@@ -177,7 +181,9 @@ def test_forged_core_messy_header_nbsp_and_casefold() -> None:
 
 
 def test_forged_english_maps_to_hyphenated_codes() -> None:
-    parsed = parse_distribution_xlsx((FIXTURES / "forged_english_spacing.xlsx").read_bytes())
+    parsed = parse_distribution_xlsx(
+        (FIXTURES / "forged_english_spacing.xlsx").read_bytes()
+    )
     assert parsed.email_column == "E-mail"
     assert parsed.membership_columns == ["E Group"]
     assert set(parsed.emails_by_label) == {"AWA-I 10", "EAP6", "AWA-I 1", "FL 3"}
@@ -225,7 +231,9 @@ def test_forged_electives_multisheet_and_hum_column() -> None:
 
 
 def test_forged_email_column_detected_by_cell_content() -> None:
-    parsed = parse_distribution_xlsx((FIXTURES / "forged_email_by_content.xlsx").read_bytes())
+    parsed = parse_distribution_xlsx(
+        (FIXTURES / "forged_email_by_content.xlsx").read_bytes()
+    )
     assert parsed.email_column == "Contact"
     assert parsed.membership_columns == ["Bucket"]
     assert parsed.emails_by_label["G1"] == [
@@ -244,7 +252,9 @@ def test_real_foreign_language_xlsx_maps_to_hyphenated_english_codes() -> None:
     assert parsed.membership_columns == ["E Group"]
     assert parsed.email_count > 100
     assert "AWA-I 10" in parsed.emails_by_label
-    assert "EAP6" in parsed.emails_by_label or any(normalize_label(label) == "eap6" for label in parsed.emails_by_label)
+    assert "EAP6" in parsed.emails_by_label or any(
+        normalize_label(label) == "eap6" for label in parsed.emails_by_label
+    )
 
     targets = [
         StudentsGroups(

@@ -1,15 +1,22 @@
-from src.room_booking.modules.bookings.categories import sanitize_exchange_categories, sanitize_exchange_category
+from src.room_booking.modules.bookings.categories import (
+    sanitize_exchange_categories,
+    sanitize_exchange_category,
+)
 
 
 def test_sanitize_exchange_category_keeps_ascii() -> None:
-    assert sanitize_exchange_category("Statistics with Applications") == "Statistics with Applications"
+    assert (
+        sanitize_exchange_category("Statistics with Applications")
+        == "Statistics with Applications"
+    )
 
 
 def test_sanitize_exchange_category_strips_cyrillic() -> None:
-    name = (
-        "Methods and Approaches to the Launch of Robotic Systems / Методы и подходы к запуску роботизированных систем"
+    name = "Methods and Approaches to the Launch of Robotic Systems / Методы и подходы к запуску роботизированных систем"
+    assert (
+        sanitize_exchange_category(name)
+        == "Methods and Approaches to the Launch of Robotic Systems"
     )
-    assert sanitize_exchange_category(name) == "Methods and Approaches to the Launch of Robotic Systems"
 
 
 def test_sanitize_exchange_category_replaces_commas_and_semicolons() -> None:

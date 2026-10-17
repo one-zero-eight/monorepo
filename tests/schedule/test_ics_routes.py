@@ -38,7 +38,11 @@ def test_personal_all_ics_with_favorites(
         path="favorite.ics",
     )
     schedule_client.get("/users/me", headers=user_headers)
-    schedule_client.post("/users/me/favorites", params={"group_alias": group["alias"]}, headers=user_headers)
+    schedule_client.post(
+        "/users/me/favorites",
+        params={"group_alias": group["alias"]},
+        headers=user_headers,
+    )
 
     response = schedule_client.get("/users/me/all.ics", headers=user_headers)
     assert response.status_code == 200
@@ -53,7 +57,9 @@ def test_workshops_ics_not_configured(schedule_client: TestClient):
     assert response.json()["detail"] == "Workshops are not configured"
 
 
-def test_workshops_ics_proxies_api(schedule_client: TestClient, monkeypatch: pytest.MonkeyPatch):
+def test_workshops_ics_proxies_api(
+    schedule_client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
     from src.schedule.config import settings
     from src.schedule.config_schema import WorkshopsSettings
 
@@ -75,7 +81,9 @@ def test_workshops_ics_proxies_api(schedule_client: TestClient, monkeypatch: pyt
     }
 
     with respx.mock(assert_all_called=False) as mock:
-        mock.get(f"{api_url}/workshops/").mock(return_value=httpx.Response(200, json=[workshop]))
+        mock.get(f"{api_url}/workshops/").mock(
+            return_value=httpx.Response(200, json=[workshop])
+        )
         response = schedule_client.get("/workshops.ics")
 
     assert response.status_code == 200
@@ -89,7 +97,9 @@ def test_music_room_ics_not_configured(schedule_client: TestClient):
     assert response.json()["detail"] == "Music room is not configured"
 
 
-def test_music_room_ics_proxies_api(schedule_client: TestClient, monkeypatch: pytest.MonkeyPatch):
+def test_music_room_ics_proxies_api(
+    schedule_client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
     from src.schedule.config import settings
     from src.schedule.config_schema import MusicRoomSettings
 
@@ -106,7 +116,9 @@ def test_music_room_ics_proxies_api(schedule_client: TestClient, monkeypatch: py
     )
 
     with respx.mock(assert_all_called=False) as mock:
-        mock.get(f"{api_url}/music-room.ics").mock(return_value=httpx.Response(200, text=ical))
+        mock.get(f"{api_url}/music-room.ics").mock(
+            return_value=httpx.Response(200, text=ical)
+        )
         response = schedule_client.get("/music-room.ics")
 
     assert response.status_code == 200
@@ -168,7 +180,9 @@ def test_local_group_ics_keeps_english_for_assistant_member(
     from src.schedule.config import settings
 
     monkeypatch.setattr(settings, "predefined_dir", tmp_path)
-    create_event_group(schedule_client, parser_headers, alias="core-group", path="core.ics")
+    create_event_group(
+        schedule_client, parser_headers, alias="core-group", path="core.ics"
+    )
     response = schedule_client.get(
         "/core-group.ics",
         params={"user_id": 206527, "export_type": "url"},
@@ -190,13 +204,15 @@ def test_event_group_alias_ics_from_assistant(
     monkeypatch.setattr(
         settings,
         "schedule_assistant",
-        ScheduleAssistantIntegrationSettings(api_url=api_url, api_key=SecretStr("service-key")),
+        ScheduleAssistantIntegrationSettings(
+            api_url=api_url, api_key=SecretStr("service-key")
+        ),
     )
     ical = "BEGIN:VCALENDAR\nVERSION:2.0\nEND:VCALENDAR\n"
     with respx.mock(assert_all_called=True) as mock:
-        route = mock.get(f"{api_url}/integration/event-groups/virtual-group/schedule.ics").mock(
-            return_value=httpx.Response(200, text=ical)
-        )
+        route = mock.get(
+            f"{api_url}/integration/event-groups/virtual-group/schedule.ics"
+        ).mock(return_value=httpx.Response(200, text=ical))
         response = schedule_client.get(
             "/virtual-group.ics",
             params={"user_id": 1, "export_type": "default"},
@@ -229,9 +245,13 @@ def test_personal_ics_merges_local_and_assistant_groups(
     monkeypatch.setattr(
         settings,
         "schedule_assistant",
-        ScheduleAssistantIntegrationSettings(api_url=api_url, api_key=SecretStr("service-key")),
+        ScheduleAssistantIntegrationSettings(
+            api_url=api_url, api_key=SecretStr("service-key")
+        ),
     )
-    local = create_event_group(schedule_client, parser_headers, alias="local-group", path="local.ics")
+    local = create_event_group(
+        schedule_client, parser_headers, alias="local-group", path="local.ics"
+    )
     schedule_client.post(
         "/users/me/favorites",
         params={"group_alias": local["alias"]},
@@ -241,19 +261,21 @@ def test_personal_ics_merges_local_and_assistant_groups(
 
     with respx.mock(assert_all_called=True) as mock:
         groups_route = mock.get(f"{api_url}/integration/event-groups").mock(
-            return_value=httpx.Response(200, json=[{"alias": "virtual-group", "name": "Virtual"}])
+            return_value=httpx.Response(
+                200, json=[{"alias": "virtual-group", "name": "Virtual"}]
+            )
         )
         schedule_client.post(
             "/users/me/favorites",
             params={"group_alias": "virtual-group"},
             headers=user_headers,
         )
-        batch_route = mock.post(f"{api_url}/integration/event-groups/schedule.ics").mock(
-            return_value=httpx.Response(200, text=external)
-        )
-        mock.get(f"{api_url}/integration/users/test-user-1@innopolis.university/predefined").mock(
-            return_value=httpx.Response(200, json=[])
-        )
+        batch_route = mock.post(
+            f"{api_url}/integration/event-groups/schedule.ics"
+        ).mock(return_value=httpx.Response(200, text=external))
+        mock.get(
+            f"{api_url}/integration/users/test-user-1@innopolis.university/predefined"
+        ).mock(return_value=httpx.Response(200, json=[]))
         response = schedule_client.get("/users/me/all.ics", headers=user_headers)
 
     assert groups_route.called
@@ -288,9 +310,13 @@ def test_personal_ics_keeps_local_and_assistant_english(
     monkeypatch.setattr(
         settings,
         "schedule_assistant",
-        ScheduleAssistantIntegrationSettings(api_url=api_url, api_key=SecretStr("service-key")),
+        ScheduleAssistantIntegrationSettings(
+            api_url=api_url, api_key=SecretStr("service-key")
+        ),
     )
-    local = create_event_group(schedule_client, parser_headers, alias="core-group", path="core.ics")
+    local = create_event_group(
+        schedule_client, parser_headers, alias="core-group", path="core.ics"
+    )
     schedule_client.post(
         "/users/me/favorites",
         params={"group_alias": local["alias"]},
@@ -303,7 +329,9 @@ def test_personal_ics_keeps_local_and_assistant_english(
     )
 
     with respx.mock(assert_all_called=True) as mock:
-        mock.get(f"{api_url}/integration/users/test-user-1@innopolis.university/predefined").mock(
+        mock.get(
+            f"{api_url}/integration/users/test-user-1@innopolis.university/predefined"
+        ).mock(
             return_value=httpx.Response(
                 200,
                 json={"event_groups": ["english-awa-i-1"]},
@@ -332,11 +360,15 @@ def test_personal_ics_propagates_assistant_failure(
     monkeypatch.setattr(
         settings,
         "schedule_assistant",
-        ScheduleAssistantIntegrationSettings(api_url=api_url, api_key=SecretStr("service-key")),
+        ScheduleAssistantIntegrationSettings(
+            api_url=api_url, api_key=SecretStr("service-key")
+        ),
     )
     with respx.mock(assert_all_called=True) as mock:
         mock.get(f"{api_url}/integration/event-groups").mock(
-            return_value=httpx.Response(200, json=[{"alias": "virtual-group", "name": "Virtual"}])
+            return_value=httpx.Response(
+                200, json=[{"alias": "virtual-group", "name": "Virtual"}]
+            )
         )
         schedule_client.post(
             "/users/me/favorites",
@@ -346,13 +378,15 @@ def test_personal_ics_propagates_assistant_failure(
         mock.post(f"{api_url}/integration/event-groups/schedule.ics").mock(
             return_value=httpx.Response(503, text="unavailable")
         )
-        mock.get(f"{api_url}/integration/users/test-user-1@innopolis.university/predefined").mock(
-            return_value=httpx.Response(200, json=[])
-        )
+        mock.get(
+            f"{api_url}/integration/users/test-user-1@innopolis.university/predefined"
+        ).mock(return_value=httpx.Response(200, json=[]))
         response = schedule_client.get("/users/me/all.ics", headers=user_headers)
 
     assert response.status_code == 502
-    assert response.json()["detail"] == "Schedule Assistant request failed with status 503"
+    assert (
+        response.json()["detail"] == "Schedule Assistant request failed with status 503"
+    )
 
 
 def test_unknown_event_group_returns_404_when_assistant_does_not_have_it(

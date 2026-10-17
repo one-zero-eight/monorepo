@@ -29,7 +29,13 @@ def test_events_ics_includes_published_event_fields(
     user_headers: dict[str, str],
     superadmin_headers: dict[str, str],
 ):
-    draft = create_and_publish(events_client, user_headers, superadmin_headers, location="108", duration_hours=2.0)
+    draft = create_and_publish(
+        events_client,
+        user_headers,
+        superadmin_headers,
+        location="108",
+        duration_hours=2.0,
+    )
     response = events_client.get("/events.ics")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/calendar")
@@ -57,11 +63,16 @@ def test_events_ics_includes_resolved_club_host(
     club_leader_headers: dict[str, str],
     superadmin_headers: dict[str, str],
 ):
-    create_and_publish(events_client, club_leader_headers, superadmin_headers, host="club")
+    create_and_publish(
+        events_client, club_leader_headers, superadmin_headers, host="club"
+    )
     response = events_client.get("/events.ics")
     assert response.status_code == 200
     vevent = _vevents(_parse_calendar(response.content))[0]
-    assert str(vevent["description"]) == f"Host: {CLUB_TITLE}\nhttps://innohassle.ru/clubs/{CLUB_SLUG}"
+    assert (
+        str(vevent["description"])
+        == f"Host: {CLUB_TITLE}\nhttps://innohassle.ru/clubs/{CLUB_SLUG}"
+    )
 
 
 def test_events_ics_prefers_settings_locale_order(
@@ -73,16 +84,26 @@ def test_events_ics_prefers_settings_locale_order(
     add_external_host(events_client, draft["id"], user_headers)
     events_client.put(
         f"/drafts/{draft['id']}/locales/en",
-        json={"name": "English name", "description": description_json("English description")},
+        json={
+            "name": "English name",
+            "description": description_json("English description"),
+        },
         headers=user_headers,
     )
     events_client.put(
         f"/drafts/{draft['id']}/locales/ru",
-        json={"name": "Русское имя", "description": description_json("Русское описание")},
+        json={
+            "name": "Русское имя",
+            "description": description_json("Русское описание"),
+        },
         headers=user_headers,
     )
     submit(events_client, draft["id"], user_headers)
-    events_client.post(f"/submissions/{draft['id']}/approve", json={"feedback": ""}, headers=superadmin_headers)
+    events_client.post(
+        f"/submissions/{draft['id']}/approve",
+        json={"feedback": ""},
+        headers=superadmin_headers,
+    )
 
     response = events_client.get("/events.ics")
     assert response.status_code == 200
@@ -103,7 +124,11 @@ def test_events_ics_falls_back_to_available_locale(
         headers=user_headers,
     )
     submit(events_client, draft["id"], user_headers)
-    events_client.post(f"/submissions/{draft['id']}/approve", json={"feedback": ""}, headers=superadmin_headers)
+    events_client.post(
+        f"/submissions/{draft['id']}/approve",
+        json={"feedback": ""},
+        headers=superadmin_headers,
+    )
 
     response = events_client.get("/events.ics")
     assert response.status_code == 200
@@ -117,7 +142,9 @@ def test_events_ics_excludes_unpublished_drafts(
     superadmin_headers: dict[str, str],
 ):
     create_draft(events_client, user_headers)
-    published = create_and_publish(events_client, user_headers, superadmin_headers, starts_at=future_iso(3))
+    published = create_and_publish(
+        events_client, user_headers, superadmin_headers, starts_at=future_iso(3)
+    )
 
     response = events_client.get("/events.ics")
     assert response.status_code == 200
@@ -133,8 +160,12 @@ def test_my_enrolled_events_ics(
     plain_user_headers: dict[str, str],
     superadmin_headers: dict[str, str],
 ):
-    enrolled = create_and_publish(events_client, user_headers, superadmin_headers, starts_at=future_iso(2))
-    create_and_publish(events_client, user_headers, superadmin_headers, starts_at=future_iso(3))
+    enrolled = create_and_publish(
+        events_client, user_headers, superadmin_headers, starts_at=future_iso(2)
+    )
+    create_and_publish(
+        events_client, user_headers, superadmin_headers, starts_at=future_iso(3)
+    )
     events_client.post(f"/events/{enrolled['id']}/enroll", headers=plain_user_headers)
 
     response = events_client.get("/users/me/events.ics", headers=plain_user_headers)

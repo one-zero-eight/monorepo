@@ -16,8 +16,13 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     WeeklyPatternSlot,
     WeeklyPatternSlotEdit,
 )
-from src.schedule_assistant.modules.schedule_config.semester_windows import resolve_audience_semester
-from src.schedule_assistant.modules.schedule_config.weekly_dates import expand_weekly_slot, normalize_alternation
+from src.schedule_assistant.modules.schedule_config.semester_windows import (
+    resolve_audience_semester,
+)
+from src.schedule_assistant.modules.schedule_config.weekly_dates import (
+    expand_weekly_slot,
+    normalize_alternation,
+)
 from src.schedule_assistant.weekday import Weekday
 
 VIRTUAL_ROOM_ID = "ONLINE"
@@ -74,7 +79,9 @@ def _normalize_room(room: str | None) -> str | None:
     return trimmed
 
 
-def _slot_bookable(room: str | None, known_room_ids: set[str]) -> tuple[bool, str | None]:
+def _slot_bookable(
+    room: str | None, known_room_ids: set[str]
+) -> tuple[bool, str | None]:
     if not (room or "").strip():
         return False, "no room"
     if room == VIRTUAL_ROOM_ID:
@@ -110,13 +117,19 @@ def resolve_program_for_audiences(
     selector_to_program: dict[str, str],
 ) -> str:
     program_names = {
-        resolve_program_name(audience, group_to_program=group_to_program, selector_to_program=selector_to_program)
+        resolve_program_name(
+            audience,
+            group_to_program=group_to_program,
+            selector_to_program=selector_to_program,
+        )
         for audience in audiences
     }
     if len(program_names) == 1:
         return program_names.pop()
     return resolve_program_name(
-        audiences[0], group_to_program=group_to_program, selector_to_program=selector_to_program
+        audiences[0],
+        group_to_program=group_to_program,
+        selector_to_program=selector_to_program,
     )
 
 
@@ -165,11 +178,23 @@ def _weekday_api_value(day: str | Weekday) -> str:
 def _edit_changes_meeting(edit: WeeklyPatternSlotEdit) -> bool:
     if edit.cancel:
         return True
-    return any(value is not None for value in (edit.date, edit.start_time, edit.end_time, edit.room, edit.instructor))
+    return any(
+        value is not None
+        for value in (
+            edit.date,
+            edit.start_time,
+            edit.end_time,
+            edit.room,
+            edit.instructor,
+        )
+    )
 
 
 def _weekly_recurrence_for_segment(
-    day: str | Weekday, segment_start: dtm.date, segment_end: dtm.date, interval: int = 1
+    day: str | Weekday,
+    segment_start: dtm.date,
+    segment_end: dtm.date,
+    interval: int = 1,
 ) -> dict[str, Any]:
     return {
         "kind": "weekly_until",
@@ -209,7 +234,9 @@ def _booking_categories(course: CourseConfig, audiences: list[str]) -> list[str]
     ]
 
 
-def _booking_title(course: CourseConfig, component_tag: str, audiences: list[str]) -> str:
+def _booking_title(
+    course: CourseConfig, component_tag: str, audiences: list[str]
+) -> str:
     if component_tag == "lab":
         audience_text = ", ".join(audiences)
         return f"{course.name} ({component_tag}, {audience_text})"
@@ -239,8 +266,12 @@ def _slot_datetimes(
     else:
         meeting_date = dtm.date.fromisoformat(str(meeting_date))
 
-    start = dtm.datetime.fromisoformat(f"{meeting_date.isoformat()}T{start_time}").replace(tzinfo=MSK)
-    end = dtm.datetime.fromisoformat(f"{meeting_date.isoformat()}T{end_time}").replace(tzinfo=MSK)
+    start = dtm.datetime.fromisoformat(
+        f"{meeting_date.isoformat()}T{start_time}"
+    ).replace(tzinfo=MSK)
+    end = dtm.datetime.fromisoformat(f"{meeting_date.isoformat()}T{end_time}").replace(
+        tzinfo=MSK
+    )
     return start, end
 
 
@@ -318,13 +349,18 @@ def _slots_from_weekly_pattern(
             unchanged_dates.append(resolved.source_date)
             continue
         occurrence = resolved.occurrence
-        if occurrence is None or not window.start_date <= occurrence.date <= window.end_date:
+        if (
+            occurrence is None
+            or not window.start_date <= occurrence.date <= window.end_date
+        ):
             continue
         resolved_date = occurrence.date
         resolved_start = occurrence.start_time.strftime("%H:%M:%S")
         resolved_end = occurrence.end_time.strftime("%H:%M:%S")
         resolved_room = _normalize_room(occurrence.room)
-        resolved_instructor = occurrence.instructor if occurrence.instructor is not None else instructor
+        resolved_instructor = (
+            occurrence.instructor if occurrence.instructor is not None else instructor
+        )
         bookable, reason = _slot_bookable(resolved_room, known_room_ids)
         meeting, payload = _build_payload(
             course=course,
@@ -354,7 +390,9 @@ def _slots_from_weekly_pattern(
     for segment_index, (segment_start, segment_end) in enumerate(
         _recurrence_segments_excluding_edit_weeks(unchanged_dates, interval)
     ):
-        recurrence = _weekly_recurrence_for_segment(day_label, segment_start, segment_end, interval)
+        recurrence = _weekly_recurrence_for_segment(
+            day_label, segment_start, segment_end, interval
+        )
         bookable, reason = _slot_bookable(base_room, known_room_ids)
         meeting, payload = _build_payload(
             course=course,
@@ -368,7 +406,9 @@ def _slots_from_weekly_pattern(
             end_time=end_time,
             placement=WeeklyPatternPlacement(
                 weekday=pattern.weekday,
-                alternation=normalize_alternation(pattern.alternation, term.starting_day),
+                alternation=normalize_alternation(
+                    pattern.alternation, term.starting_day
+                ),
                 start_date=segment_start,
                 end_date=segment_end,
                 starting_day=term.starting_day,
@@ -391,7 +431,9 @@ def _slots_from_weekly_pattern(
     return slots
 
 
-def _session_audiences(component: CourseConfig.Component, session: ComponentSessionSeries) -> list[str]:
+def _session_audiences(
+    component: CourseConfig.Component, session: ComponentSessionSeries
+) -> list[str]:
     if session.audience:
         return list(session.audience)
     return list(component.audience)
@@ -403,7 +445,10 @@ def build_bookable_slots(
     term: TermConfig,
     known_room_ids: set[str],
 ) -> list[BookableSlot]:
-    from src.schedule_assistant.modules.schedule_config.validation import build_selector_map, expand_group_tokens
+    from src.schedule_assistant.modules.schedule_config.validation import (
+        build_selector_map,
+        expand_group_tokens,
+    )
 
     selector_map = build_selector_map(sections)
     group_to_program, selector_to_program = build_section_program_maps(sections)
@@ -420,22 +465,24 @@ def build_bookable_slots(
                 window = resolve_audience_semester(term, audiences, sections=sections)
                 if window is None:
                     continue
-                group_codes = tuple(sorted(expand_group_tokens(audiences, selector_map)))
+                group_codes = tuple(
+                    sorted(expand_group_tokens(audiences, selector_map))
+                )
                 program_name = resolve_program_for_audiences(
                     audiences,
                     group_to_program=group_to_program,
                     selector_to_program=selector_to_program,
                 )
-                component_id = (
-                    f"{program_name}|{course.name}|{component.tag}|{_audiences_key(audiences)}|s{session_index}"
-                )
+                component_id = f"{program_name}|{course.name}|{component.tag}|{_audiences_key(audiences)}|s{session_index}"
                 instructor = None
                 if session.dates_pattern:
                     instructor = session.dates_pattern[0].instructor
                 elif session.weekly_pattern:
                     instructor = session.weekly_pattern[0].instructor
 
-                for occurrence_index, occurrence in enumerate(session.dates_pattern or []):
+                for occurrence_index, occurrence in enumerate(
+                    session.dates_pattern or []
+                ):
                     if not window.start_date <= occurrence.date <= window.end_date:
                         continue
                     start_time = occurrence.start_time.strftime("%H:%M:%S")
@@ -468,7 +515,11 @@ def build_bookable_slots(
                     )
 
                 for pattern_index, pattern in enumerate(session.weekly_pattern or []):
-                    pattern_instructor = pattern.instructor if pattern.instructor is not None else instructor
+                    pattern_instructor = (
+                        pattern.instructor
+                        if pattern.instructor is not None
+                        else instructor
+                    )
                     slots.extend(
                         _slots_from_weekly_pattern(
                             course=course,

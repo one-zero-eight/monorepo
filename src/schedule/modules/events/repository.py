@@ -77,11 +77,20 @@ class SqlEventRepository:
 
     async def read_patches(self, event_id: int) -> list[ViewEventPatch]:
         async with self._create_session() as session:
-            q = select(EventPatch).where(EventPatch.parent_id == event_id).options(joinedload(EventPatch.parent))
+            q = (
+                select(EventPatch)
+                .where(EventPatch.parent_id == event_id)
+                .options(joinedload(EventPatch.parent))
+            )
             event_patches = await session.scalars(q)
-            return [ViewEventPatch.model_validate(event_patch) for event_patch in event_patches]
+            return [
+                ViewEventPatch.model_validate(event_patch)
+                for event_patch in event_patches
+            ]
 
-    async def update_patch(self, patch_id: int, patch: UpdateEventPatch) -> ViewEventPatch:
+    async def update_patch(
+        self, patch_id: int, patch: UpdateEventPatch
+    ) -> ViewEventPatch:
         async with self._create_session() as session:
             q = (
                 update(EventPatch)

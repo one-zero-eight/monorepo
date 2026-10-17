@@ -11,7 +11,10 @@ def _promote_and_create_club(
 ) -> dict:
     promote = clubs_client.post(
         "/users/change_role",
-        params={"role": "admin", "user_to_change_email": "test-user-1@innopolis.university"},
+        params={
+            "role": "admin",
+            "user_to_change_email": "test-user-1@innopolis.university",
+        },
         headers=superadmin_headers,
     )
     assert promote.status_code == 200
@@ -50,7 +53,9 @@ def test_owned_by_returns_clubs_of_user(
     superadmin_headers: dict[str, str],
     user_headers: dict[str, str],
 ):
-    club = _promote_and_create_club(clubs_client, superadmin_headers, user_headers, "owned-by-test")
+    club = _promote_and_create_club(
+        clubs_client, superadmin_headers, user_headers, "owned-by-test"
+    )
     headers = {"Authorization": "Bearer test-clubs-api-key"}
 
     owned = clubs_client.get("/clubs/owned-by/test-user-1", headers=headers)

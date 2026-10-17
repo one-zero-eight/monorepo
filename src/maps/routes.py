@@ -32,5 +32,7 @@ def search_areas(query: str = Query(..., min_length=1)) -> list[SearchResult]:
 
 @router.get("/pdf")
 def export_pdf() -> FileResponse:
-    pdf_path = generate_all_maps_pdf(settings.static_directory, maps_repo.get_all_scenes())
+    pdf_path = generate_all_maps_pdf(
+        settings.static_directory, maps_repo.get_all_scenes()
+    )
     return FileResponse(pdf_path, filename="maps.pdf", media_type="application/pdf")

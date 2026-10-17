@@ -52,7 +52,9 @@ class CoreCourseCell(BaseModel):
 
 class CoreCoursesParser:
     def __init__(self):
-        self.last_dfs_merged_ranges: dict[str, list[tuple[int, int, int, int]]] | None = None
+        self.last_dfs_merged_ranges: (
+            dict[str, list[tuple[int, int, int, int]]] | None
+        ) = None
         self._subject_colors: dict[str, dict[str, str | None]] = {}
 
     def pipeline(
@@ -86,7 +88,8 @@ class CoreCoursesParser:
         """
 
         sanitized_sheet_names = [
-            sanitize_sheet_name(target_sheet_name) for target_sheet_name in original_target_sheet_names
+            sanitize_sheet_name(target_sheet_name)
+            for target_sheet_name in original_target_sheet_names
         ]
 
         sanitized_sheet_name_x_google_sheet_name = {
@@ -103,12 +106,22 @@ class CoreCoursesParser:
                 logger.warning(f"Sheet {target_sheet_name} not found in xlsx file")
                 continue
             sheet_df = dfs[target_sheet_name]
-            google_sheet_name = sanitized_sheet_name_x_google_sheet_name.get(target_sheet_name)
-            google_sheet_gid = sheet_gids.get(google_sheet_name) if google_sheet_name else None
+            google_sheet_name = sanitized_sheet_name_x_google_sheet_name.get(
+                target_sheet_name
+            )
+            google_sheet_gid = (
+                sheet_gids.get(google_sheet_name) if google_sheet_name else None
+            )
             time_columns_index = self.get_time_columns(sheet_df)
-            logger.info(f"Sheet Time columns: {[get_column_letter(col + 1) for col in time_columns_index]}")
-            rightmost_column_index = self.get_rightmost_column_index(xlsx_file, target_sheet_name, time_columns_index)
-            logger.info(f"Rightmost column index: {get_column_letter(rightmost_column_index + 1)}")
+            logger.info(
+                f"Sheet Time columns: {[get_column_letter(col + 1) for col in time_columns_index]}"
+            )
+            rightmost_column_index = self.get_rightmost_column_index(
+                xlsx_file, target_sheet_name, time_columns_index
+            )
+            logger.info(
+                f"Rightmost column index: {get_column_letter(rightmost_column_index + 1)}"
+            )
 
             by_courses = self.split_df_by_courses(sheet_df, time_columns_index)
             grouped_dfs_with_cells_lst = []
@@ -117,7 +130,9 @@ class CoreCoursesParser:
                 self.set_course_and_group_as_header(course_block)
                 course_df = self.set_weekday_and_time_as_index(course_block)
                 if course_df.shape[1] == 0:
-                    logger.warning("Skipping course block with no group columns after removing the time column")
+                    logger.warning(
+                        "Skipping course block with no group columns after removing the time column"
+                    )
                     continue
                 # ---- Convert it to GroupBy with CoreCourseCell(value=[subject, teacher, location], a1=excel_range) ----
                 # pandas 2.x squeezes a single remaining course column to Series
@@ -152,7 +167,9 @@ class CoreCoursesParser:
         """
         # ---- Read xlsx file into dataframes ----
         # pandas 3 infers str columns; parser assigns time tuples into the time column (object in pandas 2)
-        dfs = pd.read_excel(xlsx_file, engine="openpyxl", sheet_name=None, header=None, dtype=object)
+        dfs = pd.read_excel(
+            xlsx_file, engine="openpyxl", sheet_name=None, header=None, dtype=object
+        )
         # ---- Clean up dataframes ----
         merged_ranges: dict[str, list[tuple[int, int, int, int]]] = defaultdict(list)
         xlsx_file.seek(0)
@@ -161,10 +178,14 @@ class CoreCoursesParser:
         for target_sheet_name in target_sheet_names:
             df = dfs[target_sheet_name]
             # ---- Select range ----
-            (min_row, min_col, max_row, max_col) = self.auto_detect_range(df, xlsx_file, target_sheet_name)
+            (min_row, min_col, max_row, max_col) = self.auto_detect_range(
+                df, xlsx_file, target_sheet_name
+            )
             df = df.iloc[min_row : max_row + 1, min_col : max_col + 1]
             # ---- Fill merged cells with values ----
-            merged_ranges[target_sheet_name] = self.merge_cells(df, xlsx_file, target_sheet_name)
+            merged_ranges[target_sheet_name] = self.merge_cells(
+                df, xlsx_file, target_sheet_name
+            )
             # ---- Add excel range to each 'subject' cell (first of three cells) ----
             self.assign_excel_row_and_column_to_subject(df)
             self._subject_colors[target_sheet_name] = self._extract_subject_colors(
@@ -182,7 +203,9 @@ class CoreCoursesParser:
 
         return dfs, merged_ranges
 
-    def _extract_subject_colors(self, df: pd.DataFrame, sheet: Worksheet) -> dict[str, str | None]:
+    def _extract_subject_colors(
+        self, df: pd.DataFrame, sheet: Worksheet
+    ) -> dict[str, str | None]:
         colors: dict[str, str | None] = {}
         for value in df.to_numpy().flat:
             if not isinstance(value, str) or "$" not in value:
@@ -198,12 +221,20 @@ class CoreCoursesParser:
         :return: tuple of (min_row, min_col, max_row, max_col)
         """
         time_columns_index = self.get_time_columns(sheet_df)
-        logger.info(f"Time columns: {[get_column_letter(col + 1) for col in time_columns_index]}")
+        logger.info(
+            f"Time columns: {[get_column_letter(col + 1) for col in time_columns_index]}"
+        )
         # ---- Get rightmost column index ----
-        rightmost_column_index = self.get_rightmost_column_index(xlsx_file, sheet_name, time_columns_index)
-        logger.info(f"Rightmost column index: {get_column_letter(rightmost_column_index + 1)}")
+        rightmost_column_index = self.get_rightmost_column_index(
+            xlsx_file, sheet_name, time_columns_index
+        )
+        logger.info(
+            f"Rightmost column index: {get_column_letter(rightmost_column_index + 1)}"
+        )
         last_row_index = self.get_last_row_index(xlsx_file, sheet_name)
-        target_range = f"A1:{get_column_letter(rightmost_column_index + 1)}{last_row_index}"
+        target_range = (
+            f"A1:{get_column_letter(rightmost_column_index + 1)}{last_row_index}"
+        )
         logger.info(f"Target range: {target_range}")
         return (0, 0, last_row_index, rightmost_column_index)
 
@@ -216,7 +247,9 @@ class CoreCoursesParser:
                 time_columns.append(column)
         return time_columns
 
-    def get_rightmost_column_index(self, xlsx_file: io.BytesIO, sheet_name: str, time_columns: list[int]) -> int:
+    def get_rightmost_column_index(
+        self, xlsx_file: io.BytesIO, sheet_name: str, time_columns: list[int]
+    ) -> int:
         # Column after time columns that has no borders formatting
 
         wb = openpyxl.load_workbook(xlsx_file)
@@ -228,9 +261,21 @@ class CoreCoursesParser:
 
         # Check if cell has no borders
         has_no_border = (
-            (cell.border is None or cell.border.right is None or cell.border.right.style is None)
-            and (cell.border is None or cell.border.top is None or cell.border.top.style is None)
-            and (cell.border is None or cell.border.bottom is None or cell.border.bottom.style is None)
+            (
+                cell.border is None
+                or cell.border.right is None
+                or cell.border.right.style is None
+            )
+            and (
+                cell.border is None
+                or cell.border.top is None
+                or cell.border.top.style is None
+            )
+            and (
+                cell.border is None
+                or cell.border.bottom is None
+                or cell.border.bottom.style is None
+            )
         )
 
         if has_no_border:
@@ -240,9 +285,21 @@ class CoreCoursesParser:
             for col in range(next_column + 1, sheet.max_column + 1):
                 cell = sheet.cell(row=1, column=col + 1)
                 if (
-                    (cell.border is None or cell.border.right is None or cell.border.right.style is None)
-                    and (cell.border is None or cell.border.top is None or cell.border.top.style is None)
-                    and (cell.border is None or cell.border.bottom is None or cell.border.bottom.style is None)
+                    (
+                        cell.border is None
+                        or cell.border.right is None
+                        or cell.border.right.style is None
+                    )
+                    and (
+                        cell.border is None
+                        or cell.border.top is None
+                        or cell.border.top.style is None
+                    )
+                    and (
+                        cell.border is None
+                        or cell.border.bottom is None
+                        or cell.border.bottom.style is None
+                    )
                 ):
                     return col - 1
             return next_column  # fallback
@@ -254,7 +311,9 @@ class CoreCoursesParser:
 
     def assign_excel_row_and_column_to_subject(self, df: pd.DataFrame) -> None:
         def check_value_is_time(string_to_check: str) -> bool:
-            return bool(re.match(r"^\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}$", string_to_check))
+            return bool(
+                re.match(r"^\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}$", string_to_check)
+            )
 
         used_cells: set[tuple[int, int]] = set()
         for i in range(3, len(df.values)):
@@ -314,7 +373,9 @@ class CoreCoursesParser:
 
         return merged_ranges
 
-    def set_weekday_and_time_as_index(self, df: pd.DataFrame, column: int = 0) -> pd.DataFrame:
+    def set_weekday_and_time_as_index(
+        self, df: pd.DataFrame, column: int = 0
+    ) -> pd.DataFrame:
         """
         Set time column as index and process it to datetime format
 
@@ -334,7 +395,9 @@ class CoreCoursesParser:
 
         # ----- Process weekday ------ #
         # get indexes of weekdays
-        weekdays_indexes = [i for i, cell in enumerate(df_column.values) if cell in WEEKDAYS]
+        weekdays_indexes = [
+            i for i, cell in enumerate(df_column.values) if cell in WEEKDAYS
+        ]
 
         # create index mapping for weekdays [None, None, "MONDAY", "MONDAY", ...]
         index_mapping = pd.Series(index=df_column.index, dtype=object)
@@ -355,14 +418,18 @@ class CoreCoursesParser:
             )
 
         # create multiindex from index mapping and time column
-        multiindex = pd.MultiIndex.from_arrays([index_mapping, df_column], names=["weekday", "time"])
+        multiindex = pd.MultiIndex.from_arrays(
+            [index_mapping, df_column], names=["weekday", "time"]
+        )
         # set multiindex as index
         df.set_index(multiindex, inplace=True)
         # drop rows with weekday
         df.drop("delete", inplace=True, level=0)
         return df
 
-    def set_course_and_group_as_header(self, df: pd.DataFrame, rows: tuple = (0, 1)) -> None:
+    def set_course_and_group_as_header(
+        self, df: pd.DataFrame, rows: tuple = (0, 1)
+    ) -> None:
         """
         Set course and group as header
 
@@ -382,7 +449,9 @@ class CoreCoursesParser:
             df_header = df_header.ffill(axis=1)
         # pandas 3: NaN in column MultiIndex breaks groupby on row index levels
         df_header = df_header.fillna("")
-        multiindex = pd.MultiIndex.from_arrays(df_header.values, names=["course", "group"])
+        multiindex = pd.MultiIndex.from_arrays(
+            df_header.values, names=["course", "group"]
+        )
         df.columns = multiindex
 
     def factory_core_course_cell(
@@ -417,12 +486,16 @@ class CoreCoursesParser:
             google_sheet_name=google_sheet_name,
             google_sheet_gid=google_sheet_gid,
             a1=a1,
-            color=self._subject_colors.get(xlsx_sheet_name or sanitize_sheet_name(google_sheet_name), {}).get(a1)
+            color=self._subject_colors.get(
+                xlsx_sheet_name or sanitize_sheet_name(google_sheet_name), {}
+            ).get(a1)
             if a1
             else None,
         )
 
-    def split_df_by_courses(self, df: pd.DataFrame, time_columns: list[int]) -> list[pd.DataFrame]:
+    def split_df_by_courses(
+        self, df: pd.DataFrame, time_columns: list[int]
+    ) -> list[pd.DataFrame]:
         """
         Split dataframe by "Week *" rows
 

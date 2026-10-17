@@ -23,7 +23,9 @@ def test_create_link(forms_client: TestClient, user_headers: dict[str, str]):
     assert body["short_path"] == f"/links/{body['slug']}"
 
 
-def test_create_link_dedup_same_form(forms_client: TestClient, user_headers: dict[str, str]):
+def test_create_link_dedup_same_form(
+    forms_client: TestClient, user_headers: dict[str, str]
+):
     first = _create_link(forms_client, user_headers)
     second = _create_link(forms_client, user_headers)
     assert second["slug"] == first["slug"]
@@ -48,9 +50,13 @@ def test_resolve_link(forms_client: TestClient, user_headers: dict[str, str]):
     assert query["email"][0] == "test-user-1@innopolis.university"
 
 
-def test_verify_resolved_signature_roundtrip(forms_client: TestClient, user_headers: dict[str, str]):
+def test_verify_resolved_signature_roundtrip(
+    forms_client: TestClient, user_headers: dict[str, str]
+):
     created = _create_link(forms_client, user_headers)
-    resolve_response = forms_client.get(f"/links/{created['slug']}", headers=user_headers)
+    resolve_response = forms_client.get(
+        f"/links/{created['slug']}", headers=user_headers
+    )
     resolved_url = resolve_response.json()["url"]
     signature = parse_qs(urlparse(resolved_url).query)["s"][0]
 
@@ -65,7 +71,9 @@ def test_verify_resolved_signature_roundtrip(forms_client: TestClient, user_head
 
 def test_delete_link(forms_client: TestClient, user_headers: dict[str, str]):
     created = _create_link(forms_client, user_headers)
-    delete_response = forms_client.delete(f"/links/{created['slug']}", headers=user_headers)
+    delete_response = forms_client.delete(
+        f"/links/{created['slug']}", headers=user_headers
+    )
     assert delete_response.status_code == 200
 
     get_response = forms_client.get(f"/links/{created['slug']}", headers=user_headers)
@@ -83,7 +91,9 @@ def test_delete_link_other_user_not_found(
     assert response.status_code == 404
 
 
-def test_create_link_invalid_form_url(forms_client: TestClient, user_headers: dict[str, str]):
+def test_create_link_invalid_form_url(
+    forms_client: TestClient, user_headers: dict[str, str]
+):
     response = forms_client.post(
         "/links",
         json={"form_url": "https://evil.example/u/0123456789abcdef"},

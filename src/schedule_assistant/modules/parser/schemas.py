@@ -96,7 +96,9 @@ class Lesson(ScheduleAssistantSchema):
     "Opaque solid fill from the source subject cell as #RRGGBB"
     color_counts: dict[str, int] = Field(default_factory=dict, exclude=True)
     "Source cell votes per color preserved during lesson merging"
-    lesson_class_type: Literal["lec", "tut", "lab", "лек", "тут", "лаб"] | str | None = None
+    lesson_class_type: (
+        Literal["lec", "tut", "lab", "лек", "тут", "лаб"] | str | None
+    ) = None
     "Type of the lesson"
     source_type: Literal["core_course", "elective"] | None = None
     "Whether the lesson comes from core courses or electives"

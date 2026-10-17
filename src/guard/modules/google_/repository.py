@@ -53,7 +53,9 @@ class GoogleFileRepository:
         return await GoogleFile.find_one(GoogleFile.slug == slug)
 
     async def get_by_author_id(self, author_id: str) -> list[GoogleFile]:
-        return await GoogleFile.find(GoogleFile.author_id == PydanticObjectId(author_id)).to_list()
+        return await GoogleFile.find(
+            GoogleFile.author_id == PydanticObjectId(author_id)
+        ).to_list()
 
     async def join_user_to_file(
         self,
@@ -92,11 +94,15 @@ class GoogleFileRepository:
         if not file:
             return None
 
-        file.sso_joins = [join for join in file.sso_joins if str(join.user_id) != str(user_id)]
+        file.sso_joins = [
+            join for join in file.sso_joins if str(join.user_id) != str(user_id)
+        ]
         await file.save()
         return file
 
-    async def ban_user_from_file(self, slug: str, user_id: UserID, gmail: str, innomail: str):
+    async def ban_user_from_file(
+        self, slug: str, user_id: UserID, gmail: str, innomail: str
+    ):
         file = await self.get_by_slug(slug)
         if not file:
             return None
@@ -145,7 +151,9 @@ class GoogleFileRepository:
         await file.save()
         return file
 
-    async def update_user_role(self, slug: str, user_id: UserID, role: GoogleFileUserRole) -> GoogleFile | None:
+    async def update_user_role(
+        self, slug: str, user_id: UserID, role: GoogleFileUserRole
+    ) -> GoogleFile | None:
         file = await self.get_by_slug(slug)
         if not file:
             return None
@@ -158,7 +166,9 @@ class GoogleFileRepository:
 
         return None
 
-    async def update_default_role(self, slug: str, role: GoogleFileUserRole) -> GoogleFile | None:
+    async def update_default_role(
+        self, slug: str, role: GoogleFileUserRole
+    ) -> GoogleFile | None:
         file = await self.get_by_slug(slug)
         if not file:
             return None

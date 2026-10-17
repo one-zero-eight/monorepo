@@ -12,18 +12,24 @@ async def test_me_requires_auth(fastapi_test_client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_me_returns_moderator_false(fastapi_app, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_me_returns_moderator_false(
+    fastapi_app, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(
         "src.schedule_assistant.dependencies.settings.moderator_emails",
         ["moderator@innopolis.university"],
     )
 
     async def fake_verify_token_dep() -> tuple[UserTokenData, str]:
-        return UserTokenData(innohassle_id="123", email="user@innopolis.university"), "token"
+        return UserTokenData(
+            innohassle_id="123", email="user@innopolis.university"
+        ), "token"
 
     fastapi_app.dependency_overrides[verify_token_dep] = fake_verify_token_dep
     try:
-        async with AsyncClient(transport=ASGITransport(app=fastapi_app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=fastapi_app), base_url="http://test"
+        ) as client:
             response = await client.get("/me")
     finally:
         fastapi_app.dependency_overrides.pop(verify_token_dep)
@@ -36,18 +42,24 @@ async def test_me_returns_moderator_false(fastapi_app, monkeypatch: pytest.Monke
 
 
 @pytest.mark.asyncio
-async def test_me_returns_moderator_true(fastapi_app, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_me_returns_moderator_true(
+    fastapi_app, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(
         "src.schedule_assistant.dependencies.settings.moderator_emails",
         ["moderator@innopolis.university"],
     )
 
     async def fake_verify_token_dep() -> tuple[UserTokenData, str]:
-        return UserTokenData(innohassle_id="123", email="moderator@innopolis.university"), "token"
+        return UserTokenData(
+            innohassle_id="123", email="moderator@innopolis.university"
+        ), "token"
 
     fastapi_app.dependency_overrides[verify_token_dep] = fake_verify_token_dep
     try:
-        async with AsyncClient(transport=ASGITransport(app=fastapi_app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=fastapi_app), base_url="http://test"
+        ) as client:
             response = await client.get("/me")
     finally:
         fastapi_app.dependency_overrides.pop(verify_token_dep)

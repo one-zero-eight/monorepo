@@ -93,12 +93,24 @@ dict_config = {
         },
     },
     "handlers": {
-        "default": {"class": "logging.StreamHandler", "formatter": "default", "stream": "ext://sys.stdout"},
-        "src": {"class": "logging.StreamHandler", "formatter": "src", "stream": "ext://sys.stdout"},
+        "default": {
+            "class": "logging.StreamHandler",
+            "formatter": "default",
+            "stream": "ext://sys.stdout",
+        },
+        "src": {
+            "class": "logging.StreamHandler",
+            "formatter": "src",
+            "stream": "ext://sys.stdout",
+        },
     },
     "loggers": {
         "src": {"handlers": ["src"], "level": "INFO", "propagate": False},
-        "uvicorn.access": {"handlers": ["default"], "level": "INFO", "propagate": False},
+        "uvicorn.access": {
+            "handlers": ["default"],
+            "level": "INFO",
+            "propagate": False,
+        },
         "uvicorn.error": {"handlers": ["default"], "level": "INFO", "propagate": False},
         "httpx": {"handlers": ["default"], "level": "WARNING", "propagate": False},
     },
@@ -119,7 +131,9 @@ exc_logger = logging.getLogger("uvicorn.error")
 exc_logger.addFilter(CleanErrorFilter())
 
 
-async def run_endpoint_function(*, dependant: Dependant, values: dict[str, Any], is_coroutine: bool) -> Any:
+async def run_endpoint_function(
+    *, dependant: Dependant, values: dict[str, Any], is_coroutine: bool
+) -> Any:
     # Only called by get_request_handler. Has been split into its own function to
     # facilitate profiling endpoints, since inner functions are harder to profile.
     if dependant.call is None:

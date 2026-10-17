@@ -26,7 +26,11 @@ def _checker(courses: CoursesConfig) -> IssueChecker:
                 SectionConfig(
                     code="core",
                     name="Core",
-                    programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])],
+                    programs=[
+                        SectionConfig.SectionProgram(
+                            code="BS", name="BS", groups=["G1"]
+                        )
+                    ],
                 )
             ],
             students_groups=[StudentsGroups(code="G1", estimated_size=10)],
@@ -76,7 +80,9 @@ async def test_unbooked_issue_when_no_matching_booking() -> None:
     mock_client.get_all_bookings.return_value = []
     mock_client.get_auto_bookings.return_value = []
 
-    with patch("src.schedule_assistant.modules.issues.checker.booking_client", mock_client):
+    with patch(
+        "src.schedule_assistant.modules.issues.checker.booking_client", mock_client
+    ):
         bookings = await checker._load_booking_snapshot(
             start_date=dtm.date(2026, 6, 1),
             end_date=dtm.date(2026, 8, 2),
@@ -136,9 +142,13 @@ async def test_no_unbooked_issue_when_booking_matches() -> None:
             },
         ),
     ]
-    mock_client.get_auto_bookings.return_value = mock_client.get_all_bookings.return_value
+    mock_client.get_auto_bookings.return_value = (
+        mock_client.get_all_bookings.return_value
+    )
 
-    with patch("src.schedule_assistant.modules.issues.checker.booking_client", mock_client):
+    with patch(
+        "src.schedule_assistant.modules.issues.checker.booking_client", mock_client
+    ):
         bookings = await checker._load_booking_snapshot(
             start_date=dtm.date(2026, 6, 1),
             end_date=dtm.date(2026, 8, 2),

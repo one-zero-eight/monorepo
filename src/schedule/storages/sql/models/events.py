@@ -20,7 +20,12 @@ if TYPE_CHECKING:
 
 
 class Event(
-    Base, IdMixin, NameMixin, DescriptionMixin, UpdateCreateDateTimeMixin, ownerships_mixin_factory("events", Base)
+    Base,
+    IdMixin,
+    NameMixin,
+    DescriptionMixin,
+    UpdateCreateDateTimeMixin,
+    ownerships_mixin_factory("events", Base),
 ):
     """
     Create new .icalendar event
@@ -38,11 +43,17 @@ class Event(
     __tablename__ = "events"
 
     patches: Mapped[list[EventPatch]] = relationship(
-        "EventPatch", back_populates="parent", cascade="all, delete-orphan", lazy="selectin"
+        "EventPatch",
+        back_populates="parent",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     event_groups: Mapped[list[EventGroup]] = relationship(
-        "EventGroup", secondary="events_x_event_groups", back_populates="events", lazy="selectin"
+        "EventGroup",
+        secondary="events_x_event_groups",
+        back_populates="events",
+        lazy="selectin",
     )
 
 
@@ -56,7 +67,9 @@ class EventPatch(Base, IdMixin):
     __tablename__ = "event_patches"
 
     parent_id: Mapped[int] = mapped_column(ForeignKey("events.id"), nullable=False)
-    parent: Mapped[Event] = relationship("Event", back_populates="patches", lazy="joined")
+    parent: Mapped[Event] = relationship(
+        "Event", back_populates="patches", lazy="joined"
+    )
     type = mapped_column(String(255), nullable=False, default="create")
 
     # --- .ics fields --- #
@@ -73,5 +86,9 @@ class EventPatch(Base, IdMixin):
 class EventXEventGroup(Base):
     __tablename__ = "events_x_event_groups"
 
-    event_id: Mapped[int] = mapped_column(ForeignKey("events.id"), nullable=False, primary_key=True)
-    event_group_id: Mapped[int] = mapped_column(ForeignKey("event_groups.id"), nullable=False, primary_key=True)
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("events.id"), nullable=False, primary_key=True
+    )
+    event_group_id: Mapped[int] = mapped_column(
+        ForeignKey("event_groups.id"), nullable=False, primary_key=True
+    )

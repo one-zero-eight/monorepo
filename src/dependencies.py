@@ -44,7 +44,9 @@ class IncorrectCredentialsException(HTTPException):
                 detail="Unable to verify credentials",
             )
 
-    responses: ClassVar = {401: {"description": "Unable to verify credentials OR Credentials not provided"}}
+    responses: ClassVar = {
+        401: {"description": "Unable to verify credentials OR Credentials not provided"}
+    }
 
 
 class NotAdminException(HTTPException):
@@ -53,9 +55,16 @@ class NotAdminException(HTTPException):
     """
 
     def __init__(self):
-        super().__init__(status_code=status.HTTP_403_FORBIDDEN, detail=self.responses[403]["description"])
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=self.responses[403]["description"],
+        )
 
-    responses: ClassVar = {403: {"description": "You are not an admin, not allowed to access this endpoint"}}
+    responses: ClassVar = {
+        403: {
+            "description": "You are not an admin, not allowed to access this endpoint"
+        }
+    }
 
 
 async def get_innohassle_token_auth(
@@ -88,7 +97,9 @@ async def get_optional_innohassle_token_auth(
     return token_data
 
 
-OPTIONAL_INH_TOKEN_AUTH = Annotated[UserTokenData | None, Depends(get_optional_innohassle_token_auth)]
+OPTIONAL_INH_TOKEN_AUTH = Annotated[
+    UserTokenData | None, Depends(get_optional_innohassle_token_auth)
+]
 "Dependency to get optional user authentication data from InNoHassle Accounts Token"
 
 

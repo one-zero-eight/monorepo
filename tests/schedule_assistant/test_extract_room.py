@@ -1,4 +1,6 @@
-from src.schedule_assistant.core_courses.location_parser import extract_room_from_location_string
+from src.schedule_assistant.core_courses.location_parser import (
+    extract_room_from_location_string,
+)
 
 
 def test_extract_room_ignores_modifiers():

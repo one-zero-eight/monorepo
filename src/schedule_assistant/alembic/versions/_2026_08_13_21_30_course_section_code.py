@@ -21,7 +21,11 @@ def upgrade() -> None:
     op.add_column("courses", sa.Column("section_code", sa.String(), nullable=True))
 
     connection = op.get_bind()
-    term_row = connection.execute(sa.text("SELECT sections FROM term LIMIT 1")).mappings().first()
+    term_row = (
+        connection.execute(sa.text("SELECT sections FROM term LIMIT 1"))
+        .mappings()
+        .first()
+    )
     sections = list((term_row or {}).get("sections") or [])
 
     group_to_section: dict[str, str] = {}
@@ -44,7 +48,11 @@ def upgrade() -> None:
                     if gid:
                         group_to_section[gid] = section_code
 
-    courses = connection.execute(sa.text("SELECT name, components FROM courses")).mappings().all()
+    courses = (
+        connection.execute(sa.text("SELECT name, components FROM courses"))
+        .mappings()
+        .all()
+    )
     ambiguous: list[str] = []
     for course in courses:
         codes: set[str] = set()
@@ -70,23 +78,30 @@ def upgrade() -> None:
             ambiguous.append(f"{course['name']!r} -> {sorted(codes)}")
             continue
         connection.execute(
-            sa.text("UPDATE courses SET section_code = :section_code WHERE name = :name"),
+            sa.text(
+                "UPDATE courses SET section_code = :section_code WHERE name = :name"
+            ),
             {"section_code": next(iter(codes)), "name": course["name"]},
         )
 
     if ambiguous:
         raise RuntimeError(
-            "Cannot backfill courses.section_code; each course must map to exactly one section: " + "; ".join(ambiguous)
+            "Cannot backfill courses.section_code; each course must map to exactly one section: "
+            + "; ".join(ambiguous)
         )
 
     remaining = connection.execute(
-        sa.text("SELECT name FROM courses WHERE section_code IS NULL OR section_code = ''")
+        sa.text(
+            "SELECT name FROM courses WHERE section_code IS NULL OR section_code = ''"
+        )
     ).fetchall()
     if remaining:
         names = ", ".join(repr(row[0]) for row in remaining)
         raise RuntimeError(f"courses.section_code still empty for: {names}")
 
-    op.alter_column("courses", "section_code", existing_type=sa.String(), nullable=False)
+    op.alter_column(
+        "courses", "section_code", existing_type=sa.String(), nullable=False
+    )
 
 
 def downgrade() -> None:

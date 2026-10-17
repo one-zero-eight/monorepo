@@ -5,8 +5,13 @@ import pytest
 from httpx import AsyncClient
 from openpyxl import load_workbook
 
-from src.schedule_assistant.modules.schedule.export_xlsx import course_fill_color, export_schedule_xlsx
-from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
+from src.schedule_assistant.modules.schedule.export_xlsx import (
+    course_fill_color,
+    export_schedule_xlsx,
+)
+from src.schedule_assistant.modules.schedule_config.repository import (
+    ScheduleConfigRepository,
+)
 from src.schedule_assistant.modules.schedule_config.schemas import (
     ComponentSessionSeries,
     CourseConfig,
@@ -83,7 +88,10 @@ def _sample_config() -> ScheduleConfig:
                 code="B25-CSE-01",
                 name="B25-CSE-01",
                 estimated_size=27,
-                students=["b.student@innopolis.university", "a.student@innopolis.university"],
+                students=[
+                    "b.student@innopolis.university",
+                    "a.student@innopolis.university",
+                ],
             ),
             StudentsGroups(
                 code="B25-CSE-02",
@@ -94,7 +102,10 @@ def _sample_config() -> ScheduleConfig:
             StudentsGroups(
                 code="ELEC-01",
                 name="SRE Course",
-                students=["e.student@innopolis.university", "d.student@innopolis.university"],
+                students=[
+                    "e.student@innopolis.university",
+                    "d.student@innopolis.university",
+                ],
             ),
         ],
         courses=[
@@ -164,7 +175,13 @@ def test_export_has_sheet_per_section_with_default_layouts() -> None:
     data, filename = export_schedule_xlsx(_sample_config())
     assert filename == "Fall 2026.xlsx"
     wb = load_workbook(io.BytesIO(data))
-    assert wb.sheetnames == ["Core", "Electives", "Distributions", "Instructors", "Subjects"]
+    assert wb.sheetnames == [
+        "Core",
+        "Electives",
+        "Distributions",
+        "Instructors",
+        "Subjects",
+    ]
 
     core = wb["Core"]
     assert core["B1"].value == "BS Y1"
@@ -182,10 +199,13 @@ def test_export_has_sheet_per_section_with_default_layouts() -> None:
     assert "A4:A6" in merges
     assert "A1:A2" in merges
     monday_slots = [
-        core.cell(r, 1).value for r in range(4, 4 + 3 * len(_sample_config().term.time_slots)) if core.cell(r, 1).value
+        core.cell(r, 1).value
+        for r in range(4, 4 + 3 * len(_sample_config().term.time_slots))
+        if core.cell(r, 1).value
     ]
     assert monday_slots == [
-        f"{s.start_time.strftime('%H:%M')}-{s.end_time.strftime('%H:%M')}" for s in _sample_config().term.time_slots
+        f"{s.start_time.strftime('%H:%M')}-{s.end_time.strftime('%H:%M')}"
+        for s in _sample_config().term.time_slots
     ]
 
     electives = wb["Electives"]
@@ -241,7 +261,10 @@ def test_export_has_sheet_per_section_with_default_layouts() -> None:
     assert subjects["C2"].value == "Math I"
     assert subjects["D2"].value == "Математика I"
     assert subjects["E2"].value == "BS_Y1/Software Engineering: B25-CSE-01, B25-CSE-02"
-    assert subjects["F2"].value == "Alice Teacher (Primary)\nBob Assistant (Teaching Assistant)"
+    assert (
+        subjects["F2"].value
+        == "Alice Teacher (Primary)\nBob Assistant (Teaching Assistant)"
+    )
     assert subjects["A3"].value == "Electives"
     assert subjects["B3"].value == "SRE"
     assert subjects["C3"].value == "SRE Course"
@@ -268,7 +291,9 @@ def test_groups_export_uses_configured_color_and_fallback() -> None:
     configured = _sample_config()
     configured.courses[0].color = "#123ABC"
     configured_data, _ = export_schedule_xlsx(configured)
-    configured_fill = load_workbook(io.BytesIO(configured_data))["Core"]["B4"].fill.fgColor.rgb
+    configured_fill = load_workbook(io.BytesIO(configured_data))["Core"][
+        "B4"
+    ].fill.fgColor.rgb
     assert configured_fill is not None
     assert configured_fill[-6:] == "123ABC"
     configured.courses[1].color = "#654321"
@@ -286,7 +311,9 @@ def test_groups_export_uses_configured_color_and_fallback() -> None:
 
     fallback = _sample_config()
     fallback_data, _ = export_schedule_xlsx(fallback)
-    fallback_fill = load_workbook(io.BytesIO(fallback_data))["Core"]["B4"].fill.fgColor.rgb
+    fallback_fill = load_workbook(io.BytesIO(fallback_data))["Core"][
+        "B4"
+    ].fill.fgColor.rgb
     assert fallback_fill is not None
     assert fallback_fill[-6:] == course_fill_color("Math I")
     assert fallback.courses[0].color is None
@@ -467,16 +494,43 @@ def test_subjects_section_block_has_outer_border() -> None:
     assert subjects["C2"].value == "Math I"
     assert subjects["C3"].value == "Physics I"
     # Outer box around Core rows 2–3 is thick; internal edges are thin.
-    assert subjects["A2"].border.top is not None and subjects["A2"].border.top.style == "thick"
-    assert subjects["A2"].border.bottom is not None and subjects["A2"].border.bottom.style == "thin"
-    assert subjects["A3"].border.top is not None and subjects["A3"].border.top.style == "thin"
-    assert subjects["A3"].border.bottom is not None and subjects["A3"].border.bottom.style == "thick"
-    assert subjects["A2"].border.left is not None and subjects["A2"].border.left.style == "thick"
-    assert subjects["B2"].border.left is not None and subjects["B2"].border.left.style == "thin"
-    assert subjects["F2"].border.right is not None and subjects["F2"].border.right.style == "thick"
+    assert (
+        subjects["A2"].border.top is not None
+        and subjects["A2"].border.top.style == "thick"
+    )
+    assert (
+        subjects["A2"].border.bottom is not None
+        and subjects["A2"].border.bottom.style == "thin"
+    )
+    assert (
+        subjects["A3"].border.top is not None
+        and subjects["A3"].border.top.style == "thin"
+    )
+    assert (
+        subjects["A3"].border.bottom is not None
+        and subjects["A3"].border.bottom.style == "thick"
+    )
+    assert (
+        subjects["A2"].border.left is not None
+        and subjects["A2"].border.left.style == "thick"
+    )
+    assert (
+        subjects["B2"].border.left is not None
+        and subjects["B2"].border.left.style == "thin"
+    )
+    assert (
+        subjects["F2"].border.right is not None
+        and subjects["F2"].border.right.style == "thick"
+    )
     assert subjects["A4"].value == "Electives"
-    assert subjects["A4"].border.top is not None and subjects["A4"].border.top.style == "thick"
-    assert subjects["A4"].border.bottom is not None and subjects["A4"].border.bottom.style == "thick"
+    assert (
+        subjects["A4"].border.top is not None
+        and subjects["A4"].border.top.style == "thick"
+    )
+    assert (
+        subjects["A4"].border.bottom is not None
+        and subjects["A4"].border.bottom.style == "thick"
+    )
     assert subjects.sheet_view.showGridLines is False
 
 
@@ -587,7 +641,13 @@ def test_compact_groups_export_keeps_all_groups_and_only_occupied_slots() -> Non
     data, _ = export_schedule_xlsx(config)
     wb = load_workbook(io.BytesIO(data))
 
-    assert wb.sheetnames == ["Core", "Electives", "Distributions", "Instructors", "Subjects"]
+    assert wb.sheetnames == [
+        "Core",
+        "Electives",
+        "Distributions",
+        "Instructors",
+        "Subjects",
+    ]
     core_sheet = wb["Core"]
     assert core_sheet["A1"].value is None
     assert core_sheet["B2"].value == "B25-CSE-01"
@@ -626,11 +686,18 @@ def _seed_export_config(repo: ScheduleConfigRepository) -> None:
     term_without_sections = config.term.model_copy(update={"sections": []})
     repo.set_term(term_without_sections)
     repo.set_instructors(InstructorConfig(instructors=config.instructors))
-    from src.schedule_assistant.modules.schedule_config.schemas import RoomConfig, SectionsConfig
+    from src.schedule_assistant.modules.schedule_config.schemas import (
+        RoomConfig,
+        SectionsConfig,
+    )
 
     repo.create_room(RoomConfig.Room(id="108", name="108", capacity=100))
     repo.create_room(RoomConfig.Room(id="209", name="209", capacity=40))
-    repo.set_sections(SectionsConfig(sections=config.term.sections, students_groups=config.students_groups))
+    repo.set_sections(
+        SectionsConfig(
+            sections=config.term.sections, students_groups=config.students_groups
+        )
+    )
     repo.set_courses(CoursesConfig(courses=config.courses))
 
 
@@ -650,13 +717,25 @@ async def test_export_xlsx_api(
     disposition = response.headers["content-disposition"]
     assert "Fall 2026.xlsx" in disposition or "Fall%202026.xlsx" in disposition
     wb = load_workbook(io.BytesIO(response.content))
-    assert wb.sheetnames == ["Core", "Electives", "Distributions", "Instructors", "Subjects"]
+    assert wb.sheetnames == [
+        "Core",
+        "Electives",
+        "Distributions",
+        "Instructors",
+        "Subjects",
+    ]
     assert wb["Core"]["B4"].value == "Math I (lec)"
     assert wb["Electives"]["B1"].value == "Monday"
     assert wb["Instructors"]["G2"].value == "t1"
     assert wb["Subjects"]["A2"].value == "Core"
     assert wb["Subjects"]["C2"].value == "Math I"
-    assert wb["Subjects"]["E2"].value == "BS_Y1/Software Engineering: B25-CSE-01, B25-CSE-02"
-    assert wb["Subjects"]["F2"].value == "Alice Teacher (Primary)\nBob Assistant (Teaching Assistant)"
+    assert (
+        wb["Subjects"]["E2"].value
+        == "BS_Y1/Software Engineering: B25-CSE-01, B25-CSE-02"
+    )
+    assert (
+        wb["Subjects"]["F2"].value
+        == "Alice Teacher (Primary)\nBob Assistant (Teaching Assistant)"
+    )
     assert wb["Distributions"]["A1"].value == "E-mail"
     assert wb["Distributions"]["A2"].value == "a.student@innopolis.university"

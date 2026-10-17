@@ -22,7 +22,9 @@ class ScheduleAssistantSettings(ServiceSettingsBase):
     moderator_emails: list[str] = Field(default_factory=list)
     "Innopolis emails allowed to access moderator-only endpoints"
     db_url: SecretStr = Field(
-        default_factory=lambda: default_postgres_url(driver="psycopg", database="schedule_assistant"),
+        default_factory=lambda: default_postgres_url(
+            driver="psycopg", database="schedule_assistant"
+        ),
         examples=[
             "postgresql+psycopg://postgres:postgres@127.0.0.1:5432/schedule_assistant",
             "postgresql+psycopg://postgres:postgres@postgres:5432/schedule_assistant",

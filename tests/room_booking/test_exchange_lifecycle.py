@@ -11,16 +11,24 @@ from exchangelib.items.calendar_item import MeetingResponse
 from exchangelib.properties import AssociatedCalendarItemId, ConversationId
 from fastapi import HTTPException
 
-from src.room_booking.modules.bmp.repository import BmpBatchCreateEntry, BmpCalendarRepository
+from src.room_booking.modules.bmp.repository import (
+    BmpBatchCreateEntry,
+    BmpCalendarRepository,
+)
 from src.room_booking.modules.bookings import exchange_repository as exchange_module
-from src.room_booking.modules.bookings.schemas import ReconcileBookingEntry, ScopedCancelBookingRequest
+from src.room_booking.modules.bookings.schemas import (
+    ReconcileBookingEntry,
+    ScopedCancelBookingRequest,
+)
 from src.room_booking.modules.rooms.repository import room_repository
 from tests.room_booking.datetime_helpers import msk
 
 
 @pytest.fixture
 def exchange_boundary(monkeypatch):
-    repo = BmpCalendarRepository("https://ews.invalid/EWS/Exchange.asmx", "bmp-test@innopolis.ru", "test-only")
+    repo = BmpCalendarRepository(
+        "https://ews.invalid/EWS/Exchange.asmx", "bmp-test@innopolis.ru", "test-only"
+    )
     calendar = MagicMock(spec=exchangelib.folders.Calendar)
     calendar.id = "calendar-id"
     calendar.account = repo.account
@@ -36,7 +44,9 @@ def exchange_boundary(monkeypatch):
     monkeypatch.setattr(
         exchangelib.Account,
         "calendar",
-        property(lambda account: calendar if account is repo.account else room_calendar),
+        property(
+            lambda account: calendar if account is repo.account else room_calendar
+        ),
     )
     room = room_repository.get_by_id("3.1")
     assert room is not None
@@ -52,7 +62,8 @@ def exchange_boundary(monkeypatch):
         organizer=exchangelib.Mailbox(email_address=repo.account_email),
         resources=[
             exchangelib.Attendee(
-                mailbox=exchangelib.Mailbox(email_address=room.resource_email), response_type="NoResponseReceived"
+                mailbox=exchangelib.Mailbox(email_address=room.resource_email),
+                response_type="NoResponseReceived",
             )
         ],
         categories=["Auto", "InnoHassleOperation:operation-1"],
@@ -63,9 +74,19 @@ def exchange_boundary(monkeypatch):
     calendar.filter.return_value = [item]
     calendar.all.return_value = [item]
     writes = []
-    monkeypatch.setattr(exchangelib.CalendarItem, "cancel", lambda self, **kwargs: writes.append((self.id, kwargs)))
+    monkeypatch.setattr(
+        exchangelib.CalendarItem,
+        "cancel",
+        lambda self, **kwargs: writes.append((self.id, kwargs)),
+    )
     return SimpleNamespace(
-        repo=repo, calendar=calendar, inbox=inbox, room_calendar=room_calendar, room=room, item=item, writes=writes
+        repo=repo,
+        calendar=calendar,
+        inbox=inbox,
+        room_calendar=room_calendar,
+        room=room,
+        item=item,
+        writes=writes,
     )
 
 
@@ -74,8 +95,12 @@ def response(boundary, status, *, associated=True, sender=None, minute=0):
     return MeetingResponse(
         id=f"message-{status}",
         item_class=f"IPM.Schedule.Meeting.Resp.{classes[status]}",
-        sender=exchangelib.Mailbox(email_address=sender or boundary.room.resource_email),
-        associated_calendar_item_id=AssociatedCalendarItemId(id=boundary.item.id) if associated else None,
+        sender=exchangelib.Mailbox(
+            email_address=sender or boundary.room.resource_email
+        ),
+        associated_calendar_item_id=AssociatedCalendarItemId(id=boundary.item.id)
+        if associated
+        else None,
         conversation_id=ConversationId(id="conversation-1"),
         text_body=f"Room says {status}",
         datetime_received=msk(2026, 9, 8, 11, minute),
@@ -86,8 +111,12 @@ def response(boundary, status, *, associated=True, sender=None, minute=0):
 @pytest.mark.parametrize("status", ["Accept", "Tentative", "Decline"])
 async def test_early_response_recovered_without_notification(exchange_boundary, status):
     b = exchange_boundary
-    b.inbox.filter.return_value.order_by.return_value = [response(b, status, associated=False)]
-    booking, body = await b.repo._confirm_booking(room=b.room, item_id=b.item.id, wait_before_poll=False, timeout_s=0)
+    b.inbox.filter.return_value.order_by.return_value = [
+        response(b, status, associated=False)
+    ]
+    booking, body = await b.repo._confirm_booking(
+        room=b.room, item_id=b.item.id, wait_before_poll=False, timeout_s=0
+    )
     assert booking.room_response == status
     assert booking.room_presence == "unknown"
     assert booking.uid == "uid-1"
@@ -98,7 +127,9 @@ async def test_early_response_recovered_without_notification(exchange_boundary, 
 @pytest.mark.asyncio
 async def test_confirmation_timeout_retains_request(exchange_boundary):
     b = exchange_boundary
-    booking, _ = await b.repo._confirm_booking(room=b.room, item_id=b.item.id, wait_before_poll=False, timeout_s=0)
+    booking, _ = await b.repo._confirm_booking(
+        room=b.room, item_id=b.item.id, wait_before_poll=False, timeout_s=0
+    )
     assert booking.outlook_booking_id == "item-1"
     assert booking.room_response == "NoResponseReceived"
     assert booking.room_presence == "unknown"
@@ -114,8 +145,12 @@ async def test_reconcile_newest_response_supersedes_tentative(exchange_boundary,
         response(b, final, minute=10),
         response(b, "Tentative"),
     ]
-    b.room_calendar.all.return_value.only.return_value = [SimpleNamespace(uid="uid-1", subject="Renamed by room")]
-    result = await b.repo.reconcile_booking(ReconcileBookingEntry(operation_id="operation-1", room_id=b.room.id))
+    b.room_calendar.all.return_value.only.return_value = [
+        SimpleNamespace(uid="uid-1", subject="Renamed by room")
+    ]
+    result = await b.repo.reconcile_booking(
+        ReconcileBookingEntry(operation_id="operation-1", room_id=b.room.id)
+    )
     assert result.room_response == final
     assert result.room_presence == "present"
     assert result.organizer_presence == "present"
@@ -127,9 +162,13 @@ async def test_reconcile_newest_response_supersedes_tentative(exchange_boundary,
 async def test_inbox_failure_keeps_attendee_response_and_checks_room(exchange_boundary):
     b = exchange_boundary
     b.item.resources[0].response_type = "Tentative"
-    b.inbox.filter.side_effect = exchangelib.errors.ErrorTimeoutExpired("Inbox unavailable")
+    b.inbox.filter.side_effect = exchangelib.errors.ErrorTimeoutExpired(
+        "Inbox unavailable"
+    )
     b.room_calendar.all.return_value.only.return_value = [SimpleNamespace(uid="uid-1")]
-    result = await b.repo.reconcile_booking(ReconcileBookingEntry(operation_id="operation-1", room_id=b.room.id))
+    result = await b.repo.reconcile_booking(
+        ReconcileBookingEntry(operation_id="operation-1", room_id=b.room.id)
+    )
     assert result.status == "error"
     assert result.room_response == "Tentative"
     assert result.organizer_presence == "present"
@@ -145,7 +184,9 @@ async def test_unrelated_sender_and_conversation_not_correlated(exchange_boundar
     wrong_identity = response(b, "Decline", associated=False)
     wrong_identity.conversation_id = ConversationId(id="other-conversation")
     b.inbox.filter.return_value.order_by.return_value = [wrong_sender, wrong_identity]
-    booking, _ = await b.repo._confirm_booking(room=b.room, item_id=b.item.id, wait_before_poll=False, timeout_s=0)
+    booking, _ = await b.repo._confirm_booking(
+        room=b.room, item_id=b.item.id, wait_before_poll=False, timeout_s=0
+    )
     assert booking.room_response == "NoResponseReceived"
     assert b.writes == []
 
@@ -158,13 +199,20 @@ async def test_poller_delivers_on_owning_loop(exchange_boundary):
     b.repo._inbox_pull_watermark = "watermark"
     b.inbox.get_events.return_value = [
         SimpleNamespace(
-            events=[SimpleNamespace(item_id=SimpleNamespace(id=message.id, changekey="m-change"), watermark="next")],
+            events=[
+                SimpleNamespace(
+                    item_id=SimpleNamespace(id=message.id, changekey="m-change"),
+                    watermark="next",
+                )
+            ],
             more_events=False,
         )
     ]
     b.inbox.get.return_value = message
     wait = exchange_module._RoomWait(
-        room_email=b.room.resource_email, calendar_item=b.item, loop=asyncio.get_running_loop()
+        room_email=b.room.resource_email,
+        calendar_item=b.item,
+        loop=asyncio.get_running_loop(),
     )
     b.repo._room_waits[b.item.id] = wait
     await asyncio.to_thread(b.repo._inbox_poll_step)
@@ -175,12 +223,18 @@ async def test_poller_delivers_on_owning_loop(exchange_boundary):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "error", [exchangelib.errors.ErrorAccessDenied("denied"), exchangelib.errors.ErrorExceededFindCountLimit("limit")]
+    "error",
+    [
+        exchangelib.errors.ErrorAccessDenied("denied"),
+        exchangelib.errors.ErrorExceededFindCountLimit("limit"),
+    ],
 )
 async def test_room_read_failure_is_unknown_not_absent(exchange_boundary, error):
     b = exchange_boundary
     b.room_calendar.all.side_effect = error
-    result = await b.repo.reconcile_booking(ReconcileBookingEntry(uid="uid-1", room_id=b.room.id))
+    result = await b.repo.reconcile_booking(
+        ReconcileBookingEntry(uid="uid-1", room_id=b.room.id)
+    )
     assert result.status == "error"
     assert result.organizer_presence == "present"
     assert result.room_presence == "unknown"
@@ -191,7 +245,9 @@ async def test_room_read_failure_is_unknown_not_absent(exchange_boundary, error)
 async def test_stale_item_id_is_not_proof_of_cancellation(exchange_boundary):
     b = exchange_boundary
     b.calendar.get.side_effect = exchangelib.errors.ErrorItemNotFound("stale id")
-    result = await b.repo.reconcile_booking(ReconcileBookingEntry(outlook_booking_id="stale", room_id=b.room.id))
+    result = await b.repo.reconcile_booking(
+        ReconcileBookingEntry(outlook_booking_id="stale", room_id=b.room.id)
+    )
     assert result.organizer_presence == "unknown"
     assert result.room_presence == "unknown"
 
@@ -201,7 +257,9 @@ async def test_cancel_validates_room_before_writing(exchange_boundary):
     b = exchange_boundary
     b.item.resources = []
     with pytest.raises(HTTPException, match="requested room"):
-        await b.repo.cancel_scoped_booking(ScopedCancelBookingRequest(uid="uid-1", room_id=b.room.id, scope="series"))
+        await b.repo.cancel_scoped_booking(
+            ScopedCancelBookingRequest(uid="uid-1", room_id=b.room.id, scope="series")
+        )
     assert b.writes == []
 
 
@@ -227,7 +285,9 @@ async def test_cancel_series_waits_for_room_propagation(exchange_boundary, monke
 
 
 @pytest.mark.asyncio
-async def test_cancel_exact_occurrence_does_not_cancel_master(exchange_boundary, monkeypatch):
+async def test_cancel_exact_occurrence_does_not_cancel_master(
+    exchange_boundary, monkeypatch
+):
     b = exchange_boundary
     b.item.type = "RecurringMaster"
     occurrence = exchangelib.CalendarItem(
@@ -260,12 +320,16 @@ async def test_cancel_exact_occurrence_does_not_cancel_master(exchange_boundary,
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("room_present", [False, True])
-async def test_repeat_occurrence_cancellation_never_changes_master(exchange_boundary, room_present):
+async def test_repeat_occurrence_cancellation_never_changes_master(
+    exchange_boundary, room_present
+):
     b = exchange_boundary
     b.item.type = "RecurringMaster"
     b.calendar.view.return_value = []
     b.room_calendar.view.return_value.only.return_value = (
-        [SimpleNamespace(uid=b.item.uid, start=b.item.start, end=b.item.end)] if room_present else []
+        [SimpleNamespace(uid=b.item.uid, start=b.item.start, end=b.item.end)]
+        if room_present
+        else []
     )
     result = await b.repo.cancel_scoped_booking(
         ScopedCancelBookingRequest(
@@ -276,7 +340,9 @@ async def test_repeat_occurrence_cancellation_never_changes_master(exchange_boun
             end=b.item.end,
         )
     )
-    assert result.cancellation_status == ("requires_review" if room_present else "cancelled")
+    assert result.cancellation_status == (
+        "requires_review" if room_present else "cancelled"
+    )
     assert result.organizer_presence == "absent"
     assert b.writes == []
     assert b.calendar.filter.return_value == [b.item]
@@ -284,7 +350,9 @@ async def test_repeat_occurrence_cancellation_never_changes_master(exchange_boun
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("applied", [False, True])
-async def test_cancel_unknown_send_reconciles_without_retry(exchange_boundary, monkeypatch, applied):
+async def test_cancel_unknown_send_reconciles_without_retry(
+    exchange_boundary, monkeypatch, applied
+):
     b = exchange_boundary
 
     def cancel(item, **kwargs):
@@ -296,7 +364,9 @@ async def test_cancel_unknown_send_reconciles_without_retry(exchange_boundary, m
 
     monkeypatch.setattr(exchangelib.CalendarItem, "cancel", cancel)
     result = await b.repo.cancel_scoped_booking(
-        ScopedCancelBookingRequest(operation_id="operation-1", room_id=b.room.id, scope="series")
+        ScopedCancelBookingRequest(
+            operation_id="operation-1", room_id=b.room.id, scope="series"
+        )
     )
     assert result.cancellation_status == ("cancelled" if applied else "requires_review")
     assert b.writes == ["item-1"]
@@ -322,12 +392,21 @@ async def test_restart_recovers_operation_marker_without_invitation(exchange_bou
 
 
 @pytest.mark.asyncio
-async def test_partial_bulk_persists_marker_and_streams_known_ids(exchange_boundary, monkeypatch):
+async def test_partial_bulk_persists_marker_and_streams_known_ids(
+    exchange_boundary, monkeypatch
+):
     b = exchange_boundary
     b.calendar.filter.return_value = []
-    b.calendar.bulk_create.return_value = [SimpleNamespace(id="item-1", changekey="change-1"), ValueError("bad item")]
+    b.calendar.bulk_create.return_value = [
+        SimpleNamespace(id="item-1", changekey="change-1"),
+        ValueError("bad item"),
+    ]
     b.item.resources[0].response_type = "Tentative"
-    monkeypatch.setattr(exchangelib.CalendarItem, "save", lambda self, **kwargs: b.writes.append((self.id, kwargs)))
+    monkeypatch.setattr(
+        exchangelib.CalendarItem,
+        "save",
+        lambda self, **kwargs: b.writes.append((self.id, kwargs)),
+    )
     entries = [
         BmpBatchCreateEntry(
             room=b.room,
@@ -341,13 +420,22 @@ async def test_partial_bulk_persists_marker_and_streams_known_ids(exchange_bound
     ]
     events = [event async for event in b.repo.iter_create_bookings_batch(entries)]
     assert len(b.calendar.bulk_create.call_args.args[0]) == 2
-    assert b.calendar.bulk_create.call_args.kwargs["send_meeting_invitations"] == "SendToNone"
-    assert "InnoHassleOperation:operation-1" in b.calendar.bulk_create.call_args.args[0][0].categories
+    assert (
+        b.calendar.bulk_create.call_args.kwargs["send_meeting_invitations"]
+        == "SendToNone"
+    )
+    assert (
+        "InnoHassleOperation:operation-1"
+        in b.calendar.bulk_create.call_args.args[0][0].categories
+    )
     assert entries[0].sent_booking is not None
     assert entries[0].sent_booking.outlook_booking_id == "item-1"
     assert any(event[2] == [0] for event in events)
     assert any(event[0] == 1 and event[1].status == "error" for event in events)
-    assert any(event[0] == 0 and event[1].booking.room_response == "Tentative" for event in events)
+    assert any(
+        event[0] == 0 and event[1].booking.room_response == "Tentative"
+        for event in events
+    )
 
 
 @pytest.mark.asyncio
@@ -386,7 +474,9 @@ async def test_same_slot_distinct_source_meetings_survive_merge(exchange_boundar
             "busy_type": "Tentative",
         }
     )
-    await b.repo._cache_from_account_calendar.update_cache(b.room.id, [first, second], start, end)
+    await b.repo._cache_from_account_calendar.update_cache(
+        b.room.id, [first, second], start, end
+    )
     await b.repo._cache_from_busy_info.update_cache(b.room.id, [busy], start, end)
     bookings = await b.repo.get_bookings_for_room(b.room.id, start, end)
     assert len(bookings) == 3
@@ -415,7 +505,9 @@ def test_reconcile_route_returns_structured_evidence(
     assert evidence["evidence"]
 
 
-def test_cancel_route_requires_explicit_scope(exchange_boundary, room_booking_client, api_key_headers):
+def test_cancel_route_requires_explicit_scope(
+    exchange_boundary, room_booking_client, api_key_headers
+):
     result = room_booking_client.post(
         "/bmp/auto-bookings/cancel",
         headers=api_key_headers,
@@ -429,7 +521,9 @@ def test_cancel_route_requires_explicit_scope(exchange_boundary, room_booking_cl
 
 
 @pytest.mark.asyncio
-async def test_same_operation_concurrent_calls_create_once(exchange_boundary, monkeypatch):
+async def test_same_operation_concurrent_calls_create_once(
+    exchange_boundary, monkeypatch
+):
     b = exchange_boundary
     b.calendar.filter.return_value = []
     b.item.resources[0].response_type = "Tentative"
@@ -439,7 +533,11 @@ async def test_same_operation_concurrent_calls_create_once(exchange_boundary, mo
         return [SimpleNamespace(id=b.item.id, changekey=b.item.changekey)]
 
     b.calendar.bulk_create.side_effect = create
-    monkeypatch.setattr(exchangelib.CalendarItem, "save", lambda self, **kwargs: b.writes.append(self.id))
+    monkeypatch.setattr(
+        exchangelib.CalendarItem,
+        "save",
+        lambda self, **kwargs: b.writes.append(self.id),
+    )
 
     async def run():
         return await b.repo.create_booking(
@@ -458,12 +556,20 @@ async def test_same_operation_concurrent_calls_create_once(exchange_boundary, mo
 
 
 @pytest.mark.asyncio
-async def test_duplicate_operation_in_single_batch_never_double_sends(exchange_boundary, monkeypatch):
+async def test_duplicate_operation_in_single_batch_never_double_sends(
+    exchange_boundary, monkeypatch
+):
     b = exchange_boundary
     b.calendar.filter.return_value = []
-    b.calendar.bulk_create.return_value = [SimpleNamespace(id="item-1", changekey="change-1")]
+    b.calendar.bulk_create.return_value = [
+        SimpleNamespace(id="item-1", changekey="change-1")
+    ]
     b.item.resources[0].response_type = "Tentative"
-    monkeypatch.setattr(exchangelib.CalendarItem, "save", lambda self, **kwargs: b.writes.append(self.id))
+    monkeypatch.setattr(
+        exchangelib.CalendarItem,
+        "save",
+        lambda self, **kwargs: b.writes.append(self.id),
+    )
     entry = BmpBatchCreateEntry(
         room=b.room,
         start=b.item.start,
@@ -472,7 +578,12 @@ async def test_duplicate_operation_in_single_batch_never_double_sends(exchange_b
         participant_emails=[],
         operation_id="operation-1",
     )
-    events = [event async for event in b.repo.iter_create_bookings_batch([entry, entry.model_copy()])]
+    events = [
+        event
+        async for event in b.repo.iter_create_bookings_batch(
+            [entry, entry.model_copy()]
+        )
+    ]
     assert len(b.calendar.bulk_create.call_args.args[0]) == 1
     assert any(event[0] == 1 and event[1].status == "error" for event in events)
     assert b.writes == ["item-1"]
@@ -497,8 +608,12 @@ async def test_cross_mailbox_identity_cannot_cancel(exchange_boundary):
 async def test_recent_cancellation_does_not_hide_fetched_conflict(exchange_boundary):
     b = exchange_boundary
     booking = b.repo.booking_from_calendar_item(b.item, room_id=b.room.id)
-    await b.repo._cache_from_account_calendar.update_cache(b.room.id, [booking], b.item.start, b.item.end)
-    await b.repo._cache_from_busy_info.update_cache(b.room.id, [], b.item.start, b.item.end)
+    await b.repo._cache_from_account_calendar.update_cache(
+        b.room.id, [booking], b.item.start, b.item.end
+    )
+    await b.repo._cache_from_busy_info.update_cache(
+        b.room.id, [], b.item.start, b.item.end
+    )
     await b.repo._recently.mark_canceled(b.item.id)
     result = await b.repo.get_bookings_for_room(b.room.id, b.item.start, b.item.end)
     assert len(result) == 1
@@ -506,7 +621,9 @@ async def test_recent_cancellation_does_not_hide_fetched_conflict(exchange_bound
 
 
 @pytest.mark.asyncio
-async def test_saved_request_with_response_read_failure_keeps_identity(exchange_boundary, monkeypatch):
+async def test_saved_request_with_response_read_failure_keeps_identity(
+    exchange_boundary, monkeypatch
+):
     b = exchange_boundary
 
     def save(item, **kwargs):
@@ -532,27 +649,42 @@ async def test_saved_request_with_response_read_failure_keeps_identity(exchange_
 async def test_unavailable_free_busy_never_means_free(exchange_boundary):
     b = exchange_boundary
     protocol = MagicMock()
-    protocol.get_free_busy_info.return_value = [SimpleNamespace(view_type="None", calendar_events=None)]
+    protocol.get_free_busy_info.return_value = [
+        SimpleNamespace(view_type="None", calendar_events=None)
+    ]
     b.repo.account.protocol = protocol
     with pytest.raises(HTTPException, match="availability unavailable"):
-        await b.repo._fetch_bookings_from_busy_info([b.room], b.item.start, b.item.end, use_cache=False)
+        await b.repo._fetch_bookings_from_busy_info(
+            [b.room], b.item.start, b.item.end, use_cache=False
+        )
 
 
 @pytest.mark.asyncio
-async def test_free_busy_retains_tentative_and_anonymous_distinct_entries(exchange_boundary):
+async def test_free_busy_retains_tentative_and_anonymous_distinct_entries(
+    exchange_boundary,
+):
     b = exchange_boundary
     protocol = MagicMock()
     protocol.get_free_busy_info.return_value = [
         SimpleNamespace(
             view_type="Detailed",
             calendar_events=[
-                SimpleNamespace(start=b.item.start, end=b.item.end, details=None, busy_type="Tentative"),
-                SimpleNamespace(start=b.item.start, end=b.item.end, details=None, busy_type="Busy"),
+                SimpleNamespace(
+                    start=b.item.start,
+                    end=b.item.end,
+                    details=None,
+                    busy_type="Tentative",
+                ),
+                SimpleNamespace(
+                    start=b.item.start, end=b.item.end, details=None, busy_type="Busy"
+                ),
             ],
         )
     ]
     b.repo.account.protocol = protocol
-    result = await b.repo._fetch_bookings_from_busy_info([b.room], b.item.start, b.item.end, use_cache=False)
+    result = await b.repo._fetch_bookings_from_busy_info(
+        [b.room], b.item.start, b.item.end, use_cache=False
+    )
     bookings = result[b.room.id]
     assert len(bookings) == 2
     assert bookings[0].busy_type == "Tentative"

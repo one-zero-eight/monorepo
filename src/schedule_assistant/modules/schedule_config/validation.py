@@ -73,7 +73,9 @@ def build_selector_map(sections: SectionsConfig) -> dict[str, set[str]]:
     return selector_map
 
 
-def expand_group_tokens(tokens: list[str], selector_map: dict[str, set[str]]) -> set[str]:
+def expand_group_tokens(
+    tokens: list[str], selector_map: dict[str, set[str]]
+) -> set[str]:
     expanded: set[str] = set()
     for token in tokens:
         if token in selector_map:
@@ -88,7 +90,11 @@ def collect_student_group_codes(sections: SectionsConfig) -> set[str]:
 
 
 def collect_section_codes(sections: SectionsConfig) -> set[str]:
-    return {str(section.code or "").strip() for section in sections.sections if str(section.code or "").strip()}
+    return {
+        str(section.code or "").strip()
+        for section in sections.sections
+        if str(section.code or "").strip()
+    }
 
 
 def groups_in_section(sections: SectionsConfig, section_code: str) -> set[str]:
@@ -98,9 +104,17 @@ def groups_in_section(sections: SectionsConfig, section_code: str) -> set[str]:
         if str(section.code or "").strip() != target:
             continue
         for program in section.programs:
-            groups.update(str(group or "").strip() for group in program.groups if str(group or "").strip())
+            groups.update(
+                str(group or "").strip()
+                for group in program.groups
+                if str(group or "").strip()
+            )
             for track in program.tracks:
-                groups.update(str(group or "").strip() for group in track.groups if str(group or "").strip())
+                groups.update(
+                    str(group or "").strip()
+                    for group in track.groups
+                    if str(group or "").strip()
+                )
     return groups
 
 
@@ -176,7 +190,9 @@ def collect_course_references(courses: CoursesConfig) -> CourseReferences:
     for course in courses.courses:
         for component in course.components:
             group_tokens.update(component.audience)
-            instructor_ids.update(_collect_instructor_pool_ids(component.instructor_pool))
+            instructor_ids.update(
+                _collect_instructor_pool_ids(component.instructor_pool)
+            )
             if component.sessions:
                 for session in component.sessions:
                     group_tokens.update(session.audience)
@@ -189,7 +205,9 @@ def collect_course_references(courses: CoursesConfig) -> CourseReferences:
     )
 
 
-def _is_known_group_token(token: str, group_codes: set[str], selector_map: dict[str, set[str]]) -> bool:
+def _is_known_group_token(
+    token: str, group_codes: set[str], selector_map: dict[str, set[str]]
+) -> bool:
     if token.startswith("@"):
         return token in selector_map
     return token in group_codes
@@ -199,12 +217,16 @@ def _is_known_room_id(room_id: str, room_ids: set[str]) -> bool:
     return room_id in room_ids or _is_virtual_room_id(room_id)
 
 
-def _validate_occurrence_times(path: str, occurrence: SessionOccurrence, errors: list[str]) -> None:
+def _validate_occurrence_times(
+    path: str, occurrence: SessionOccurrence, errors: list[str]
+) -> None:
     if not _time_before(occurrence.start_time, occurrence.end_time):
         errors.append(f"{path}: start_time must be before end_time")
 
 
-def _validate_weekly_slot_times(path: str, slot: WeeklyPatternSlot, errors: list[str]) -> None:
+def _validate_weekly_slot_times(
+    path: str, slot: WeeklyPatternSlot, errors: list[str]
+) -> None:
     if not _time_before(slot.start_time, slot.end_time):
         errors.append(f"{path}: start_time must be before end_time")
 
@@ -224,32 +246,56 @@ def _validate_weekly_slot_edits(
 
     for edit_index, edit in enumerate(slot.edits):
         edit_path = f"{path}.edits[{edit_index}]"
-        week_key = week_start_for_date(edit.select_week, starting_day) if starting_day is not None else edit.select_week
+        week_key = (
+            week_start_for_date(edit.select_week, starting_day)
+            if starting_day is not None
+            else edit.select_week
+        )
         if week_key in seen_weeks:
-            errors.append(f"{edit_path}: duplicate select_week for week starting {week_key.isoformat()}")
+            errors.append(
+                f"{edit_path}: duplicate select_week for week starting {week_key.isoformat()}"
+            )
         else:
             seen_weeks.add(week_key)
 
-        resolved_start = edit.start_time if edit.start_time is not None else slot.start_time
+        resolved_start = (
+            edit.start_time if edit.start_time is not None else slot.start_time
+        )
         resolved_end = edit.end_time if edit.end_time is not None else slot.end_time
         if not edit.cancel and not _time_before(resolved_start, resolved_end):
             errors.append(f"{edit_path}: resolved start_time must be before end_time")
 
         if semester is not None:
-            if edit.select_week < semester.start_date or edit.select_week > semester.end_date:
+            if (
+                edit.select_week < semester.start_date
+                or edit.select_week > semester.end_date
+            ):
                 errors.append(
                     f"{edit_path}.select_week {edit.select_week.isoformat()} is outside term.semester",
                 )
-            if edit.date is not None and (edit.date < semester.start_date or edit.date > semester.end_date):
-                errors.append(f"{edit_path}.date {edit.date.isoformat()} is outside term.semester")
+            if edit.date is not None and (
+                edit.date < semester.start_date or edit.date > semester.end_date
+            ):
+                errors.append(
+                    f"{edit_path}.date {edit.date.isoformat()} is outside term.semester"
+                )
 
         if edit.cancel:
             has_override = any(
                 value is not None
-                for value in (edit.date, edit.start_time, edit.end_time, edit.room, edit.instructor, edit.notes)
+                for value in (
+                    edit.date,
+                    edit.start_time,
+                    edit.end_time,
+                    edit.room,
+                    edit.instructor,
+                    edit.notes,
+                )
             )
             if has_override:
-                errors.append(f"{edit_path}: cancel cannot be combined with field overrides")
+                errors.append(
+                    f"{edit_path}: cancel cannot be combined with field overrides"
+                )
             continue
 
         is_noop = (
@@ -261,7 +307,9 @@ def _validate_weekly_slot_edits(
             and edit.notes is None
         )
         if is_noop:
-            errors.append(f"{edit_path}: edit must cancel or override at least one field")
+            errors.append(
+                f"{edit_path}: edit must cancel or override at least one field"
+            )
 
 
 def validate_term(term: TermConfig) -> list[str]:
@@ -270,7 +318,9 @@ def validate_term(term: TermConfig) -> list[str]:
         errors.append("term.semester.start_date must be on or before end_date")
     for index, slot in enumerate(term.time_slots):
         if not _time_before(slot.start_time, slot.end_time):
-            errors.append(f"term.time_slots[{index}]: start_time must be before end_time")
+            errors.append(
+                f"term.time_slots[{index}]: start_time must be before end_time"
+            )
     errors.extend(_validate_room_attribute_defs(term.room_attributes))
     return errors
 
@@ -292,13 +342,17 @@ def _validate_room_attribute_defs(defs: list[RoomAttributeDef]) -> list[str]:
             values = [value.strip() for value in attr.enum_values]
             if not any(values):
                 errors.append(f"{path}.enum_values must not be empty when type is enum")
-            empty_indexes = [i for i, value in enumerate(attr.enum_values) if not value.strip()]
+            empty_indexes = [
+                i for i, value in enumerate(attr.enum_values) if not value.strip()
+            ]
             for empty_index in empty_indexes:
                 errors.append(f"{path}.enum_values[{empty_index}] must not be empty")
     return errors
 
 
-def _feature_value_matches_type(value: bool | str | int | list[str], attr_type: str) -> bool:
+def _feature_value_matches_type(
+    value: bool | str | int | list[str], attr_type: str
+) -> bool:
     if attr_type == "boolean":
         return isinstance(value, bool)
     if attr_type == "string" or attr_type == "enum":
@@ -328,12 +382,20 @@ def _validate_room_features(
         if not _feature_value_matches_type(value, attr.type):
             errors.append(f"{path}.features[{key!r}] has invalid type for {attr.type}")
             continue
-        if attr.type == "enum" and isinstance(value, str) and value not in attr.enum_values:
-            errors.append(f"{path}.features[{key!r}] value {value!r} is not in enum_values")
+        if (
+            attr.type == "enum"
+            and isinstance(value, str)
+            and value not in attr.enum_values
+        ):
+            errors.append(
+                f"{path}.features[{key!r}] value {value!r} is not in enum_values"
+            )
         if attr.type == "list" and isinstance(value, list):
             empty_indexes = [i for i, item in enumerate(value) if not item.strip()]
             for empty_index in empty_indexes:
-                errors.append(f"{path}.features[{key!r}][{empty_index}] must not be empty")
+                errors.append(
+                    f"{path}.features[{key!r}][{empty_index}] must not be empty"
+                )
     return errors
 
 
@@ -345,12 +407,18 @@ def validate_rooms(
 ) -> list[str]:
     errors: list[str] = []
     room_ids = [room.id for room in config.rooms]
-    errors.extend(f"Duplicate room id: {room_id!r}" for room_id in find_duplicates(room_ids))
+    errors.extend(
+        f"Duplicate room id: {room_id!r}" for room_id in find_duplicates(room_ids)
+    )
     attribute_defs = term.room_attributes if term is not None else []
     for index, room in enumerate(config.rooms):
         if not room.id.strip():
             errors.append(f"rooms[{index}].id must not be empty")
-        errors.extend(_validate_room_features(room, path=f"rooms[{index}]", attribute_defs=attribute_defs))
+        errors.extend(
+            _validate_room_features(
+                room, path=f"rooms[{index}]", attribute_defs=attribute_defs
+            )
+        )
     return errors
 
 
@@ -364,11 +432,15 @@ def validate_rooms_update(
     errors = validate_rooms(new, courses=courses, term=term)
     removed_ids = collect_room_ids(old) - collect_room_ids(new)
     referenced_ids = {
-        room_id for room_id in collect_course_references(courses).room_ids if not _is_virtual_room_id(room_id)
+        room_id
+        for room_id in collect_course_references(courses).room_ids
+        if not _is_virtual_room_id(room_id)
     }
     for room_id in sorted(removed_ids):
         if room_id in referenced_ids:
-            errors.append(f"Cannot remove room {room_id!r}: still referenced in courses")
+            errors.append(
+                f"Cannot remove room {room_id!r}: still referenced in courses"
+            )
     return errors
 
 
@@ -389,10 +461,14 @@ def _validate_instructor_slot_preferences(
             errors.append(f"{prefix}.weekday {day_name!r} is not in term.days")
         entry_start = _clock_time(entry.start_time)
         if entry_start not in slot_starts:
-            errors.append(f"{prefix}.start_time {entry.start_time!r} does not match any term.time_slots start_time")
+            errors.append(
+                f"{prefix}.start_time {entry.start_time!r} does not match any term.time_slots start_time"
+            )
         key = (day_name, entry_start)
         if key in seen:
-            errors.append(f"{prefix}: duplicate weekday+start_time ({day_name!r}, {entry.start_time!r})")
+            errors.append(
+                f"{prefix}: duplicate weekday+start_time ({day_name!r}, {entry.start_time!r})"
+            )
         seen.add(key)
         if entry.level == InstructorSlotPreferenceLevel.NEUTRAL:
             errors.append(f"{prefix}.level should be omitted instead of neutral")
@@ -411,25 +487,37 @@ def teaching_days_from_term_config(term: TermConfig) -> list[str]:
     return [day.value for day in ordered]
 
 
-def validate_instructors(config: InstructorConfig, *, term: TermConfig | None = None) -> list[str]:
+def validate_instructors(
+    config: InstructorConfig, *, term: TermConfig | None = None
+) -> list[str]:
     errors: list[str] = []
     instructor_ids = [instructor.id for instructor in config.instructors]
-    errors.extend(f"Duplicate instructor id: {instructor_id!r}" for instructor_id in find_duplicates(instructor_ids))
+    errors.extend(
+        f"Duplicate instructor id: {instructor_id!r}"
+        for instructor_id in find_duplicates(instructor_ids)
+    )
     instructor_emails = [
         instructor.email.strip().casefold()
         for instructor in config.instructors
         if instructor.email and instructor.email.strip()
     ]
-    errors.extend(f"Duplicate instructor email: {email!r}" for email in find_duplicates(instructor_emails))
+    errors.extend(
+        f"Duplicate instructor email: {email!r}"
+        for email in find_duplicates(instructor_emails)
+    )
     allowed_positions = [
-        position for position in (term.instructor_positions if term is not None else []) if position.strip()
+        position
+        for position in (term.instructor_positions if term is not None else [])
+        if position.strip()
     ]
     for index, instructor in enumerate(config.instructors):
         if not instructor.id.strip():
             errors.append(f"instructors[{index}].id must not be empty")
         position = (instructor.position or "").strip()
         if allowed_positions and position and position not in allowed_positions:
-            errors.append(f"instructors[{index}].position {position!r} is not in term.instructor_positions")
+            errors.append(
+                f"instructors[{index}].position {position!r} is not in term.instructor_positions"
+            )
         if term is not None:
             errors.extend(
                 _validate_instructor_slot_preferences(
@@ -453,7 +541,9 @@ def validate_instructors_update(
     referenced_ids = collect_course_references(courses).instructor_ids
     for instructor_id in sorted(removed_ids):
         if instructor_id in referenced_ids:
-            errors.append(f"Cannot remove instructor {instructor_id!r}: still referenced in courses")
+            errors.append(
+                f"Cannot remove instructor {instructor_id!r}: still referenced in courses"
+            )
     return errors
 
 
@@ -462,10 +552,15 @@ def validate_sections(config: SectionsConfig) -> list[str]:
     group_codes = collect_student_group_codes(config)
 
     section_codes = [section.code for section in config.sections]
-    errors.extend(f"Duplicate section code: {code!r}" for code in find_duplicates(section_codes))
+    errors.extend(
+        f"Duplicate section code: {code!r}" for code in find_duplicates(section_codes)
+    )
 
     students_group_codes = [group.code for group in config.students_groups]
-    errors.extend(f"Duplicate students_groups code: {code!r}" for code in find_duplicates(students_group_codes))
+    errors.extend(
+        f"Duplicate students_groups code: {code!r}"
+        for code in find_duplicates(students_group_codes)
+    )
 
     program_codes: list[str] = []
     for section_index, section in enumerate(config.sections):
@@ -474,10 +569,13 @@ def validate_sections(config: SectionsConfig) -> list[str]:
         for program_index, program in enumerate(section.programs):
             program_codes.append(program.code)
             if not program.code.strip():
-                errors.append(f"sections[{section_index}].programs[{program_index}].code must not be empty")
+                errors.append(
+                    f"sections[{section_index}].programs[{program_index}].code must not be empty"
+                )
             track_codes = [track.code for track in program.tracks]
             errors.extend(
-                f"Duplicate track code in program {program.code!r}: {code!r}" for code in find_duplicates(track_codes)
+                f"Duplicate track code in program {program.code!r}: {code!r}"
+                for code in find_duplicates(track_codes)
             )
             for group_code in program.groups:
                 if group_code not in group_codes:
@@ -498,13 +596,18 @@ def validate_sections(config: SectionsConfig) -> list[str]:
                             f"sections[{section_index}].programs[{program_index}].time_slots[{slot_index}]: "
                             "start_time must be before end_time",
                         )
-            if program.semester is not None and program.semester.start_date > program.semester.end_date:
+            if (
+                program.semester is not None
+                and program.semester.start_date > program.semester.end_date
+            ):
                 errors.append(
                     f"sections[{section_index}].programs[{program_index}].semester.start_date "
                     "must be on or before end_date",
                 )
 
-    errors.extend(f"Duplicate program code: {code!r}" for code in find_duplicates(program_codes))
+    errors.extend(
+        f"Duplicate program code: {code!r}" for code in find_duplicates(program_codes)
+    )
     return errors
 
 
@@ -525,7 +628,9 @@ def validate_sections_update(
             referenced_group_codes.add(token)
     for group_code in sorted(removed_codes):
         if group_code in referenced_group_codes:
-            errors.append(f"Cannot remove students_groups entry {group_code!r}: still referenced in courses")
+            errors.append(
+                f"Cannot remove students_groups entry {group_code!r}: still referenced in courses"
+            )
     return errors
 
 
@@ -537,7 +642,9 @@ def validate_courses(config: CoursesConfig, ctx: ValidationContext) -> list[str]
     room_ids = collect_room_ids(ctx.rooms)
 
     course_names = [course.name for course in config.courses]
-    errors.extend(f"Duplicate course name: {name!r}" for name in find_duplicates(course_names))
+    errors.extend(
+        f"Duplicate course name: {name!r}" for name in find_duplicates(course_names)
+    )
 
     for course_index, course in enumerate(config.courses):
         course_path = f"courses[{course_index}]"
@@ -559,30 +666,46 @@ def validate_courses(config: CoursesConfig, ctx: ValidationContext) -> list[str]
             for item_id in find_duplicates(assignment_ids)
         )
         allowed_roles = [
-            role for role in (ctx.term.course_instructor_roles if ctx.term is not None else []) if role.strip()
+            role
+            for role in (
+                ctx.term.course_instructor_roles if ctx.term is not None else []
+            )
+            if role.strip()
         ]
-        allowed_tags = [tag for tag in (ctx.term.course_component_tags if ctx.term is not None else []) if tag.strip()]
+        allowed_tags = [
+            tag
+            for tag in (ctx.term.course_component_tags if ctx.term is not None else [])
+            if tag.strip()
+        ]
         for assignment_index, assignment in enumerate(course.instructors):
             assignment_path = f"{course_path}.instructors[{assignment_index}]"
             if not assignment.id.strip():
                 errors.append(f"{assignment_path}.id must not be empty")
             elif assignment.id not in instructor_ids:
-                errors.append(f"{assignment_path}.id references unknown instructor {assignment.id!r}")
+                errors.append(
+                    f"{assignment_path}.id references unknown instructor {assignment.id!r}"
+                )
             role = assignment.role.strip()
             if not role:
                 errors.append(f"{assignment_path}.role must not be empty")
             elif allowed_roles and role not in allowed_roles:
-                errors.append(f"{assignment_path}.role {role!r} is not in term.course_instructor_roles")
+                errors.append(
+                    f"{assignment_path}.role {role!r} is not in term.course_instructor_roles"
+                )
 
         component_count = len(course.components)
         for component_index, component in enumerate(course.components):
             path = f"{course_path}.components[{component_index}]"
             tag = str(component.tag or "").strip()
             if allowed_tags and tag and tag not in allowed_tags:
-                errors.append(f"{path}.tag {tag!r} is not in term.course_component_tags")
+                errors.append(
+                    f"{path}.tag {tag!r} is not in term.course_component_tags"
+                )
             for token in component.audience:
                 if not _is_known_group_token(token, group_codes, selector_map):
-                    errors.append(f"{path}.audience references unknown group or selector {token!r}")
+                    errors.append(
+                        f"{path}.audience references unknown group or selector {token!r}"
+                    )
                     continue
                 expanded = expand_group_tokens([token], selector_map)
                 if not expanded.issubset(section_groups):
@@ -594,7 +717,9 @@ def validate_courses(config: CoursesConfig, ctx: ValidationContext) -> list[str]
 
             for pool_id in _collect_instructor_pool_ids(component.instructor_pool):
                 if pool_id not in instructor_ids:
-                    errors.append(f"{path}.instructor_pool references unknown instructor {pool_id!r}")
+                    errors.append(
+                        f"{path}.instructor_pool references unknown instructor {pool_id!r}"
+                    )
 
             relates_to = component.relates_to
             if relates_to is not None:
@@ -612,9 +737,13 @@ def validate_courses(config: CoursesConfig, ctx: ValidationContext) -> list[str]
                 session_path = f"{path}.sessions[{session_index}]"
                 session_groups = expand_group_tokens(session.audience, selector_map)
                 if session.audience and not session_groups.issubset(component_groups):
-                    errors.append(f"{session_path}.audience must be a subset of component audience")
+                    errors.append(
+                        f"{session_path}.audience must be a subset of component audience"
+                    )
                 for audience_token in session.audience:
-                    if not _is_known_group_token(audience_token, group_codes, selector_map):
+                    if not _is_known_group_token(
+                        audience_token, group_codes, selector_map
+                    ):
                         errors.append(
                             f"{session_path}.audience references unknown group or selector {audience_token!r}",
                         )
@@ -626,14 +755,22 @@ def validate_courses(config: CoursesConfig, ctx: ValidationContext) -> list[str]
                         )
 
                 if session.dates_pattern:
-                    for occurrence_index, occurrence in enumerate(session.dates_pattern):
-                        occurrence_path = f"{session_path}.dates_pattern[{occurrence_index}]"
+                    for occurrence_index, occurrence in enumerate(
+                        session.dates_pattern
+                    ):
+                        occurrence_path = (
+                            f"{session_path}.dates_pattern[{occurrence_index}]"
+                        )
                         _validate_occurrence_times(occurrence_path, occurrence, errors)
-                        if occurrence.room and not _is_known_room_id(occurrence.room, room_ids):
+                        if occurrence.room and not _is_known_room_id(
+                            occurrence.room, room_ids
+                        ):
                             errors.append(
                                 f"{occurrence_path}.room references unknown room {occurrence.room!r}",
                             )
-                        for meeting_instructor_id in _collect_meeting_instructor_ids(occurrence.instructor):
+                        for meeting_instructor_id in _collect_meeting_instructor_ids(
+                            occurrence.instructor
+                        ):
                             if meeting_instructor_id not in instructor_ids:
                                 errors.append(
                                     f"{occurrence_path}.instructor references unknown instructor {meeting_instructor_id!r}",
@@ -644,19 +781,31 @@ def validate_courses(config: CoursesConfig, ctx: ValidationContext) -> list[str]
                         slot_path = f"{session_path}.weekly_pattern[{slot_index}]"
                         _validate_weekly_slot_times(slot_path, slot, errors)
                         if slot.room and not _is_known_room_id(slot.room, room_ids):
-                            errors.append(f"{slot_path}.room references unknown room {slot.room!r}")
-                        for meeting_instructor_id in _collect_meeting_instructor_ids(slot.instructor):
+                            errors.append(
+                                f"{slot_path}.room references unknown room {slot.room!r}"
+                            )
+                        for meeting_instructor_id in _collect_meeting_instructor_ids(
+                            slot.instructor
+                        ):
                             if meeting_instructor_id not in instructor_ids:
                                 errors.append(
                                     f"{slot_path}.instructor references unknown instructor {meeting_instructor_id!r}",
                                 )
                         if slot.edits:
-                            _validate_weekly_slot_edits(slot_path, slot, ctx.term, errors)
+                            _validate_weekly_slot_edits(
+                                slot_path, slot, ctx.term, errors
+                            )
                             for edit_index, edit in enumerate(slot.edits):
                                 edit_path = f"{slot_path}.edits[{edit_index}]"
-                                if edit.room and not _is_known_room_id(edit.room, room_ids):
-                                    errors.append(f"{edit_path}.room references unknown room {edit.room!r}")
-                                for meeting_instructor_id in _collect_meeting_instructor_ids(edit.instructor):
+                                if edit.room and not _is_known_room_id(
+                                    edit.room, room_ids
+                                ):
+                                    errors.append(
+                                        f"{edit_path}.room references unknown room {edit.room!r}"
+                                    )
+                                for (
+                                    meeting_instructor_id
+                                ) in _collect_meeting_instructor_ids(edit.instructor):
                                     if meeting_instructor_id not in instructor_ids:
                                         errors.append(
                                             f"{edit_path}.instructor references unknown instructor {meeting_instructor_id!r}",
@@ -669,13 +818,17 @@ def validate_term_config(term: TermConfig, ctx: ValidationContext) -> list[str]:
     errors = validate_term(term)
     errors.extend(
         validate_sections(
-            SectionsConfig(sections=term.sections, students_groups=ctx.sections.students_groups),
+            SectionsConfig(
+                sections=term.sections, students_groups=ctx.sections.students_groups
+            ),
         )
     )
     return errors
 
 
-def validate_course(course: CourseConfig, ctx: ValidationContext, *, exclude_name: str | None = None) -> list[str]:
+def validate_course(
+    course: CourseConfig, ctx: ValidationContext, *, exclude_name: str | None = None
+) -> list[str]:
     other_courses = [item for item in ctx.courses.courses if item.name != exclude_name]
     return validate_courses(CoursesConfig(courses=[*other_courses, course]), ctx)
 
@@ -686,7 +839,9 @@ def validate_instructor(
     *,
     term: TermConfig | None = None,
 ) -> list[str]:
-    return validate_instructors(InstructorConfig(instructors=[*instructors.instructors, instructor]), term=term)
+    return validate_instructors(
+        InstructorConfig(instructors=[*instructors.instructors, instructor]), term=term
+    )
 
 
 def validate_room(
@@ -696,7 +851,9 @@ def validate_room(
     courses: CoursesConfig,
     term: TermConfig | None = None,
 ) -> list[str]:
-    return validate_rooms(RoomConfig(rooms=[*rooms.rooms, room]), courses=courses, term=term)
+    return validate_rooms(
+        RoomConfig(rooms=[*rooms.rooms, room]), courses=courses, term=term
+    )
 
 
 def validate_student_group(
@@ -705,36 +862,62 @@ def validate_student_group(
     *,
     exclude_code: str | None = None,
 ) -> list[str]:
-    other_groups = [item for item in ctx.sections.students_groups if item.code != exclude_code]
-    return validate_sections(SectionsConfig(sections=ctx.sections.sections, students_groups=[*other_groups, group]))
+    other_groups = [
+        item for item in ctx.sections.students_groups if item.code != exclude_code
+    ]
+    return validate_sections(
+        SectionsConfig(
+            sections=ctx.sections.sections, students_groups=[*other_groups, group]
+        )
+    )
 
 
 def validate_room_delete(room_id: str, ctx: ValidationContext) -> list[str]:
-    referenced_ids = {item for item in collect_course_references(ctx.courses).room_ids if not _is_virtual_room_id(item)}
+    referenced_ids = {
+        item
+        for item in collect_course_references(ctx.courses).room_ids
+        if not _is_virtual_room_id(item)
+    }
     if room_id in referenced_ids:
         return [f"Cannot remove room {room_id!r}: still referenced in courses"]
     return []
 
 
 def validate_student_group_delete(code: str, ctx: ValidationContext) -> list[str]:
-    old = SectionsConfig(sections=ctx.sections.sections, students_groups=ctx.sections.students_groups)
+    old = SectionsConfig(
+        sections=ctx.sections.sections, students_groups=ctx.sections.students_groups
+    )
     new = SectionsConfig(
         sections=ctx.sections.sections,
-        students_groups=[group for group in ctx.sections.students_groups if group.code != code],
+        students_groups=[
+            group for group in ctx.sections.students_groups if group.code != code
+        ],
     )
     return validate_sections_update(old, new, courses=ctx.courses)
 
 
 def validate_instructor_delete(instructor_id: str, ctx: ValidationContext) -> list[str]:
     old = ctx.instructors
-    new = InstructorConfig(instructors=[item for item in ctx.instructors.instructors if item.id != instructor_id])
+    new = InstructorConfig(
+        instructors=[
+            item for item in ctx.instructors.instructors if item.id != instructor_id
+        ]
+    )
     return validate_instructors_update(old, new, courses=ctx.courses)
 
 
 def validate_resource_update(
     resource: str,
-    new_value: TermConfig | SectionsConfig | CoursesConfig | RoomConfig | InstructorConfig,
-    old_value: TermConfig | SectionsConfig | CoursesConfig | RoomConfig | InstructorConfig,
+    new_value: TermConfig
+    | SectionsConfig
+    | CoursesConfig
+    | RoomConfig
+    | InstructorConfig,
+    old_value: TermConfig
+    | SectionsConfig
+    | CoursesConfig
+    | RoomConfig
+    | InstructorConfig,
     ctx: ValidationContext,
 ) -> list[str]:
     if resource == "term":
@@ -742,12 +925,18 @@ def validate_resource_update(
         return validate_term(new_value)
     if resource == "rooms":
         assert isinstance(new_value, RoomConfig) and isinstance(old_value, RoomConfig)
-        return validate_rooms_update(old_value, new_value, courses=ctx.courses, term=ctx.term)
+        return validate_rooms_update(
+            old_value, new_value, courses=ctx.courses, term=ctx.term
+        )
     if resource == "instructors":
-        assert isinstance(new_value, InstructorConfig) and isinstance(old_value, InstructorConfig)
+        assert isinstance(new_value, InstructorConfig) and isinstance(
+            old_value, InstructorConfig
+        )
         return validate_instructors_update(old_value, new_value, courses=ctx.courses)
     if resource == "sections":
-        assert isinstance(new_value, SectionsConfig) and isinstance(old_value, SectionsConfig)
+        assert isinstance(new_value, SectionsConfig) and isinstance(
+            old_value, SectionsConfig
+        )
         return validate_sections_update(old_value, new_value, courses=ctx.courses)
     if resource == "courses":
         assert isinstance(new_value, CoursesConfig)

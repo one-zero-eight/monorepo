@@ -4,7 +4,9 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from src.schedule_assistant.modules.issues.checker import IssueChecker
-from src.schedule_assistant.modules.issues.per_week import per_week_issues_from_schedule_config
+from src.schedule_assistant.modules.issues.per_week import (
+    per_week_issues_from_schedule_config,
+)
 from src.schedule_assistant.modules.issues.schemas import (
     GroupIssue,
     IssueTypeEnum,
@@ -154,7 +156,9 @@ def test_student_issue_when_shared_student_overlaps() -> None:
     assert "Студент student@innopolis.ru" in issues[0].text
 
 
-def test_no_student_issue_without_shared_membership(issue_checker: IssueChecker) -> None:
+def test_no_student_issue_without_shared_membership(
+    issue_checker: IssueChecker,
+) -> None:
     meetings = [
         _weekly_meeting(
             course_name="Course A",
@@ -207,7 +211,11 @@ def test_per_week_issue_when_slot_count_mismatch() -> None:
     sections = SectionsConfig(
         sections=[
             SectionConfig(
-                code="core", name="Core", programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])]
+                code="core",
+                name="Core",
+                programs=[
+                    SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])
+                ],
             )
         ],
         students_groups=[
@@ -258,7 +266,11 @@ def test_no_per_week_issue_when_count_matches() -> None:
     sections = SectionsConfig(
         sections=[
             SectionConfig(
-                code="core", name="Core", programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])]
+                code="core",
+                name="Core",
+                programs=[
+                    SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])
+                ],
             )
         ],
         students_groups=[
@@ -310,7 +322,11 @@ def test_per_group_shared_series_counts_for_each_group() -> None:
             SectionConfig(
                 code="core",
                 name="Core",
-                programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1", "G2"])],
+                programs=[
+                    SectionConfig.SectionProgram(
+                        code="BS", name="BS", groups=["G1", "G2"]
+                    )
+                ],
             )
         ],
         students_groups=[
@@ -361,7 +377,11 @@ def test_per_group_shared_series_still_flags_short_count() -> None:
             SectionConfig(
                 code="core",
                 name="Core",
-                programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1", "G2"])],
+                programs=[
+                    SectionConfig.SectionProgram(
+                        code="BS", name="BS", groups=["G1", "G2"]
+                    )
+                ],
             )
         ],
         students_groups=[
@@ -391,7 +411,9 @@ async def test_booking_load_fails_fast() -> None:
     mock_client.get_all_bookings.side_effect = RuntimeError("booking service down")
 
     with (
-        patch("src.schedule_assistant.modules.issues.checker.booking_client", mock_client),
+        patch(
+            "src.schedule_assistant.modules.issues.checker.booking_client", mock_client
+        ),
         pytest.raises(RuntimeError, match="booking service down"),
     ):
         await checker._load_booking_snapshot(

@@ -18,7 +18,9 @@ def test_window_starts_at_semester_start_before_term() -> None:
     assert window is not None
     start, end = window
     assert start == dtm.datetime(2026, 9, 1, 0, 0, tzinfo=MSK)
-    assert end == dtm.datetime(2026, 9, 1, 0, 0, tzinfo=MSK) + dtm.timedelta(days=BOOKING_FETCH_MAX_DAYS)
+    assert end == dtm.datetime(2026, 9, 1, 0, 0, tzinfo=MSK) + dtm.timedelta(
+        days=BOOKING_FETCH_MAX_DAYS
+    )
     assert end - start == dtm.timedelta(days=BOOKING_FETCH_MAX_DAYS)
 
 

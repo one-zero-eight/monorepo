@@ -76,7 +76,9 @@ async def verify_parser_or_admin(
     token_data = inh_accounts.decode_user_token(token)
     if token_data is None:
         raise IncorrectCredentialsException()
-    innohassle_user = await inh_accounts.get_user(innohassle_id=token_data.innohassle_id)
+    innohassle_user = await inh_accounts.get_user(
+        innohassle_id=token_data.innohassle_id
+    )
     if innohassle_user is None or not innohassle_user.innohassle_admin:
         raise ForbiddenException()
     return True

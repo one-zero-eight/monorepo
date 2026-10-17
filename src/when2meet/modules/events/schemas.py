@@ -119,7 +119,11 @@ class EventUpdate(BaseSchema):
     selected_time: MeetingTime | None = None
     "Final selected meeting time"
 
-    @field_validator("slots", mode="before", json_schema_input_type=Annotated[list[dtm.datetime], Field(min_length=1)])
+    @field_validator(
+        "slots",
+        mode="before",
+        json_schema_input_type=Annotated[list[dtm.datetime], Field(min_length=1)],
+    )
     @classmethod
     def reject_null_slots(cls, v: object) -> object:
         if v is None:

@@ -22,7 +22,9 @@ class ClubsClient:
 
     async def list_owned_clubs(self, innohassle_id: str) -> list[OwnedClub]:
         async with httpx.AsyncClient(headers=self._headers) as client:
-            response = await client.get(f"{self._api_url}/clubs/owned-by/{innohassle_id}")
+            response = await client.get(
+                f"{self._api_url}/clubs/owned-by/{innohassle_id}"
+            )
             response.raise_for_status()
             return [OwnedClub.model_validate(item) for item in response.json()]
 
@@ -30,7 +32,10 @@ class ClubsClient:
         async with httpx.AsyncClient(headers=self._headers) as client:
             response = await client.get(f"{self._api_url}/clubs/")
             response.raise_for_status()
-            return [OwnedClub(club_id=str(item["id"]), title=item["title"]) for item in response.json()]
+            return [
+                OwnedClub(club_id=str(item["id"]), title=item["title"])
+                for item in response.json()
+            ]
 
     async def get_clubs(self, club_ids: set[str]) -> dict[str, ClubInfo]:
         """Fetch clubs by id; omitted ids were not found (404)."""
@@ -45,7 +50,9 @@ class ClubsClient:
                     return club_id, None
                 response.raise_for_status()
                 data = response.json()
-                return club_id, ClubInfo(id=str(data["id"]), title=data["title"], slug=data["slug"])
+                return club_id, ClubInfo(
+                    id=str(data["id"]), title=data["title"], slug=data["slug"]
+                )
 
             pairs = await asyncio.gather(*(fetch(club_id) for club_id in club_ids))
         return {club_id: club for club_id, club in pairs if club is not None}

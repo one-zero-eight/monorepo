@@ -2,13 +2,23 @@ import datetime as dtm
 
 import pytest
 
-from scripts.schedule_assistant.repair_semester_windows import FALL_2026_TEACHING_WINDOWS, prepare_repair
+from scripts.schedule_assistant.repair_semester_windows import (
+    FALL_2026_TEACHING_WINDOWS,
+    prepare_repair,
+)
 from src.schedule_assistant.core_courses.cell_to_event import convert_cell_to_event
-from src.schedule_assistant.core_courses.config import Override, Target, override_matches_row, program_codes_for_row
+from src.schedule_assistant.core_courses.config import (
+    Override,
+    Target,
+    override_matches_row,
+    program_codes_for_row,
+)
 from src.schedule_assistant.core_courses.parser import CoreCourseCell
 from src.schedule_assistant.modules.bookings.match import iter_payload_occurrences
 from src.schedule_assistant.modules.issues.booking_slots import build_bookable_slots
-from src.schedule_assistant.modules.parser.core_courses_adapter import group_core_course_lessons
+from src.schedule_assistant.modules.parser.core_courses_adapter import (
+    group_core_course_lessons,
+)
 from src.schedule_assistant.modules.parser.schemas import Lesson
 from src.schedule_assistant.modules.schedule_config.schemas import (
     ComponentSessionSeries,
@@ -30,9 +40,15 @@ from src.schedule_assistant.weekday import Weekday
 
 
 def test_program_codes_for_row_en_and_ru() -> None:
-    assert "BS_Y1_EN" in program_codes_for_row(course="BS - Year 1", sheet_name="1st block common")
-    assert "BS_Y1_RU" in program_codes_for_row(course="BS - Year 1", sheet_name="Ru Programs")
-    assert "BS_Y1_EN" not in program_codes_for_row(course="BS - Year 1", sheet_name="Ru Programs")
+    assert "BS_Y1_EN" in program_codes_for_row(
+        course="BS - Year 1", sheet_name="1st block common"
+    )
+    assert "BS_Y1_RU" in program_codes_for_row(
+        course="BS - Year 1", sheet_name="Ru Programs"
+    )
+    assert "BS_Y1_EN" not in program_codes_for_row(
+        course="BS - Year 1", sheet_name="Ru Programs"
+    )
 
 
 def test_override_programs_matches_en_not_ru() -> None:
@@ -124,7 +140,9 @@ def test_group_core_course_lessons_uses_window_dates() -> None:
     ]
     grouped = group_core_course_lessons(
         lessons,
-        term_dates={"1st block common": (dtm.date(2026, 8, 25), dtm.date(2026, 12, 27))},
+        term_dates={
+            "1st block common": (dtm.date(2026, 8, 25), dtm.date(2026, 12, 27))
+        },
     )
     assert len(grouped) == 2
     by_cohort = {entry.cohort: entry for entry in grouped}
@@ -158,13 +176,17 @@ def test_validate_sections_rejects_inverted_program_semester() -> None:
         ],
     )
     errors = validate_sections(config)
-    assert any("semester.start_date must be on or before end_date" in error for error in errors)
+    assert any(
+        "semester.start_date must be on or before end_date" in error for error in errors
+    )
 
 
 def test_resolve_audience_semester_intersection_and_empty() -> None:
     term = TermConfig(
         name="Fall 2026",
-        semester=TermConfig.DateRange(start_date=dtm.date(2026, 8, 25), end_date=dtm.date(2026, 12, 27)),
+        semester=TermConfig.DateRange(
+            start_date=dtm.date(2026, 8, 25), end_date=dtm.date(2026, 12, 27)
+        ),
         sections=[
             SectionConfig(
                 code="core",
@@ -207,7 +229,9 @@ def test_resolve_audience_semester_intersection_and_empty() -> None:
 def test_booking_slots_respect_program_semester() -> None:
     term = TermConfig(
         name="Fall 2026",
-        semester=TermConfig.DateRange(start_date=dtm.date(2026, 8, 25), end_date=dtm.date(2026, 9, 15)),
+        semester=TermConfig.DateRange(
+            start_date=dtm.date(2026, 8, 25), end_date=dtm.date(2026, 9, 15)
+        ),
         days=[Weekday.TUESDAY],
         sections=[
             SectionConfig(
@@ -282,7 +306,12 @@ def _fall_config() -> ScheduleConfig:
                         "code": "electives",
                         "name": "Electives",
                         "programs": [
-                            {"code": f"Y{year}", "name": f"Y{year}", "groups": [f"G{year}"]} for year in (1, 2, 3)
+                            {
+                                "code": f"Y{year}",
+                                "name": f"Y{year}",
+                                "groups": [f"G{year}"],
+                            }
+                            for year in (1, 2, 3)
                         ],
                     }
                 ],
@@ -300,7 +329,12 @@ def _fall_config() -> ScheduleConfig:
                                 {
                                     "audience": ["@Y3"],
                                     "weekly_pattern": [
-                                        {"weekday": day, "start_time": "12:40", "end_time": "14:10", "room": "209"}
+                                        {
+                                            "weekday": day,
+                                            "start_time": "12:40",
+                                            "end_time": "14:10",
+                                            "room": "209",
+                                        }
                                         for day in ("FRIDAY", "SATURDAY")
                                     ],
                                 }
@@ -313,32 +347,54 @@ def _fall_config() -> ScheduleConfig:
     )
 
 
-def test_repair_sets_three_inclusive_windows_preserves_old_range_and_spda_dates() -> None:
+def test_repair_sets_three_inclusive_windows_preserves_old_range_and_spda_dates() -> (
+    None
+):
     original = _fall_config()
-    revised, report = prepare_repair(original, {f"electives/Y{year}": year for year in (1, 2, 3)}, [])
-    assert all(program.semester is None for program in original.term.sections[0].programs)
+    revised, report = prepare_repair(
+        original, {f"electives/Y{year}": year for year in (1, 2, 3)}, []
+    )
+    assert all(
+        program.semester is None for program in original.term.sections[0].programs
+    )
     for year, program in enumerate(revised.term.sections[0].programs, 1):
         start, end = FALL_2026_TEACHING_WINDOWS[year]
         assert program.semester is not None
         assert program.semester.start_date.isoformat() == start
         assert program.semester.end_date.isoformat() == end
-    assert report["diagnostic_scan_window"] == {"start_date": "2026-08-24", "end_date": "2026-12-27"}
+    assert report["diagnostic_scan_window"] == {
+        "start_date": "2026-08-24",
+        "end_date": "2026-12-27",
+    }
     sections = SectionsConfig(sections=revised.term.sections)
-    slots = build_bookable_slots(CoursesConfig(courses=revised.courses), sections, revised.term, {"209"})
-    assert [iter_payload_occurrences(slot.payload)[-1][0].date().isoformat() for slot in slots] == [
+    slots = build_bookable_slots(
+        CoursesConfig(courses=revised.courses), sections, revised.term, {"209"}
+    )
+    assert [
+        iter_payload_occurrences(slot.payload)[-1][0].date().isoformat()
+        for slot in slots
+    ] == [
         "2026-12-04",
         "2026-12-05",
     ]
-    intersection = resolve_audience_semester(revised.term, ["G1", "@Y3"], sections=sections)
+    intersection = resolve_audience_semester(
+        revised.term, ["G1", "@Y3"], sections=sections
+    )
     assert intersection is not None
-    assert intersection.model_dump(mode="json") == {"start_date": "2026-09-01", "end_date": "2026-12-07"}
+    assert intersection.model_dump(mode="json") == {
+        "start_date": "2026-09-01",
+        "end_date": "2026-12-07",
+    }
 
 
 def test_separate_sections_override_term_sections_for_booking_dates() -> None:
     original = _fall_config()
     revised, _ = prepare_repair(original, {"electives/Y3": 3}, [])
     slots = build_bookable_slots(
-        CoursesConfig(courses=revised.courses), SectionsConfig(sections=revised.term.sections), original.term, {"209"}
+        CoursesConfig(courses=revised.courses),
+        SectionsConfig(sections=revised.term.sections),
+        original.term,
+        {"209"},
     )
     assert slots[0].payload["recurrence"]["until_date"] == "2026-12-04"
 
@@ -349,16 +405,25 @@ def test_clips_explicit_occurrences_and_edits_outside_program_window() -> None:
     assert sessions is not None
     session = sessions[0]
     session_data = session.model_dump(mode="json")
-    session_data["weekly_pattern"][0]["edits"] = [{"select_week": "2026-12-04", "date": "2026-12-11"}]
+    session_data["weekly_pattern"][0]["edits"] = [
+        {"select_week": "2026-12-04", "date": "2026-12-11"}
+    ]
     session_data["dates_pattern"] = [
         {"date": day, "start_time": "16:00", "end_time": "17:30", "room": "209"}
         for day in ("2026-08-23", "2026-08-24", "2026-12-07", "2026-12-08")
     ]
     sessions[0] = ComponentSessionSeries.model_validate(session_data)
     slots = build_bookable_slots(
-        CoursesConfig(courses=revised.courses), SectionsConfig(sections=revised.term.sections), revised.term, {"209"}
+        CoursesConfig(courses=revised.courses),
+        SectionsConfig(sections=revised.term.sections),
+        revised.term,
+        {"209"},
     )
-    dates = {start.date().isoformat() for slot in slots for start, _ in iter_payload_occurrences(slot.payload)}
+    dates = {
+        start.date().isoformat()
+        for slot in slots
+        for start, _ in iter_payload_occurrences(slot.payload)
+    }
     assert "2026-08-24" in dates and "2026-12-07" in dates
     assert not dates & {"2026-08-23", "2026-12-08", "2026-12-11", "2026-12-04"}
 
@@ -371,7 +436,11 @@ def test_repair_reports_excess_series_without_allowing_live_apply() -> None:
         "categories": ["electives", "Y3", "SPDA"],
         "start": "2026-08-28T12:40:00+03:00",
         "end": "2026-08-28T14:10:00+03:00",
-        "recurrence": {"weekday": "friday", "start_date": "2026-08-28", "until_date": "2026-12-25"},
+        "recurrence": {
+            "weekday": "friday",
+            "start_date": "2026-08-28",
+            "until_date": "2026-12-25",
+        },
         "recurrence_complete": True,
         "outlook_booking_id": "spda-master",
         "uid": "spda-uid",
@@ -392,12 +461,21 @@ def test_edit_without_source_in_teaching_window_does_not_create_meeting() -> Non
     assert sessions is not None
     session = sessions[0]
     data = session.model_dump(mode="json")
-    data["weekly_pattern"][0]["edits"] = [{"select_week": "2026-12-11", "date": "2026-12-07"}]
+    data["weekly_pattern"][0]["edits"] = [
+        {"select_week": "2026-12-11", "date": "2026-12-07"}
+    ]
     sessions[0] = ComponentSessionSeries.model_validate(data)
     slots = build_bookable_slots(
-        CoursesConfig(courses=revised.courses), SectionsConfig(sections=revised.term.sections), revised.term, {"209"}
+        CoursesConfig(courses=revised.courses),
+        SectionsConfig(sections=revised.term.sections),
+        revised.term,
+        {"209"},
     )
-    dates = {start.date().isoformat() for slot in slots for start, _ in iter_payload_occurrences(slot.payload)}
+    dates = {
+        start.date().isoformat()
+        for slot in slots
+        for start, _ in iter_payload_occurrences(slot.payload)
+    }
     assert "2026-12-07" not in dates
     assert "2026-12-11" not in dates
 

@@ -14,8 +14,16 @@ from src.schedule_assistant.modules.bookings.schemas import (
     BookingTaskKind,
 )
 from src.schedule_assistant.modules.bookings.service import recover_pending_tasks
-from src.schedule_assistant.modules.bookings.tasks import ReservationConflictError, create_task, get_task
-from tests.schedule_assistant.test_booking_flow import _occurrence_courses, _seed, _wait_task
+from src.schedule_assistant.modules.bookings.tasks import (
+    ReservationConflictError,
+    create_task,
+    get_task,
+)
+from tests.schedule_assistant.test_booking_flow import (
+    _occurrence_courses,
+    _seed,
+    _wait_task,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -23,7 +31,10 @@ def booking_clock(monkeypatch):
     from tests.schedule_assistant.test_booking_flow import _freeze_booking_now
 
     _freeze_booking_now(monkeypatch, dtm.datetime(2026, 6, 1, tzinfo=dtm.UTC))
-    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    monkeypatch.setattr(
+        "src.schedule_assistant.dependencies.settings.moderator_emails",
+        ["test@test.com"],
+    )
 
 
 def _item() -> BookingTaskItem:
@@ -60,7 +71,9 @@ def test_atomic_reservation_across_database_connections(bookings_repo):
 
 
 @pytest.mark.asyncio
-async def test_existing_booking_cancel_uses_exchange_identity_not_new_task_marker(bookings_repo, mock_booking_client):
+async def test_existing_booking_cancel_uses_exchange_identity_not_new_task_marker(
+    bookings_repo, mock_booking_client
+):
     from src.schedule_assistant.modules.bookings.service import reconcile_booking_task
 
     item = _item()
@@ -83,12 +96,17 @@ async def test_existing_booking_cancel_uses_exchange_identity_not_new_task_marke
     ]
     restored = await reconcile_booking_task(task.task_id)
     assert restored.items[0].outcome == BookingOutcome.CANCELLED
-    assert mock_booking_client.reconcile_auto_bookings.call_args.args[0][0]["operation_id"] is None
+    assert (
+        mock_booking_client.reconcile_auto_bookings.call_args.args[0][0]["operation_id"]
+        is None
+    )
     mock_booking_client.stream_auto_bookings_batch.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_restart_reconciles_without_resending(authenticated_client, bookings_repo, mock_booking_client):
+async def test_restart_reconciles_without_resending(
+    authenticated_client, bookings_repo, mock_booking_client
+):
     task = create_task(kind=BookingTaskKind.BOOK, items=[_item()])
     operation_id = task.items[0].operation_id
     mock_booking_client.reconcile_auto_bookings.return_value = [
@@ -121,7 +139,9 @@ async def test_sent_identity_survives_drop_and_blocks_duplicate(
     _seed(bookings_repo, courses=_occurrence_courses())
     mock_booking_client.get_all_bookings.return_value = []
     mock_booking_client.get_auto_bookings.return_value = []
-    mock_booking_client.reconcile_auto_bookings.side_effect = httpx.ReadError("room calendar unavailable")
+    mock_booking_client.reconcile_auto_bookings.side_effect = httpx.ReadError(
+        "room calendar unavailable"
+    )
     sends = []
 
     async def stream(payloads):
@@ -146,7 +166,9 @@ async def test_sent_identity_survives_drop_and_blocks_duplicate(
 
     mock_booking_client.stream_auto_bookings_batch = stream
     review = (await authenticated_client.get("/bookings/review")).json()
-    slot_id = review["programs"][0]["courses"][0]["components"][0]["slots"][0]["slot_id"]
+    slot_id = review["programs"][0]["courses"][0]["components"][0]["slots"][0][
+        "slot_id"
+    ]
     request = {"slot_ids": [slot_id]}
     first, second = await asyncio.gather(
         authenticated_client.post("/bookings/batch", json=request),
@@ -161,21 +183,32 @@ async def test_sent_identity_survives_drop_and_blocks_duplicate(
     assert third.json()["task_id"] == task["task_id"]
     assert len(sends) == 1
     restored_review = (await authenticated_client.get("/bookings/review")).json()
-    assert restored_review["programs"][0]["courses"][0]["components"][0]["slots"][0]["review_kind"] == "unknown"
+    assert (
+        restored_review["programs"][0]["courses"][0]["components"][0]["slots"][0][
+            "review_kind"
+        ]
+        == "unknown"
+    )
 
 
 @pytest.mark.asyncio
-async def test_auto_booking_read_error_is_not_empty(authenticated_client, bookings_repo, mock_booking_client):
+async def test_auto_booking_read_error_is_not_empty(
+    authenticated_client, bookings_repo, mock_booking_client
+):
     _seed(bookings_repo, courses=_occurrence_courses())
     mock_booking_client.get_all_bookings.return_value = []
-    mock_booking_client.get_auto_bookings.side_effect = httpx.ReadError("incomplete calendar")
+    mock_booking_client.get_auto_bookings.side_effect = httpx.ReadError(
+        "incomplete calendar"
+    )
     response = await authenticated_client.get("/bookings/review")
     assert response.status_code == 502
     assert "incomplete calendar" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
-async def test_cancel_pending_requires_both_calendars_absent(authenticated_client, bookings_repo, mock_booking_client):
+async def test_cancel_pending_requires_both_calendars_absent(
+    authenticated_client, bookings_repo, mock_booking_client
+):
     source = create_task(kind=BookingTaskKind.BOOK, items=[_item()])
     operation_id = source.items[0].operation_id
     evidence = BookingEvidence(
@@ -202,7 +235,9 @@ async def test_cancel_pending_requires_both_calendars_absent(authenticated_clien
     source_task = get_task(source.task_id)
     assert source_task is not None
     assert source_task.items[0].outcome == BookingOutcome.CANCEL_REQUESTED
-    missing = await authenticated_client.post("/bookings/cancel", json={"operation_ids": [operation_id]})
+    missing = await authenticated_client.post(
+        "/bookings/cancel", json={"operation_ids": [operation_id]}
+    )
     assert missing.status_code == 422
     evidence = evidence.model_copy(
         update={
@@ -212,7 +247,9 @@ async def test_cancel_pending_requires_both_calendars_absent(authenticated_clien
         }
     )
     mock_booking_client.reconcile_auto_bookings.return_value = [evidence]
-    reconciled = await authenticated_client.post(f"/bookings/tasks/{task['task_id']}/reconcile")
+    reconciled = await authenticated_client.post(
+        f"/bookings/tasks/{task['task_id']}/reconcile"
+    )
     assert reconciled.json()["items"][0]["outcome"] == "cancelled"
     original_task = get_task(source.task_id)
     assert original_task is not None
@@ -220,7 +257,10 @@ async def test_cancel_pending_requires_both_calendars_absent(authenticated_clien
     assert original.outcome == BookingOutcome.CANCELLED
     assert any(entry["outcome"] == "cancel_requested" for entry in original.history)
     # Reservation is released only after verified cancellation.
-    assert create_task(kind=BookingTaskKind.BOOK, items=[_item()]).task_id != source.task_id
+    assert (
+        create_task(kind=BookingTaskKind.BOOK, items=[_item()]).task_id
+        != source.task_id
+    )
 
 
 def test_overlapping_changed_payload_is_reserved_atomically(bookings_repo):
@@ -234,7 +274,10 @@ def test_overlapping_changed_payload_is_reserved_atomically(bookings_repo):
     adjacent = _item()
     adjacent.payload["start"] = "2026-06-08T16:00:00+03:00"
     adjacent.payload["end"] = "2026-06-08T17:30:00+03:00"
-    assert create_task(kind=BookingTaskKind.BOOK, items=[adjacent]).task_id != first.task_id
+    assert (
+        create_task(kind=BookingTaskKind.BOOK, items=[adjacent]).task_id
+        != first.task_id
+    )
 
 
 @pytest.mark.asyncio
@@ -262,18 +305,28 @@ async def test_late_decline_persists_and_stale_tentative_does_not_replace_it(
         }
     )
     mock_booking_client.reconcile_auto_bookings.return_value = [decline]
-    response = await authenticated_client.post(f"/bookings/tasks/{task.task_id}/reconcile")
+    response = await authenticated_client.post(
+        f"/bookings/tasks/{task.task_id}/reconcile"
+    )
     assert response.json()["items"][0]["outcome"] == "declined"
     mock_booking_client.reconcile_auto_bookings.return_value = [pending]
-    response = await authenticated_client.post(f"/bookings/tasks/{task.task_id}/reconcile")
+    response = await authenticated_client.post(
+        f"/bookings/tasks/{task.task_id}/reconcile"
+    )
     assert response.json()["items"][0]["outcome"] == "declined"
     assert response.json()["items"][0]["message_body"] == "Conflicting dates"
 
 
 @pytest.mark.asyncio
-async def test_occurrence_cancel_uses_saved_exact_window(authenticated_client, bookings_repo, mock_booking_client):
+async def test_occurrence_cancel_uses_saved_exact_window(
+    authenticated_client, bookings_repo, mock_booking_client
+):
     item = _item()
-    item.payload["recurrence"] = {"weekday": "monday", "start_date": "2026-06-08", "until_date": "2026-06-29"}
+    item.payload["recurrence"] = {
+        "weekday": "monday",
+        "start_date": "2026-06-08",
+        "until_date": "2026-06-29",
+    }
     task = create_task(kind=BookingTaskKind.BOOK, items=[item])
     operation_id = task.items[0].operation_id
     evidence = BookingEvidence(
@@ -291,7 +344,11 @@ async def test_occurrence_cancel_uses_saved_exact_window(authenticated_client, b
     await authenticated_client.post(f"/bookings/tasks/{task.task_id}/reconcile")
     response = await authenticated_client.post(
         "/bookings/cancel",
-        json={"operation_ids": [operation_id], "scope": "occurrence", "occurrence_date": "2026-06-15"},
+        json={
+            "operation_ids": [operation_id],
+            "scope": "occurrence",
+            "occurrence_date": "2026-06-15",
+        },
     )
     assert response.status_code == 200
     await _wait_task(authenticated_client, response.json()["task_id"])
@@ -304,7 +361,11 @@ async def test_occurrence_cancel_uses_saved_exact_window(authenticated_client, b
     assert persisted_task.items[0].outcome == BookingOutcome.PENDING_APPROVAL
     invalid = await authenticated_client.post(
         "/bookings/cancel",
-        json={"operation_ids": [operation_id], "scope": "occurrence", "occurrence_date": "2026-06-16"},
+        json={
+            "operation_ids": [operation_id],
+            "scope": "occurrence",
+            "occurrence_date": "2026-06-16",
+        },
     )
     assert invalid.status_code == 409
 
@@ -328,7 +389,9 @@ async def test_client_reconciliation_contract(respx_mock):
             ],
         )
     )
-    evidence = await client.reconcile_auto_bookings([{"operation_id": "op", "room_id": "107"}])
+    evidence = await client.reconcile_auto_bookings(
+        [{"operation_id": "op", "room_id": "107"}]
+    )
     assert route.called
     assert evidence[0].room_presence == "unknown"
     assert evidence[0].evidence == ["read failed"]

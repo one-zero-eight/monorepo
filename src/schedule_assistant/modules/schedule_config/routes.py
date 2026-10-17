@@ -1,12 +1,29 @@
 from typing import Annotated
 
 import yaml
-from fastapi import APIRouter, Body, File, HTTPException, Query, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Body,
+    File,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
 from pydantic import ValidationError
 
-from src.schedule_assistant.dependencies import ModeratorDep, VerifyTokenDep, is_moderator_email
-from src.schedule_assistant.modules.schedule_config.instructor_meetings import count_meetings_by_instructor
-from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
+from src.schedule_assistant.dependencies import (
+    ModeratorDep,
+    VerifyTokenDep,
+    is_moderator_email,
+)
+from src.schedule_assistant.modules.schedule_config.instructor_meetings import (
+    count_meetings_by_instructor,
+)
+from src.schedule_assistant.modules.schedule_config.repository import (
+    schedule_config_repository,
+)
 from src.schedule_assistant.modules.schedule_config.schemas import (
     CourseConfig,
     InstructorConfig,
@@ -18,7 +35,9 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     TermConfig,
     TermPartialUpdate,
 )
-from src.schedule_assistant.modules.schedule_config.visibility import filter_scheduled_instructors
+from src.schedule_assistant.modules.schedule_config.visibility import (
+    filter_scheduled_instructors,
+)
 
 router = APIRouter(prefix="/schedule-config", tags=["Schedule config"])
 
@@ -64,12 +83,16 @@ def _assembled_for_user(user_and_token: VerifyTokenDep) -> ScheduleConfig:
     user, _token = user_and_token
     if is_moderator_email(user.email):
         return config
-    filtered = filter_scheduled_instructors(InstructorConfig(instructors=config.instructors), config.courses)
+    filtered = filter_scheduled_instructors(
+        InstructorConfig(instructors=config.instructors), config.courses
+    )
     return config.model_copy(update={"instructors": filtered.instructors})
 
 
 @router.get("/")
-async def get_schedule_config(response: Response, user_and_token: VerifyTokenDep) -> ScheduleConfig:
+async def get_schedule_config(
+    response: Response, user_and_token: VerifyTokenDep
+) -> ScheduleConfig:
     _set_revision_etag(response, schedule_config_repository.get_revision())
     return _assembled_for_user(user_and_token)
 
@@ -123,7 +146,9 @@ async def get_term(_user_and_token: VerifyTokenDep) -> TermConfig | None:
 
 
 @router.put("/term")
-async def put_term(response: Response, moderator: ModeratorDep, term: TermConfig) -> TermConfig:
+async def put_term(
+    response: Response, moderator: ModeratorDep, term: TermConfig
+) -> TermConfig:
     saved, revision = schedule_config_repository.set_term(term)
     _set_revision_etag(response, revision)
     return saved
@@ -135,7 +160,9 @@ async def list_courses(_user_and_token: VerifyTokenDep) -> list[CourseConfig]:
 
 
 @router.post("/courses", status_code=status.HTTP_201_CREATED)
-async def create_course(response: Response, moderator: ModeratorDep, course: CourseConfig) -> CourseConfig:
+async def create_course(
+    response: Response, moderator: ModeratorDep, course: CourseConfig
+) -> CourseConfig:
     saved, revision = schedule_config_repository.create_course(course)
     _set_revision_etag(response, revision)
     return saved
@@ -145,7 +172,10 @@ async def create_course(response: Response, moderator: ModeratorDep, course: Cou
 async def get_course(course_name: str, _user_and_token: VerifyTokenDep) -> CourseConfig:
     course = schedule_config_repository.get_course(course_name)
     if course is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Course not found: {course_name!r}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Course not found: {course_name!r}",
+        )
     return course
 
 
@@ -162,13 +192,17 @@ async def update_course(
 
 
 @router.delete("/courses/{course_name:path}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_course(response: Response, moderator: ModeratorDep, course_name: str) -> None:
+async def delete_course(
+    response: Response, moderator: ModeratorDep, course_name: str
+) -> None:
     revision = schedule_config_repository.delete_course(course_name)
     _set_revision_etag(response, revision)
 
 
 @router.get("/instructors")
-async def list_instructors(_user_and_token: VerifyTokenDep) -> list[InstructorConfig.Instructor]:
+async def list_instructors(
+    _user_and_token: VerifyTokenDep,
+) -> list[InstructorConfig.Instructor]:
     return schedule_config_repository.list_instructors()
 
 
@@ -207,10 +241,15 @@ async def create_instructor(
 
 
 @router.get("/instructors/{instructor_id:path}")
-async def get_instructor(instructor_id: str, _user_and_token: VerifyTokenDep) -> InstructorConfig.Instructor:
+async def get_instructor(
+    instructor_id: str, _user_and_token: VerifyTokenDep
+) -> InstructorConfig.Instructor:
     instructor = schedule_config_repository.get_instructor(instructor_id)
     if instructor is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Instructor not found: {instructor_id!r}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Instructor not found: {instructor_id!r}",
+        )
     return instructor
 
 
@@ -221,13 +260,19 @@ async def update_instructor(
     instructor_id: str,
     instructor: InstructorConfig.Instructor,
 ) -> InstructorConfig.Instructor:
-    saved, revision = schedule_config_repository.update_instructor(instructor_id, instructor)
+    saved, revision = schedule_config_repository.update_instructor(
+        instructor_id, instructor
+    )
     _set_revision_etag(response, revision)
     return saved
 
 
-@router.delete("/instructors/{instructor_id:path}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_instructor(response: Response, moderator: ModeratorDep, instructor_id: str) -> None:
+@router.delete(
+    "/instructors/{instructor_id:path}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_instructor(
+    response: Response, moderator: ModeratorDep, instructor_id: str
+) -> None:
     revision = schedule_config_repository.delete_instructor(instructor_id)
     _set_revision_etag(response, revision)
 
@@ -238,17 +283,24 @@ async def list_student_groups(_user_and_token: VerifyTokenDep) -> list[StudentsG
 
 
 @router.post("/student-groups", status_code=status.HTTP_201_CREATED)
-async def create_student_group(response: Response, moderator: ModeratorDep, group: StudentsGroups) -> StudentsGroups:
+async def create_student_group(
+    response: Response, moderator: ModeratorDep, group: StudentsGroups
+) -> StudentsGroups:
     saved, revision = schedule_config_repository.create_student_group(group)
     _set_revision_etag(response, revision)
     return saved
 
 
 @router.get("/student-groups/{code:path}")
-async def get_student_group(code: str, _user_and_token: VerifyTokenDep) -> StudentsGroups:
+async def get_student_group(
+    code: str, _user_and_token: VerifyTokenDep
+) -> StudentsGroups:
     group = schedule_config_repository.get_student_group(code)
     if group is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Student group not found: {code!r}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Student group not found: {code!r}",
+        )
     return group
 
 
@@ -265,7 +317,9 @@ async def update_student_group(
 
 
 @router.delete("/student-groups/{code:path}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_student_group(response: Response, moderator: ModeratorDep, code: str) -> None:
+async def delete_student_group(
+    response: Response, moderator: ModeratorDep, code: str
+) -> None:
     revision = schedule_config_repository.delete_student_group(code)
     _set_revision_etag(response, revision)
 
@@ -276,7 +330,9 @@ async def list_rooms(_user_and_token: VerifyTokenDep) -> list[RoomConfig.Room]:
 
 
 @router.post("/rooms", status_code=status.HTTP_201_CREATED)
-async def create_room(response: Response, moderator: ModeratorDep, room: RoomConfig.Room) -> RoomConfig.Room:
+async def create_room(
+    response: Response, moderator: ModeratorDep, room: RoomConfig.Room
+) -> RoomConfig.Room:
     saved, revision = schedule_config_repository.create_room(room)
     _set_revision_etag(response, revision)
     return saved
@@ -286,7 +342,9 @@ async def create_room(response: Response, moderator: ModeratorDep, room: RoomCon
 async def get_room(room_id: str, _user_and_token: VerifyTokenDep) -> RoomConfig.Room:
     room = schedule_config_repository.get_room(room_id)
     if room is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Room not found: {room_id!r}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Room not found: {room_id!r}"
+        )
     return room
 
 
@@ -303,6 +361,8 @@ async def update_room(
 
 
 @router.delete("/rooms/{room_id:path}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_room(response: Response, moderator: ModeratorDep, room_id: str) -> None:
+async def delete_room(
+    response: Response, moderator: ModeratorDep, room_id: str
+) -> None:
     revision = schedule_config_repository.delete_room(room_id)
     _set_revision_etag(response, revision)

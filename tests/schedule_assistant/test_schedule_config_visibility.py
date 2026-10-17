@@ -18,8 +18,12 @@ from src.schedule_assistant.weekday import Weekday
 def test_filter_matches_instructor_by_display_name() -> None:
     instructors = InstructorConfig(
         instructors=[
-            InstructorConfig.Instructor(id="a.shamraev@innopolis.ru", name_en="Aleksei Shamraev"),
-            InstructorConfig.Instructor(id="other@innopolis.ru", name_en="Other Person"),
+            InstructorConfig.Instructor(
+                id="a.shamraev@innopolis.ru", name_en="Aleksei Shamraev"
+            ),
+            InstructorConfig.Instructor(
+                id="other@innopolis.ru", name_en="Other Person"
+            ),
         ],
     )
     courses = [
@@ -47,7 +51,9 @@ def test_filter_matches_instructor_by_display_name() -> None:
     ]
 
     filtered = filter_scheduled_instructors(instructors, courses)
-    assert [instructor.id for instructor in filtered.instructors] == ["a.shamraev@innopolis.ru"]
+    assert [instructor.id for instructor in filtered.instructors] == [
+        "a.shamraev@innopolis.ru"
+    ]
 
 
 def test_filter_includes_weekly_pattern_instructors() -> None:
@@ -82,7 +88,9 @@ def test_filter_includes_weekly_pattern_instructors() -> None:
     ]
 
     filtered = filter_scheduled_instructors(instructors, courses)
-    assert [instructor.id for instructor in filtered.instructors] == ["teacher@innopolis.ru"]
+    assert [instructor.id for instructor in filtered.instructors] == [
+        "teacher@innopolis.ru"
+    ]
 
 
 def test_filter_courses_keeps_only_matching_occurrences() -> None:
@@ -122,7 +130,9 @@ def test_filter_courses_keeps_only_matching_occurrences() -> None:
         ),
     ]
 
-    filtered = filter_courses_for_instructor(courses, instructor_identity_values(instructors.instructors[0]))
+    filtered = filter_courses_for_instructor(
+        courses, instructor_identity_values(instructors.instructors[0])
+    )
     assert filtered
     assert filtered[0].components
     assert filtered[0].components[0].sessions

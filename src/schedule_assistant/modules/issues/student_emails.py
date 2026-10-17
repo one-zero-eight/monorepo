@@ -1,7 +1,10 @@
 from collections import defaultdict
 
 from src.schedule_assistant.modules.issues.issue_text import attach_issue_text
-from src.schedule_assistant.modules.issues.schemas import IssueTypeEnum, StudentEmailIssue
+from src.schedule_assistant.modules.issues.schemas import (
+    IssueTypeEnum,
+    StudentEmailIssue,
+)
 from src.schedule_assistant.modules.schedule_config.schemas import SectionsConfig
 
 _ALLOWED_STUDENT_EMAIL_SUFFIXES = ("@innopolis.ru", "@innopolis.university")
@@ -12,7 +15,9 @@ def is_valid_student_email(email: str) -> bool:
     return normalized.endswith(_ALLOWED_STUDENT_EMAIL_SUFFIXES)
 
 
-def student_email_issues_from_sections(sections: SectionsConfig) -> list[StudentEmailIssue]:
+def student_email_issues_from_sections(
+    sections: SectionsConfig,
+) -> list[StudentEmailIssue]:
     groups_by_email: dict[str, set[str]] = defaultdict(set)
     for group in sections.students_groups:
         for student in group.students:

@@ -83,7 +83,10 @@ class BeanieStore:
             collection_name = cast(str, info["name"])
             collection_type = info.get("type")
 
-            if collection_name.startswith("system.") or collection_name == "migrations_log":
+            if (
+                collection_name.startswith("system.")
+                or collection_name == "migrations_log"
+            ):
                 continue
 
             if collection_type != "collection":
@@ -105,7 +108,9 @@ async def setup_beanie(
     Pass ``default_database_name`` as service name (e.g. ``"clubs"``). Runs a Mongo health check and logs it.
     """
     client = AsyncMongoClient(
-        database_uri.get_secret_value() if isinstance(database_uri, SecretStr) else database_uri,
+        database_uri.get_secret_value()
+        if isinstance(database_uri, SecretStr)
+        else database_uri,
         connectTimeoutMS=5000,
         serverSelectionTimeoutMS=5000,
         tz_aware=True,
@@ -122,5 +127,7 @@ async def setup_beanie(
     mongo_db = client.get_default_database(default=default_database_name)
     # ^ default from URI path, or default_database_name if the URI has no database segment
     store = BeanieStore(client, document_models, mongo_db.name)
-    await init_beanie(database=mongo_db, document_models=document_models, recreate_views=True)
+    await init_beanie(
+        database=mongo_db, document_models=document_models, recreate_views=True
+    )
     return store

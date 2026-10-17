@@ -48,12 +48,16 @@ def _validate_yandex_forms_url(url: str) -> str:
         raise HTTPException(status_code=422, detail="URL host is not allowed")
     path = parsed.path.rstrip("/")
     if not ALLOWED_PATH_RE.match(path):
-        raise HTTPException(status_code=422, detail="URL path must start with /u/ or /cloud/")
+        raise HTTPException(
+            status_code=422, detail="URL path must start with /u/ or /cloud/"
+        )
 
     return f"https://forms.yandex.ru{path}"
 
 
-def _build_prefilled_url(base_url: str, payload: SignaturePayload, signature: str) -> str:
+def _build_prefilled_url(
+    base_url: str, payload: SignaturePayload, signature: str
+) -> str:
     parsed = urlsplit(base_url)
     query_params = dict(parse_qsl(parsed.query, keep_blank_values=True))
     query_params.update(
@@ -84,7 +88,9 @@ async def create_link(link: CreateLink, auth: INH_TOKEN_AUTH) -> ViewLink:
         form_url=normalized_url,
     )
     if existing_link is not None:
-        return ViewLink(slug=existing_link.slug, short_path=f"/links/{existing_link.slug}")
+        return ViewLink(
+            slug=existing_link.slug, short_path=f"/links/{existing_link.slug}"
+        )
 
     for _ in range(5):
         slug = generate(size=10)
@@ -101,7 +107,9 @@ async def create_link(link: CreateLink, auth: INH_TOKEN_AUTH) -> ViewLink:
                 form_url=normalized_url,
             )
             if existing_link is not None:
-                return ViewLink(slug=existing_link.slug, short_path=f"/links/{existing_link.slug}")
+                return ViewLink(
+                    slug=existing_link.slug, short_path=f"/links/{existing_link.slug}"
+                )
             continue
 
     raise HTTPException(status_code=500, detail="Failed to generate unique slug")
@@ -109,18 +117,29 @@ async def create_link(link: CreateLink, auth: INH_TOKEN_AUTH) -> ViewLink:
 
 @router.get("", responses={200: {"description": "Current user links"}})
 async def get_links(auth: INH_TOKEN_AUTH) -> list[ViewLinksItem]:
-    links = await link_repository.read_all_by_owner(owner_innohassle_id=auth.innohassle_id)
-    return [ViewLinksItem(slug=link.slug, form_url=link.form_url, created_at=link.created_at) for link in links]
+    links = await link_repository.read_all_by_owner(
+        owner_innohassle_id=auth.innohassle_id
+    )
+    return [
+        ViewLinksItem(
+            slug=link.slug, form_url=link.form_url, created_at=link.created_at
+        )
+        for link in links
+    ]
 
 
 @router.delete("/{slug}", responses={200: {"description": "Link deleted"}})
 async def delete_link(slug: str, auth: INH_TOKEN_AUTH) -> None:
-    deleted = await link_repository.delete_by_slug_and_owner(slug=slug, owner_innohassle_id=auth.innohassle_id)
+    deleted = await link_repository.delete_by_slug_and_owner(
+        slug=slug, owner_innohassle_id=auth.innohassle_id
+    )
     if not deleted:
         raise HTTPException(status_code=404, detail="Link not found")
 
 
-@router.get("/{slug}", responses={200: {"description": "Resolved signed Yandex form URL"}})
+@router.get(
+    "/{slug}", responses={200: {"description": "Resolved signed Yandex form URL"}}
+)
 async def resolve_link(slug: str, auth: INH_TOKEN_AUTH) -> ViewResolvedLink:
     link = await link_repository.read_by_slug(slug)
     if link is None:
@@ -147,8 +166,12 @@ async def resolve_link(slug: str, auth: INH_TOKEN_AUTH) -> ViewResolvedLink:
     return ViewResolvedLink(url=resolved_url)
 
 
-@router.post("/verify", responses={200: {"description": "Signature verification result"}})
-async def verify_link_signature(request: VerifySignatureRequest) -> VerifySignatureResponse:
+@router.post(
+    "/verify", responses={200: {"description": "Signature verification result"}}
+)
+async def verify_link_signature(
+    request: VerifySignatureRequest,
+) -> VerifySignatureResponse:
     payload = verify_signature(request.s)
     if payload is None:
         return VerifySignatureResponse(valid=False)

@@ -21,8 +21,12 @@ def tags_mixin_factory(tablename: str, base: type[Any]):
     class Mixin:
         class TagAssociation(base):
             __tablename__ = f"{tablename}_x_tags"
-            object_id: Mapped[int] = mapped_column(ForeignKey(f"{tablename}.id", ondelete="CASCADE"), primary_key=True)
-            tag_id: Mapped[int] = mapped_column(ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True)
+            object_id: Mapped[int] = mapped_column(
+                ForeignKey(f"{tablename}.id", ondelete="CASCADE"), primary_key=True
+            )
+            tag_id: Mapped[int] = mapped_column(
+                ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True
+            )
             tag: Mapped[Tag] = relationship(lazy="joined")
 
         Tag.__tags_associations__[tablename] = TagAssociation
@@ -47,10 +51,14 @@ def ownerships_mixin_factory(tablename: str, base: type[Any]):
             (base,),
             {
                 "__tablename__": f"{tablename}_x_ownerships",
-                "object_id": mapped_column(ForeignKey(f"{tablename}.id"), primary_key=True),
+                "object_id": mapped_column(
+                    ForeignKey(f"{tablename}.id"), primary_key=True
+                ),
                 "user_id": mapped_column(ForeignKey(User.id), primary_key=True),
                 "user": relationship("User"),
-                "role_alias": mapped_column(String(255), nullable=False, default="default"),
+                "role_alias": mapped_column(
+                    String(255), nullable=False, default="default"
+                ),
             },
         )
         User.__ownerships_tables__[tablename] = Ownership.__table__
@@ -68,9 +76,14 @@ class IdMixin:
 
 class UpdateCreateDateTimeMixin:
     updated_at: Mapped[dtm.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
-    created_at: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at: Mapped[dtm.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
 
 
 class NameMixin:

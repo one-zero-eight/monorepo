@@ -74,7 +74,9 @@ def auto_recurrence_fields(recurrence: Any) -> dict[str, Any] | None:
         )
     except ElementTree.ParseError, DefusedXmlException:
         return None
-    values = {node.tag.rsplit("}", 1)[-1]: (node.text or "").strip() for node in root.iter()}
+    values = {
+        node.tag.rsplit("}", 1)[-1]: (node.text or "").strip() for node in root.iter()
+    }
     weekday = values.get("DaysOfWeek", "").lower()
     if (
         "WeeklyRecurrence" not in values
@@ -120,7 +122,9 @@ def strip_auto_booking_title_prefix(title: str) -> str:
 
 def is_schedule_assistant_auto_title(title: str) -> bool:
     text = _strip_forwarding_title_prefix(title)
-    return any(text.casefold().startswith(prefix.casefold()) for prefix in _AUTO_TITLE_PREFIXES)
+    return any(
+        text.casefold().startswith(prefix.casefold()) for prefix in _AUTO_TITLE_PREFIXES
+    )
 
 
 def _normalize_booking_title_for_parse(title: str) -> str:
@@ -133,7 +137,11 @@ def _parse_slot_title(title: str) -> tuple[str, str, str | None] | None:
     if not match:
         return None
     audience = match.group(3)
-    return match.group(1).strip(), match.group(2).strip(), audience.strip() if audience else None
+    return (
+        match.group(1).strip(),
+        match.group(2).strip(),
+        audience.strip() if audience else None,
+    )
 
 
 def _course_and_component_from_title(title: str) -> tuple[str, str | None]:
@@ -178,7 +186,9 @@ def _program_codes_match_for_auto(payload_program: str, booking_program: str) ->
     return payload_program.split("/", 1)[0] == booking_program.split("/", 1)[0]
 
 
-def _auto_booking_categories_match(payload_categories: list[Any], auto_categories: list[Any]) -> bool:
+def _auto_booking_categories_match(
+    payload_categories: list[Any], auto_categories: list[Any]
+) -> bool:
     payload_key = _booking_categories_key(payload_categories)
     auto_key = _booking_categories_key(auto_categories)
     if payload_key == auto_key:
@@ -192,17 +202,25 @@ def _auto_booking_categories_match(payload_categories: list[Any], auto_categorie
     return _course_names_match_for_auto(payload_key[-1], auto_key[-1])
 
 
-def _auto_booking_metadata_matches(payload: dict[str, Any], auto_booking: dict[str, Any]) -> bool:
+def _auto_booking_metadata_matches(
+    payload: dict[str, Any], auto_booking: dict[str, Any]
+) -> bool:
     payload_categories = payload.get("categories")
     auto_categories = auto_booking.get("categories")
-    if not isinstance(payload_categories, list) or not isinstance(auto_categories, list):
+    if not isinstance(payload_categories, list) or not isinstance(
+        auto_categories, list
+    ):
         return False
     if _auto_booking_categories_match(payload_categories, auto_categories):
         return True
-    if _exchange_categories_key(payload_categories) != _exchange_categories_key(auto_categories):
+    if _exchange_categories_key(payload_categories) != _exchange_categories_key(
+        auto_categories
+    ):
         return False
     payload_title = _normalize_booking_title_for_parse(str(payload.get("title") or ""))
-    auto_title = _normalize_booking_title_for_parse(str(auto_booking.get("title") or ""))
+    auto_title = _normalize_booking_title_for_parse(
+        str(auto_booking.get("title") or "")
+    )
     return bool(payload_title and payload_title == auto_title)
 
 
@@ -232,7 +250,9 @@ def _slot_times_match_for_identity(
     return start_match and end_match
 
 
-def booking_matches_payload_identity(booking: dict[str, Any], payload: dict[str, Any]) -> bool:
+def booking_matches_payload_identity(
+    booking: dict[str, Any], payload: dict[str, Any]
+) -> bool:
     if str(booking.get("room_id")) != str(payload.get("room_id")):
         return False
 
@@ -263,7 +283,8 @@ def booking_matches_payload_identity(booking: dict[str, Any], payload: dict[str,
     if payload_parts is None or booking_parts is None:
         return is_schedule_assistant_auto_title(booking_title) and (
             strip_auto_booking_title_prefix(booking_title) == payload_title
-            or strip_auto_booking_title_prefix(booking_title) == strip_auto_booking_title_prefix(payload_title)
+            or strip_auto_booking_title_prefix(booking_title)
+            == strip_auto_booking_title_prefix(payload_title)
         )
 
     payload_course, payload_tag, payload_audience = payload_parts
@@ -271,17 +292,22 @@ def booking_matches_payload_identity(booking: dict[str, Any], payload: dict[str,
     if payload_tag != booking_tag:
         return False
     if payload_course != booking_course and not (
-        is_schedule_assistant_auto_title(booking_title) and _course_names_match_for_auto(payload_course, booking_course)
+        is_schedule_assistant_auto_title(booking_title)
+        and _course_names_match_for_auto(payload_course, booking_course)
     ):
         return False
 
     payload_categories = payload.get("categories")
     booking_categories = booking.get("categories")
     payload_program = (
-        _program_code_from_booking_categories(payload_categories) if isinstance(payload_categories, list) else None
+        _program_code_from_booking_categories(payload_categories)
+        if isinstance(payload_categories, list)
+        else None
     )
     booking_program = (
-        _program_code_from_booking_categories(booking_categories) if isinstance(booking_categories, list) else None
+        _program_code_from_booking_categories(booking_categories)
+        if isinstance(booking_categories, list)
+        else None
     )
     if payload_program is None:
         payload_program = payload_audience
@@ -300,28 +326,41 @@ def booking_matches_payload_identity(booking: dict[str, Any], payload: dict[str,
     return not booking_program
 
 
-def _recurrence_cadence_matches(payload: dict[str, Any], booking: dict[str, Any]) -> bool:
+def _recurrence_cadence_matches(
+    payload: dict[str, Any], booking: dict[str, Any]
+) -> bool:
     requested = auto_recurrence_fields(payload.get("recurrence"))
     actual = auto_recurrence_fields(booking.get("recurrence"))
     if requested is None or actual is None:
         return requested is None and actual is None
     interval = int(requested.get("interval", 1))
-    if interval != int(actual.get("interval", 1)) or requested["weekday"] != actual["weekday"]:
+    if (
+        interval != int(actual.get("interval", 1))
+        or requested["weekday"] != actual["weekday"]
+    ):
         return False
     target = _API_WEEKDAY_TO_PYTHON[requested["weekday"]]
     requested_start = dtm.date.fromisoformat(str(requested["start_date"]))
     actual_start = dtm.date.fromisoformat(str(actual["start_date"]))
-    requested_first = requested_start + dtm.timedelta(days=(target - requested_start.weekday()) % 7)
-    actual_first = actual_start + dtm.timedelta(days=(target - actual_start.weekday()) % 7)
+    requested_first = requested_start + dtm.timedelta(
+        days=(target - requested_start.weekday()) % 7
+    )
+    actual_first = actual_start + dtm.timedelta(
+        days=(target - actual_start.weekday()) % 7
+    )
     return (requested_first - actual_first).days % (7 * interval) == 0
 
 
-def payload_matches_auto_booking(payload: dict[str, Any], auto_booking: dict[str, Any]) -> bool:
+def payload_matches_auto_booking(
+    payload: dict[str, Any], auto_booking: dict[str, Any]
+) -> bool:
     if not _recurrence_cadence_matches(payload, auto_booking):
         return False
     if not _auto_booking_matches_weekly_payload_identity(payload, auto_booking):
         return False
-    if not auto_booking.get("recurrence_complete", not bool(auto_booking.get("recurrence"))):
+    if not auto_booking.get(
+        "recurrence_complete", not bool(auto_booking.get("recurrence"))
+    ):
         return False
     expected = set(iter_payload_occurrences(payload))
     return bool(expected) and expected == set(iter_booking_occurrences(auto_booking))
@@ -350,17 +389,24 @@ def _auto_booking_matches_weekly_payload_identity(
     if isinstance(payload_categories, list) and isinstance(auto_categories, list):
         if not _auto_booking_metadata_matches(payload, auto_booking):
             return False
-    elif not booking_matches_payload_identity(_booking_identity_dict(auto_booking), payload):
+    elif not booking_matches_payload_identity(
+        _booking_identity_dict(auto_booking), payload
+    ):
         return False
 
     payload_start = parse_booking_datetime(str(payload["start"]))
     payload_end = parse_booking_datetime(str(payload["end"]))
     auto_start = parse_booking_datetime(str(auto_booking["start"]))
     auto_end = parse_booking_datetime(str(auto_booking["end"]))
-    return payload_start.time() == auto_start.time() and payload_end.time() == auto_end.time()
+    return (
+        payload_start.time() == auto_start.time()
+        and payload_end.time() == auto_end.time()
+    )
 
 
-def _weekly_series_contains_date(payload_recurrence: dict[str, Any], meeting_date: dtm.date) -> bool:
+def _weekly_series_contains_date(
+    payload_recurrence: dict[str, Any], meeting_date: dtm.date
+) -> bool:
     weekday = str(payload_recurrence.get("weekday", "")).strip().lower()
     series_start = dtm.date.fromisoformat(str(payload_recurrence["start_date"]))
     series_end = dtm.date.fromisoformat(str(payload_recurrence["until_date"]))
@@ -368,11 +414,15 @@ def _weekly_series_contains_date(payload_recurrence: dict[str, Any], meeting_dat
     first = series_start + dtm.timedelta(days=(target - series_start.weekday()) % 7)
     return (
         first <= meeting_date <= series_end
-        and (meeting_date - first).days % (7 * int(payload_recurrence.get("interval", 1))) == 0
+        and (meeting_date - first).days
+        % (7 * int(payload_recurrence.get("interval", 1)))
+        == 0
     )
 
 
-def payload_matches_auto_occurrence(payload: dict[str, Any], auto_booking: dict[str, Any]) -> bool:
+def payload_matches_auto_occurrence(
+    payload: dict[str, Any], auto_booking: dict[str, Any]
+) -> bool:
     payload_recurrence = payload.get("recurrence")
     if not isinstance(payload_recurrence, dict):
         return False
@@ -384,7 +434,9 @@ def payload_matches_auto_occurrence(payload: dict[str, Any], auto_booking: dict[
     return _weekly_series_contains_date(payload_recurrence, auto_start.date())
 
 
-def payload_matches_auto_series(payload: dict[str, Any], auto_booking: dict[str, Any]) -> bool:
+def payload_matches_auto_series(
+    payload: dict[str, Any], auto_booking: dict[str, Any]
+) -> bool:
     return payload_matches_auto_booking(payload, auto_booking)
 
 
@@ -424,7 +476,11 @@ def extra_booking_candidate_key(booking: dict[str, Any]) -> str | None:
     outlook_booking_id = booking.get("outlook_booking_id")
     if outlook_booking_id:
         mailbox = str(booking.get("organizer_mailbox") or "").casefold()
-        return f"id:{mailbox}:{outlook_booking_id}" if mailbox else f"id:{outlook_booking_id}"
+        return (
+            f"id:{mailbox}:{outlook_booking_id}"
+            if mailbox
+            else f"id:{outlook_booking_id}"
+        )
     outlook_entry_id = booking.get("outlook_entry_id")
     room_id = booking.get("room_id")
     if outlook_entry_id and room_id:
@@ -462,7 +518,9 @@ def find_extra_auto_bookings(
     existing_bookings: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     extra: list[dict[str, Any]] = []
-    for candidate in _collect_auto_booking_candidates(auto_bookings, existing_bookings or []):
+    for candidate in _collect_auto_booking_candidates(
+        auto_bookings, existing_bookings or []
+    ):
         if auto_booking_matches_any_slot_payload(candidate, slot_payloads):
             continue
         extra.append(candidate)
@@ -474,7 +532,11 @@ def same_booking_identity(booking: dict[str, Any], reference: dict[str, Any]) ->
     """Mailbox-scoped IDs or a shared UID prove identity; titles/time never do."""
     mailbox = booking.get("organizer_mailbox")
     reference_mailbox = reference.get("organizer_mailbox")
-    if mailbox and reference_mailbox and str(mailbox).casefold() != str(reference_mailbox).casefold():
+    if (
+        mailbox
+        and reference_mailbox
+        and str(mailbox).casefold() != str(reference_mailbox).casefold()
+    ):
         return False
     for key in ("operation_id", "uid"):
         if booking.get(key) and booking.get(key) == reference.get(key):
@@ -500,12 +562,18 @@ def booking_in_own_auto_series(
             continue
         if not same_booking_identity(booking, auto_booking):
             continue
-        if expected & set(iter_booking_occurrences(booking)) & set(iter_booking_occurrences(auto_booking)):
+        if (
+            expected
+            & set(iter_booking_occurrences(booking))
+            & set(iter_booking_occurrences(auto_booking))
+        ):
             return True
     return False
 
 
-def iter_payload_occurrences(payload: dict[str, Any]) -> list[tuple[dtm.datetime, dtm.datetime]]:
+def iter_payload_occurrences(
+    payload: dict[str, Any],
+) -> list[tuple[dtm.datetime, dtm.datetime]]:
     recurrence = payload.get("recurrence")
     if isinstance(recurrence, dict):
         weekday = str(recurrence["weekday"]).strip().lower()
@@ -528,9 +596,14 @@ def iter_payload_occurrences(payload: dict[str, Any]) -> list[tuple[dtm.datetime
             current += dtm.timedelta(weeks=interval)
         for modified in payload.get("modified_occurrences", []):
             original = parse_booking_datetime(str(modified["original_start"]))
-            occurrences = [(start, end) for start, end in occurrences if start != original]
+            occurrences = [
+                (start, end) for start, end in occurrences if start != original
+            ]
             occurrences.append(
-                (parse_booking_datetime(str(modified["start"])), parse_booking_datetime(str(modified["end"])))
+                (
+                    parse_booking_datetime(str(modified["start"])),
+                    parse_booking_datetime(str(modified["end"])),
+                )
             )
         return sorted(occurrences)
 
@@ -539,7 +612,9 @@ def iter_payload_occurrences(payload: dict[str, Any]) -> list[tuple[dtm.datetime
     return [(start, end)]
 
 
-def iter_booking_occurrences(booking: dict[str, Any]) -> list[tuple[dtm.datetime, dtm.datetime]]:
+def iter_booking_occurrences(
+    booking: dict[str, Any],
+) -> list[tuple[dtm.datetime, dtm.datetime]]:
     recurrence = auto_recurrence_fields(booking.get("recurrence"))
     if booking.get("recurrence") and recurrence is None:
         return []
@@ -572,9 +647,9 @@ def booking_coverage(
         if not matching and occurrences:
             continue
         result.bookings.append(booking)
-        incomplete = not booking.get("recurrence_complete", not bool(booking.get("recurrence"))) or bool(
-            booking.get("recurrence") and not occurrences
-        )
+        incomplete = not booking.get(
+            "recurrence_complete", not bool(booking.get("recurrence"))
+        ) or bool(booking.get("recurrence") and not occurrences)
         cadence_mismatch = bool(
             payload.get("recurrence")
             and booking.get("recurrence")

@@ -23,7 +23,13 @@ def _term() -> TermConfig:
             start_date=dtm.date(2026, 9, 1),
             end_date=dtm.date(2026, 9, 28),
         ),
-        days=[Weekday.MONDAY, Weekday.TUESDAY, Weekday.WEDNESDAY, Weekday.THURSDAY, Weekday.FRIDAY],
+        days=[
+            Weekday.MONDAY,
+            Weekday.TUESDAY,
+            Weekday.WEDNESDAY,
+            Weekday.THURSDAY,
+            Weekday.FRIDAY,
+        ],
         starting_day=Weekday.MONDAY,
         time_slots=[TermTimeSlot(start_time=dtm.time(9, 0), end_time=dtm.time(10, 30))],
     )

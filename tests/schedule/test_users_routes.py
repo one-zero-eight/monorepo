@@ -5,7 +5,12 @@ from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
 from tests.schedule.conftest import create_event_group
-from tests.schedule.constants import AUTH_REQUIRED_DETAIL, MAX_USER_ID, MIN_USER_ID, TEST_USER_EMAIL
+from tests.schedule.constants import (
+    AUTH_REQUIRED_DETAIL,
+    MAX_USER_ID,
+    MIN_USER_ID,
+    TEST_USER_EMAIL,
+)
 
 
 def test_me_requires_auth(schedule_client: TestClient):
@@ -14,7 +19,9 @@ def test_me_requires_auth(schedule_client: TestClient):
     assert response.json()["detail"] == AUTH_REQUIRED_DETAIL
 
 
-def test_me_creates_user_on_first_auth(schedule_client: TestClient, user_headers: dict[str, str]):
+def test_me_creates_user_on_first_auth(
+    schedule_client: TestClient, user_headers: dict[str, str]
+):
     response = schedule_client.get("/users/me", headers=user_headers)
     assert response.status_code == 200
     body = response.json()
@@ -30,7 +37,9 @@ def test_me_predefined_empty(schedule_client: TestClient, user_headers: dict[str
 
 
 def test_favorites_add_and_list(
-    schedule_client: TestClient, parser_headers: dict[str, str], user_headers: dict[str, str]
+    schedule_client: TestClient,
+    parser_headers: dict[str, str],
+    user_headers: dict[str, str],
 ):
     group = create_event_group(schedule_client, parser_headers, alias="favorite-group")
     schedule_client.get("/users/me", headers=user_headers)
@@ -47,10 +56,20 @@ def test_favorites_add_and_list(
     assert group["alias"] in me_response.json()["favorite_event_groups"]
 
 
-def test_favorites_hide(schedule_client: TestClient, parser_headers: dict[str, str], user_headers: dict[str, str]):
-    group = create_event_group(schedule_client, parser_headers, alias="hide-favorite-group")
+def test_favorites_hide(
+    schedule_client: TestClient,
+    parser_headers: dict[str, str],
+    user_headers: dict[str, str],
+):
+    group = create_event_group(
+        schedule_client, parser_headers, alias="hide-favorite-group"
+    )
     schedule_client.get("/users/me", headers=user_headers)
-    schedule_client.post("/users/me/favorites", params={"group_alias": group["alias"]}, headers=user_headers)
+    schedule_client.post(
+        "/users/me/favorites",
+        params={"group_alias": group["alias"]},
+        headers=user_headers,
+    )
 
     hide_response = schedule_client.post(
         "/users/me/favorites/hide",
@@ -71,7 +90,11 @@ def test_predefined_only_group_can_be_hidden(
     schedule_client.get("/users/me", headers=user_headers)
     setup_predefined_data_from_object(
         JsonPredefinedUsers(
-            users=[JsonPredefinedUsers.InJsonUser(email=TEST_USER_EMAIL, groups=["predefined-only-group"])],
+            users=[
+                JsonPredefinedUsers.InJsonUser(
+                    email=TEST_USER_EMAIL, groups=["predefined-only-group"]
+                )
+            ],
         )
     )
 
@@ -104,7 +127,10 @@ def test_hide_rejects_group_outside_favorites_and_predefined(
         headers=user_headers,
     )
     assert response.status_code == 404
-    assert response.json()["detail"] == "Favorite or predefined event group with alias unknown-group does not exist"
+    assert (
+        response.json()["detail"]
+        == "Favorite or predefined event group with alias unknown-group does not exist"
+    )
 
 
 def test_set_moodle(schedule_client: TestClient, user_headers: dict[str, str]):
@@ -122,7 +148,9 @@ def test_set_moodle(schedule_client: TestClient, user_headers: dict[str, str]):
     assert body["moodle_calendar_authtoken"] == "secret-token"
 
 
-def test_schedule_access_key_flow(schedule_client: TestClient, user_headers: dict[str, str]):
+def test_schedule_access_key_flow(
+    schedule_client: TestClient, user_headers: dict[str, str]
+):
     schedule_client.get("/users/me", headers=user_headers)
     resource_path = "/users/me/all.ics"
 
@@ -136,7 +164,9 @@ def test_schedule_access_key_flow(schedule_client: TestClient, user_headers: dic
     assert payload["new"] is True
     access_key = payload["access_key"]["access_key"]
 
-    list_response = schedule_client.get("/users/me/schedule-access-keys", headers=user_headers)
+    list_response = schedule_client.get(
+        "/users/me/schedule-access-keys", headers=user_headers
+    )
     assert list_response.status_code == 200
     keys = list_response.json()
     assert any(key["access_key"] == access_key for key in keys)
@@ -148,7 +178,9 @@ def test_schedule_access_key_flow(schedule_client: TestClient, user_headers: dic
     )
     assert delete_response.status_code == 200
 
-    list_after_delete = schedule_client.get("/users/me/schedule-access-keys", headers=user_headers)
+    list_after_delete = schedule_client.get(
+        "/users/me/schedule-access-keys", headers=user_headers
+    )
     assert all(key["access_key"] != access_key for key in list_after_delete.json())
 
 
@@ -164,11 +196,15 @@ def test_virtual_favorite_is_persisted_by_alias(
     monkeypatch.setattr(
         settings,
         "schedule_assistant",
-        ScheduleAssistantIntegrationSettings(api_url=api_url, api_key=SecretStr("service-key")),
+        ScheduleAssistantIntegrationSettings(
+            api_url=api_url, api_key=SecretStr("service-key")
+        ),
     )
     with respx.mock(assert_all_called=True) as mock:
         route = mock.get(f"{api_url}/integration/event-groups").mock(
-            return_value=httpx.Response(200, json=[{"alias": "virtual-favorite", "name": "Virtual"}])
+            return_value=httpx.Response(
+                200, json=[{"alias": "virtual-favorite", "name": "Virtual"}]
+            )
         )
         response = schedule_client.post(
             "/users/me/favorites",

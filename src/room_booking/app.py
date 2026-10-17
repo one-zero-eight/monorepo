@@ -46,7 +46,9 @@ async def _log_bmp_calendar() -> None:
     try:
         calendar = await asyncio.to_thread(lambda: bmp_repository.selected_calendar)
     except Exception:  # noqa: BLE001
-        logger.exception(f"Failed to resolve BMP calendar for {bmp_repository.account_email}")
+        logger.exception(
+            f"Failed to resolve BMP calendar for {bmp_repository.account_email}"
+        )
         return
     logger.info(
         f"BMP calendar: name={calendar.name} id={calendar.id} path={calendar.absolute} "
@@ -57,7 +59,9 @@ async def _log_bmp_calendar() -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     from src.room_booking.modules.bmp.repository import bmp_repository
-    from src.room_booking.modules.bookings.exchange_repository import exchange_booking_repository
+    from src.room_booking.modules.bookings.exchange_repository import (
+        exchange_booking_repository,
+    )
 
     await inh_accounts.update_key_set()
 
@@ -76,21 +80,28 @@ async def lifespan(_app: FastAPI):
                 logger.error("Failed to get exchange server status")
 
             if settings.exchange.ews_callback_url is not None:
-                logger.info(f"Starting exchange subscription to {settings.exchange.ews_callback_url}")
+                logger.info(
+                    f"Starting exchange subscription to {settings.exchange.ews_callback_url}"
+                )
 
                 while True:
                     now = tm.monotonic()
                     if (
                         exchange_booking_repository.last_callback_time is None
-                        or (now - exchange_booking_repository.last_callback_time) > 60 * 2
+                        or (now - exchange_booking_repository.last_callback_time)
+                        > 60 * 2
                     ):
-                        subscription = await exchange_booking_repository.push_subscription(
-                            callback_url=settings.exchange.ews_callback_url
+                        subscription = (
+                            await exchange_booking_repository.push_subscription(
+                                callback_url=settings.exchange.ews_callback_url
+                            )
                         )
                         logger.info(f"Exchange subscription started: {subscription=}")
                     await asyncio.sleep(60)
 
-        exchange_subscription_task = asyncio.create_task(print_exchanglelib_status_and_start_subscription())
+        exchange_subscription_task = asyncio.create_task(
+            print_exchanglelib_status_and_start_subscription()
+        )
 
     yield
 
@@ -160,7 +171,10 @@ async def ews_error_handler(
     exc: exchangelib.errors.EWSError,
 ):
     logger.warning(f"EWS error, probably Outlook is down: {exc}", exc_info=True)
-    return JSONResponse(status_code=429, content={"detail": f"EWS error, probably Outlook is down: {exc}"})
+    return JSONResponse(
+        status_code=429,
+        content={"detail": f"EWS error, probably Outlook is down: {exc}"},
+    )
 
 
 @app.post("/ews-callback", include_in_schema=False)
@@ -180,7 +194,9 @@ async def ews_callback(request: Request):
     )
     from exchangelib.services import SendNotification
 
-    from src.room_booking.modules.bookings.exchange_repository import exchange_booking_repository
+    from src.room_booking.modules.bookings.exchange_repository import (
+        exchange_booking_repository,
+    )
     from src.room_booking.modules.bookings.service import get_emails_to_attendees_index
 
     ws = SendNotification(protocol=None)
@@ -192,19 +208,25 @@ async def ews_callback(request: Request):
             continue
 
         if notification.subscription_id != exchange_booking_repository.subscription_id:
-            logger.warning("Notification from Exchange with wrong subscription ID, unsubscribing")
+            logger.warning(
+                "Notification from Exchange with wrong subscription ID, unsubscribing"
+            )
             data = ws.unsubscribe_payload()
             break
 
         exchange_booking_repository.last_callback_time = tm.monotonic()
 
         for event in cast(Iterable[TimestampEvent], notification.events):
-            logger.info(f"Event: {type(event)}\n{pprint.pformat(event, sort_dicts=False, compact=True)}")
+            logger.info(
+                f"Event: {type(event)}\n{pprint.pformat(event, sort_dicts=False, compact=True)}"
+            )
 
             if isinstance(event, ModifiedEvent) and event.item_id is not None:
                 item_id = str(cast(ItemId, event.item_id).id)
                 if await exchange_booking_repository.is_recently_canceled(item_id):
-                    logger.info(f"Booking {item_id} was recently canceled, so we skipping")
+                    logger.info(
+                        f"Booking {item_id} was recently canceled, so we skipping"
+                    )
                     continue
                 booking = await exchange_booking_repository.get_booking(item_id)
                 if booking is None:
@@ -214,7 +236,9 @@ async def ews_callback(request: Request):
 
                 for email, attendee in email_index.items():
                     if attendee.response_type == "Decline":
-                        logger.warning(f"Attendee ({email}) declined the booking, so we will delete this booking")
+                        logger.warning(
+                            f"Attendee ({email}) declined the booking, so we will delete this booking"
+                        )
                         await exchange_booking_repository.cancel_booking(booking, email)
                         logger.info(f"Booking deleted: {item_id}")
                         break
@@ -237,7 +261,9 @@ async def get_status() -> UptimeSchema:
     import httpx
 
     async with httpx.AsyncClient() as client:
-        response = await client.get("https://uptime.dofi4ka.ru/api/status-page/heartbeat/innopolis")
+        response = await client.get(
+            "https://uptime.dofi4ka.ru/api/status-page/heartbeat/innopolis"
+        )
 
     payload = response.json()
     uptime = payload["heartbeatList"]["20"]

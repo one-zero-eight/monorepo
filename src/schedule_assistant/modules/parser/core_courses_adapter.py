@@ -20,19 +20,32 @@ from src.schedule_assistant.utils import (
 from .schemas import CoreCourseComponent, GroupedCoreCourse, Lesson
 
 
-async def _collect_core_courses_lessons(parser_config: CoreCoursesConfig) -> list[Lesson]:
+async def _collect_core_courses_lessons(
+    parser_config: CoreCoursesConfig,
+) -> list[Lesson]:
     parser = CoreCoursesParser()
-    xlsx_file = await fetch_xlsx_spreadsheet(spreadsheet_id=parser_config.spreadsheet_id)
-    original_target_sheet_names = [target.sheet_name for target in parser_config.targets]
+    xlsx_file = await fetch_xlsx_spreadsheet(
+        spreadsheet_id=parser_config.spreadsheet_id
+    )
+    original_target_sheet_names = [
+        target.sheet_name for target in parser_config.targets
+    ]
     sheet_gids = await get_sheet_gids(parser_config.spreadsheet_id)
     pipeline_result = list(
-        parser.pipeline(xlsx_file, original_target_sheet_names, sheet_gids, parser_config.spreadsheet_id)
+        parser.pipeline(
+            xlsx_file,
+            original_target_sheet_names,
+            sheet_gids,
+            parser_config.spreadsheet_id,
+        )
     )
     dfs_merged_ranges = parser.last_dfs_merged_ranges
     assert dfs_merged_ranges is not None
 
     all_lessons: list[Lesson] = []
-    for target, grouped_dfs_with_cells_list in zip(parser_config.targets, pipeline_result):
+    for target, grouped_dfs_with_cells_list in zip(
+        parser_config.targets, pipeline_result
+    ):
         merged_ranges = dfs_merged_ranges.get(sanitize_sheet_name(target.sheet_name))
 
         # merge range index -> list of events
@@ -60,8 +73,12 @@ async def _collect_core_courses_lessons(parser_config: CoreCoursesConfig) -> lis
                         cell_row, cell_col = coordinate_to_tuple(cell_event.a1)
                         cell_row -= 1
                         cell_col -= 1
-                        for i, (min_row, min_col, max_row, max_col) in enumerate(merged_ranges):
-                            if (min_row <= cell_row <= max_row) and (min_col <= cell_col <= max_col):
+                        for i, (min_row, min_col, max_row, max_col) in enumerate(
+                            merged_ranges
+                        ):
+                            if (min_row <= cell_row <= max_row) and (
+                                min_col <= cell_col <= max_col
+                            ):
                                 merged_registry_for_events[i].append(cell_event)
                                 break
                         else:
@@ -74,7 +91,9 @@ async def _collect_core_courses_lessons(parser_config: CoreCoursesConfig) -> lis
             if cell_event.location_item is None:
                 lessons_from_non_merged.append(_event_to_lesson(cell_event))
             else:
-                lessons_from_non_merged.extend(_process_location_item(cell_event, target))
+                lessons_from_non_merged.extend(
+                    _process_location_item(cell_event, target)
+                )
 
         lessons_from_merged: list[Lesson] = []
         for merged_range_index, _events in merged_registry_for_events.items():
@@ -84,15 +103,16 @@ async def _collect_core_courses_lessons(parser_config: CoreCoursesConfig) -> lis
             merged_students_number = []
             merged_range = merged_ranges[merged_range_index]
             min_row, min_col, max_row, max_col = merged_range
-            merged_range_a1_range = (
-                f"{get_column_letter(min_col + 1)}{min_row + 1}:{get_column_letter(max_col + 1)}{max_row + 1}"
-            )
+            merged_range_a1_range = f"{get_column_letter(min_col + 1)}{min_row + 1}:{get_column_letter(max_col + 1)}{max_row + 1}"
             excel_ranges = []
             cell_event = _events[0]
 
             for cell_event in _events:
                 if cell_event.group:
-                    if cell_event.group not in groups and cell_event.group_student_number:
+                    if (
+                        cell_event.group not in groups
+                        and cell_event.group_student_number
+                    ):
                         merged_students_number.append(cell_event.group_student_number)
                     if cell_event.group not in groups and cell_event.a1:
                         excel_ranges.append(cell_event.a1)
@@ -112,7 +132,9 @@ async def _collect_core_courses_lessons(parser_config: CoreCoursesConfig) -> lis
                     _event_to_lesson(
                         cell_event,
                         group_name=tuple(groups),
-                        students_number=sum(merged_students_number) if merged_students_number else None,
+                        students_number=sum(merged_students_number)
+                        if merged_students_number
+                        else None,
                         a1_range=merged_range_a1_range,
                     )
                 )
@@ -122,15 +144,21 @@ async def _collect_core_courses_lessons(parser_config: CoreCoursesConfig) -> lis
                         cell_event,
                         target,
                         group_name=tuple(groups),
-                        students_number=sum(merged_students_number) if merged_students_number else None,
+                        students_number=sum(merged_students_number)
+                        if merged_students_number
+                        else None,
                         a1_range=merged_range_a1_range,
                     )
                 )
         logger.info(
             f"For {target.sheet_name} found {len(lessons_from_non_merged)} non-merged lessons and {len(lessons_from_merged)} merged (same a1 range) lessons, totaling {len(lessons_from_merged + lessons_from_non_merged)} lessons"
         )
-        merged_lessons = merge_identical_lessons(lessons_from_merged + lessons_from_non_merged)
-        logger.info(f"After merging identical lessons, for {target.sheet_name} found {len(merged_lessons)} lessons")
+        merged_lessons = merge_identical_lessons(
+            lessons_from_merged + lessons_from_non_merged
+        )
+        logger.info(
+            f"After merging identical lessons, for {target.sheet_name} found {len(merged_lessons)} lessons"
+        )
         all_lessons.extend(merged_lessons)
 
     def _sort_key(x: Lesson):
@@ -145,9 +173,14 @@ async def _collect_core_courses_lessons(parser_config: CoreCoursesConfig) -> lis
     return all_lessons
 
 
-async def get_grouped_core_courses_lessons(parser_config: CoreCoursesConfig) -> list[GroupedCoreCourse]:
+async def get_grouped_core_courses_lessons(
+    parser_config: CoreCoursesConfig,
+) -> list[GroupedCoreCourse]:
     flat_lessons = await _collect_core_courses_lessons(parser_config)
-    term_dates = {target.sheet_name: (target.start_date, target.end_date) for target in parser_config.targets}
+    term_dates = {
+        target.sheet_name: (target.start_date, target.end_date)
+        for target in parser_config.targets
+    }
     grouped = group_core_course_lessons(flat_lessons, term_dates=term_dates)
     logger.info(f"Grouped core course lessons: {len(flat_lessons)} -> {len(grouped)}")
     return grouped
@@ -206,7 +239,9 @@ def _modifiers_for_component(lesson: Lesson) -> Item | None:
     return _modifiers_for_output(_item_for_lesson_dates(lesson))
 
 
-def _as_audience_list(group_name: str | tuple[str, ...] | list[str] | None) -> list[str]:
+def _as_audience_list(
+    group_name: str | tuple[str, ...] | list[str] | None,
+) -> list[str]:
     if group_name is None:
         return []
     if isinstance(group_name, str):
@@ -224,7 +259,9 @@ def _audience_to_group_name(audience: list[str]) -> str | tuple[str, ...] | None
 
 def _component_sort_key(component: CoreCourseComponent) -> tuple:
     group = tuple(component.audience)
-    type_rank = {"lec": 0, "лек": 0, "tut": 1, "тут": 1, "lab": 2, "лаб": 2}.get(str(component.type or "").lower(), 99)
+    type_rank = {"lec": 0, "лек": 0, "tut": 1, "тут": 1, "lab": 2, "лаб": 2}.get(
+        str(component.type or "").lower(), 99
+    )
     return (type_rank, component.weekday or "", component.start_time, group)
 
 
@@ -260,7 +297,9 @@ def _majority_course_color(course: str, lessons: list[Lesson]) -> str | None:
     top_count = max(counts.values())
     top_colors = sorted(color for color, count in counts.items() if count == top_count)
     if len(top_colors) > 1:
-        raise ValueError(f"Course {course!r} has tied top colors: {', '.join(top_colors)}")
+        raise ValueError(
+            f"Course {course!r} has tied top colors: {', '.join(top_colors)}"
+        )
     return top_colors[0]
 
 
@@ -296,10 +335,20 @@ def group_core_course_lessons(
         by_key[key].append(lesson)
 
     grouped: list[GroupedCoreCourse] = []
-    for (cohort, subject, spreadsheet_id, google_sheet_gid, google_sheet_name, start_date, end_date), bucket in sorted(
+    for (
+        cohort,
+        subject,
+        spreadsheet_id,
+        google_sheet_gid,
+        google_sheet_name,
+        start_date,
+        end_date,
+    ), bucket in sorted(
         by_key.items(), key=lambda item: (item[0][0], item[0][1], item[0][4])
     ):
-        components = sorted((_lesson_to_component(lesson) for lesson in bucket), key=_component_sort_key)
+        components = sorted(
+            (_lesson_to_component(lesson) for lesson in bucket), key=_component_sort_key
+        )
         grouped.append(
             GroupedCoreCourse(
                 cohort=cohort or None,
@@ -316,11 +365,15 @@ def group_core_course_lessons(
     return grouped
 
 
-def expand_grouped_core_course_lessons(grouped: list[GroupedCoreCourse]) -> list[Lesson]:
+def expand_grouped_core_course_lessons(
+    grouped: list[GroupedCoreCourse],
+) -> list[Lesson]:
     flat: list[Lesson] = []
     for course in grouped:
         for component in course.components:
-            date_on, date_except, date_from = _lesson_dates_from_modifiers(component.modifiers)
+            date_on, date_except, date_from = _lesson_dates_from_modifiers(
+                component.modifiers
+            )
             flat.append(
                 Lesson(
                     lesson_name=course.subject,
@@ -383,7 +436,9 @@ def _event_to_lesson(
         date_except=None,
         window_start=cell_event.starts,
         window_end=cell_event.ends,
-        students_number=students_number if students_number is not None else cell_event.group_student_number,
+        students_number=students_number
+        if students_number is not None
+        else cell_event.group_student_number,
         spreadsheet_id=cell_event.spreadsheet_id,
         google_sheet_gid=cell_event.google_sheet_gid,
         google_sheet_name=cell_event.google_sheet_name,
@@ -440,7 +495,9 @@ def _process_location_item(
         if item.on_weeks:
             on = []
             for week in item.on_weeks:
-                on_date = nearest_weekday(starts, cell_event.weekday) + dtm.timedelta(weeks=week - 1)
+                on_date = nearest_weekday(starts, cell_event.weekday) + dtm.timedelta(
+                    weeks=week - 1
+                )
                 on.append(on_date)
             if item.on:
                 item.on.extend(on)
@@ -457,7 +514,9 @@ def _process_location_item(
         _end_time = dtm.datetime.combine(starts, cell_event.end_time)
         duration = _end_time - _start_time
         lesson_start_time = location_item.starts_at
-        lesson_end_time = (dtm.datetime.combine(starts, lesson_start_time) + duration).time()
+        lesson_end_time = (
+            dtm.datetime.combine(starts, lesson_start_time) + duration
+        ).time()
     if location_item.till:
         lesson_end_time = location_item.till
 
@@ -482,7 +541,9 @@ def _process_location_item(
             date_from=location_item.starts_from,
             window_start=cell_event.starts,
             window_end=cell_event.ends,
-            students_number=students_number if students_number is not None else cell_event.group_student_number,
+            students_number=students_number
+            if students_number is not None
+            else cell_event.group_student_number,
             spreadsheet_id=cell_event.spreadsheet_id,
             google_sheet_gid=cell_event.google_sheet_gid,
             google_sheet_name=cell_event.google_sheet_name,
@@ -498,7 +559,9 @@ def _process_location_item(
                 logger.info(f"Root Item: {location_item}, {nested}")
                 extra_nested.append(nested)
         if extra_nested:  # TODO: Handle '421 (316 FROM 31/10)' case
-            logger.warning(f"Extra nested is not implemented yet\nItem({location_item})")
+            logger.warning(
+                f"Extra nested is not implemented yet\nItem({location_item})"
+            )
         return [build_lesson()]
 
     return [build_lesson()]
@@ -534,7 +597,9 @@ def merge_identical_lessons(lessons: list[Lesson]) -> list[Lesson]:
     result = []
     for group in groups:
         if len(group) > 1:
-            excel_ranges = [lesson.a1_range for lesson in group if lesson.a1_range is not None]
+            excel_ranges = [
+                lesson.a1_range for lesson in group if lesson.a1_range is not None
+            ]
             merged_groups = []
             for lesson in group:
                 if lesson.group_name is not None:
@@ -542,7 +607,11 @@ def merge_identical_lessons(lessons: list[Lesson]) -> list[Lesson]:
                         merged_groups.extend(lesson.group_name)
                     else:
                         merged_groups.append(lesson.group_name)
-            students_numbers = [lesson.students_number for lesson in group if lesson.students_number is not None]
+            students_numbers = [
+                lesson.students_number
+                for lesson in group
+                if lesson.students_number is not None
+            ]
             students_number = sum(students_numbers) if students_numbers else None
             lesson = group[0].model_copy()
             lesson.a1_range = ";".join(excel_ranges)

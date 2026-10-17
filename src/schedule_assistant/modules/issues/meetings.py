@@ -13,7 +13,10 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     InstructorConfig,
     SectionsConfig,
 )
-from src.schedule_assistant.modules.schedule_config.validation import build_selector_map, expand_group_tokens
+from src.schedule_assistant.modules.schedule_config.validation import (
+    build_selector_map,
+    expand_group_tokens,
+)
 
 meetings_from_schedule_config = schedule_domain.meetings_from_schedule_config
 
@@ -67,7 +70,9 @@ def _session_is_placed(session: ComponentSessionSeries) -> bool:
     return bool(session.weekly_pattern) or bool(session.dates_pattern)
 
 
-def unplaced_issues_from_schedule_config(courses: CoursesConfig, sections: SectionsConfig) -> list[UnplacedIssue]:
+def unplaced_issues_from_schedule_config(
+    courses: CoursesConfig, sections: SectionsConfig
+) -> list[UnplacedIssue]:
     selector_map = build_selector_map(sections)
     issues: list[UnplacedIssue] = []
 
@@ -75,7 +80,9 @@ def unplaced_issues_from_schedule_config(courses: CoursesConfig, sections: Secti
         for component in course.components:
             sessions = component.sessions or []
             if not sessions:
-                group_codes = tuple(sorted(expand_group_tokens(component.audience, selector_map)))
+                group_codes = tuple(
+                    sorted(expand_group_tokens(component.audience, selector_map))
+                )
                 issue = UnplacedIssue(
                     issue_type=IssueTypeEnum.UNPLACED,
                     course_name=course.name,
@@ -89,7 +96,9 @@ def unplaced_issues_from_schedule_config(courses: CoursesConfig, sections: Secti
             for session in sessions:
                 if _session_is_placed(session):
                     continue
-                group_codes = _group_codes_for_session(component.audience, session, selector_map)
+                group_codes = _group_codes_for_session(
+                    component.audience, session, selector_map
+                )
                 issue = UnplacedIssue(
                     issue_type=IssueTypeEnum.UNPLACED,
                     course_name=course.name,

@@ -57,7 +57,9 @@ def _set_root_page_size(svg_content: str, page_w: float, page_h: float) -> str:
 
 
 def _ensure_white_background(svg_content: str) -> str:
-    if re.search(r'<rect[^>]+width="100%"[^>]+height="100%"[^>]+fill="white"', svg_content):
+    if re.search(
+        r'<rect[^>]+width="100%"[^>]+height="100%"[^>]+fill="white"', svg_content
+    ):
         return svg_content
     return re.sub(
         r"(<svg[^>]*>)",
@@ -91,7 +93,11 @@ def generate_all_maps_pdf(static_dir: Path, scenes: list[Scene]) -> Path:
     for scene in scenes:
         svg_path = static_dir / scene.svg_file
         if not svg_path.exists():
-            logger.warning("Skipping map SVG for %s: file not found at %s", scene.scene_id, svg_path)
+            logger.warning(
+                "Skipping map SVG for %s: file not found at %s",
+                scene.scene_id,
+                svg_path,
+            )
             continue
 
         try:

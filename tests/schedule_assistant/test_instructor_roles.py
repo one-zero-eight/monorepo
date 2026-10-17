@@ -42,7 +42,10 @@ def test_validate_instructors_rejects_unknown_position() -> None:
         ]
     )
     errors = validate_instructors(instructors, term=term)
-    assert any("position 'Tutor' is not in term.instructor_positions" in error for error in errors)
+    assert any(
+        "position 'Tutor' is not in term.instructor_positions" in error
+        for error in errors
+    )
 
 
 def test_validate_instructors_allows_listed_position() -> None:
@@ -73,20 +76,27 @@ def test_validate_course_instructors_rejects_unknown_role() -> None:
             CourseConfig(
                 name="Math",
                 section_code="core",
-                instructors=[CourseConfig.CourseInstructor(id="a", role="Teaching Assistant")],
+                instructors=[
+                    CourseConfig.CourseInstructor(id="a", role="Teaching Assistant")
+                ],
                 components=[],
             )
         ]
     )
     ctx = ValidationContext(
-        sections=SectionsConfig(sections=[SectionConfig(code="core", name="Core", programs=[])]),
+        sections=SectionsConfig(
+            sections=[SectionConfig(code="core", name="Core", programs=[])]
+        ),
         rooms=RoomConfig(),
         instructors=instructors,
         courses=courses,
         term=term,
     )
     errors = validate_courses(courses, ctx)
-    assert any("role 'Teaching Assistant' is not in term.course_instructor_roles" in error for error in errors)
+    assert any(
+        "role 'Teaching Assistant' is not in term.course_instructor_roles" in error
+        for error in errors
+    )
 
 
 def test_validate_course_instructors_allows_listed_role() -> None:
@@ -97,13 +107,17 @@ def test_validate_course_instructors_allows_listed_role() -> None:
             CourseConfig(
                 name="Math",
                 section_code="core",
-                instructors=[CourseConfig.CourseInstructor(id="a", role="Primary Instructor")],
+                instructors=[
+                    CourseConfig.CourseInstructor(id="a", role="Primary Instructor")
+                ],
                 components=[],
             )
         ]
     )
     ctx = ValidationContext(
-        sections=SectionsConfig(sections=[SectionConfig(code="core", name="Core", programs=[])]),
+        sections=SectionsConfig(
+            sections=[SectionConfig(code="core", name="Core", programs=[])]
+        ),
         rooms=RoomConfig(),
         instructors=instructors,
         courses=courses,
@@ -127,14 +141,19 @@ def test_validate_course_components_rejects_unknown_tag() -> None:
         ]
     )
     ctx = ValidationContext(
-        sections=SectionsConfig(sections=[SectionConfig(code="core", name="Core", programs=[])]),
+        sections=SectionsConfig(
+            sections=[SectionConfig(code="core", name="Core", programs=[])]
+        ),
         rooms=RoomConfig(),
         instructors=instructors,
         courses=courses,
         term=term,
     )
     errors = validate_courses(courses, ctx)
-    assert any("tag 'seminar' is not in term.course_component_tags" in error for error in errors)
+    assert any(
+        "tag 'seminar' is not in term.course_component_tags" in error
+        for error in errors
+    )
 
 
 def test_validate_course_components_allows_listed_tag() -> None:
@@ -152,7 +171,9 @@ def test_validate_course_components_allows_listed_tag() -> None:
         ]
     )
     ctx = ValidationContext(
-        sections=SectionsConfig(sections=[SectionConfig(code="core", name="Core", programs=[])]),
+        sections=SectionsConfig(
+            sections=[SectionConfig(code="core", name="Core", programs=[])]
+        ),
         rooms=RoomConfig(),
         instructors=instructors,
         courses=courses,
@@ -176,7 +197,9 @@ def test_validate_course_components_skips_tag_check_when_enum_empty() -> None:
         ]
     )
     ctx = ValidationContext(
-        sections=SectionsConfig(sections=[SectionConfig(code="core", name="Core", programs=[])]),
+        sections=SectionsConfig(
+            sections=[SectionConfig(code="core", name="Core", programs=[])]
+        ),
         rooms=RoomConfig(),
         instructors=instructors,
         courses=courses,

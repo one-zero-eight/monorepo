@@ -30,7 +30,9 @@ def test_generate_link_returns_400_when_accounts_user_missing(
 ):
     popped = inh_accounts_mock_users.pop("test-user-1", None)
     try:
-        token = make_user_token(uid="test-user-1", email="test-user-1@innopolis.university")
+        token = make_user_token(
+            uid="test-user-1", email="test-user-1@innopolis.university"
+        )
         response = student_affairs_client.post(
             "/sso/generate-link",
             headers={"Authorization": f"Bearer {token}"},
@@ -50,8 +52,12 @@ def test_generate_link_success(
 
     token = make_user_token(uid="test-user-1", email="test-user-1@innopolis.university")
     with respx.mock(assert_all_called=True) as respx_mock:
-        route = respx_mock.get(url__startswith=student_affairs_routes.omnidesk_jwt_access_base_url).mock(
-            return_value=httpx.Response(200, text="https://student-affairs.omnidesk.ru/sso-redirect")
+        route = respx_mock.get(
+            url__startswith=student_affairs_routes.omnidesk_jwt_access_base_url
+        ).mock(
+            return_value=httpx.Response(
+                200, text="https://student-affairs.omnidesk.ru/sso-redirect"
+            )
         )
         response = student_affairs_client.post(
             "/sso/generate-link",
@@ -71,9 +77,9 @@ def test_generate_link_bubbles_omnidesk_http_error(
 
     token = make_user_token(uid="test-user-1", email="test-user-1@innopolis.university")
     with respx.mock(assert_all_called=True) as respx_mock:
-        route = respx_mock.get(url__startswith=student_affairs_routes.omnidesk_jwt_access_base_url).mock(
-            return_value=httpx.Response(502)
-        )
+        route = respx_mock.get(
+            url__startswith=student_affairs_routes.omnidesk_jwt_access_base_url
+        ).mock(return_value=httpx.Response(502))
         response = student_affairs_client.post(
             "/sso/generate-link",
             headers={"Authorization": f"Bearer {token}"},

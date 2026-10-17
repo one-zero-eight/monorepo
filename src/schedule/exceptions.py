@@ -26,7 +26,9 @@ class IncorrectCredentialsException(CustomHTTPException):
                 detail=self.responses[401]["description"],
             )
 
-    responses: ClassVar = {401: {"description": "Unable to verify credentials OR Credentials not provided"}}
+    responses: ClassVar = {
+        401: {"description": "Unable to verify credentials OR Credentials not provided"}
+    }
 
 
 class ForbiddenException(CustomHTTPException):
@@ -40,7 +42,9 @@ class ForbiddenException(CustomHTTPException):
             detail=self.responses[403]["description"],
         )
 
-    responses: ClassVar = {403: {"description": "Access denied, not enough permissions"}}
+    responses: ClassVar = {
+        403: {"description": "Access denied, not enough permissions"}
+    }
 
 
 class InvalidReturnToURL(CustomHTTPException):
@@ -86,4 +90,6 @@ class EventGroupWithMissingPath(CustomHTTPException):
             detail=self.responses[400]["description"],
         )
 
-    responses: ClassVar = {400: {"description": "Path is not defined for this event group"}}
+    responses: ClassVar = {
+        400: {"description": "Path is not defined for this event group"}
+    }

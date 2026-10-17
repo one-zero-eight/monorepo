@@ -1,13 +1,20 @@
 from pypdf import PdfReader
 
 from src.maps import maps_repo
-from src.maps.pdf_export import A4_LONG, A4_SHORT, generate_all_maps_pdf, prepare_svg_for_pdf
+from src.maps.pdf_export import (
+    A4_LONG,
+    A4_SHORT,
+    generate_all_maps_pdf,
+    prepare_svg_for_pdf,
+)
 
 
 def test_prepare_svg_for_pdf_keeps_map_layout():
     from src.maps.config import settings
 
-    scene = next(s for s in maps_repo.get_all_scenes() if s.scene_id == "university-floor-1")
+    scene = next(
+        s for s in maps_repo.get_all_scenes() if s.scene_id == "university-floor-1"
+    )
     map_svg = (settings.static_directory / scene.svg_file).read_text(encoding="utf-8")
     page = prepare_svg_for_pdf(scene, map_svg)
 

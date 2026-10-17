@@ -16,7 +16,9 @@ async def ensure_tabletennis_admin(auth: INH_TOKEN_AUTH) -> UserTokenData:
     Dependency to ensure the user's email is listed in tabletennis_service.admin_emails.
     """
     if auth.email not in settings.admin_emails:
-        logger.warning(f"User {auth.innohassle_id} ({auth.email}) tried to access coach-only endpoint.")
+        logger.warning(
+            f"User {auth.innohassle_id} ({auth.email}) tried to access coach-only endpoint."
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not a Table Tennis administrator/coach!",

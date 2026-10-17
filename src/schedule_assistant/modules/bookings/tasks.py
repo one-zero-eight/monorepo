@@ -40,7 +40,9 @@ def _session_factory() -> sessionmaker[Session]:
 
 def payload_key(payload: dict[str, Any]) -> str:
     canonical = {key: value for key, value in payload.items() if key != "operation_id"}
-    return hashlib.sha256(json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    return hashlib.sha256(
+        json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
 
 
 @contextmanager
@@ -48,13 +50,21 @@ def task_lock(task_id: str) -> Iterator[bool]:
     """A process death releases the lock; recovery only reads Exchange, never dispatches."""
     lock_id = int.from_bytes(hashlib.sha256(task_id.encode()).digest()[:8], signed=True)
     with _session_factory()() as session, session.begin():
-        yield bool(session.scalar(text("SELECT pg_try_advisory_xact_lock(:key)"), {"key": lock_id}))
+        yield bool(
+            session.scalar(
+                text("SELECT pg_try_advisory_xact_lock(:key)"), {"key": lock_id}
+            )
+        )
 
 
 def _row_to_task(row: BookingTaskRow, session: Session) -> BookingTask:
     items = [BookingTaskItem.model_validate(item) for item in (row.items or [])]
     for index, item in enumerate(items):
-        operation = session.get(BookingOperationRow, item.operation_id) if item.operation_id else None
+        operation = (
+            session.get(BookingOperationRow, item.operation_id)
+            if item.operation_id
+            else None
+        )
         if operation is not None:
             items[index] = BookingTaskItem.model_validate(operation.item)
     task = BookingTask(
@@ -76,7 +86,9 @@ def _row_to_task(row: BookingTaskRow, session: Session) -> BookingTask:
     return task
 
 
-def create_task(*, kind: BookingTaskKind, items: list[BookingTaskItem], current: str | None = None) -> BookingTask:
+def create_task(
+    *, kind: BookingTaskKind, items: list[BookingTaskItem], current: str | None = None
+) -> BookingTask:
     """Reserve the entire batch and persist exact payloads in one transaction before sending."""
     now = utcnow()
     task_id = str(uuid.uuid4())
@@ -99,19 +111,30 @@ def create_task(*, kind: BookingTaskKind, items: list[BookingTaskItem], current:
         item.operation_id = str(uuid.uuid4())
         item.payload = {
             **item.payload,
-            "operation_id": item.operation_id if kind == BookingTaskKind.BOOK else item.source_operation_id,
+            "operation_id": item.operation_id
+            if kind == BookingTaskKind.BOOK
+            else item.source_operation_id,
         }
-        item.history = [{"at": now.isoformat(), "outcome": item.outcome, "action": "reserved"}]
+        item.history = [
+            {"at": now.isoformat(), "outcome": item.outcome, "action": "reserved"}
+        ]
     row.items = [item.model_dump(mode="json") for item in items]
     try:
         with _session_factory()() as session:
             if kind == BookingTaskKind.BOOK:
                 rooms = sorted({item.room_id for item in items if item.room_id})
                 for room in rooms:
-                    lock_id = int.from_bytes(hashlib.sha256(f"booking-room:{room}".encode()).digest()[:8], signed=True)
-                    session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_id})
+                    lock_id = int.from_bytes(
+                        hashlib.sha256(f"booking-room:{room}".encode()).digest()[:8],
+                        signed=True,
+                    )
+                    session.execute(
+                        text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_id}
+                    )
                 reservations = session.scalars(
-                    select(BookingOperationRow).where(BookingOperationRow.reservation_key.like("book:%"))
+                    select(BookingOperationRow).where(
+                        BookingOperationRow.reservation_key.like("book:%")
+                    )
                 )
                 owners = set()
                 for reservation in reservations:
@@ -124,7 +147,9 @@ def create_task(*, kind: BookingTaskKind, items: list[BookingTaskItem], current:
                         if any(
                             start < reserved_end and reserved_start < end
                             for start, end in iter_payload_occurrences(item.payload)
-                            for reserved_start, reserved_end in iter_payload_occurrences(reserved.payload)
+                            for reserved_start, reserved_end in iter_payload_occurrences(
+                                reserved.payload
+                            )
                         ):
                             owners.add(reservation.task_id)
                 if owners:
@@ -148,7 +173,9 @@ def create_task(*, kind: BookingTaskKind, items: list[BookingTaskItem], current:
             owners = list(
                 session.scalars(
                     select(BookingOperationRow.task_id).where(
-                        BookingOperationRow.reservation_key.in_([f"{kind}:{key}" for key in keys])
+                        BookingOperationRow.reservation_key.in_(
+                            [f"{kind}:{key}" for key in keys]
+                        )
                     )
                 ).unique()
             )
@@ -176,14 +203,22 @@ def list_tasks(*, limit: int = 100, offset: int = 0) -> list[BookingTask]:
 
 def list_operations() -> list[BookingTaskItem]:
     with _session_factory()() as session:
-        rows = session.scalars(select(BookingOperationRow).where(BookingOperationRow.reservation_key.is_not(None)))
+        rows = session.scalars(
+            select(BookingOperationRow).where(
+                BookingOperationRow.reservation_key.is_not(None)
+            )
+        )
         return [BookingTaskItem.model_validate(row.item) for row in rows]
 
 
 def get_operation(operation_id: str) -> tuple[BookingTaskItem, str] | None:
     with _session_factory()() as session:
         row = session.get(BookingOperationRow, operation_id)
-        return (BookingTaskItem.model_validate(row.item), row.task_id) if row is not None else None
+        return (
+            (BookingTaskItem.model_validate(row.item), row.task_id)
+            if row is not None
+            else None
+        )
 
 
 def save_task(task: BookingTask) -> BookingTask:
@@ -206,7 +241,11 @@ def save_task(task: BookingTask) -> BookingTask:
         row.updated_at = utcnow()
         for item in task.items:
             operation = (
-                session.get(BookingOperationRow, item.operation_id, with_for_update=True) if item.operation_id else None
+                session.get(
+                    BookingOperationRow, item.operation_id, with_for_update=True
+                )
+                if item.operation_id
+                else None
             )
             if operation is None:
                 continue
@@ -221,14 +260,22 @@ def save_task(task: BookingTask) -> BookingTask:
             if item.outcome == BookingOutcome.CANCELLED:
                 operation.reservation_key = None
             if item.source_operation_id and item.cancellation_scope == "series":
-                source = session.get(BookingOperationRow, item.source_operation_id, with_for_update=True)
+                source = session.get(
+                    BookingOperationRow, item.source_operation_id, with_for_update=True
+                )
                 if source is not None:
                     original = BookingTaskItem.model_validate(source.item)
                     original.outcome = item.outcome
-                    known_entries = {json.dumps(entry, sort_keys=True) for entry in original.history}
+                    known_entries = {
+                        json.dumps(entry, sort_keys=True) for entry in original.history
+                    }
                     original.history = [
                         *original.history,
-                        *[entry for entry in item.history if json.dumps(entry, sort_keys=True) not in known_entries],
+                        *[
+                            entry
+                            for entry in item.history
+                            if json.dumps(entry, sort_keys=True) not in known_entries
+                        ],
                     ]
                     for field in BookingEvidence.model_fields:
                         if field != "operation_id":
@@ -262,8 +309,14 @@ def book_result_from_items(items: list[BookingTaskItem]) -> BatchBookResponse:
 
 def cancel_result_from_items(items: list[BookingTaskItem]) -> CancelExtraResponse:
     return CancelExtraResponse(
-        cancelled=[item.index for item in items if item.outcome == BookingOutcome.CANCELLED],
-        cancel_requested=[item.index for item in items if item.outcome == BookingOutcome.CANCEL_REQUESTED],
+        cancelled=[
+            item.index for item in items if item.outcome == BookingOutcome.CANCELLED
+        ],
+        cancel_requested=[
+            item.index
+            for item in items
+            if item.outcome == BookingOutcome.CANCEL_REQUESTED
+        ],
         failed={
             item.index: item.error or "Cancellation is not yet verified"
             for item in items

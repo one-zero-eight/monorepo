@@ -67,7 +67,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount(settings.static_mount_path, StaticFiles(directory=settings.static_directory), name="static")
+app.mount(
+    settings.static_mount_path,
+    StaticFiles(directory=settings.static_directory),
+    name="static",
+)
 
 import src.maps.routes  # noqa: E402
 

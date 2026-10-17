@@ -14,7 +14,9 @@ def test_users_me_requires_auth(events_client: TestClient):
     assert response.status_code == 401
 
 
-def test_users_me_event_manager(events_client: TestClient, user_headers: dict[str, str]):
+def test_users_me_event_manager(
+    events_client: TestClient, user_headers: dict[str, str]
+):
     response = events_client.get("/users/me", headers=user_headers)
     assert response.status_code == 200
     payload = response.json()
@@ -22,7 +24,9 @@ def test_users_me_event_manager(events_client: TestClient, user_headers: dict[st
     assert payload["clubs"] == []
 
 
-def test_users_me_club_leader(events_client: TestClient, club_leader_headers: dict[str, str]):
+def test_users_me_club_leader(
+    events_client: TestClient, club_leader_headers: dict[str, str]
+):
     response = events_client.get("/users/me", headers=club_leader_headers)
     assert response.status_code == 200
     payload = response.json()
@@ -30,13 +34,17 @@ def test_users_me_club_leader(events_client: TestClient, club_leader_headers: di
     assert payload["clubs"] == [{"club_id": CLUB_ID, "title": "Test Club"}]
 
 
-def test_users_me_moderator(events_client: TestClient, superadmin_headers: dict[str, str]):
+def test_users_me_moderator(
+    events_client: TestClient, superadmin_headers: dict[str, str]
+):
     response = events_client.get("/users/me", headers=superadmin_headers)
     assert response.status_code == 200
     assert response.json()["roles"] == ["moderator"]
 
 
-def test_users_me_club_moderator(events_client: TestClient, club_moderator_headers: dict[str, str]):
+def test_users_me_club_moderator(
+    events_client: TestClient, club_moderator_headers: dict[str, str]
+):
     response = events_client.get("/users/me", headers=club_moderator_headers)
     assert response.status_code == 200
     payload = response.json()
@@ -47,7 +55,9 @@ def test_users_me_club_moderator(events_client: TestClient, club_moderator_heade
     ]
 
 
-def test_users_me_clubs_sorted_by_title(events_client: TestClient, make_user_token, clubs_owned_by):
+def test_users_me_clubs_sorted_by_title(
+    events_client: TestClient, make_user_token, clubs_owned_by
+):
     clubs_owned_by["test-user-1"] = [
         {"club_id": CLUB_ID, "title": "Test Club"},
         {"club_id": CLUB_ID_2, "title": "Other Club"},
@@ -63,7 +73,9 @@ def test_users_me_clubs_sorted_by_title(events_client: TestClient, make_user_tok
     ]
 
 
-def test_users_me_combined_roles(events_client: TestClient, make_user_token, clubs_owned_by):
+def test_users_me_combined_roles(
+    events_client: TestClient, make_user_token, clubs_owned_by
+):
     # test-user-1 is an event manager by email; give them a club to become a club leader too.
     clubs_owned_by["test-user-1"] = [{"club_id": CLUB_ID, "title": "Test Club"}]
     headers = {
@@ -74,7 +86,9 @@ def test_users_me_combined_roles(events_client: TestClient, make_user_token, clu
     assert set(response.json()["roles"]) == {"club-leader", "event-manager"}
 
 
-def test_users_me_plain_user_has_no_roles(events_client: TestClient, plain_user_headers: dict[str, str]):
+def test_users_me_plain_user_has_no_roles(
+    events_client: TestClient, plain_user_headers: dict[str, str]
+):
     response = events_client.get("/users/me", headers=plain_user_headers)
     assert response.status_code == 200
     assert response.json()["roles"] == []

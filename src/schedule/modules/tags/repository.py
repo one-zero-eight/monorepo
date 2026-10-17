@@ -33,7 +33,9 @@ class SqlTagRepository:
             created = await CRUD.create_if_not_exists(session, tag)
             if created is not None:
                 return created
-            found = await CRUD.read_by(session, only_first=True, alias=tag.alias, type=tag.type)
+            found = await CRUD.read_by(
+                session, only_first=True, alias=tag.alias, type=tag.type
+            )
             if found is None:
                 raise RuntimeError(f"Tag not found after conflict: {tag.alias}")
             return found
@@ -69,7 +71,9 @@ class SqlTagRepository:
 
     async def batch_read(self, tag_ids: list[int]) -> list[ViewTag]:
         async with self._create_session() as session:
-            return await CRUD.batch_read(session, pkeys=[{"id": tag_id} for tag_id in tag_ids])
+            return await CRUD.batch_read(
+                session, pkeys=[{"id": tag_id} for tag_id in tag_ids]
+            )
 
     async def read_by_name(self, name: str) -> ViewTag | None:
         async with self._create_session() as session:
@@ -89,12 +93,18 @@ class SqlTagRepository:
         async with self._create_session() as session:
             return await CRUD.read_by(session, only_first=True, alias=alias)
 
-    async def setup_ownership(self, tag_id: int, user_id: int, role_alias: OwnershipEnum) -> None:
+    async def setup_ownership(
+        self, tag_id: int, user_id: int, role_alias: OwnershipEnum
+    ) -> None:
         async with self._create_session() as session:
             ownership_model = Tag.Ownership
-            return await setup_ownership_method(ownership_model, session, tag_id, user_id, role_alias)
+            return await setup_ownership_method(
+                ownership_model, session, tag_id, user_id, role_alias
+            )
 
-    async def set_tags_to_event_group(self, event_group_id: int, tag_ids: list[int]) -> None:
+    async def set_tags_to_event_group(
+        self, event_group_id: int, tag_ids: list[int]
+    ) -> None:
         async with self._create_session() as session:
             table = Tag.__tags_associations__[EventGroup.__tablename__]
             q = delete(table).where(table.object_id == event_group_id)
@@ -102,13 +112,20 @@ class SqlTagRepository:
 
             q = (
                 insert(table)
-                .values([{"object_id": event_group_id, "tag_id": tag_id} for tag_id in tag_ids])
+                .values(
+                    [
+                        {"object_id": event_group_id, "tag_id": tag_id}
+                        for tag_id in tag_ids
+                    ]
+                )
                 .on_conflict_do_nothing()
             )
             await session.execute(q)
             await session.commit()
 
-    async def batch_set_tags_to_event_group(self, tags_mapping: dict[int, list[int]]) -> None:
+    async def batch_set_tags_to_event_group(
+        self, tags_mapping: dict[int, list[int]]
+    ) -> None:
         if not tags_mapping:
             return
 

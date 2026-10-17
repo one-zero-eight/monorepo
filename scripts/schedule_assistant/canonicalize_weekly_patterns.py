@@ -5,7 +5,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
+from src.schedule_assistant.modules.schedule_config.repository import (
+    ScheduleConfigRepository,
+)
 from src.schedule_assistant.modules.schedule_config.schemas import CoursesConfig
 from src.schedule_assistant.modules.schedule_config.weekly_pattern_canonicalization import (
     canonicalize_courses,

@@ -44,7 +44,12 @@ async def generate_signin_link(
     encoded_jwt = jwt.encode({"alg": "HS256"}, payload, key)
 
     # Receive redirect link from Omnidesk
-    query_params = {"jwt": encoded_jwt, "return_to": return_to or omnidesk_default_redirect_to}
-    resp = await request.app.state.httpx_client.get(omnidesk_jwt_access_base_url, params=query_params)
+    query_params = {
+        "jwt": encoded_jwt,
+        "return_to": return_to or omnidesk_default_redirect_to,
+    }
+    resp = await request.app.state.httpx_client.get(
+        omnidesk_jwt_access_base_url, params=query_params
+    )
     resp.raise_for_status()
     return resp.text

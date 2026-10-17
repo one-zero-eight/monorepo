@@ -23,7 +23,9 @@ from tests.schedule.constants import SAMPLE_EVENT_GROUP, SAMPLE_TAG
 def pytest_configure(config: pytest.Config) -> None:
     database_name = f"worker-{get_worker_id()}-schedule-{uuid4().hex[:12]}"
     monkeypatch = pytest.MonkeyPatch()
-    monkeypatch.setattr(conftest_runtime_settings, "schedule_test_database_name", lambda: database_name)
+    monkeypatch.setattr(
+        conftest_runtime_settings, "schedule_test_database_name", lambda: database_name
+    )
     config.add_cleanup(monkeypatch.undo)
 
 
@@ -45,7 +47,9 @@ async def _drop_postgres_database(admin_dsn: str, database_name: str) -> None:
     engine = create_async_engine(admin_dsn, isolation_level="AUTOCOMMIT")
     try:
         async with engine.connect() as connection:
-            await connection.execute(text(f'DROP DATABASE "{database_name}" WITH (FORCE)'))
+            await connection.execute(
+                text(f'DROP DATABASE "{database_name}" WITH (FORCE)')
+            )
     finally:
         await engine.dispose()
 
@@ -169,6 +173,8 @@ def create_event_group(
     **overrides: Any,
 ) -> dict[str, Any]:
     group = {**SAMPLE_EVENT_GROUP, **overrides}
-    response = schedule_client.post("/event-groups/", json=group, headers=parser_headers)
+    response = schedule_client.post(
+        "/event-groups/", json=group, headers=parser_headers
+    )
     assert response.status_code == 201
     return response.json()

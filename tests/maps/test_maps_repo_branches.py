@@ -3,7 +3,9 @@ from src.maps.schemas import Area, Scene
 
 
 def _scene(scene_id: str, areas: list[Area]) -> Scene:
-    return Scene(scene_id=scene_id, title=scene_id, svg_file=f"{scene_id}.svg", areas=areas)
+    return Scene(
+        scene_id=scene_id, title=scene_id, svg_file=f"{scene_id}.svg", areas=areas
+    )
 
 
 def test_prepare_for_search_branches():
@@ -57,7 +59,9 @@ def test_search_fuzzy_doc_fallback(monkeypatch):
     )
     monkeypatch.setattr(maps_repo, "get_all_scenes", lambda: [scene])
     monkeypatch.setattr(maps_repo.fuzz, "partial_ratio", lambda *_: 0)
-    monkeypatch.setattr(maps_repo.fuzz, "token_ratio", lambda q, d: 70 if "Alpha" in d else 10)
+    monkeypatch.setattr(
+        maps_repo.fuzz, "token_ratio", lambda q, d: 70 if "Alpha" in d else 10
+    )
 
     result = maps_repo.search_areas("unmatched query")
     assert len(result) == 1

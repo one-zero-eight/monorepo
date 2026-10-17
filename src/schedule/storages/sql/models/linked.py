@@ -5,7 +5,11 @@ from typing import TYPE_CHECKING
 from sqlalchemy import Boolean, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.schedule.storages.sql.models.__mixin__ import DescriptionMixin, IdMixin, NameMixin
+from src.schedule.storages.sql.models.__mixin__ import (
+    DescriptionMixin,
+    IdMixin,
+    NameMixin,
+)
 from src.schedule.storages.sql.models.base import Base
 
 if TYPE_CHECKING:
@@ -30,4 +34,6 @@ class LinkedCalendar(Base, IdMixin, NameMixin, DescriptionMixin):
     color: Mapped[str] = mapped_column(String(255), nullable=True)
 
     # constraint
-    __table_args__ = (UniqueConstraint("user_id", "alias", name="unique_user_id_alias"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "alias", name="unique_user_id_alias"),
+    )

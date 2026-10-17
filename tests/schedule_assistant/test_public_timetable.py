@@ -29,7 +29,9 @@ def timetable_config() -> ScheduleConfig:
     return ScheduleConfig(
         term=TermConfig(
             name="Fall 2026",
-            semester=TermConfig.DateRange(start_date=dtm.date(2026, 9, 1), end_date=dtm.date(2026, 9, 30)),
+            semester=TermConfig.DateRange(
+                start_date=dtm.date(2026, 9, 1), end_date=dtm.date(2026, 9, 30)
+            ),
             sections=[
                 SectionConfig(
                     code="core",
@@ -39,10 +41,15 @@ def timetable_config() -> ScheduleConfig:
                         SectionConfig.SectionProgram(
                             code="BS",
                             name="Bachelors",
-                            tracks=[SectionConfig.SectionProgram.ProgramTrack(code="CS", name="CS", groups=["G1"])],
+                            tracks=[
+                                SectionConfig.SectionProgram.ProgramTrack(
+                                    code="CS", name="CS", groups=["G1"]
+                                )
+                            ],
                             groups=["G2", "G3"],
                             semester=TermConfig.DateRange(
-                                start_date=dtm.date(2026, 9, 1), end_date=dtm.date(2026, 9, 30)
+                                start_date=dtm.date(2026, 9, 1),
+                                end_date=dtm.date(2026, 9, 30),
                             ),
                         )
                     ],
@@ -52,7 +59,14 @@ def timetable_config() -> ScheduleConfig:
             course_instructor_roles=["Lecturer"],
             course_component_tags=["lec"],
         ),
-        rooms=[RoomConfig.Room(id="108", name="Room 108", capacity=30, features={"private": "not public"})],
+        rooms=[
+            RoomConfig.Room(
+                id="108",
+                name="Room 108",
+                capacity=30,
+                features={"private": "not public"},
+            )
+        ],
         instructors=[
             InstructorConfig.Instructor(
                 id="teacher@innopolis.ru",
@@ -72,7 +86,10 @@ def timetable_config() -> ScheduleConfig:
         ],
         students_groups=[
             StudentsGroups(
-                code="G1", name="Group one", estimated_size=20, students=[" TEST@TEST.COM ", "private@innopolis.ru"]
+                code="G1",
+                name="Group one",
+                estimated_size=20,
+                students=[" TEST@TEST.COM ", "private@innopolis.ru"],
             ),
             StudentsGroups(code="G2", name="Group two", students=["test@test.com"]),
             StudentsGroups(code="G3", students=["other@innopolis.ru"]),
@@ -85,7 +102,11 @@ def timetable_config() -> ScheduleConfig:
                 short_name_ru="Алго",
                 color="#AABBCC",
                 section_code="core",
-                instructors=[CourseConfig.CourseInstructor(id="teacher@innopolis.ru", role="Lecturer")],
+                instructors=[
+                    CourseConfig.CourseInstructor(
+                        id="teacher@innopolis.ru", role="Lecturer"
+                    )
+                ],
                 components=[
                     CourseConfig.Component(
                         tag="lec",
@@ -105,11 +126,17 @@ def timetable_config() -> ScheduleConfig:
                                         end_time=dtm.time(10, 30),
                                         room="108",
                                         instructor="teacher@innopolis.ru",
-                                        alternation=WeeklyAlternation(anchor_week=dtm.date(2026, 9, 7)),
+                                        alternation=WeeklyAlternation(
+                                            anchor_week=dtm.date(2026, 9, 7)
+                                        ),
                                         edits=[
-                                            WeeklyPatternSlotEdit(select_week=dtm.date(2026, 9, 7), notes=""),
                                             WeeklyPatternSlotEdit(
-                                                select_week=dtm.date(2026, 9, 21), notes="Read chapter 2"
+                                                select_week=dtm.date(2026, 9, 7),
+                                                notes="",
+                                            ),
+                                            WeeklyPatternSlotEdit(
+                                                select_week=dtm.date(2026, 9, 21),
+                                                notes="Read chapter 2",
                                             ),
                                         ],
                                     )
@@ -184,7 +211,9 @@ def assert_no_private_fields(value: object) -> None:
 
 
 @pytest.mark.asyncio
-async def test_timetable_is_anonymous_and_sanitized(fastapi_test_client: AsyncClient, schedule_data_repo) -> None:
+async def test_timetable_is_anonymous_and_sanitized(
+    fastapi_test_client: AsyncClient, schedule_data_repo
+) -> None:
     stored = seed_timetable(schedule_data_repo)
     response = await fastapi_test_client.get("/timetable")
     assert response.status_code == 200
@@ -208,15 +237,27 @@ async def test_timetable_is_anonymous_and_sanitized(fastapi_test_client: AsyncCl
     assert course["instructors"] == [{"id": "teacher@innopolis.ru", "role": "Lecturer"}]
     session = course["components"][0]["sessions"][0]
     assert session["notes"] == "Bring a laptop"
-    assert [item["notes"] for item in session["dates_pattern"]] == [None, "", "Read chapter 3"]
-    assert [item["notes"] for item in session["weekly_pattern"][0]["edits"]] == ["", "Read chapter 2"]
-    assert PublicTimetable.model_validate(data).model_dump() == PublicTimetable.model_validate(stored).model_dump()
+    assert [item["notes"] for item in session["dates_pattern"]] == [
+        None,
+        "",
+        "Read chapter 3",
+    ]
+    assert [item["notes"] for item in session["weekly_pattern"][0]["edits"]] == [
+        "",
+        "Read chapter 2",
+    ]
+    assert (
+        PublicTimetable.model_validate(data).model_dump()
+        == PublicTimetable.model_validate(stored).model_dump()
+    )
     assert schedule_data_repo.get_assembled().students_groups[0].students
     assert schedule_data_repo.get_assembled().instructors[0].slot_preferences
 
 
 @pytest.mark.asyncio
-async def test_timetable_without_term_returns_not_found(fastapi_test_client: AsyncClient, schedule_data_repo) -> None:
+async def test_timetable_without_term_returns_not_found(
+    fastapi_test_client: AsyncClient, schedule_data_repo
+) -> None:
     response = await fastapi_test_client.get("/timetable")
     assert response.status_code == 404
 
@@ -224,7 +265,9 @@ async def test_timetable_without_term_returns_not_found(fastapi_test_client: Asy
 def test_student_groups_require_valid_authentication(schedule_assistant_client) -> None:
     assert schedule_assistant_client.get("/me/student-groups").status_code == 401
     assert (
-        schedule_assistant_client.get("/me/student-groups", headers={"Authorization": "Bearer invalid"}).status_code
+        schedule_assistant_client.get(
+            "/me/student-groups", headers={"Authorization": "Bearer invalid"}
+        ).status_code
         == 401
     )
 
@@ -234,7 +277,9 @@ async def test_student_groups_use_verified_email_not_query(
     authenticated_client: AsyncClient, schedule_data_repo
 ) -> None:
     seed_timetable(schedule_data_repo)
-    response = await authenticated_client.get("/me/student-groups", params={"email": "other@innopolis.ru"})
+    response = await authenticated_client.get(
+        "/me/student-groups", params={"email": "other@innopolis.ru"}
+    )
     assert response.status_code == 200
     assert response.json() == ["G1", "G2"]
 
@@ -252,12 +297,14 @@ def test_public_openapi_contract_has_no_editor_models(fastapi_app) -> None:
     schema = fastapi_app.openapi()
     public_route = schema["paths"]["/timetable"]["get"]
     assert not public_route.get("security")
-    assert public_route["responses"]["200"]["content"]["application/json"]["schema"] == {
-        "$ref": "#/components/schemas/PublicTimetable"
-    }
+    assert public_route["responses"]["200"]["content"]["application/json"][
+        "schema"
+    ] == {"$ref": "#/components/schemas/PublicTimetable"}
     membership_route = schema["paths"]["/me/student-groups"]["get"]
     assert membership_route["security"]
-    membership_schema = membership_route["responses"]["200"]["content"]["application/json"]["schema"]
+    membership_schema = membership_route["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"]
     assert membership_schema["type"] == "array"
     assert membership_schema["items"] == {"type": "string"}
     pending = ["PublicTimetable"]
@@ -288,4 +335,6 @@ def test_whitelist_ignores_future_editor_fields() -> None:
     config = timetable_config()
     config.courses[0].components[0].__dict__["future_private_field"] = "must not leak"
     config.instructors[0].__dict__["future_private_contact"] = "must not leak"
-    assert "must not leak" not in PublicTimetable.model_validate(config).model_dump_json()
+    assert (
+        "must not leak" not in PublicTimetable.model_validate(config).model_dump_json()
+    )

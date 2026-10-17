@@ -9,4 +9,6 @@ router = APIRouter(tags=["Public timetable"])
 @router.get("/timetable")
 async def get_timetable() -> PublicTimetable:
     """Read the timetable anonymously, without membership or scheduler-private data."""
-    return PublicTimetable.model_validate(repository.schedule_config_repository.get_assembled())
+    return PublicTimetable.model_validate(
+        repository.schedule_config_repository.get_assembled()
+    )

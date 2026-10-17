@@ -175,7 +175,11 @@ def mock_inh_accounts_http(
 
     def find_by_email(email: str) -> dict[str, Any] | None:
         return next(
-            (user for user in inh_accounts_mock_users.values() if user["innopolis_info"]["email"] == email),
+            (
+                user
+                for user in inh_accounts_mock_users.values()
+                if user["innopolis_info"]["email"] == email
+            ),
             None,
         )
 
@@ -184,7 +188,8 @@ def mock_inh_accounts_http(
             (
                 user
                 for user in inh_accounts_mock_users.values()
-                if user.get("telegram_info") and user["telegram_info"]["id"] == telegram_id
+                if user.get("telegram_info")
+                and user["telegram_info"]["id"] == telegram_id
             ),
             None,
         )
@@ -209,7 +214,9 @@ def mock_inh_accounts_http(
 
     def bulk_by_id(request: httpx.Request) -> httpx.Response:
         user_ids = json.loads(request.content.decode() or "[]")
-        payload = {user_id: inh_accounts_mock_users.get(user_id) for user_id in user_ids}
+        payload = {
+            user_id: inh_accounts_mock_users.get(user_id) for user_id in user_ids
+        }
 
         return httpx.Response(200, json=payload)
 
@@ -218,9 +225,15 @@ def mock_inh_accounts_http(
             return_value=httpx.Response(200, json={"keys": [jwks_public_key]})
         )
 
-        respx_mock.get(url__regex=rf"{re.escape(api_url)}/users/by-id/.+").mock(side_effect=get_by_id)
-        respx_mock.get(url__regex=rf"{re.escape(api_url)}/users/by-innomail/.+").mock(side_effect=get_by_email)
-        respx_mock.get(url__regex=rf"{re.escape(api_url)}/users/by-telegram-id/.+").mock(side_effect=get_by_telegram_id)
+        respx_mock.get(url__regex=rf"{re.escape(api_url)}/users/by-id/.+").mock(
+            side_effect=get_by_id
+        )
+        respx_mock.get(url__regex=rf"{re.escape(api_url)}/users/by-innomail/.+").mock(
+            side_effect=get_by_email
+        )
+        respx_mock.get(
+            url__regex=rf"{re.escape(api_url)}/users/by-telegram-id/.+"
+        ).mock(side_effect=get_by_telegram_id)
         respx_mock.post(f"{api_url}/users/by-id/get-bulk").mock(side_effect=bulk_by_id)
 
         yield

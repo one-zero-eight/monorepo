@@ -31,7 +31,9 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     SectionsConfig,
     TermConfig,
 )
-from src.schedule_assistant.modules.schedule_config.semester_windows import union_semester_window
+from src.schedule_assistant.modules.schedule_config.semester_windows import (
+    union_semester_window,
+)
 
 # This is the reviewed one-time migration data, not a business-logic default.
 FALL_2026_TEACHING_WINDOWS = {
@@ -48,12 +50,17 @@ def prepare_repair(
 ) -> tuple[ScheduleConfig, dict[str, Any]]:
     if not selection:
         raise ValueError("Explicit section/program selection is required")
-    if config.term.semester.start_date.year != 2026 or config.term.semester.end_date.year != 2026:
+    if (
+        config.term.semester.start_date.year != 2026
+        or config.term.semester.end_date.year != 2026
+    ):
         raise ValueError("This migration only supports Fall 2026")
     revised = config.model_copy(deep=True)
     old_window = union_semester_window(config.term)
     programs = {
-        f"{section.code}/{program.code}": program for section in revised.term.sections for program in section.programs
+        f"{section.code}/{program.code}": program
+        for section in revised.term.sections
+        for program in section.programs
     }
     unknown = selection.keys() - programs.keys()
     if unknown:
@@ -64,18 +71,28 @@ def prepare_repair(
             raise ValueError(f"Unsupported study year for {key}: {year}")
         program = programs[key]
         start, end = FALL_2026_TEACHING_WINDOWS[year]
-        window = TermConfig.DateRange(start_date=dtm.date.fromisoformat(start), end_date=dtm.date.fromisoformat(end))
+        window = TermConfig.DateRange(
+            start_date=dtm.date.fromisoformat(start),
+            end_date=dtm.date.fromisoformat(end),
+        )
         changes.append(
             {
                 "program": key,
                 "year": year,
-                "before": (program.semester or config.term.semester).model_dump(mode="json"),
+                "before": (program.semester or config.term.semester).model_dump(
+                    mode="json"
+                ),
                 "after": window.model_dump(mode="json"),
-                "selectors": [f"@{program.code}", *[f"@{program.code}/{track.code}" for track in program.tracks]],
+                "selectors": [
+                    f"@{program.code}",
+                    *[f"@{program.code}/{track.code}" for track in program.tracks],
+                ],
             }
         )
         program.semester = window
-    sections = SectionsConfig(sections=revised.term.sections, students_groups=revised.students_groups)
+    sections = SectionsConfig(
+        sections=revised.term.sections, students_groups=revised.students_groups
+    )
     slots = build_bookable_slots(
         CoursesConfig(courses=revised.courses),
         sections,
@@ -85,15 +102,25 @@ def prepare_repair(
     series = []
     for booking in auto_bookings:
         actual = set(iter_booking_occurrences(booking))
-        candidates = [slot for slot in slots if booking_coverage(slot.payload, [booking]).bookings]
+        candidates = [
+            slot for slot in slots if booking_coverage(slot.payload, [booking]).bookings
+        ]
         expected = {
-            occurrence for slot in candidates for occurrence in booking_coverage(slot.payload, [booking]).expected
+            occurrence
+            for slot in candidates
+            for occurrence in booking_coverage(slot.payload, [booking]).expected
         }
         retained = actual & expected
         excess = actual - expected
-        managed = bool(booking.get("outlook_booking_id") and booking.get("organizer_mailbox") and booking.get("uid"))
+        managed = bool(
+            booking.get("outlook_booking_id")
+            and booking.get("organizer_mailbox")
+            and booking.get("uid")
+        )
         auto = is_schedule_assistant_auto_title(str(booking.get("title") or ""))
-        complete = booking.get("recurrence_complete", not bool(booking.get("recurrence"))) and bool(actual)
+        complete = booking.get(
+            "recurrence_complete", not bool(booking.get("recurrence"))
+        ) and bool(actual)
         component_ids = {slot.component_id for slot in candidates}
         action = "keep" if not excess else "review_excess"
         if not auto or not managed or not complete or len(component_ids) != 1:
@@ -101,7 +128,8 @@ def prepare_repair(
         elif excess and retained:
             action = (
                 "propose_shorten"
-                if min(start for start, _ in excess) > max(start for start, _ in retained)
+                if min(start for start, _ in excess)
+                > max(start for start, _ in retained)
                 else "review_exceptions"
             )
         series.append(
@@ -110,9 +138,15 @@ def prepare_repair(
                 "uid": booking.get("uid"),
                 "organizer_mailbox": booking.get("organizer_mailbox"),
                 "action": action,
-                "retained_dates": sorted({start.date().isoformat() for start, _ in retained}),
-                "excess_dates": sorted({start.date().isoformat() for start, _ in excess}),
-                "proposed_until": max((start.date().isoformat() for start, _ in retained), default=None),
+                "retained_dates": sorted(
+                    {start.date().isoformat() for start, _ in retained}
+                ),
+                "excess_dates": sorted(
+                    {start.date().isoformat() for start, _ in excess}
+                ),
+                "proposed_until": max(
+                    (start.date().isoformat() for start, _ in retained), default=None
+                ),
                 "requires_exchange_validation": bool(excess),
                 "can_apply": False,
             }
@@ -133,14 +167,28 @@ def prepare_repair(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", type=Path, required=True, help="ScheduleConfig JSON export (read only)")
     parser.add_argument(
-        "--selection", type=Path, required=True, help="Reviewed JSON section/program -> study year mapping"
+        "--config",
+        type=Path,
+        required=True,
+        help="ScheduleConfig JSON export (read only)",
     )
-    parser.add_argument("--auto-bookings", type=Path, help="Read-only Auto-booking JSON export")
-    parser.add_argument("--approved-report", type=Path, help="Previously reviewed dry-run JSON report")
     parser.add_argument(
-        "--write-config", type=Path, help="Write NEW corrected local JSON export; never writes DB/Exchange"
+        "--selection",
+        type=Path,
+        required=True,
+        help="Reviewed JSON section/program -> study year mapping",
+    )
+    parser.add_argument(
+        "--auto-bookings", type=Path, help="Read-only Auto-booking JSON export"
+    )
+    parser.add_argument(
+        "--approved-report", type=Path, help="Previously reviewed dry-run JSON report"
+    )
+    parser.add_argument(
+        "--write-config",
+        type=Path,
+        help="Write NEW corrected local JSON export; never writes DB/Exchange",
     )
     args = parser.parse_args()
     config = ScheduleConfig.model_validate_json(args.config.read_text())
@@ -148,8 +196,13 @@ def main() -> int:
     bookings = json.loads(args.auto_bookings.read_text()) if args.auto_bookings else []
     revised, report = prepare_repair(config, selection, bookings)
     if args.write_config:
-        if not args.approved_report or json.loads(args.approved_report.read_text()) != report:
-            parser.error("--write-config requires an unchanged, reviewed --approved-report")
+        if (
+            not args.approved_report
+            or json.loads(args.approved_report.read_text()) != report
+        ):
+            parser.error(
+                "--write-config requires an unchanged, reviewed --approved-report"
+            )
         with args.write_config.open("x") as output:
             output.write(revised.model_dump_json(indent=2) + "\n")
     print(json.dumps(report, indent=2, ensure_ascii=False))

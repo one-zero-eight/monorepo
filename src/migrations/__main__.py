@@ -7,7 +7,9 @@ from src.migrations import SERVICES, MigrationConfigurationError, migrate_servic
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Apply pending database migrations for one configured service.")
+    parser = argparse.ArgumentParser(
+        description="Apply pending database migrations for one configured service."
+    )
     parser.add_argument("service", choices=SERVICES)
     args = parser.parse_args(argv)
 
@@ -18,7 +20,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     except Exception as exc:  # noqa: BLE001 — CLI boundary must not expose credentials in exception messages.
         # Driver and settings errors can include passwords or full connection URIs.
-        print(f"Migrations failed for {args.service} ({type(exc).__name__}).", file=sys.stderr)
+        print(
+            f"Migrations failed for {args.service} ({type(exc).__name__}).",
+            file=sys.stderr,
+        )
         return 1
 
     print(f"Migrations completed for {args.service}.")

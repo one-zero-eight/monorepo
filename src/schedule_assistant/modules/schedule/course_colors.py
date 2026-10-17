@@ -26,7 +26,10 @@ def ics_color_name(color: str) -> str:
     rgb = tuple(int(color[index : index + 2], 16) for index in (1, 3, 5))
     return min(
         _ICS_COLOR_PALETTE,
-        key=lambda name: sum((value - target) ** 2 for value, target in zip(rgb, _ICS_COLOR_PALETTE[name])),
+        key=lambda name: sum(
+            (value - target) ** 2
+            for value, target in zip(rgb, _ICS_COLOR_PALETTE[name])
+        ),
     )
 
 

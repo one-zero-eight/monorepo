@@ -100,7 +100,9 @@ def fill_auto_generated_secrets() -> None:
     links = forms_service.get("links") or {}
     if is_placeholder(links.get("signature_secret")):
         secret = secrets.token_urlsafe(32)
-        replacements.append(("signature_secret: change-me", f"signature_secret: {secret}"))
+        replacements.append(
+            ("signature_secret: change-me", f"signature_secret: {secret}")
+        )
 
     room_booking_service = settings.get("room_booking_service") or {}
     if is_placeholder(room_booking_service.get("api_key")):
@@ -138,10 +140,14 @@ def check_and_prompt_api_jwt_token() -> None:
 
     webbrowser.open(ACCOUNTS_TOKEN_URL)
 
-    token = input("  🔑 Please paste the generated token below (or press Enter to skip):\n  > ").strip()
+    token = input(
+        "  🔑 Please paste the generated token below (or press Enter to skip):\n  > "
+    ).strip()
 
     if not token:
-        print("  ⚠️ Token was not provided. Please manually update `settings.yaml` later.")
+        print(
+            "  ⚠️ Token was not provided. Please manually update `settings.yaml` later."
+        )
         print(f"  ➡️ Refer to the URL: {ACCOUNTS_TOKEN_URL}")
         return
 

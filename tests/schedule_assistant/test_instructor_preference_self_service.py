@@ -81,7 +81,9 @@ async def test_share_link_roundtrip(authenticated_client, preference_fixtures):
     assert "." not in token
     assert 8 <= len(token) <= 16
 
-    get_response = await authenticated_client.get(f"/instructor-preferences/link/{token}")
+    get_response = await authenticated_client.get(
+        f"/instructor-preferences/link/{token}"
+    )
     assert get_response.status_code == 200
     assert get_response.json()["instructor_id"] == "pi-1"
 
@@ -102,7 +104,9 @@ async def test_share_link_roundtrip(authenticated_client, preference_fixtures):
 
 
 @pytest.mark.asyncio
-async def test_share_link_reuses_unexpired_key(authenticated_client, preference_fixtures):
+async def test_share_link_reuses_unexpired_key(
+    authenticated_client, preference_fixtures
+):
     first = await authenticated_client.post("/instructor-preferences/pi-1/share-link")
     second = await authenticated_client.post("/instructor-preferences/pi-1/share-link")
     assert first.status_code == 200
@@ -112,13 +116,17 @@ async def test_share_link_reuses_unexpired_key(authenticated_client, preference_
 
 
 @pytest.mark.asyncio
-async def test_unknown_and_expired_invite_key(authenticated_client, preference_fixtures):
+async def test_unknown_and_expired_invite_key(
+    authenticated_client, preference_fixtures
+):
     from src.schedule_assistant.db.models import PreferenceInviteLinkRow
     from src.schedule_assistant.modules.instructor_preferences.repository import (
         preference_invite_repository,
     )
 
-    unknown = await authenticated_client.get("/instructor-preferences/link/does-not-exist")
+    unknown = await authenticated_client.get(
+        "/instructor-preferences/link/does-not-exist"
+    )
     assert unknown.status_code == 404
 
     invite = preference_invite_repository.get_or_create_for_instructor(
@@ -131,5 +139,7 @@ async def test_unknown_and_expired_invite_key(authenticated_client, preference_f
         row.expires_at = utcnow() - dtm.timedelta(hours=1)
         session.commit()
 
-    expired = await authenticated_client.get(f"/instructor-preferences/link/{invite.key}")
+    expired = await authenticated_client.get(
+        f"/instructor-preferences/link/{invite.key}"
+    )
     assert expired.status_code == 404

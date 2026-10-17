@@ -41,21 +41,40 @@ def search_areas(query: str) -> list[SearchResult]:
     query_clean = query.lower().strip()
 
     if "[sc]" in query_clean or "[ск]" in query_clean:
-        all_scenes = [scene for scene in all_scenes if scene.scene_id == "sport-complex"]
+        all_scenes = [
+            scene for scene in all_scenes if scene.scene_id == "sport-complex"
+        ]
         if "floor" in query_clean:
             ground_floor = []
             for index, area in enumerate(all_scenes[0].areas):
-                if f"floor-{''.join(filter(str.isdigit, query_clean))}" == area.svg_polygon_id:
-                    return [SearchResult(scene_id="sport-complex", area_index=index, area=area)]
+                if (
+                    f"floor-{''.join(filter(str.isdigit, query_clean))}"
+                    == area.svg_polygon_id
+                ):
+                    return [
+                        SearchResult(
+                            scene_id="sport-complex", area_index=index, area=area
+                        )
+                    ]
                 if area.svg_polygon_id == "floor-0":
                     ground_floor = index, area
-            return [SearchResult(scene_id="sport-complex", area_index=ground_floor[0], area=ground_floor[1])]
+            return [
+                SearchResult(
+                    scene_id="sport-complex",
+                    area_index=ground_floor[0],
+                    area=ground_floor[1],
+                )
+            ]
 
     if "муз" in query_clean or "music" in query_clean:
         for scene in all_scenes:
             for index, area in enumerate(scene.areas):
                 if area.svg_polygon_id == "music-room":
-                    return [SearchResult(scene_id=scene.scene_id, area_index=index, area=area)]
+                    return [
+                        SearchResult(
+                            scene_id=scene.scene_id, area_index=index, area=area
+                        )
+                    ]
 
     for scene in all_scenes:
         logger.debug(scene.areas)
@@ -64,9 +83,17 @@ def search_areas(query: str) -> list[SearchResult]:
             for title in filter(None, (area.title, area.ru_title)):
                 if re.search(rf"\b{re.escape(query_clean)}", title.lower().strip()):
                     if area.prioritized:
-                        return [SearchResult(scene_id=scene.scene_id, area_index=index, area=area)]
+                        return [
+                            SearchResult(
+                                scene_id=scene.scene_id, area_index=index, area=area
+                            )
+                        ]
 
-                    result.append(SearchResult(scene_id=scene.scene_id, area_index=index, area=area))
+                    result.append(
+                        SearchResult(
+                            scene_id=scene.scene_id, area_index=index, area=area
+                        )
+                    )
 
     if result:
         return result
@@ -80,11 +107,17 @@ def search_areas(query: str) -> list[SearchResult]:
     if people_results:
         score, scene, index = max(people_results, key=lambda x: x[0])
         if score > 70:
-            return [SearchResult(scene_id=scene.scene_id, area_index=index, area=scene.areas[index])]
+            return [
+                SearchResult(
+                    scene_id=scene.scene_id, area_index=index, area=scene.areas[index]
+                )
+            ]
 
     for scene in all_scenes:
         logger.debug(scene.areas)
-        area_docs = [(index, prepare_for_search(area)) for index, area in enumerate(scene.areas)]
+        area_docs = [
+            (index, prepare_for_search(area)) for index, area in enumerate(scene.areas)
+        ]
         area_docs = [(index, doc) for index, doc in area_docs if doc is not None]
 
         if not area_docs:  # pragma: no cover
@@ -96,6 +129,12 @@ def search_areas(query: str) -> list[SearchResult]:
         for index, score in matches:
             if score >= 60:
                 print(scene.areas[index].title)
-                result.append(SearchResult(scene_id=scene.scene_id, area_index=index, area=scene.areas[index]))
+                result.append(
+                    SearchResult(
+                        scene_id=scene.scene_id,
+                        area_index=index,
+                        area=scene.areas[index],
+                    )
+                )
 
     return result

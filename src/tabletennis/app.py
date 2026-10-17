@@ -25,7 +25,9 @@ async def lifespan(app: FastAPI):
 
     await inh_accounts.update_key_set()
 
-    beanie_store = await setup_beanie(settings.mongo.uri, "tabletennis", document_models)
+    beanie_store = await setup_beanie(
+        settings.mongo.uri, "tabletennis", document_models
+    )
     app.state.beanie_store = beanie_store
 
     yield

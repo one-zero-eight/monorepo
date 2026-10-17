@@ -14,8 +14,12 @@ from src.schedule.utils import (
 def _minimal_vevent() -> icalendar.Event:
     event = icalendar.Event()
     event.add("uid", "test@example.com")
-    event.add("dtstart", icalendar.vDatetime(dtm.datetime(2025, 1, 1, 10, 0, tzinfo=dtm.UTC)))
-    event.add("dtend", icalendar.vDatetime(dtm.datetime(2025, 1, 1, 11, 0, tzinfo=dtm.UTC)))
+    event.add(
+        "dtstart", icalendar.vDatetime(dtm.datetime(2025, 1, 1, 10, 0, tzinfo=dtm.UTC))
+    )
+    event.add(
+        "dtend", icalendar.vDatetime(dtm.datetime(2025, 1, 1, 11, 0, tzinfo=dtm.UTC))
+    )
     return event
 
 
@@ -45,7 +49,9 @@ def test_validate_vevent_accepts_all_day_vdate_without_value_param():
     validate_vevent(event)
 
 
-def test_locate_ics_by_path_rejects_parent_traversal(tmp_path, monkeypatch: pytest.MonkeyPatch):
+def test_locate_ics_by_path_rejects_parent_traversal(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+):
     from src.schedule.config import settings
 
     monkeypatch.setattr(settings, "predefined_dir", tmp_path)
@@ -53,7 +59,9 @@ def test_locate_ics_by_path_rejects_parent_traversal(tmp_path, monkeypatch: pyte
         locate_ics_by_path("../secret.ics")
 
 
-def test_locate_ics_by_path_rejects_non_ics_extension(tmp_path, monkeypatch: pytest.MonkeyPatch):
+def test_locate_ics_by_path_rejects_non_ics_extension(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+):
     from src.schedule.config import settings
 
     monkeypatch.setattr(settings, "predefined_dir", tmp_path)

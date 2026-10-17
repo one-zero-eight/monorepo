@@ -60,7 +60,9 @@ def collect_scheduled_instructor_tokens(courses: list[CourseConfig]) -> set[str]
     return {_normalize(token) for token in tokens if token}
 
 
-def filter_scheduled_instructors(instructors: InstructorConfig, courses: list[CourseConfig]) -> InstructorConfig:
+def filter_scheduled_instructors(
+    instructors: InstructorConfig, courses: list[CourseConfig]
+) -> InstructorConfig:
     scheduled_tokens = collect_scheduled_instructor_tokens(courses)
     if not scheduled_tokens:
         return InstructorConfig()
@@ -72,7 +74,9 @@ def filter_scheduled_instructors(instructors: InstructorConfig, courses: list[Co
     return InstructorConfig(instructors=filtered)
 
 
-def find_instructor_by_id(instructors: InstructorConfig, instructor_id: str) -> InstructorConfig.Instructor | None:
+def find_instructor_by_id(
+    instructors: InstructorConfig, instructor_id: str
+) -> InstructorConfig.Instructor | None:
     normalized_id = _normalize(instructor_id)
     for instructor in instructors.instructors:
         if _normalize(instructor.id) == normalized_id:
@@ -80,7 +84,9 @@ def find_instructor_by_id(instructors: InstructorConfig, instructor_id: str) -> 
     return None
 
 
-def find_instructor_by_email(instructors: InstructorConfig, email: str) -> InstructorConfig.Instructor | None:
+def find_instructor_by_email(
+    instructors: InstructorConfig, email: str
+) -> InstructorConfig.Instructor | None:
     normalized_email = _normalize(email)
     if not normalized_email:
         return None
@@ -90,7 +96,9 @@ def find_instructor_by_email(instructors: InstructorConfig, email: str) -> Instr
     return None
 
 
-def meeting_instructor_matches(instructor: str | list[str] | None, identity: set[str]) -> bool:
+def meeting_instructor_matches(
+    instructor: str | list[str] | None, identity: set[str]
+) -> bool:
     if instructor is None:
         return False
     candidates = instructor if isinstance(instructor, list) else [instructor]
@@ -103,11 +111,17 @@ def _filter_occurrences(
 ) -> list[SessionOccurrence] | None:
     if not occurrences:
         return None
-    filtered = [occurrence for occurrence in occurrences if meeting_instructor_matches(occurrence.instructor, identity)]
+    filtered = [
+        occurrence
+        for occurrence in occurrences
+        if meeting_instructor_matches(occurrence.instructor, identity)
+    ]
     return filtered or None
 
 
-def _weekly_slot_matches_instructor(slot: WeeklyPatternSlot, identity: set[str]) -> bool:
+def _weekly_slot_matches_instructor(
+    slot: WeeklyPatternSlot, identity: set[str]
+) -> bool:
     if meeting_instructor_matches(slot.instructor, identity):
         return True
     for edit in slot.edits or []:
@@ -124,7 +138,11 @@ def _filter_weekly_pattern(
 ) -> list[WeeklyPatternSlot] | None:
     if not weekly_pattern:
         return None
-    filtered = [slot for slot in weekly_pattern if _weekly_slot_matches_instructor(slot, identity)]
+    filtered = [
+        slot
+        for slot in weekly_pattern
+        if _weekly_slot_matches_instructor(slot, identity)
+    ]
     return filtered or None
 
 
@@ -144,7 +162,9 @@ def _filter_session_for_instructor(
     )
 
 
-def filter_courses_for_instructor(courses: list[CourseConfig], identity: set[str]) -> list[CourseConfig]:
+def filter_courses_for_instructor(
+    courses: list[CourseConfig], identity: set[str]
+) -> list[CourseConfig]:
     filtered_courses: list[CourseConfig] = []
     for course in courses:
         filtered_components: list[CourseConfig.Component] = []
@@ -154,11 +174,20 @@ def filter_courses_for_instructor(courses: list[CourseConfig], identity: set[str
             matching_sessions = [
                 filtered_session
                 for session in component.sessions
-                if (filtered_session := _filter_session_for_instructor(session, identity)) is not None
+                if (
+                    filtered_session := _filter_session_for_instructor(
+                        session, identity
+                    )
+                )
+                is not None
             ]
             if not matching_sessions:
                 continue
-            filtered_components.append(component.model_copy(update={"sessions": matching_sessions}))
+            filtered_components.append(
+                component.model_copy(update={"sessions": matching_sessions})
+            )
         if filtered_components:
-            filtered_courses.append(course.model_copy(update={"components": filtered_components}))
+            filtered_courses.append(
+                course.model_copy(update={"components": filtered_components})
+            )
     return filtered_courses

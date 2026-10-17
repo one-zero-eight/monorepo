@@ -29,13 +29,25 @@ def _booking(*, attendees: list[Attendee] | None = None) -> Booking:
 
 
 def test_set_related_to_me_match():
-    booking = _booking(attendees=[Attendee(email="me@innopolis.university", status=None, assosiated_room_id=None)])
+    booking = _booking(
+        attendees=[
+            Attendee(
+                email="me@innopolis.university", status=None, assosiated_room_id=None
+            )
+        ]
+    )
     result = set_related_to_me(booking, "me@innopolis.university")
     assert result.related_to_me is True
 
 
 def test_set_related_to_me_no_match():
-    booking = _booking(attendees=[Attendee(email="other@innopolis.university", status=None, assosiated_room_id=None)])
+    booking = _booking(
+        attendees=[
+            Attendee(
+                email="other@innopolis.university", status=None, assosiated_room_id=None
+            )
+        ]
+    )
     result = set_related_to_me(booking, "me@innopolis.university")
     assert result.related_to_me is False
 
@@ -48,8 +60,24 @@ def test_set_related_to_me_no_attendees():
 
 def test_set_related_to_me_list():
     bookings = [
-        _booking(attendees=[Attendee(email="me@innopolis.university", status=None, assosiated_room_id=None)]),
-        _booking(attendees=[Attendee(email="other@innopolis.university", status=None, assosiated_room_id=None)]),
+        _booking(
+            attendees=[
+                Attendee(
+                    email="me@innopolis.university",
+                    status=None,
+                    assosiated_room_id=None,
+                )
+            ]
+        ),
+        _booking(
+            attendees=[
+                Attendee(
+                    email="other@innopolis.university",
+                    status=None,
+                    assosiated_room_id=None,
+                )
+            ]
+        ),
     ]
     result = set_related_to_me(bookings, "me@innopolis.university")
     assert result[0].related_to_me is True
@@ -57,13 +85,35 @@ def test_set_related_to_me_list():
 
 
 def test_apply_related_to_me_service_passthrough():
-    bookings = [_booking(attendees=[Attendee(email="me@innopolis.university", status=None, assosiated_room_id=None)])]
-    result = apply_related_to_me(bookings, AuthContext(user=None, room=None, is_service=True))
+    bookings = [
+        _booking(
+            attendees=[
+                Attendee(
+                    email="me@innopolis.university",
+                    status=None,
+                    assosiated_room_id=None,
+                )
+            ]
+        )
+    ]
+    result = apply_related_to_me(
+        bookings, AuthContext(user=None, room=None, is_service=True)
+    )
     assert result[0].related_to_me is None
 
 
 def test_apply_related_to_me_user():
-    bookings = [_booking(attendees=[Attendee(email="me@innopolis.university", status=None, assosiated_room_id=None)])]
+    bookings = [
+        _booking(
+            attendees=[
+                Attendee(
+                    email="me@innopolis.university",
+                    status=None,
+                    assosiated_room_id=None,
+                )
+            ]
+        )
+    ]
     auth = AuthContext(
         user=UserTokenData(innohassle_id="u1", email="me@innopolis.university"),
         room=None,
@@ -114,10 +164,14 @@ def _calendar_item(
     return item
 
 
-def test_calendar_item_to_booking_resolves_room_from_attendees(monkeypatch: pytest.MonkeyPatch):
+def test_calendar_item_to_booking_resolves_room_from_attendees(
+    monkeypatch: pytest.MonkeyPatch,
+):
     room = _room()
     monkeypatch.setattr(
-        bookings_service.room_repository, "get_by_email", lambda email: room if email == room.resource_email else None
+        bookings_service.room_repository,
+        "get_by_email",
+        lambda email: room if email == room.resource_email else None,
     )
 
     booking = calendar_item_to_booking(_calendar_item())
@@ -131,16 +185,23 @@ def test_calendar_item_to_booking_resolves_room_from_attendees(monkeypatch: pyte
 def test_calendar_item_to_booking_room_calendar_path(monkeypatch: pytest.MonkeyPatch):
     room = _room()
     monkeypatch.setattr(
-        bookings_service.room_repository, "get_by_id", lambda room_id: room if room_id == "3.1" else None
+        bookings_service.room_repository,
+        "get_by_id",
+        lambda room_id: room if room_id == "3.1" else None,
     )
     monkeypatch.setattr(
-        bookings_service.room_repository, "get_by_email", lambda email: room if email == room.resource_email else None
+        bookings_service.room_repository,
+        "get_by_email",
+        lambda email: room if email == room.resource_email else None,
     )
 
     item = _calendar_item()
     item.resources = []
     item.required_attendees = [
-        MagicMock(mailbox=MagicMock(email_address="user@innopolis.university"), response_type="Accept")
+        MagicMock(
+            mailbox=MagicMock(email_address="user@innopolis.university"),
+            response_type="Accept",
+        )
     ]
 
     booking = calendar_item_to_booking(
@@ -159,8 +220,12 @@ def test_calendar_item_to_booking_room_calendar_path(monkeypatch: pytest.MonkeyP
     assert booking.attendees[0].email == room.resource_email
 
 
-def test_calendar_item_to_booking_missing_room_returns_none(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(bookings_service.room_repository, "get_by_email", lambda _email: None)
+def test_calendar_item_to_booking_missing_room_returns_none(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(
+        bookings_service.room_repository, "get_by_email", lambda _email: None
+    )
 
     booking = calendar_item_to_booking(_calendar_item())
 

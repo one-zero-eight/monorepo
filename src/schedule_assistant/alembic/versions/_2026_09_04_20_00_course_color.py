@@ -82,7 +82,13 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     connection = op.get_bind()
-    events = connection.execute(sa.text("SELECT id, snapshot, patch FROM config_history_events")).mappings().all()
+    events = (
+        connection.execute(
+            sa.text("SELECT id, snapshot, patch FROM config_history_events")
+        )
+        .mappings()
+        .all()
+    )
     for event in events:
         connection.execute(
             sa.text(

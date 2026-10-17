@@ -9,8 +9,15 @@ from src.schedule_assistant.modules.issues.schemas import (
     OccurrencePlacement,
     ScheduledMeeting,
 )
-from src.schedule_assistant.modules.schedule_config.schemas import TermConfig, WeeklyPatternSlot, WeeklyPatternSlotEdit
-from src.schedule_assistant.modules.schedule_config.weekly_dates import active_weekly_dates, expand_weekly_slot
+from src.schedule_assistant.modules.schedule_config.schemas import (
+    TermConfig,
+    WeeklyPatternSlot,
+    WeeklyPatternSlotEdit,
+)
+from src.schedule_assistant.modules.schedule_config.weekly_dates import (
+    active_weekly_dates,
+    expand_weekly_slot,
+)
 from src.schedule_assistant.weekday import week_start_for_date
 
 from .course_colors import course_color, ics_color_name
@@ -47,7 +54,11 @@ def _instructors(
     instructor_names: dict[str, str],
 ) -> str | None:
     values = value if isinstance(value, list) else [value] if value is not None else []
-    labels = [instructor_names.get(item.strip().casefold(), item.strip()) for item in values if item.strip()]
+    labels = [
+        instructor_names.get(item.strip().casefold(), item.strip())
+        for item in values
+        if item.strip()
+    ]
     if isinstance(value, list):
         joined = ", ".join(labels)
         return joined or None
@@ -68,7 +79,10 @@ def _uid(alias: str, meeting: ScheduledMeeting) -> str:
                 str(meeting.placement.start_date),
                 str(meeting.placement.end_date),
                 str(
-                    week_start_for_date(meeting.placement.alternation.anchor_week, meeting.placement.starting_day)
+                    week_start_for_date(
+                        meeting.placement.alternation.anchor_week,
+                        meeting.placement.starting_day,
+                    )
                     if meeting.placement.alternation
                     else None
                 ),
@@ -118,20 +132,30 @@ def _event(
     event = icalendar.Event()
     event.add("uid", uid)
     event.add("dtstamp", dtm.datetime(1970, 1, 1, tzinfo=dtm.UTC))
-    event.add("dtstart", dtm.datetime.combine(date, _clock_time(meeting.start_time), tzinfo=TIMEZONE))
-    event.add("dtend", dtm.datetime.combine(date, _clock_time(meeting.end_time), tzinfo=TIMEZONE))
+    event.add(
+        "dtstart",
+        dtm.datetime.combine(date, _clock_time(meeting.start_time), tzinfo=TIMEZONE),
+    )
+    event.add(
+        "dtend",
+        dtm.datetime.combine(date, _clock_time(meeting.end_time), tzinfo=TIMEZONE),
+    )
     event.add("color", ics_color_name(color))
     _add_event_details(event, meeting, instructor_names)
     return event
 
 
-def _apply_edit(meeting: ScheduledMeeting, edit: WeeklyPatternSlotEdit) -> ScheduledMeeting:
+def _apply_edit(
+    meeting: ScheduledMeeting, edit: WeeklyPatternSlotEdit
+) -> ScheduledMeeting:
     return meeting.model_copy(
         update={
             "start_time": edit.start_time or meeting.start_time,
             "end_time": edit.end_time or meeting.end_time,
             "room": edit.room if edit.room is not None else meeting.room,
-            "instructor": edit.instructor if edit.instructor is not None else meeting.instructor,
+            "instructor": edit.instructor
+            if edit.instructor is not None
+            else meeting.instructor,
             "notes": edit.notes if edit.notes is not None else meeting.notes,
         }
     )
@@ -147,14 +171,20 @@ def add_meeting(
     uid = _uid(alias, meeting)
     color = course_color(meeting.course_name, course_colors.get(meeting.course_name))
     if isinstance(meeting.placement, OccurrencePlacement):
-        calendar.add_component(_event(uid, meeting, meeting.placement.date, instructor_names, color))
+        calendar.add_component(
+            _event(uid, meeting, meeting.placement.date, instructor_names, color)
+        )
         return
 
     placement = meeting.placement
     if placement.start_date is None or placement.end_date is None:
         raise TypeError("Weekly ICS generation requires start and end dates")
-    window = TermConfig.DateRange(start_date=placement.start_date, end_date=placement.end_date)
-    dates = active_weekly_dates(window, placement.weekday, placement.starting_day, placement.alternation)
+    window = TermConfig.DateRange(
+        start_date=placement.start_date, end_date=placement.end_date
+    )
+    dates = active_weekly_dates(
+        window, placement.weekday, placement.starting_day, placement.alternation
+    )
     if not dates:
         return
     first_date = dates[0]
@@ -187,7 +217,9 @@ def add_meeting(
         if edit is None:
             continue
         original_date = resolved.source_date
-        original_start = dtm.datetime.combine(original_date, _clock_time(meeting.start_time), tzinfo=TIMEZONE)
+        original_start = dtm.datetime.combine(
+            original_date, _clock_time(meeting.start_time), tzinfo=TIMEZONE
+        )
         if edit.cancel:
             event.add("exdate", original_start)
             continue
@@ -226,5 +258,7 @@ def render_calendar(
             item[1].component_tag,
         ),
     ):
-        add_meeting(calendar, alias, meeting, resolved_instructor_names, resolved_course_colors)
+        add_meeting(
+            calendar, alias, meeting, resolved_instructor_names, resolved_course_colors
+        )
     return calendar.to_ical(sorted=True)

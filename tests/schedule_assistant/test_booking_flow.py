@@ -6,20 +6,30 @@ import httpx
 import pytest
 from httpx import AsyncClient
 
-from src.schedule_assistant.modules.bookings.client import BmpStreamEvent, BmpStreamEventKind, BookingDTO
+from src.schedule_assistant.modules.bookings.client import (
+    BmpStreamEvent,
+    BmpStreamEventKind,
+    BookingDTO,
+)
 from src.schedule_assistant.modules.bookings.review import (
     build_review_index,
     collect_booking_payloads,
     slot_label,
     split_payloads_around_conflicts,
 )
-from src.schedule_assistant.modules.bookings.schemas import BookingEvidence, BookingItemResultStatus, ConflictMode
+from src.schedule_assistant.modules.bookings.schemas import (
+    BookingEvidence,
+    BookingItemResultStatus,
+    ConflictMode,
+)
 from src.schedule_assistant.modules.issues.booking_slots import build_bookable_slots
 from src.schedule_assistant.modules.issues.booking_window import (
     BOOKING_FETCH_MAX_DAYS,
     resolve_booking_fetch_window,
 )
-from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
+from src.schedule_assistant.modules.schedule_config.repository import (
+    ScheduleConfigRepository,
+)
 from src.schedule_assistant.modules.schedule_config.schemas import (
     ComponentSessionSeries,
     CourseConfig,
@@ -73,7 +83,9 @@ def _sections() -> SectionsConfig:
             SectionConfig(
                 code="core",
                 name="Core",
-                programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])],
+                programs=[
+                    SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])
+                ],
             )
         ],
         students_groups=[StudentsGroups(code="G1", estimated_size=10)],
@@ -148,7 +160,14 @@ def _seed(
 ) -> None:
     repo.set_term(_term())
     repo.set_sections(_sections())
-    repo.set_rooms(RoomConfig(rooms=[RoomConfig.Room(id=room_id, name=room_id) for room_id in (rooms or ["107"])]))
+    repo.set_rooms(
+        RoomConfig(
+            rooms=[
+                RoomConfig.Room(id=room_id, name=room_id)
+                for room_id in (rooms or ["107"])
+            ]
+        )
+    )
     repo.set_courses(courses)
 
 
@@ -187,7 +206,10 @@ async def test_extra_series_retaining_teaching_dates_cannot_be_cancelled(
 ):
     from tests.schedule_assistant.test_booking_recurrence_coverage import as_dto
 
-    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    monkeypatch.setattr(
+        "src.schedule_assistant.dependencies.settings.moderator_emails",
+        ["test@test.com"],
+    )
     _seed(bookings_repo, courses=_weekly_courses())
     slot = build_bookable_slots(_weekly_courses(), _sections(), _term(), {"107"})[0]
     booking = as_dto(
@@ -210,7 +232,11 @@ async def test_extra_series_retaining_teaching_dates_cannot_be_cancelled(
     assert extra["can_cancel"] is False
     cancellation = await authenticated_client.post(
         "/bookings/cancel-extra",
-        json={"extra_ids": [extra["extra_id"]], "scope": scope, "occurrence_date": "2026-06-08"},
+        json={
+            "extra_ids": [extra["extra_id"]],
+            "scope": scope,
+            "occurrence_date": "2026-06-08",
+        },
     )
     assert cancellation.status_code == 409
     mock_booking_client.cancel_booking_intent.assert_not_called()
@@ -223,7 +249,10 @@ async def test_review_classifies_ready_booked_conflict_and_unbookable(
     mock_booking_client: AsyncMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    monkeypatch.setattr(
+        "src.schedule_assistant.dependencies.settings.moderator_emails",
+        ["test@test.com"],
+    )
     _seed(bookings_repo, courses=_occurrence_courses())
     mock_booking_client.get_all_bookings.return_value = []
     mock_booking_client.get_auto_bookings.return_value = []
@@ -245,7 +274,10 @@ async def test_review_classifies_ready_booked_conflict_and_unbookable(
         )
     ]
     booked = (await authenticated_client.get("/bookings/review")).json()
-    assert booked["programs"][0]["courses"][0]["components"][0]["slots"][0]["review_kind"] == "booked"
+    assert (
+        booked["programs"][0]["courses"][0]["components"][0]["slots"][0]["review_kind"]
+        == "booked"
+    )
 
     mock_booking_client.get_auto_bookings.return_value = []
     mock_booking_client.get_all_bookings.return_value = [
@@ -276,7 +308,10 @@ async def test_review_caps_booking_fetch_to_ews_limit(
     mock_booking_client: AsyncMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    monkeypatch.setattr(
+        "src.schedule_assistant.dependencies.settings.moderator_emails",
+        ["test@test.com"],
+    )
     _freeze_booking_now(monkeypatch, dtm.datetime(2026, 8, 18, 7, 48, tzinfo=MSK))
 
     _seed(bookings_repo, courses=_occurrence_courses())
@@ -302,7 +337,9 @@ async def test_review_caps_booking_fetch_to_ews_limit(
 
 
 def test_unknown_room_is_not_bookable() -> None:
-    slots = build_bookable_slots(_occurrence_courses(room="999"), _sections(), _term(), {"107"})
+    slots = build_bookable_slots(
+        _occurrence_courses(room="999"), _sections(), _term(), {"107"}
+    )
     assert slots[0].bookable is False
     assert slots[0].disabled_reason == "unknown room"
 
@@ -355,7 +392,9 @@ def _split_lec_courses() -> CoursesConfig:
 
 
 def test_split_lec_components_keep_distinct_slot_ids() -> None:
-    slots = build_bookable_slots(_split_lec_courses(), _sections(), _term(), {"107", "106"})
+    slots = build_bookable_slots(
+        _split_lec_courses(), _sections(), _term(), {"107", "106"}
+    )
     slot_ids = [slot.slot_id for slot in slots]
     assert len(slot_ids) == 2
     assert len(set(slot_ids)) == 2
@@ -379,7 +418,10 @@ async def test_review_lists_extra_auto_bookings(
     mock_booking_client: AsyncMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    monkeypatch.setattr(
+        "src.schedule_assistant.dependencies.settings.moderator_emails",
+        ["test@test.com"],
+    )
     _seed(bookings_repo, courses=_occurrence_courses())
     mock_booking_client.get_all_bookings.return_value = []
     mock_booking_client.get_auto_bookings.return_value = [
@@ -436,7 +478,10 @@ async def test_batch_and_cancel_proxy_room_booking(
     mock_booking_client: AsyncMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    monkeypatch.setattr(
+        "src.schedule_assistant.dependencies.settings.moderator_emails",
+        ["test@test.com"],
+    )
     _seed(bookings_repo, courses=_occurrence_courses())
     mock_booking_client.get_all_bookings.return_value = []
     mock_booking_client.get_auto_bookings.return_value = []
@@ -459,8 +504,12 @@ async def test_batch_and_cancel_proxy_room_booking(
     mock_booking_client.stream_auto_bookings_batch = fake_stream
 
     review = (await authenticated_client.get("/bookings/review")).json()
-    slot_id = review["programs"][0]["courses"][0]["components"][0]["slots"][0]["slot_id"]
-    response = await authenticated_client.post("/bookings/batch", json={"slot_ids": [slot_id], "conflict_modes": {}})
+    slot_id = review["programs"][0]["courses"][0]["components"][0]["slots"][0][
+        "slot_id"
+    ]
+    response = await authenticated_client.post(
+        "/bookings/batch", json={"slot_ids": [slot_id], "conflict_modes": {}}
+    )
     assert response.status_code == 200
     started = response.json()
     assert started["kind"] == "book"
@@ -498,12 +547,22 @@ async def test_batch_and_cancel_proxy_room_booking(
         "/bookings/cancel-extra", json={"extra_ids": [extra_id], "scope": "series"}
     )
     assert cancel_response.status_code == 200
-    cancel_body = await _wait_task(authenticated_client, cancel_response.json()["task_id"])
+    cancel_body = await _wait_task(
+        authenticated_client, cancel_response.json()["task_id"]
+    )
     assert cancel_body["status"] == "done"
     assert cancel_body["cancel"]["cancelled"] == []
     assert cancel_body["items"][0]["outcome"] == "cancel_requested"
-    assert mock_booking_client.cancel_booking_intent.await_args.args[0]["outlook_booking_id"] == "extra-1"
-    assert mock_booking_client.cancel_booking_intent.await_args.args[0]["scope"] == "series"
+    assert (
+        mock_booking_client.cancel_booking_intent.await_args.args[0][
+            "outlook_booking_id"
+        ]
+        == "extra-1"
+    )
+    assert (
+        mock_booking_client.cancel_booking_intent.await_args.args[0]["scope"]
+        == "series"
+    )
 
 
 @pytest.mark.asyncio
@@ -513,7 +572,10 @@ async def test_batch_stays_unknown_when_only_title_time_match_after_stream_drop(
     mock_booking_client: AsyncMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    monkeypatch.setattr(
+        "src.schedule_assistant.dependencies.settings.moderator_emails",
+        ["test@test.com"],
+    )
     _seed(bookings_repo, courses=_occurrence_courses())
     mock_booking_client.get_all_bookings.return_value = []
     captured: list[dict] = []
@@ -543,8 +605,12 @@ async def test_batch_stays_unknown_when_only_title_time_match_after_stream_drop(
     mock_booking_client.get_auto_bookings.side_effect = fake_auto_bookings
 
     review = (await authenticated_client.get("/bookings/review")).json()
-    slot_id = review["programs"][0]["courses"][0]["components"][0]["slots"][0]["slot_id"]
-    response = await authenticated_client.post("/bookings/batch", json={"slot_ids": [slot_id], "conflict_modes": {}})
+    slot_id = review["programs"][0]["courses"][0]["components"][0]["slots"][0][
+        "slot_id"
+    ]
+    response = await authenticated_client.post(
+        "/bookings/batch", json={"slot_ids": [slot_id], "conflict_modes": {}}
+    )
     assert response.status_code == 200
     body = await _wait_task(authenticated_client, response.json()["task_id"])
     assert body["status"] == "done"
@@ -560,7 +626,10 @@ async def test_batch_does_not_leave_pending_when_stream_drops_unmatched(
     mock_booking_client: AsyncMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    monkeypatch.setattr(
+        "src.schedule_assistant.dependencies.settings.moderator_emails",
+        ["test@test.com"],
+    )
     _seed(bookings_repo, courses=_occurrence_courses())
     mock_booking_client.get_all_bookings.return_value = []
     mock_booking_client.get_auto_bookings.return_value = []
@@ -572,8 +641,12 @@ async def test_batch_does_not_leave_pending_when_stream_drops_unmatched(
     mock_booking_client.stream_auto_bookings_batch = fake_stream
 
     review = (await authenticated_client.get("/bookings/review")).json()
-    slot_id = review["programs"][0]["courses"][0]["components"][0]["slots"][0]["slot_id"]
-    response = await authenticated_client.post("/bookings/batch", json={"slot_ids": [slot_id], "conflict_modes": {}})
+    slot_id = review["programs"][0]["courses"][0]["components"][0]["slots"][0][
+        "slot_id"
+    ]
+    response = await authenticated_client.post(
+        "/bookings/batch", json={"slot_ids": [slot_id], "conflict_modes": {}}
+    )
     assert response.status_code == 200
     body = await _wait_task(authenticated_client, response.json()["task_id"])
     assert body["status"] == "done"

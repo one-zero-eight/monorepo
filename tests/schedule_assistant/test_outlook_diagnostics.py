@@ -4,12 +4,18 @@ from unittest.mock import Mock
 
 import exchangelib
 
-from scripts.schedule_assistant.diagnose_outlook import calendar_records, compare_items, identity_token
+from scripts.schedule_assistant.diagnose_outlook import (
+    calendar_records,
+    compare_items,
+    identity_token,
+)
 
 UTC = dtm.UTC
 
 
-def event(uid: str, subject: str = "Course", *, item_id: str = "item") -> SimpleNamespace:
+def event(
+    uid: str, subject: str = "Course", *, item_id: str = "item"
+) -> SimpleNamespace:
     return SimpleNamespace(
         id=item_id,
         uid=uid,
@@ -21,7 +27,10 @@ def event(uid: str, subject: str = "Course", *, item_id: str = "item") -> Simple
         legacy_free_busy_status="Tentative",
         is_cancelled=False,
         required_attendees=[
-            SimpleNamespace(mailbox=SimpleNamespace(email_address="room@example.org"), response_type="Tentative")
+            SimpleNamespace(
+                mailbox=SimpleNamespace(email_address="room@example.org"),
+                response_type="Tentative",
+            )
         ],
         resources=[],
     )
@@ -55,7 +64,11 @@ def test_diagnostic_splits_capped_views_and_deduplicates_boundary_events(monkeyp
     first = event("first", item_id="first")
     second = event("second", item_id="second")
     account = Mock(spec=exchangelib.Account)
-    account.calendar.view.return_value.only.side_effect = [[first, second], [first], [second]]
+    account.calendar.view.return_value.only.side_effect = [
+        [first, second],
+        [first],
+        [second],
+    ]
     start = dtm.datetime(2026, 9, 11, tzinfo=UTC)
     records = calendar_records(account, start, start + dtm.timedelta(days=1))
     assert {item.uid for item in records} == {"first", "second"}

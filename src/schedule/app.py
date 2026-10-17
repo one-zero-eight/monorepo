@@ -7,7 +7,11 @@ from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
 from src.common_config import Environment
-from src.common_fastapi import generate_unique_operation_id, popule_openapi_tags, tune_fastapi
+from src.common_fastapi import (
+    generate_unique_operation_id,
+    popule_openapi_tags,
+    tune_fastapi,
+)
 from src.inh_accounts_sdk import inh_accounts
 from src.logging_ import logger
 from src.schedule import docs

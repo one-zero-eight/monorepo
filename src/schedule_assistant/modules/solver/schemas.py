@@ -4,7 +4,10 @@ from typing import Literal
 
 from pydantic import Field
 
-from src.schedule_assistant.modules.schedule_config.schemas import CoursesConfig, SettingBaseModel
+from src.schedule_assistant.modules.schedule_config.schemas import (
+    CoursesConfig,
+    SettingBaseModel,
+)
 
 
 class SolveStats(SettingBaseModel):
@@ -33,7 +36,9 @@ class SolveStats(SettingBaseModel):
 
 
 class SolveResult(SettingBaseModel):
-    status: Literal["OPTIMAL", "INFEASIBLE", "FEASIBLE", "MODEL_INVALID", "UNKNOWN", "EMPTY"]
+    status: Literal[
+        "OPTIMAL", "INFEASIBLE", "FEASIBLE", "MODEL_INVALID", "UNKNOWN", "EMPTY"
+    ]
     stats: SolveStats
     artifacts_dir: Path | None = None
     schedule: CoursesConfig

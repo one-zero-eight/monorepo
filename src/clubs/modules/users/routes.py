@@ -35,7 +35,9 @@ class UserWithClubs(UserSchema):
 async def get_me(current_user: INH_TOKEN_AUTH) -> UserWithClubs:
     """Get current user's information with related clubs if authenticated."""
     user_data = await users_repo.read_by_innohassle_id(current_user.innohassle_id)
-    leader_in_clubs = await clubs_repo.read_by_leader_innohassle_id(current_user.innohassle_id)
+    leader_in_clubs = await clubs_repo.read_by_leader_innohassle_id(
+        current_user.innohassle_id
+    )
     return UserWithClubs(
         innohassle_id=current_user.innohassle_id,
         role=user_data.role if user_data else UserRole.DEFAULT,
@@ -48,7 +50,9 @@ async def get_me(current_user: INH_TOKEN_AUTH) -> UserWithClubs:
     responses={
         status.HTTP_200_OK: {"description": "Role changed successfully"},
         status.HTTP_403_FORBIDDEN: {"description": "Only superadmins can change role"},
-        status.HTTP_404_NOT_FOUND: {"description": "User not found in InNoHassle Accounts"},
+        status.HTTP_404_NOT_FOUND: {
+            "description": "User not found in InNoHassle Accounts"
+        },
     },
 )
 async def change_role(

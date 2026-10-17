@@ -1,8 +1,15 @@
 from src.schedule_assistant.modules.issues.issue_text import attach_issue_text
 from src.schedule_assistant.modules.issues.meetings import _group_codes_for_session
 from src.schedule_assistant.modules.issues.schemas import IssueTypeEnum, PerWeekIssue
-from src.schedule_assistant.modules.schedule_config.schemas import ComponentSessionSeries, CoursesConfig, SectionsConfig
-from src.schedule_assistant.modules.schedule_config.validation import build_selector_map, expand_group_tokens
+from src.schedule_assistant.modules.schedule_config.schemas import (
+    ComponentSessionSeries,
+    CoursesConfig,
+    SectionsConfig,
+)
+from src.schedule_assistant.modules.schedule_config.validation import (
+    build_selector_map,
+    expand_group_tokens,
+)
 
 
 def _weekly_slot_count_for_audience(
@@ -16,7 +23,9 @@ def _weekly_slot_count_for_audience(
     audience_set = set(audience)
     count = 0
     for session in sessions:
-        session_audience = set(_group_codes_for_session(component_groups, session, selector_map))
+        session_audience = set(
+            _group_codes_for_session(component_groups, session, selector_map)
+        )
         if per_group:
             if not audience_set or not audience_set <= session_audience:
                 continue
@@ -27,7 +36,9 @@ def _weekly_slot_count_for_audience(
     return count
 
 
-def per_week_issues_from_schedule_config(courses: CoursesConfig, sections: SectionsConfig) -> list[PerWeekIssue]:
+def per_week_issues_from_schedule_config(
+    courses: CoursesConfig, sections: SectionsConfig
+) -> list[PerWeekIssue]:
     selector_map = build_selector_map(sections)
     issues: list[PerWeekIssue] = []
 

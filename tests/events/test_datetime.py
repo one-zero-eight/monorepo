@@ -3,7 +3,9 @@ from fastapi.testclient import TestClient
 from tests.events.helpers import draft_payload, future_iso
 
 
-def test_naive_datetime_rejected_on_create(events_client: TestClient, user_headers: dict[str, str]):
+def test_naive_datetime_rejected_on_create(
+    events_client: TestClient, user_headers: dict[str, str]
+):
     response = events_client.post(
         "/drafts",
         json=draft_payload(starts_at="2026-07-30T19:00:00"),
@@ -13,7 +15,9 @@ def test_naive_datetime_rejected_on_create(events_client: TestClient, user_heade
     assert "timezone-aware" in response.text
 
 
-def test_offset_datetime_normalized_to_utc(events_client: TestClient, user_headers: dict[str, str]):
+def test_offset_datetime_normalized_to_utc(
+    events_client: TestClient, user_headers: dict[str, str]
+):
     response = events_client.post(
         "/drafts",
         json=draft_payload(starts_at="2026-07-30T19:00:00+03:00"),
@@ -40,7 +44,9 @@ def test_naive_datetime_rejected_in_query(events_client: TestClient):
     assert response.status_code == 422
 
 
-def test_invalid_datetime_rejected(events_client: TestClient, user_headers: dict[str, str]):
+def test_invalid_datetime_rejected(
+    events_client: TestClient, user_headers: dict[str, str]
+):
     response = events_client.post(
         "/drafts",
         json=draft_payload(starts_at="not-a-datetime"),

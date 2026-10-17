@@ -1,7 +1,13 @@
 import datetime as dtm
 
-from src.schedule_assistant.modules.issues.instructor_preferences import instructor_preference_issues_from_meetings
-from src.schedule_assistant.modules.issues.schemas import IssueTypeEnum, ScheduledMeeting, WeeklyPatternPlacement
+from src.schedule_assistant.modules.issues.instructor_preferences import (
+    instructor_preference_issues_from_meetings,
+)
+from src.schedule_assistant.modules.issues.schemas import (
+    IssueTypeEnum,
+    ScheduledMeeting,
+    WeeklyPatternPlacement,
+)
 from src.schedule_assistant.modules.schedule_config.schemas import (
     InstructorConfig,
     InstructorSlotPreferenceEntry,

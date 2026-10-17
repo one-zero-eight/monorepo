@@ -31,6 +31,11 @@ async def read_by_innohassle_id(innohassle_id: str) -> Leader | None:
     return leader_from_innohassle_user(leader_data)
 
 
-async def read_many_by_innohassle_ids(innohassle_ids: list[str]) -> dict[str, Leader | None]:
+async def read_many_by_innohassle_ids(
+    innohassle_ids: list[str],
+) -> dict[str, Leader | None]:
     user_infos = await inh_accounts.get_users(innohassle_ids=innohassle_ids)
-    return {k: leader_from_innohassle_user(user) if user else None for k, user in user_infos.items()}
+    return {
+        k: leader_from_innohassle_user(user) if user else None
+        for k, user in user_infos.items()
+    }

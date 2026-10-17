@@ -71,7 +71,10 @@ VerifyTokenDep = Annotated[tuple[UserTokenData, str], Depends(verify_token_dep)]
 
 def is_moderator_email(email: str) -> bool:
     normalized = email.casefold()
-    return any(moderator_email.casefold() == normalized for moderator_email in settings.moderator_emails)
+    return any(
+        moderator_email.casefold() == normalized
+        for moderator_email in settings.moderator_emails
+    )
 
 
 async def verify_moderator_dep(

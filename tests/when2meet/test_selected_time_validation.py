@@ -31,7 +31,12 @@ def meeting_clock(monkeypatch) -> Mock:
     ],
 )
 def test_past_selected_time_rejects_entire_update_without_changing_booking(
-    when2meet_client: TestClient, user_headers, meeting_clock, booked: bool, start: str, end: str
+    when2meet_client: TestClient,
+    user_headers,
+    meeting_clock,
+    booked: bool,
+    start: str,
+    end: str,
 ) -> None:
     created = when2meet_client.post(
         "/api/v0/meetings/",
@@ -40,7 +45,12 @@ def test_past_selected_time_rejects_entire_update_without_changing_booking(
     ).json()
     path = f"/api/v0/meetings/{created['id']}"
     selected_time = {"start": "2027-06-15T15:00:00Z", "end": "2027-06-15T16:00:00Z"}
-    assert when2meet_client.patch(path, json={"selected_time": selected_time}, headers=user_headers).status_code == 200
+    assert (
+        when2meet_client.patch(
+            path, json={"selected_time": selected_time}, headers=user_headers
+        ).status_code
+        == 200
+    )
 
     portal = when2meet_client.portal
     assert portal is not None
@@ -53,7 +63,12 @@ def test_past_selected_time_rejects_entire_update_without_changing_booking(
 
     with respx.mock as external_requests:
         response = when2meet_client.patch(
-            path, json={"name": "Rejected rename", "selected_time": {"start": start, "end": end}}, headers=user_headers
+            path,
+            json={
+                "name": "Rejected rename",
+                "selected_time": {"start": start, "end": end},
+            },
+            headers=user_headers,
         )
         assert len(external_requests.calls) == 0
 
@@ -63,7 +78,13 @@ def test_past_selected_time_rejects_entire_update_without_changing_booking(
         "message": "Meeting start time must be in the future",
     }
     after = when2meet_client.get(path, headers=user_headers).json()
-    for field in ("name", "selected_time", "archive_after", "booked_room", "is_archived"):
+    for field in (
+        "name",
+        "selected_time",
+        "archive_after",
+        "booked_room",
+        "is_archived",
+    ):
         assert after[field] == before[field]
     stored = portal.call(events_repo.read, PydanticObjectId(created["id"]))
     assert stored is not None
@@ -100,21 +121,38 @@ def test_started_meeting_can_be_read_renamed_and_keep_equivalent_selected_time(
     ).json()
     path = f"/api/v0/meetings/{created['id']}"
     selected_time = {"start": "2027-06-15T10:00:00Z", "end": "2027-06-15T13:00:00Z"}
-    assert when2meet_client.patch(path, json={"selected_time": selected_time}, headers=user_headers).status_code == 200
+    assert (
+        when2meet_client.patch(
+            path, json={"selected_time": selected_time}, headers=user_headers
+        ).status_code
+        == 200
+    )
     meeting_clock.datetime.now.return_value = NOW
-    assert when2meet_client.get(path, headers=user_headers).json()["selected_time"] == selected_time
+    assert (
+        when2meet_client.get(path, headers=user_headers).json()["selected_time"]
+        == selected_time
+    )
 
-    response = when2meet_client.patch(path, json={"name": "Renamed"}, headers=user_headers)
+    response = when2meet_client.patch(
+        path, json={"name": "Renamed"}, headers=user_headers
+    )
     assert response.status_code == 200
     response = when2meet_client.patch(
         path,
-        json={"selected_time": {"start": "2027-06-15T13:00:00+03:00", "end": "2027-06-15T16:00:00+03:00"}},
+        json={
+            "selected_time": {
+                "start": "2027-06-15T13:00:00+03:00",
+                "end": "2027-06-15T16:00:00+03:00",
+            }
+        },
         headers=user_headers,
     )
     assert response.status_code == 200
     assert response.json()["is_archived"] is False
 
-    response = when2meet_client.patch(path, json={"selected_time": None}, headers=user_headers)
+    response = when2meet_client.patch(
+        path, json={"selected_time": None}, headers=user_headers
+    )
     assert response.status_code == 200
     assert response.json()["selected_time"] is None
     assert response.json()["archive_after"] == created["archive_after"]
@@ -131,7 +169,12 @@ def test_microseconds_of_server_clock_are_not_rounded_down(
     ).json()
     response = when2meet_client.patch(
         f"/api/v0/meetings/{created['id']}",
-        json={"selected_time": {"start": "2027-06-15T12:00:00.900Z", "end": "2027-06-15T13:00:00Z"}},
+        json={
+            "selected_time": {
+                "start": "2027-06-15T12:00:00.900Z",
+                "end": "2027-06-15T13:00:00Z",
+            }
+        },
         headers=user_headers,
     )
     assert response.status_code == 400

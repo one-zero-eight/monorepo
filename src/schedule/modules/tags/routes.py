@@ -10,7 +10,9 @@ from src.schedule.exceptions import IncorrectCredentialsException
 from src.schedule.modules.tags.repository import tag_repository
 from src.schedule.modules.tags.schemas import CreateTag, ViewTag
 
-router = APIRouter(prefix="/tags", tags=["Tags"], route_class=AutoDeriveResponsesAPIRoute)
+router = APIRouter(
+    prefix="/tags", tags=["Tags"], route_class=AutoDeriveResponsesAPIRoute
+)
 
 
 class ListTagsResponse(BaseModel):
@@ -34,7 +36,10 @@ async def list_tags() -> ListTagsResponse:
 @router.post(
     "/batch-create-or-read",
     responses={
-        200: {"description": "List of created or existing tags", "model": ListTagsResponse},
+        200: {
+            "description": "List of created or existing tags",
+            "model": ListTagsResponse,
+        },
         **IncorrectCredentialsException.responses,
     },
 )

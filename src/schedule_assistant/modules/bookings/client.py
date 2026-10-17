@@ -8,7 +8,10 @@ import httpx
 from pydantic import Field
 
 from src.schedule_assistant.config import settings
-from src.schedule_assistant.modules.bookings.schemas import BookingEvidence, BookingItemResultStatus
+from src.schedule_assistant.modules.bookings.schemas import (
+    BookingEvidence,
+    BookingItemResultStatus,
+)
 from src.schedule_assistant.schema_base import ScheduleAssistantSchema
 
 HTTP_TIMEOUT_SECONDS = 300.0
@@ -43,7 +46,9 @@ class BookingDTO(BookingEvidence):
     source_item_id: str | None = None
     change_key: str | None = None
     attendees: list[dict[str, Any]] | None = None
-    recurrence_complete: bool = Field(default_factory=lambda data: not bool(data.get("recurrence")))
+    recurrence_complete: bool = Field(
+        default_factory=lambda data: not bool(data.get("recurrence"))
+    )
     deleted_occurrences: list[str] = Field(default_factory=list)
     modified_occurrences: list[dict[str, Any]] = Field(default_factory=list)
 
@@ -122,7 +127,11 @@ class BookingClient:
         async with httpx.AsyncClient(headers=self._headers) as client:
             response = await client.get(
                 urljoin(self.url, "bookings/"),
-                params={"start": start.isoformat(), "end": end.isoformat(), "include_red": True},
+                params={
+                    "start": start.isoformat(),
+                    "end": end.isoformat(),
+                    "include_red": True,
+                },
                 timeout=HTTP_TIMEOUT_SECONDS,
             )
             response.raise_for_status()
@@ -131,7 +140,9 @@ class BookingClient:
 
     async def get_rooms(self) -> list[RoomDTO]:
         async with httpx.AsyncClient(headers=self._headers) as client:
-            response = await client.get(urljoin(self.url, "rooms/"), params={"include_red": True})
+            response = await client.get(
+                urljoin(self.url, "rooms/"), params={"include_red": True}
+            )
             response.raise_for_status()
             return [RoomDTO.model_validate(entry) for entry in response.json()]
 
@@ -150,7 +161,9 @@ class BookingClient:
             data = response.json()
             return [BookingDTO.model_validate(entry) for entry in data]
 
-    async def stream_auto_bookings_batch(self, bookings: list[dict[str, Any]]) -> AsyncIterator[BmpStreamEvent]:
+    async def stream_auto_bookings_batch(
+        self, bookings: list[dict[str, Any]]
+    ) -> AsyncIterator[BmpStreamEvent]:
         async with (
             httpx.AsyncClient(headers=self._headers) as client,
             client.stream(
@@ -166,7 +179,9 @@ class BookingClient:
                     continue
                 yield BmpStreamEvent.model_validate_json(line)
 
-    async def reconcile_auto_bookings(self, entries: list[dict[str, Any]]) -> list[BookingEvidence]:
+    async def reconcile_auto_bookings(
+        self, entries: list[dict[str, Any]]
+    ) -> list[BookingEvidence]:
         async with httpx.AsyncClient(headers=self._headers) as client:
             response = await client.post(
                 urljoin(self.url, "bmp/auto-bookings/reconcile"),
@@ -189,12 +204,16 @@ class BookingClient:
     async def cancel_auto_booking(self, outlook_booking_id: str) -> None:
         async with httpx.AsyncClient(headers=self._headers) as client:
             response = await client.delete(
-                urljoin(self.url, f"bmp/auto-bookings/{quote(outlook_booking_id, safe='')}"),
+                urljoin(
+                    self.url, f"bmp/auto-bookings/{quote(outlook_booking_id, safe='')}"
+                ),
                 timeout=HTTP_TIMEOUT_SECONDS,
             )
             response.raise_for_status()
 
-    async def cancel_auto_bookings_batch(self, outlook_booking_ids: list[str]) -> CancelAutoBookingsResult:
+    async def cancel_auto_bookings_batch(
+        self, outlook_booking_ids: list[str]
+    ) -> CancelAutoBookingsResult:
         async with httpx.AsyncClient(headers=self._headers) as client:
             response = await client.request(
                 "DELETE",

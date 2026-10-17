@@ -1,7 +1,14 @@
 from src.schedule_assistant.modules.issues.meetings import meeting_instructor_ids
-from src.schedule_assistant.modules.schedule_config.schemas import CourseConfig, TermConfig
-from src.schedule_assistant.modules.schedule_config.semester_windows import resolve_audience_semester
-from src.schedule_assistant.modules.schedule_config.weekly_dates import expand_weekly_slot
+from src.schedule_assistant.modules.schedule_config.schemas import (
+    CourseConfig,
+    TermConfig,
+)
+from src.schedule_assistant.modules.schedule_config.semester_windows import (
+    resolve_audience_semester,
+)
+from src.schedule_assistant.modules.schedule_config.weekly_dates import (
+    expand_weekly_slot,
+)
 
 
 def count_instructor_meetings_in_term(
@@ -12,7 +19,9 @@ def count_instructor_meetings_in_term(
     """Count actual placed meetings, including active weekly edits and cancellations."""
     if not instructor_id:
         return 0
-    return count_meetings_by_instructor(courses, term, [instructor_id]).get(instructor_id, 0)
+    return count_meetings_by_instructor(courses, term, [instructor_id]).get(
+        instructor_id, 0
+    )
 
 
 def count_meetings_by_instructor(
@@ -33,7 +42,9 @@ def count_meetings_by_instructor(
     for course in courses:
         for component in course.components:
             for session in component.sessions or []:
-                window = resolve_audience_semester(term, list(session.audience or component.audience))
+                window = resolve_audience_semester(
+                    term, list(session.audience or component.audience)
+                )
                 if window is None:
                     continue
                 for occurrence in session.dates_pattern or []:

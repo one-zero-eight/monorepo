@@ -19,7 +19,9 @@ def _hosts_description(hosts: list[PublicHost]) -> str:
     return "\n".join(lines)
 
 
-def _event_to_vevent(event: Event, public: PublicEvent, hosts: list[PublicHost]) -> icalendar.Event | None:
+def _event_to_vevent(
+    event: Event, public: PublicEvent, hosts: list[PublicHost]
+) -> icalendar.Event | None:
     summary = pick_event_name(public.data.locales)
     if summary is None:
         return None
@@ -44,7 +46,9 @@ def _event_to_vevent(event: Event, public: PublicEvent, hosts: list[PublicHost])
     return vevent
 
 
-def build_events_ics(events: list[Event], hosts_by_event: dict[str, list[PublicHost]], calendar_name: str) -> bytes:
+def build_events_ics(
+    events: list[Event], hosts_by_event: dict[str, list[PublicHost]], calendar_name: str
+) -> bytes:
     calendar = icalendar.Calendar(
         prodid="-//one-zero-eight//InNoHassle Events",
         version="2.0",

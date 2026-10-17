@@ -26,7 +26,9 @@ async def lifespan(app: FastAPI):
 
     await inh_accounts.update_key_set()
 
-    beanie_store = await setup_beanie(settings.mongo.uri, "board_games", document_models)
+    beanie_store = await setup_beanie(
+        settings.mongo.uri, "board_games", document_models
+    )
     minio_store = setup_minio(settings.minio)
 
     app.state.beanie_store = beanie_store

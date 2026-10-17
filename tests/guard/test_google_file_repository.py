@@ -133,7 +133,9 @@ def test_unban_user_from_file(guard_portal, create_google_file):
         )
 
     async def _unban():
-        return await google_file_repository.unban_user_from_file(slug=created.slug, user_id=other_id)
+        return await google_file_repository.unban_user_from_file(
+            slug=created.slug, user_id=other_id
+        )
 
     guard_portal.call(_ban)
     unbanned = guard_portal.call(_unban)
@@ -169,7 +171,9 @@ def test_update_user_role_and_default_role(guard_portal, create_google_file):
         )
 
     async def _update_user_role():
-        return await google_file_repository.update_user_role(created.slug, other_id, "writer")
+        return await google_file_repository.update_user_role(
+            created.slug, other_id, "writer"
+        )
 
     async def _update_default_role():
         return await google_file_repository.update_default_role(created.slug, "writer")

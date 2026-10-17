@@ -24,7 +24,11 @@ from tests.conftest_runtime_settings import SUITE_POSTGRES_NETLOC, get_worker_id
 def pytest_configure(config: pytest.Config) -> None:
     database_name = f"worker-{get_worker_id()}-sa-{uuid4().hex[:12]}"
     monkeypatch = pytest.MonkeyPatch()
-    monkeypatch.setattr(conftest_runtime_settings, "schedule_assistant_test_database_name", lambda: database_name)
+    monkeypatch.setattr(
+        conftest_runtime_settings,
+        "schedule_assistant_test_database_name",
+        lambda: database_name,
+    )
     config.add_cleanup(monkeypatch.undo)
 
 
@@ -57,7 +61,9 @@ def _prepare_schedule_assistant_schema() -> None:
     engine = get_engine(settings.db_url.get_secret_value())
     try:
         with engine.begin() as connection:
-            config = Config(Path(__file__).parents[2] / "src/schedule_assistant/alembic.ini")
+            config = Config(
+                Path(__file__).parents[2] / "src/schedule_assistant/alembic.ini"
+            )
             config.attributes["connection"] = connection
             command.upgrade(config, "head")
     finally:
@@ -83,7 +89,9 @@ async def _drop_postgres_database(admin_dsn: str, database_name: str) -> None:
     engine = create_async_engine(admin_dsn, isolation_level="AUTOCOMMIT")
     try:
         async with engine.connect() as connection:
-            await connection.execute(text(f'DROP DATABASE "{database_name}" WITH (FORCE)'))
+            await connection.execute(
+                text(f'DROP DATABASE "{database_name}" WITH (FORCE)')
+            )
     finally:
         await engine.dispose()
 
@@ -91,17 +99,23 @@ async def _drop_postgres_database(admin_dsn: str, database_name: str) -> None:
 @pytest.fixture
 def migration_database_url() -> Iterator[str]:
     database_name = f"sa-alembic-{uuid4().hex}"
-    asyncio.run(_ensure_postgres_database(_schedule_assistant_admin_dsn(), database_name))
+    asyncio.run(
+        _ensure_postgres_database(_schedule_assistant_admin_dsn(), database_name)
+    )
     try:
         yield f"postgresql+psycopg://postgres:test@{SUITE_POSTGRES_NETLOC}/{database_name}"
     finally:
-        asyncio.run(_drop_postgres_database(_schedule_assistant_admin_dsn(), database_name))
+        asyncio.run(
+            _drop_postgres_database(_schedule_assistant_admin_dsn(), database_name)
+        )
 
 
 @pytest.fixture(scope="session")
 def schedule_assistant_postgres() -> Iterator[None]:
     database_name = conftest_runtime_settings.schedule_assistant_test_database_name()
-    asyncio.run(_ensure_postgres_database(_schedule_assistant_admin_dsn(), database_name))
+    asyncio.run(
+        _ensure_postgres_database(_schedule_assistant_admin_dsn(), database_name)
+    )
     try:
         _prepare_schedule_assistant_schema()
         yield
@@ -109,7 +123,9 @@ def schedule_assistant_postgres() -> Iterator[None]:
         from src.schedule_assistant.db.session import get_engine
 
         get_engine(schedule_assistant_db_url()).dispose()
-        asyncio.run(_drop_postgres_database(_schedule_assistant_admin_dsn(), database_name))
+        asyncio.run(
+            _drop_postgres_database(_schedule_assistant_admin_dsn(), database_name)
+        )
 
 
 @pytest.fixture
@@ -117,9 +133,15 @@ def schedule_assistant_repo(
     schedule_assistant_postgres: None,
     monkeypatch: pytest.MonkeyPatch,
 ):
-    from src.schedule_assistant.modules.distributions.repository import DistributionUploadRepository
-    from src.schedule_assistant.modules.instructor_preferences.repository import PreferenceInviteRepository
-    from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
+    from src.schedule_assistant.modules.distributions.repository import (
+        DistributionUploadRepository,
+    )
+    from src.schedule_assistant.modules.instructor_preferences.repository import (
+        PreferenceInviteRepository,
+    )
+    from src.schedule_assistant.modules.schedule_config.repository import (
+        ScheduleConfigRepository,
+    )
 
     asyncio.run(_truncate_schedule_assistant_tables())
     repo = ScheduleConfigRepository(schedule_assistant_db_url())
@@ -205,7 +227,9 @@ def fastapi_app() -> FastAPI:
 async def fastapi_test_client(
     fastapi_app: FastAPI,
 ) -> AsyncGenerator[AsyncClient]:
-    async with AsyncClient(transport=ASGITransport(app=fastapi_app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=fastapi_app), base_url="http://test"
+    ) as client:
         yield client
 
 
@@ -220,7 +244,9 @@ async def authenticated_client(fastapi_app: FastAPI) -> AsyncGenerator[AsyncClie
 
     fastapi_app.dependency_overrides[verify_token_dep] = fake_verify_token_dep
 
-    async with AsyncClient(transport=ASGITransport(app=fastapi_app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=fastapi_app), base_url="http://test"
+    ) as client:
         yield client
 
     fastapi_app.dependency_overrides.pop(verify_token_dep)
@@ -228,7 +254,11 @@ async def authenticated_client(fastapi_app: FastAPI) -> AsyncGenerator[AsyncClie
 
 @pytest.fixture(scope="function")
 def mock_booking_client():
-    from src.schedule_assistant.modules.bookings.client import BookingDTO, CancelAutoBookingsResult, RoomDTO
+    from src.schedule_assistant.modules.bookings.client import (
+        BookingDTO,
+        CancelAutoBookingsResult,
+        RoomDTO,
+    )
 
     mock_client = AsyncMock()
 
@@ -249,8 +279,12 @@ def mock_booking_client():
         },
     ]
 
-    mock_client.get_all_bookings.return_value = [BookingDTO.model_validate(booking) for booking in bookings]
-    mock_client.get_room_bookings.return_value = [BookingDTO.model_validate(booking) for booking in bookings[:1]]
+    mock_client.get_all_bookings.return_value = [
+        BookingDTO.model_validate(booking) for booking in bookings
+    ]
+    mock_client.get_room_bookings.return_value = [
+        BookingDTO.model_validate(booking) for booking in bookings[:1]
+    ]
 
     mock_client.get_rooms.return_value = [
         RoomDTO(
@@ -273,12 +307,19 @@ def mock_booking_client():
         ),
     ]
     mock_client.get_auto_bookings.return_value = []
-    mock_client.cancel_auto_bookings_batch.return_value = CancelAutoBookingsResult(cancelled=[], failed={})
+    mock_client.cancel_auto_bookings_batch.return_value = CancelAutoBookingsResult(
+        cancelled=[], failed={}
+    )
     mock_client.cancel_auto_booking.return_value = None
     mock_client.cancel_extra_booking.return_value = None
 
     with (
-        patch("src.schedule_assistant.modules.bookings.client.booking_client", mock_client),
-        patch("src.schedule_assistant.modules.bookings.service.booking_client", mock_client),
+        patch(
+            "src.schedule_assistant.modules.bookings.client.booking_client", mock_client
+        ),
+        patch(
+            "src.schedule_assistant.modules.bookings.service.booking_client",
+            mock_client,
+        ),
     ):
         yield mock_client

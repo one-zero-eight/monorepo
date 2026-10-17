@@ -39,7 +39,9 @@ async def test_get_innohassle_token_auth_uses_decode_user_token(monkeypatch):
     monkeypatch.setattr(
         inh_accounts,
         "decode_user_token",
-        lambda _token: UserTokenData(innohassle_id="mock-id", email="mock@innopolis.university"),
+        lambda _token: UserTokenData(
+            innohassle_id="mock-id", email="mock@innopolis.university"
+        ),
     )
     bearer = HTTPAuthorizationCredentials(scheme="Bearer", credentials="any")
     data = await get_innohassle_token_auth(bearer)
@@ -82,25 +84,34 @@ async def test_get_innohassle_token_auth_accepts_valid_token(make_user_token):
 
 @pytest.mark.asyncio
 async def test_ensure_innohassle_admin_allows_admin():
-    auth = UserTokenData(innohassle_id="superadmin-1", email="admin@innopolis.university")
+    auth = UserTokenData(
+        innohassle_id="superadmin-1", email="admin@innopolis.university"
+    )
     result = await ensure_innohassle_admin(auth)
     assert result == auth
 
 
 @pytest.mark.asyncio
 async def test_ensure_innohassle_admin_rejects_non_admin():
-    auth = UserTokenData(innohassle_id="test-user-1", email="test-user-1@innopolis.university")
+    auth = UserTokenData(
+        innohassle_id="test-user-1", email="test-user-1@innopolis.university"
+    )
 
     with pytest.raises(NotAdminException) as exc_info:
         await ensure_innohassle_admin(auth)
 
     assert exc_info.value.status_code == 403
-    assert exc_info.value.detail == "You are not an admin, not allowed to access this endpoint"
+    assert (
+        exc_info.value.detail
+        == "You are not an admin, not allowed to access this endpoint"
+    )
 
 
 @pytest.mark.asyncio
 async def test_ensure_innohassle_admin_rejects_missing_user():
-    auth = UserTokenData(innohassle_id="missing-user", email="missing@innopolis.university")
+    auth = UserTokenData(
+        innohassle_id="missing-user", email="missing@innopolis.university"
+    )
 
     with pytest.raises(HTTPException) as exc_info:
         await ensure_innohassle_admin(auth)

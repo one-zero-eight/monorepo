@@ -2,7 +2,16 @@ import json
 from typing import Annotated, Any
 from urllib.parse import quote
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
 from fastapi.responses import Response as FastAPIResponse
 
 from src.schedule_assistant.dependencies import ModeratorDep, VerifyTokenDep
@@ -11,7 +20,10 @@ from src.schedule_assistant.modules.distributions.mapping import (
     sort_labels_by_suggested_mapping,
     suggest_mapping,
 )
-from src.schedule_assistant.modules.distributions.parser import normalize_email, parse_distribution_xlsx
+from src.schedule_assistant.modules.distributions.parser import (
+    normalize_email,
+    parse_distribution_xlsx,
+)
 from src.schedule_assistant.modules.distributions.repository import (
     DistributionUploadRecord,
     distribution_upload_repository,
@@ -27,7 +39,9 @@ from src.schedule_assistant.modules.distributions.schemas import (
     DistributionUploadStats,
     DistributionUploadSummary,
 )
-from src.schedule_assistant.modules.schedule_config.repository import schedule_config_repository
+from src.schedule_assistant.modules.schedule_config.repository import (
+    schedule_config_repository,
+)
 from src.schedule_assistant.modules.schedule_config.schemas import SectionConfig
 
 router = APIRouter(prefix="/distributions", tags=["Distributions"])
@@ -111,7 +125,9 @@ def _parse_emails_by_label(raw: str | None) -> dict[str, list[str]] | None:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="emails_by_label keys must be strings",
             )
-        if not isinstance(emails, list) or not all(isinstance(item, str) for item in emails):
+        if not isinstance(emails, list) or not all(
+            isinstance(item, str) for item in emails
+        ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="emails_by_label values must be arrays of strings",
@@ -153,7 +169,9 @@ async def _read_upload(file: UploadFile) -> bytes:
         )
     raw = await file.read()
     if not raw:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty file")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Empty file"
+        )
     return raw
 
 
@@ -193,7 +211,10 @@ def _detail_from_record(record: DistributionUploadRecord) -> DistributionUploadD
     return DistributionUploadDetail(
         **summary.model_dump(),
         mapping=record.mapping,
-        updated_groups=[DistributionApplyResultItem.model_validate(item) for item in record.updated_groups],
+        updated_groups=[
+            DistributionApplyResultItem.model_validate(item)
+            for item in record.updated_groups
+        ],
         skipped_labels=record.skipped_labels,
     )
 
@@ -220,7 +241,9 @@ def _build_preview(
             forward_fill_columns=forward_fill_columns,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
 
     excel_labels = [item.label for item in parsed.labels]
     suggested = suggest_mapping(excel_labels, targets)
@@ -274,7 +297,9 @@ async def list_distribution_uploads(
     section_code: Annotated[str | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> list[DistributionUploadSummary]:
-    records = distribution_upload_repository.list_uploads(section_code=section_code, limit=limit)
+    records = distribution_upload_repository.list_uploads(
+        section_code=section_code, limit=limit
+    )
     return [_summary_from_record(record) for record in records]
 
 
@@ -297,8 +322,12 @@ async def download_distribution_upload(
     upload_id: str,
     _user_and_token: VerifyTokenDep,
 ) -> FastAPIResponse:
-    filename, content_type, file_bytes = distribution_upload_repository.get_file(upload_id)
-    ascii_name = filename.encode("ascii", "ignore").decode("ascii") or "distribution.xlsx"
+    filename, content_type, file_bytes = distribution_upload_repository.get_file(
+        upload_id
+    )
+    ascii_name = (
+        filename.encode("ascii", "ignore").decode("ascii") or "distribution.xlsx"
+    )
     quoted = quote(filename)
     return FastAPIResponse(
         content=file_bytes,
@@ -316,8 +345,12 @@ async def preview_distribution(
     section_code: Annotated[str, Form()],
     sheet_name: Annotated[str | None, Form()] = None,
     email_column: Annotated[str | None, Form()] = None,
-    membership_columns: Annotated[str | None, Form(description="JSON array of column names")] = None,
-    forward_fill_columns: Annotated[str | None, Form(description="JSON array of column names")] = None,
+    membership_columns: Annotated[
+        str | None, Form(description="JSON array of column names")
+    ] = None,
+    forward_fill_columns: Annotated[
+        str | None, Form(description="JSON array of column names")
+    ] = None,
 ) -> DistributionPreviewResponse:
     _ = moderator
     file_bytes = await _read_upload(file)
@@ -326,8 +359,12 @@ async def preview_distribution(
         file_bytes=file_bytes,
         sheet_name=sheet_name or None,
         email_column=email_column or None,
-        membership_columns=_parse_json_list(membership_columns, field_name="membership_columns"),
-        forward_fill_columns=_parse_json_list(forward_fill_columns, field_name="forward_fill_columns"),
+        membership_columns=_parse_json_list(
+            membership_columns, field_name="membership_columns"
+        ),
+        forward_fill_columns=_parse_json_list(
+            forward_fill_columns, field_name="forward_fill_columns"
+        ),
     )
 
 
@@ -337,11 +374,17 @@ async def apply_distribution(
     moderator: ModeratorDep,
     file: Annotated[UploadFile, File(description="Distribution Excel workbook")],
     section_code: Annotated[str, Form()],
-    mapping: Annotated[str, Form(description="JSON object excel_label -> group_code|null")],
+    mapping: Annotated[
+        str, Form(description="JSON object excel_label -> group_code|null")
+    ],
     sheet_name: Annotated[str | None, Form()] = None,
     email_column: Annotated[str | None, Form()] = None,
-    membership_columns: Annotated[str | None, Form(description="JSON array of column names")] = None,
-    forward_fill_columns: Annotated[str | None, Form(description="JSON array of column names")] = None,
+    membership_columns: Annotated[
+        str | None, Form(description="JSON array of column names")
+    ] = None,
+    forward_fill_columns: Annotated[
+        str | None, Form(description="JSON array of column names")
+    ] = None,
     emails_by_label: Annotated[
         str | None,
         Form(description="Optional JSON object excel_label -> email[] overrides"),
@@ -354,8 +397,12 @@ async def apply_distribution(
 
     file_bytes = await _read_upload(file)
     label_mapping = _parse_mapping(mapping)
-    membership_cols = _parse_json_list(membership_columns, field_name="membership_columns")
-    forward_fill_cols = _parse_json_list(forward_fill_columns, field_name="forward_fill_columns")
+    membership_cols = _parse_json_list(
+        membership_columns, field_name="membership_columns"
+    )
+    forward_fill_cols = _parse_json_list(
+        forward_fill_columns, field_name="forward_fill_columns"
+    )
     email_overrides = _parse_emails_by_label(emails_by_label)
 
     try:
@@ -367,7 +414,9 @@ async def apply_distribution(
             forward_fill_columns=forward_fill_cols,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
 
     emails_by_label_map = dict(parsed.emails_by_label)
     if email_overrides is not None:
@@ -408,11 +457,14 @@ async def apply_distribution(
     revision = schedule_config_repository.replace_student_group_students(
         updates,
     )
-    mapped_label_count = sum(1 for label in emails_by_label_map if label_mapping.get(label))
+    mapped_label_count = sum(
+        1 for label in emails_by_label_map if label_mapping.get(label)
+    )
     upload = distribution_upload_repository.create(
         section_code=section_code,
         filename=file.filename or "distribution.xlsx",
-        content_type=file.content_type or "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        content_type=file.content_type
+        or "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         file_bytes=file_bytes,
         uploaded_by=uploaded_by,
         sheet_name=parsed.sheet_name,

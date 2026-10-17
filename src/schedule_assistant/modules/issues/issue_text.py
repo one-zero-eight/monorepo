@@ -62,7 +62,11 @@ def _format_date(date: dtm.date) -> str:
 
 def format_meeting_when(meeting: ScheduledMeeting, *, include_time: bool = True) -> str:
     placement = meeting.placement
-    time_suffix = f" в {_format_time_range(meeting.start_time, meeting.end_time)}" if include_time else ""
+    time_suffix = (
+        f" в {_format_time_range(meeting.start_time, meeting.end_time)}"
+        if include_time
+        else ""
+    )
 
     if isinstance(placement, OccurrencePlacement):
         return f"{_format_date(placement.date)}{time_suffix}"
@@ -97,7 +101,9 @@ def format_room_issue_text(issue: RoomIssue) -> str:
     when_parts = sorted({format_meeting_when(meeting) for meeting in issue.meetings})
     when = when_parts[0] if len(when_parts) == 1 else "; ".join(when_parts)
     courses = _quoted_course_names(issue.meetings)
-    return f"В аудитории {issue.room} одновременно запланированы занятия {courses} {when}"
+    return (
+        f"В аудитории {issue.room} одновременно запланированы занятия {courses} {when}"
+    )
 
 
 def format_teacher_issue_text(issue: TeacherIssue) -> str:
@@ -105,7 +111,11 @@ def format_teacher_issue_text(issue: TeacherIssue) -> str:
     for meeting in issue.teaching_meetings + issue.studying_meetings:
         when_parts.add(format_meeting_when(meeting))
 
-    when = next(iter(when_parts)) if len(when_parts) == 1 else "; ".join(sorted(when_parts))
+    when = (
+        next(iter(when_parts))
+        if len(when_parts) == 1
+        else "; ".join(sorted(when_parts))
+    )
     parts: list[str] = []
     if issue.teaching_meetings:
         parts.append(f"ведёт {_quoted_course_names(issue.teaching_meetings)}")
@@ -118,7 +128,11 @@ def format_teacher_issue_text(issue: TeacherIssue) -> str:
 def format_outlook_issue_text(issue: OutlookIssue) -> str:
     courses = _quoted_course_names(issue.meetings)
     rooms = sorted({meeting.room for meeting in issue.meetings if meeting.room})
-    room_part = f"в аудитории {rooms[0]}" if len(rooms) == 1 else f"в аудиториях {', '.join(rooms)}"
+    room_part = (
+        f"в аудитории {rooms[0]}"
+        if len(rooms) == 1
+        else f"в аудиториях {', '.join(rooms)}"
+    )
     when_parts = sorted({format_meeting_when(meeting) for meeting in issue.meetings})
     when = when_parts[0] if len(when_parts) == 1 else "; ".join(when_parts)
     return f"Занятия {courses} {room_part} пересекаются с бронированием «{issue.outlook_event_title}» {when}"
@@ -159,7 +173,9 @@ def format_student_issue_text(issue: StudentIssue) -> str:
     when_parts = sorted({format_meeting_when(meeting) for meeting in issue.meetings})
     when = when_parts[0] if len(when_parts) == 1 else "; ".join(when_parts)
     courses = _quoted_course_names(issue.meetings)
-    return f"Студент {issue.student} одновременно должен быть на занятиях {courses} {when}"
+    return (
+        f"Студент {issue.student} одновременно должен быть на занятиях {courses} {when}"
+    )
 
 
 def format_per_week_issue_text(issue: PerWeekIssue) -> str:

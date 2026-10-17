@@ -80,7 +80,8 @@ class DistributionUploadRepository:
                 id=upload_id,
                 section_code=section_code,
                 filename=filename,
-                content_type=content_type or "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                content_type=content_type
+                or "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 file_bytes=file_bytes,
                 uploaded_by=uploaded_by,
                 uploaded_at=utcnow(),
@@ -98,9 +99,15 @@ class DistributionUploadRepository:
             session.refresh(row)
             return _row_to_record(row)
 
-    def list_uploads(self, *, section_code: str | None = None, limit: int = 50) -> list[DistributionUploadRecord]:
+    def list_uploads(
+        self, *, section_code: str | None = None, limit: int = 50
+    ) -> list[DistributionUploadRecord]:
         with self._session() as session:
-            stmt = select(DistributionUploadRow).order_by(DistributionUploadRow.uploaded_at.desc()).limit(limit)
+            stmt = (
+                select(DistributionUploadRow)
+                .order_by(DistributionUploadRow.uploaded_at.desc())
+                .limit(limit)
+            )
             if section_code:
                 stmt = stmt.where(DistributionUploadRow.section_code == section_code)
             rows = session.scalars(stmt).all()
@@ -124,4 +131,6 @@ class DistributionUploadRepository:
             return row.filename, row.content_type, row.file_bytes
 
 
-distribution_upload_repository = DistributionUploadRepository(settings.db_url.get_secret_value())
+distribution_upload_repository = DistributionUploadRepository(
+    settings.db_url.get_secret_value()
+)

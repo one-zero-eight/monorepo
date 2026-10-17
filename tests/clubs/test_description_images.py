@@ -14,11 +14,16 @@ def _white_png() -> bytes:
 
 
 def _admin_headers(
-    clubs_client: TestClient, superadmin_headers: dict[str, str], user_headers: dict[str, str]
+    clubs_client: TestClient,
+    superadmin_headers: dict[str, str],
+    user_headers: dict[str, str],
 ) -> dict[str, str]:
     response = clubs_client.post(
         "/users/change_role",
-        params={"role": "admin", "user_to_change_email": "test-user-1@innopolis.university"},
+        params={
+            "role": "admin",
+            "user_to_change_email": "test-user-1@innopolis.university",
+        },
         headers=superadmin_headers,
     )
     assert response.status_code == 200
@@ -52,7 +57,9 @@ def test_get_description_image_url(clubs_client: TestClient):
 def test_put_description_image(clubs_client: TestClient):
     description_images_repo.put("img-2", b"webp-bytes", "image/webp")
 
-    obj = description_images_repo.minio_client.get_object(description_images_repo.bucket, "description-images/img-2")
+    obj = description_images_repo.minio_client.get_object(
+        description_images_repo.bucket, "description-images/img-2"
+    )
     try:
         assert obj.read() == b"webp-bytes"
     finally:
@@ -90,14 +97,19 @@ def test_upload_description_image_forbidden_for_non_leader(
     assert create_response.status_code == 200
     club_id = create_response.json()["id"]
 
-    other_headers = auth_header_factory("507f1f77bcf86cd799439012", "guard-other@innopolis.university")
+    other_headers = auth_header_factory(
+        "507f1f77bcf86cd799439012", "guard-other@innopolis.university"
+    )
     response = clubs_client.post(
         f"/clubs/by-id/{club_id}/description-images",
         files={"image_file": ("x.png", _white_png(), "image/png")},
         headers=other_headers,
     )
     assert response.status_code == 403
-    assert response.json()["detail"] == "Only club leader or admin can upload description images"
+    assert (
+        response.json()["detail"]
+        == "Only club leader or admin can upload description images"
+    )
 
 
 def test_upload_description_image_as_leader(
@@ -243,7 +255,9 @@ def test_get_description_image_is_public(
     assert upload_response.status_code == 200
     image_id = upload_response.json()["image_id"]
 
-    response = clubs_client.get(f"/clubs/description-images/{image_id}", follow_redirects=False)
+    response = clubs_client.get(
+        f"/clubs/description-images/{image_id}", follow_redirects=False
+    )
     assert response.status_code == 307
     loc = response.headers["location"]
     parsed = urlparse(loc)
@@ -252,6 +266,8 @@ def test_get_description_image_is_public(
 
 
 def test_get_description_image_returns_404_when_missing(clubs_client: TestClient):
-    response = clubs_client.get("/clubs/description-images/missing-image", follow_redirects=False)
+    response = clubs_client.get(
+        "/clubs/description-images/missing-image", follow_redirects=False
+    )
     assert response.status_code == 404
     assert response.json()["detail"] == "Image not found"

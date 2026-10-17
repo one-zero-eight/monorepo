@@ -17,11 +17,21 @@ class TermRow(Base):
     days: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     starting_day: Mapped[str] = mapped_column(String, nullable=False)
     time_slots: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
-    sections: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
-    instructor_positions: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
-    course_instructor_roles: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
-    course_component_tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
-    room_attributes: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    sections: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    instructor_positions: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    course_instructor_roles: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    course_component_tags: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    room_attributes: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
 
 
 class StudentGroupRow(Base):
@@ -42,7 +52,9 @@ class CourseRow(Base):
     short_name: Mapped[str | None] = mapped_column(String, nullable=True)
     name_ru: Mapped[str | None] = mapped_column(String, nullable=True)
     short_name_ru: Mapped[str | None] = mapped_column(String, nullable=True)
-    instructors: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    instructors: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
     components: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
 
 
@@ -55,7 +67,9 @@ class InstructorRow(Base):
     email: Mapped[str | None] = mapped_column(String, nullable=True)
     alias: Mapped[str | None] = mapped_column(String, nullable=True)
     position: Mapped[str | None] = mapped_column(String, nullable=True)
-    slot_preferences: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    slot_preferences: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
 
 
 class RoomRow(Base):
@@ -72,8 +86,12 @@ class PreferenceInviteLinkRow(Base):
 
     key: Mapped[str] = mapped_column(String, primary_key=True)
     instructor_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    expires_at: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    created_at: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[dtm.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    created_at: Mapped[dtm.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     created_by: Mapped[str] = mapped_column(String, nullable=False)
 
 
@@ -93,14 +111,24 @@ class DistributionUploadRow(Base):
     content_type: Mapped[str] = mapped_column(String, nullable=False)
     file_bytes: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     uploaded_by: Mapped[str] = mapped_column(String, nullable=False)
-    uploaded_at: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    uploaded_at: Mapped[dtm.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     sheet_name: Mapped[str | None] = mapped_column(String, nullable=True)
     email_column: Mapped[str | None] = mapped_column(String, nullable=True)
-    membership_columns: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
-    mapping: Mapped[dict[str, str | None]] = mapped_column(JSON, nullable=False, default=dict)
+    membership_columns: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    mapping: Mapped[dict[str, str | None]] = mapped_column(
+        JSON, nullable=False, default=dict
+    )
     stats: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
-    updated_groups: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
-    skipped_labels: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    updated_groups: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    skipped_labels: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
@@ -108,11 +136,17 @@ class BookingOperationRow(Base):
     __tablename__ = "booking_operations"
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
-    reservation_key: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
+    reservation_key: Mapped[str | None] = mapped_column(
+        String, unique=True, nullable=True
+    )
     task_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
     item: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
-    created_at: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[dtm.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[dtm.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
 
 class BookingTaskRow(Base):
@@ -125,8 +159,14 @@ class BookingTaskRow(Base):
     done: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     current: Mapped[str | None] = mapped_column(String, nullable=True)
-    items: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    items: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
     result: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     error: Mapped[str | None] = mapped_column(String, nullable=True)
-    created_at: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[dtm.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[dtm.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )

@@ -39,14 +39,19 @@ class BookingEvidence(ScheduleAssistantSchema):
     uid: str | None = None
     organizer_mailbox: str | None = None
     room_id: str | None = None
-    room_response: Literal["Accept", "Tentative", "Decline", "Unknown", "NoResponseReceived"] | None = "Unknown"
+    room_response: (
+        Literal["Accept", "Tentative", "Decline", "Unknown", "NoResponseReceived"]
+        | None
+    ) = "Unknown"
     room_presence: Literal["present", "absent", "unknown"] = "unknown"
     organizer_presence: Literal["present", "absent", "unknown"] = "unknown"
     checked_at: dtm.datetime | None = None
     message_body: str | None = None
     can_cancel: bool = False
     evidence: list[str] = Field(default_factory=list)
-    cancellation_status: Literal["cancelling", "cancelled", "requires_review"] | None = None
+    cancellation_status: (
+        Literal["cancelling", "cancelled", "requires_review"] | None
+    ) = None
 
 
 class BookingItemResultStatus(StrEnum):

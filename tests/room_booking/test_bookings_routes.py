@@ -29,7 +29,11 @@ def mock_get_bookings(monkeypatch: pytest.MonkeyPatch):
     from src.room_booking.modules.bookings import routes as bookings_routes
 
     mock = AsyncMock(return_value=[])
-    monkeypatch.setattr(bookings_routes.exchange_booking_repository, "get_bookings_for_certain_rooms", mock)
+    monkeypatch.setattr(
+        bookings_routes.exchange_booking_repository,
+        "get_bookings_for_certain_rooms",
+        mock,
+    )
     return mock
 
 
@@ -38,7 +42,9 @@ def test_bookings_requires_auth(room_booking_client: TestClient):
     assert response.status_code == 401
 
 
-def test_bookings_date_validation(room_booking_client: TestClient, user_headers: dict[str, str]):
+def test_bookings_date_validation(
+    room_booking_client: TestClient, user_headers: dict[str, str]
+):
     response = room_booking_client.get(
         "/bookings/",
         params=dt_params(start=msk(2025, 6, 2, 12), end=msk(2025, 6, 2, 10)),
@@ -49,11 +55,17 @@ def test_bookings_date_validation(room_booking_client: TestClient, user_headers:
 
 
 def test_bookings_room_not_found(
-    room_booking_client: TestClient, user_headers: dict[str, str], mock_get_bookings: AsyncMock
+    room_booking_client: TestClient,
+    user_headers: dict[str, str],
+    mock_get_bookings: AsyncMock,
 ):
     response = room_booking_client.get(
         "/bookings/",
-        params=dt_params(room_id="nonexistent-room", start=msk(2025, 6, 2, 10), end=msk(2025, 6, 2, 12)),
+        params=dt_params(
+            room_id="nonexistent-room",
+            start=msk(2025, 6, 2, 10),
+            end=msk(2025, 6, 2, 12),
+        ),
         headers=user_headers,
     )
     assert response.status_code == 404
@@ -67,7 +79,9 @@ def test_bookings_single_room_id(
 ):
     response = room_booking_client.get(
         "/bookings/",
-        params=dt_params(room_id="3.1", start=msk(2025, 6, 2, 10), end=msk(2025, 6, 2, 12)),
+        params=dt_params(
+            room_id="3.1", start=msk(2025, 6, 2, 10), end=msk(2025, 6, 2, 12)
+        ),
         headers=user_headers,
     )
     assert response.status_code == 200
@@ -82,7 +96,12 @@ def test_bookings_room_id_and_room_ids_merged(
 ):
     response = room_booking_client.get(
         "/bookings/",
-        params=dt_params(room_id="3.1", room_ids=["3.2"], start=msk(2025, 6, 2, 10), end=msk(2025, 6, 2, 12)),
+        params=dt_params(
+            room_id="3.1",
+            room_ids=["3.2"],
+            start=msk(2025, 6, 2, 10),
+            end=msk(2025, 6, 2, 12),
+        ),
         headers=user_headers,
     )
     assert response.status_code == 200
@@ -113,7 +132,9 @@ def test_bookings_service_auth_skips_related_to_me(
     mock_get_bookings.return_value = [_sample_booking()]
     response = room_booking_client.get(
         "/bookings/",
-        params=dt_params(room_id="3.1", start=msk(2025, 6, 2, 10), end=msk(2025, 6, 2, 12)),
+        params=dt_params(
+            room_id="3.1", start=msk(2025, 6, 2, 10), end=msk(2025, 6, 2, 12)
+        ),
         headers=api_key_headers,
     )
     assert response.status_code == 200
@@ -128,7 +149,9 @@ def test_bookings_user_sets_related_to_me(
     mock_get_bookings.return_value = [_sample_booking()]
     response = room_booking_client.get(
         "/bookings/",
-        params=dt_params(room_id="3.1", start=msk(2025, 6, 2, 10), end=msk(2025, 6, 2, 12)),
+        params=dt_params(
+            room_id="3.1", start=msk(2025, 6, 2, 10), end=msk(2025, 6, 2, 12)
+        ),
         headers=user_headers,
     )
     assert response.status_code == 200

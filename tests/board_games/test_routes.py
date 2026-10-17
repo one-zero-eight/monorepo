@@ -4,10 +4,15 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 
-def make_admin(board_games_client: TestClient, superadmin_headers: dict[str, str]) -> None:
+def make_admin(
+    board_games_client: TestClient, superadmin_headers: dict[str, str]
+) -> None:
     response = board_games_client.post(
         "/users/change_role",
-        params={"role": "admin", "user_to_change_email": "test-user-1@innopolis.university"},
+        params={
+            "role": "admin",
+            "user_to_change_email": "test-user-1@innopolis.university",
+        },
         headers=superadmin_headers,
     )
     assert response.status_code == 200
@@ -38,9 +43,14 @@ def test_admin_can_upload_board_game_photo(
     assert uploaded.status_code == 200
     assert uploaded.json()["photo_file_id"] is not None
 
-    photo = board_games_client.get(f"/board-games/{game_id}/photo", follow_redirects=False)
+    photo = board_games_client.get(
+        f"/board-games/{game_id}/photo", follow_redirects=False
+    )
     assert photo.status_code == 307
-    assert f"board-game-photos/{uploaded.json()['photo_file_id']}-512" in photo.headers["location"]
+    assert (
+        f"board-game-photos/{uploaded.json()['photo_file_id']}-512"
+        in photo.headers["location"]
+    )
     assert "X-Amz-Signature=" in photo.headers["location"]
 
 
@@ -153,7 +163,9 @@ def test_user_can_see_available_games_and_reserve(
     assert unavailable.status_code == 409
     assert unavailable.json()["detail"] == "Board game is not available"
 
-    listed_admin_after_reservation = board_games_client.get("/admin/board-games", headers=user_headers)
+    listed_admin_after_reservation = board_games_client.get(
+        "/admin/board-games", headers=user_headers
+    )
     assert listed_admin_after_reservation.status_code == 200
     assert listed_admin_after_reservation.json()[0]["available_in_storage"] == 1
 
@@ -179,7 +191,9 @@ def test_admin_can_lend_reservation_and_see_borrower(
     )
     reservation_id = reservation.json()["id"]
 
-    current = board_games_client.get("/admin/reservations", params={"how": "current"}, headers=user_headers)
+    current = board_games_client.get(
+        "/admin/reservations", params={"how": "current"}, headers=user_headers
+    )
 
     assert current.status_code == 200
     assert current.json()[0]["id"] == reservation_id
@@ -201,15 +215,21 @@ def test_admin_can_lend_reservation_and_see_borrower(
     assert edit_taken.status_code == 409
     assert edit_taken.json()["detail"] == "Reservation is not reserved"
 
-    delete_taken = board_games_client.delete(f"/users/me/reservations/{reservation_id}", headers=user_headers)
+    delete_taken = board_games_client.delete(
+        f"/users/me/reservations/{reservation_id}", headers=user_headers
+    )
     assert delete_taken.status_code == 409
     assert delete_taken.json()["detail"] == "Reservation is not reserved"
 
-    current_after_lend = board_games_client.get("/admin/reservations", params={"how": "current"}, headers=user_headers)
+    current_after_lend = board_games_client.get(
+        "/admin/reservations", params={"how": "current"}, headers=user_headers
+    )
     assert current_after_lend.status_code == 200
     assert current_after_lend.json()[0]["status"] == "taken"
 
-    listed_admin_after_lend = board_games_client.get("/admin/board-games", headers=user_headers)
+    listed_admin_after_lend = board_games_client.get(
+        "/admin/board-games", headers=user_headers
+    )
     assert listed_admin_after_lend.status_code == 200
     assert listed_admin_after_lend.json()[0]["available_in_storage"] == 0
 
@@ -227,11 +247,15 @@ def test_admin_can_lend_reservation_and_see_borrower(
     assert current_after_return.status_code == 200
     assert current_after_return.json() == []
 
-    listed_admin_after_return = board_games_client.get("/admin/board-games", headers=user_headers)
+    listed_admin_after_return = board_games_client.get(
+        "/admin/board-games", headers=user_headers
+    )
     assert listed_admin_after_return.status_code == 200
     assert listed_admin_after_return.json()[0]["available_in_storage"] == 1
 
-    reservations = board_games_client.get("/users/me/reservations", params={"how": "all"}, headers=user_headers)
+    reservations = board_games_client.get(
+        "/users/me/reservations", params={"how": "all"}, headers=user_headers
+    )
     assert reservations.status_code == 200
     assert reservations.json()[0]["borrower_name"] == "Test User One"
 
@@ -243,11 +267,15 @@ def test_admin_can_lend_reservation_and_see_borrower(
     assert edit_returned.status_code == 409
     assert edit_returned.json()["detail"] == "Reservation is not reserved"
 
-    delete_returned = board_games_client.delete(f"/users/me/reservations/{reservation_id}", headers=user_headers)
+    delete_returned = board_games_client.delete(
+        f"/users/me/reservations/{reservation_id}", headers=user_headers
+    )
     assert delete_returned.status_code == 409
     assert delete_returned.json()["detail"] == "Reservation is not reserved"
 
-    deleted = board_games_client.delete(f"/admin/reservations/{reservation_id}", headers=user_headers)
+    deleted = board_games_client.delete(
+        f"/admin/reservations/{reservation_id}", headers=user_headers
+    )
     assert deleted.status_code == 200
 
     reservations_after_delete = board_games_client.get(
@@ -257,7 +285,9 @@ def test_admin_can_lend_reservation_and_see_borrower(
     assert reservations_after_delete.json() == []
 
 
-def test_non_admin_cannot_use_admin_routes(board_games_client: TestClient, user_headers: dict[str, str]):
+def test_non_admin_cannot_use_admin_routes(
+    board_games_client: TestClient, user_headers: dict[str, str]
+):
     response = board_games_client.get("/admin/board-games", headers=user_headers)
 
     assert response.status_code == 403

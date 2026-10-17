@@ -35,7 +35,9 @@ def test_validate_term_rejects_duplicate_room_attribute_keys() -> None:
 
 
 def test_validate_term_rejects_enum_without_values() -> None:
-    term = _term(room_attributes=[RoomAttributeDef(key="board", type="enum", enum_values=[])])
+    term = _term(
+        room_attributes=[RoomAttributeDef(key="board", type="enum", enum_values=[])]
+    )
     errors = validate_term(term)
     assert any("enum_values must not be empty" in error for error in errors)
 
@@ -67,14 +69,20 @@ def test_validate_rooms_rejects_unknown_feature_key() -> None:
 def test_validate_rooms_rejects_wrong_feature_type() -> None:
     term = _term(room_attributes=[RoomAttributeDef(key="capacity_note", type="number")])
     rooms = RoomConfig(
-        rooms=[RoomConfig.Room(id="101", name="101", features={"capacity_note": "large"})],
+        rooms=[
+            RoomConfig.Room(id="101", name="101", features={"capacity_note": "large"})
+        ],
     )
     errors = validate_rooms(rooms, courses=CoursesConfig(), term=term)
     assert any("invalid type for number" in error for error in errors)
 
 
 def test_validate_rooms_rejects_enum_value_outside_list() -> None:
-    term = _term(room_attributes=[RoomAttributeDef(key="board", type="enum", enum_values=["white", "black"])])
+    term = _term(
+        room_attributes=[
+            RoomAttributeDef(key="board", type="enum", enum_values=["white", "black"])
+        ]
+    )
     rooms = RoomConfig(
         rooms=[RoomConfig.Room(id="101", name="101", features={"board": "green"})],
     )
@@ -96,7 +104,12 @@ def test_validate_rooms_allows_matching_features() -> None:
             RoomConfig.Room(
                 id="101",
                 name="101",
-                features={"projector": True, "board": "black", "outlets": 4, "note": "ok"},
+                features={
+                    "projector": True,
+                    "board": "black",
+                    "outlets": 4,
+                    "note": "ok",
+                },
             )
         ],
     )

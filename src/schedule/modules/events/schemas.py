@@ -1,4 +1,11 @@
-__all__ = ["AddEventPatch", "CreateEvent", "UpdateEvent", "UpdateEventPatch", "ViewEvent", "ViewEventPatch"]
+__all__ = [
+    "AddEventPatch",
+    "CreateEvent",
+    "UpdateEvent",
+    "UpdateEventPatch",
+    "ViewEvent",
+    "ViewEventPatch",
+]
 
 import datetime as dtm
 

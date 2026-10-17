@@ -11,10 +11,15 @@ from src.schedule_assistant.modules.issues.booking_match import (
     slot_has_matching_booking,
 )
 from src.schedule_assistant.modules.issues.booking_slots import build_bookable_slots
-from src.schedule_assistant.modules.issues.booking_window import resolve_booking_fetch_window
+from src.schedule_assistant.modules.issues.booking_window import (
+    resolve_booking_fetch_window,
+)
 from src.schedule_assistant.modules.issues.issue_text import attach_issue_text
 from src.schedule_assistant.modules.issues.meetings import meeting_instructor_ids
-from src.schedule_assistant.modules.issues.placement import meeting_sort_key, meetings_overlap
+from src.schedule_assistant.modules.issues.placement import (
+    meeting_sort_key,
+    meetings_overlap,
+)
 from src.schedule_assistant.modules.issues.schemas import (
     CapacityIssue,
     GroupIssue,
@@ -27,7 +32,11 @@ from src.schedule_assistant.modules.issues.schemas import (
     TeacherIssue,
     UnbookedIssue,
 )
-from src.schedule_assistant.modules.schedule_config.schemas import CoursesConfig, SectionsConfig, TermConfig
+from src.schedule_assistant.modules.schedule_config.schemas import (
+    CoursesConfig,
+    SectionsConfig,
+    TermConfig,
+)
 from src.schedule_assistant.utcnow import utcnow
 
 from .graph import UndirectedGraph
@@ -91,15 +100,23 @@ class IssueChecker:
 
     @staticmethod
     def _instructor_key_set(instructor: str | list[str] | None) -> frozenset[str]:
-        return frozenset(value.strip().lower() for value in meeting_instructor_ids(instructor))
+        return frozenset(
+            value.strip().lower() for value in meeting_instructor_ids(instructor)
+        )
 
     @staticmethod
-    def _is_same_logical_meeting(meeting1: ScheduledMeeting, meeting2: ScheduledMeeting) -> bool:
+    def _is_same_logical_meeting(
+        meeting1: ScheduledMeeting, meeting2: ScheduledMeeting
+    ) -> bool:
         if meeting1.course_name.strip().lower() != meeting2.course_name.strip().lower():
             return False
-        if (meeting1.room or "").strip().lower() != (meeting2.room or "").strip().lower():
+        if (meeting1.room or "").strip().lower() != (
+            meeting2.room or ""
+        ).strip().lower():
             return False
-        if IssueChecker._instructor_key_set(meeting1.instructor) != IssueChecker._instructor_key_set(
+        if IssueChecker._instructor_key_set(
+            meeting1.instructor
+        ) != IssueChecker._instructor_key_set(
             meeting2.instructor,
         ):
             return False
@@ -178,7 +195,9 @@ class IssueChecker:
                         continue
                     if self._is_same_logical_meeting(meeting1, meeting2):
                         continue
-                    if meetings_overlap(meeting1, meeting2, count_touching=count_touching):
+                    if meetings_overlap(
+                        meeting1, meeting2, count_touching=count_touching
+                    ):
                         graph.add_edge(ind1, ind2)
                         key_by_edge[(min(ind1, ind2), max(ind1, ind2))] = key
 
@@ -193,7 +212,10 @@ class IssueChecker:
                 for meeting2 in meeting_group[i + 1 :]:
                     meeting1_idx = meetings.index(meeting1)
                     meeting2_idx = meetings.index(meeting2)
-                    edge_key = (min(meeting1_idx, meeting2_idx), max(meeting1_idx, meeting2_idx))
+                    edge_key = (
+                        min(meeting1_idx, meeting2_idx),
+                        max(meeting1_idx, meeting2_idx),
+                    )
                     if edge_key in key_by_edge:
                         conflicting_keys.add(key_by_edge[edge_key])
 
@@ -228,7 +250,9 @@ class IssueChecker:
         *,
         count_touching: bool = False,
     ) -> list[GroupIssue]:
-        group_to_slots: dict[str, list[tuple[int, ScheduledMeeting]]] = defaultdict(list)
+        group_to_slots: dict[str, list[tuple[int, ScheduledMeeting]]] = defaultdict(
+            list
+        )
 
         for index, meeting in enumerate(meetings):
             for group in meeting.groups:
@@ -263,11 +287,15 @@ class IssueChecker:
             for student in students:
                 student_groups[student].add(group_code)
 
-        shared_students = {student for student, groups in student_groups.items() if len(groups) > 1}
+        shared_students = {
+            student for student, groups in student_groups.items() if len(groups) > 1
+        }
         if not shared_students:
             return []
 
-        student_to_slots: dict[str, list[tuple[int, ScheduledMeeting]]] = defaultdict(list)
+        student_to_slots: dict[str, list[tuple[int, ScheduledMeeting]]] = defaultdict(
+            list
+        )
         for index, meeting in enumerate(meetings):
             meeting_students: set[str] = set()
             for group in meeting.groups:
@@ -294,7 +322,9 @@ class IssueChecker:
                         continue
                     if self._is_same_logical_meeting(meeting1, meeting2):
                         continue
-                    if meetings_overlap(meeting1, meeting2, count_touching=count_touching):
+                    if meetings_overlap(
+                        meeting1, meeting2, count_touching=count_touching
+                    ):
                         graph.add_edge(ind1, ind2)
                         student_by_edge[(min(ind1, ind2), max(ind1, ind2))] = student
 
@@ -308,7 +338,10 @@ class IssueChecker:
                 for meeting2 in meeting_group[i + 1 :]:
                     meeting1_idx = meetings.index(meeting1)
                     meeting2_idx = meetings.index(meeting2)
-                    edge_key = (min(meeting1_idx, meeting2_idx), max(meeting1_idx, meeting2_idx))
+                    edge_key = (
+                        min(meeting1_idx, meeting2_idx),
+                        max(meeting1_idx, meeting2_idx),
+                    )
                     if edge_key in student_by_edge:
                         conflicting_students.add(student_by_edge[edge_key])
 
@@ -345,14 +378,18 @@ class IssueChecker:
 
         for meeting in meetings:
             for group_code in meeting.groups:
-                for instructor_id in self.group_to_studying_teachers.get(group_code, []):
+                for instructor_id in self.group_to_studying_teachers.get(
+                    group_code, []
+                ):
                     instructor_key = instructor_id.lower().strip()
                     occupancies[instructor_key].studying_meetings.append(meeting)
 
         teacher_issues = []
 
         for instructor, occupation in occupancies.items():
-            occupation_meetings = occupation.teaching_meetings + occupation.studying_meetings
+            occupation_meetings = (
+                occupation.teaching_meetings + occupation.studying_meetings
+            )
 
             graph = UndirectedGraph(len(occupation_meetings))
             for i, meeting1 in enumerate(occupation_meetings):
@@ -360,11 +397,15 @@ class IssueChecker:
                     meeting2 = occupation_meetings[j]
                     if self._is_same_logical_meeting(meeting1, meeting2):
                         continue
-                    if meetings_overlap(meeting1, meeting2, count_touching=count_touching):
+                    if meetings_overlap(
+                        meeting1, meeting2, count_touching=count_touching
+                    ):
                         graph.add_edge(i, j)
 
             connected_components = graph.get_connected_components()
-            index_groups = graph.get_multi_vertex_groups(list(range(len(occupation_meetings))), connected_components)
+            index_groups = graph.get_multi_vertex_groups(
+                list(range(len(occupation_meetings))), connected_components
+            )
 
             for indices_group in index_groups:
                 teaching_meetings = []
@@ -373,7 +414,11 @@ class IssueChecker:
                     if i < len(occupation.teaching_meetings):
                         teaching_meetings.append(occupation.teaching_meetings[i])
                     else:
-                        studying_meetings.append(occupation.studying_meetings[i - len(occupation.teaching_meetings)])
+                        studying_meetings.append(
+                            occupation.studying_meetings[
+                                i - len(occupation.teaching_meetings)
+                            ]
+                        )
 
                 teacher_issue = TeacherIssue(
                     issue_type=IssueTypeEnum.TEACHER,
@@ -386,7 +431,9 @@ class IssueChecker:
 
         return teacher_issues
 
-    def check_for_capacity_issue(self, meetings: list[ScheduledMeeting]) -> list[CapacityIssue]:
+    def check_for_capacity_issue(
+        self, meetings: list[ScheduledMeeting]
+    ) -> list[CapacityIssue]:
         result = []
         for meeting in meetings:
             room = (meeting.room or "").strip()
@@ -449,7 +496,9 @@ class IssueChecker:
             self.valid_room_ids,
         )
 
-    def check_for_unbooked_issue(self, *, bookings: BookingSnapshot) -> list[UnbookedIssue]:
+    def check_for_unbooked_issue(
+        self, *, bookings: BookingSnapshot
+    ) -> list[UnbookedIssue]:
         issues: list[UnbookedIssue] = []
 
         for slot in self._bookable_slots():
@@ -470,7 +519,9 @@ class IssueChecker:
 
         return issues
 
-    def check_for_outlook_issue(self, *, bookings: BookingSnapshot) -> list[OutlookIssue]:
+    def check_for_outlook_issue(
+        self, *, bookings: BookingSnapshot
+    ) -> list[OutlookIssue]:
         existing_bookings = list(bookings.existing_bookings)
         results = defaultdict(
             lambda: OutlookIssue(
@@ -484,13 +535,19 @@ class IssueChecker:
         for slot in self._bookable_slots():
             if not slot.bookable:
                 continue
-            for _start, _end, conflicts in detect_payload_conflicts(slot.payload, existing_bookings):
-                future_conflicts = [booking for booking in conflicts if booking.end_time >= utcnow()]
+            for _start, _end, conflicts in detect_payload_conflicts(
+                slot.payload, existing_bookings
+            ):
+                future_conflicts = [
+                    booking for booking in conflicts if booking.end_time >= utcnow()
+                ]
                 if not future_conflicts:
                     continue
                 for booking in future_conflicts:
                     normalized_title = booking.title.lower().strip()
-                    results[normalized_title].outlook_event_title = booking.title.strip()
+                    results[
+                        normalized_title
+                    ].outlook_event_title = booking.title.strip()
                     results[normalized_title].meetings.append(slot.meeting)
                     results[normalized_title].outlook_info.append(booking)
 
@@ -513,7 +570,9 @@ class IssueChecker:
                     continue
                 visited_bookings.add(booking_key)
                 deduped_bookings.append(booking)
-            outlook_issue.outlook_info = sorted(deduped_bookings, key=lambda item: (item.start_time, item.room_id))
+            outlook_issue.outlook_info = sorted(
+                deduped_bookings, key=lambda item: (item.start_time, item.room_id)
+            )
             attach_issue_text(outlook_issue)
 
         return list(results.values())
@@ -540,11 +599,15 @@ class IssueChecker:
         issues: list[Issue] = []
 
         if check_room:
-            room_issues = self.check_for_room_issue(meetings, count_touching=count_touching_room)
+            room_issues = self.check_for_room_issue(
+                meetings, count_touching=count_touching_room
+            )
             logger.info(f"Found {len(room_issues)} room issues")
             issues.extend(room_issues)
         if check_teacher:
-            teacher_issues = self.check_for_teacher_issue(meetings, count_touching=count_touching_teacher)
+            teacher_issues = self.check_for_teacher_issue(
+                meetings, count_touching=count_touching_teacher
+            )
             logger.info(f"Found {len(teacher_issues)} teacher issues")
             issues.extend(teacher_issues)
         if check_capacity:
@@ -552,16 +615,22 @@ class IssueChecker:
             logger.info(f"Found {len(capacity_issues)} capacity issues")
             issues.extend(capacity_issues)
         if check_group:
-            group_issues = self.check_for_group_issue(meetings, count_touching=count_touching_group)
+            group_issues = self.check_for_group_issue(
+                meetings, count_touching=count_touching_group
+            )
             logger.info(f"Found {len(group_issues)} group issues")
             issues.extend(group_issues)
         if check_student:
-            student_issues = self.check_for_student_issue(meetings, count_touching=count_touching_student)
+            student_issues = self.check_for_student_issue(
+                meetings, count_touching=count_touching_student
+            )
             logger.info(f"Found {len(student_issues)} student issues")
             issues.extend(student_issues)
         booking_snapshot: BookingSnapshot | None = None
         if check_unbooked or check_outlook:
-            booking_snapshot = await self._load_booking_snapshot(start_date=start_date, end_date=end_date)
+            booking_snapshot = await self._load_booking_snapshot(
+                start_date=start_date, end_date=end_date
+            )
         if check_unbooked and booking_snapshot is not None:
             unbooked_issues = self.check_for_unbooked_issue(bookings=booking_snapshot)
             logger.info(f"Found {len(unbooked_issues)} unbooked issues")

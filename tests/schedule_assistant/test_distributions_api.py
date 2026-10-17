@@ -5,7 +5,9 @@ from pathlib import Path
 import pytest
 from httpx import AsyncClient
 
-from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
+from src.schedule_assistant.modules.schedule_config.repository import (
+    ScheduleConfigRepository,
+)
 from src.schedule_assistant.modules.schedule_config.schemas import (
     ScheduleConfig,
     ScheduleConfigUpdate,
@@ -65,13 +67,21 @@ def _seed_config(repo: ScheduleConfigRepository) -> None:
         ScheduleConfigUpdate(
             term=TermPartialUpdate.model_validate(term.model_dump()),
             students_groups=[
-                StudentsGroups(code="B25-CSE-01", students=["old@innopolis.university"]),
+                StudentsGroups(
+                    code="B25-CSE-01", students=["old@innopolis.university"]
+                ),
                 StudentsGroups(code="B24-CBS-02", students=[]),
                 StudentsGroups(code="AWA-I 10", students=[]),
                 StudentsGroups(code="EAP6", students=[]),
-                StudentsGroups(code="python-adv", name="Углубленный Python", students=[]),
-                StudentsGroups(code="robotics", name="Основы робототехники", students=[]),
-                StudentsGroups(code="other-core", students=["keep@innopolis.university"]),
+                StudentsGroups(
+                    code="python-adv", name="Углубленный Python", students=[]
+                ),
+                StudentsGroups(
+                    code="robotics", name="Основы робототехники", students=[]
+                ),
+                StudentsGroups(
+                    code="other-core", students=["keep@innopolis.university"]
+                ),
             ],
             courses=[],
             rooms=[],
@@ -86,7 +96,10 @@ async def test_preview_core_distribution(
     schedule_config_repo: ScheduleConfigRepository,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    monkeypatch.setattr(
+        "src.schedule_assistant.dependencies.settings.moderator_emails",
+        ["test@test.com"],
+    )
     monkeypatch.setattr(
         "src.schedule_assistant.modules.distributions.routes.schedule_config_repository",
         schedule_config_repo,
@@ -125,7 +138,10 @@ async def test_apply_updates_only_mapped_groups(
     schedule_config_repo: ScheduleConfigRepository,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    monkeypatch.setattr(
+        "src.schedule_assistant.dependencies.settings.moderator_emails",
+        ["test@test.com"],
+    )
     monkeypatch.setattr(
         "src.schedule_assistant.modules.distributions.routes.schedule_config_repository",
         schedule_config_repo,
@@ -166,7 +182,9 @@ async def test_apply_updates_only_mapped_groups(
     assert by_code["B24-CBS-02"].students == []
     assert by_code["other-core"].students == ["keep@innopolis.university"]
 
-    history = await authenticated_client.get("/distributions/uploads", params={"section_code": "core"})
+    history = await authenticated_client.get(
+        "/distributions/uploads", params={"section_code": "core"}
+    )
     assert history.status_code == 200, history.text
     items = history.json()
     assert len(items) == 1
@@ -176,12 +194,16 @@ async def test_apply_updates_only_mapped_groups(
     assert items[0]["stats"]["mapped_label_count"] == 1
     assert items[0]["updated_group_count"] == 1
 
-    detail = await authenticated_client.get(f"/distributions/uploads/{payload['upload_id']}")
+    detail = await authenticated_client.get(
+        f"/distributions/uploads/{payload['upload_id']}"
+    )
     assert detail.status_code == 200
     assert detail.json()["mapping"]["B25-CSE-01"] == "B25-CSE-01"
     assert detail.json()["skipped_labels"] == ["B24-CBS-02"]
 
-    download = await authenticated_client.get(f"/distributions/uploads/{payload['upload_id']}/file")
+    download = await authenticated_client.get(
+        f"/distributions/uploads/{payload['upload_id']}/file"
+    )
     assert download.status_code == 200
     assert download.content[:2] == b"PK"
     assert "attachment" in download.headers.get("content-disposition", "")

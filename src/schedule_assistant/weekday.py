@@ -19,7 +19,9 @@ class Weekday(StrEnum):
 WEEKDAYS = [day.value for day in Weekday]
 
 
-def week_start_for_date(value: dtm.date, starting_day: Weekday = Weekday.MONDAY) -> dtm.date:
+def week_start_for_date(
+    value: dtm.date, starting_day: Weekday = Weekday.MONDAY
+) -> dtm.date:
     return value - dtm.timedelta(days=(value.weekday() - starting_day.index) % 7)
 
 

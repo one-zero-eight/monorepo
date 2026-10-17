@@ -38,7 +38,9 @@ async def test_models_defined_after_initialization_keep_defaults_and_database_is
         class ThirdDocument(ThirdSchema, BeanieDocumentMixin, Document):
             pass
 
-        await init_beanie(database=second_database, document_models=[SecondDocument, ThirdDocument])
+        await init_beanie(
+            database=second_database, document_models=[SecondDocument, ThirdDocument]
+        )
         for model in (SecondDocument, ThirdDocument):
             document = model(value="second")
             assert document.id is None
@@ -53,7 +55,9 @@ async def test_models_defined_after_initialization_keep_defaults_and_database_is
             assert "default" not in schema["properties"]["id"]
 
         # Reinitializing one service must not redirect an already running one.
-        await init_beanie(database=second_database, document_models=[SecondDocument, ThirdDocument])
+        await init_beanie(
+            database=second_database, document_models=[SecondDocument, ThirdDocument]
+        )
         await FirstDocument(value="another first").insert()
         assert await FirstDocument.count() == 2
         assert await SecondDocument.count() == 1

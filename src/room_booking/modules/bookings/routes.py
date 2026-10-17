@@ -8,14 +8,22 @@ __all__ = ["router"]
 import datetime as dtm
 from typing import cast
 
+import exchangelib
 import httpx
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, EmailStr
 
 from src.inh_accounts_sdk import inh_accounts
 from src.logging_ import logger
-from src.room_booking.dependencies import ApiKeyDep, VerifiedDep, VerifiedOrApiKeyDep, VerifiedOrRoomTvDep
-from src.room_booking.modules.bookings.exchange_repository import exchange_booking_repository
+from src.room_booking.dependencies import (
+    ApiKeyDep,
+    VerifiedDep,
+    VerifiedOrApiKeyDep,
+    VerifiedOrRoomTvDep,
+)
+from src.room_booking.modules.bookings.exchange_repository import (
+    exchange_booking_repository,
+)
 from src.room_booking.modules.bookings.schemas import (
     Booking,
     CreateBookingRequest,
@@ -57,19 +65,26 @@ router = APIRouter(
 
 @router.get(
     "/bookings/",
-    responses={400: {"description": "Start must be before end"}, 404: {"description": "Room not found"}},
+    responses={
+        400: {"description": "Start must be before end"},
+        404: {"description": "Room not found"},
+    },
 )
 async def bookings(
     auth: VerifiedOrApiKeyDep,
     room_id: str | None = Query(None, title="ID for getting single room bookings"),
     room_ids: list[str] | None = Query(None, title="IDs for multiple rooms bookings"),
     start: dtm.datetime | None = Query(
-        None, description="Start date, if not provided, will be set to 7 days before current date"
+        None,
+        description="Start date, if not provided, will be set to 7 days before current date",
     ),
     end: dtm.datetime | None = Query(
-        None, description="End date, if not provided, will be set to 14 days after current date"
+        None,
+        description="End date, if not provided, will be set to 14 days after current date",
     ),
-    include_red: bool = Query(False, description="Include red-access rooms bookings when getting all"),
+    include_red: bool = Query(
+        False, description="Include red-access rooms bookings when getting all"
+    ),
 ) -> list[Booking]:
     """
     Get bookings for all or for specific rooms.
@@ -95,11 +110,15 @@ async def bookings(
             raise HTTPException(404, "Room not found")
         room_ids_to_fetch = [room_id]
     elif room_id and room_ids:  # both room id and room ids are provided
-        room_ids_to_fetch = [room_id, *room_ids] if room_id not in room_ids else room_ids
+        room_ids_to_fetch = (
+            [room_id, *room_ids] if room_id not in room_ids else room_ids
+        )
     elif room_ids:  # only room ids are provided
         room_ids_to_fetch = room_ids
     else:
-        raise AssertionError("Invalid combination of room_id and room_ids, not even possible")
+        raise AssertionError(
+            "Invalid combination of room_id and room_ids, not even possible"
+        )
 
     bookings = await exchange_booking_repository.get_bookings_for_certain_rooms(
         room_ids=room_ids_to_fetch, from_dt=start, to_dt=end
@@ -111,16 +130,20 @@ async def bookings(
 async def my_bookings(
     user: VerifiedDep,
     start: dtm.datetime | None = Query(
-        None, description="Start date, if not provided, will be set to 7 days before current date"
+        None,
+        description="Start date, if not provided, will be set to 7 days before current date",
     ),
     end: dtm.datetime | None = Query(
-        None, description="End date, if not provided, will be set to 14 days after current date"
+        None,
+        description="End date, if not provided, will be set to 14 days after current date",
     ),
 ) -> list[Booking]:
     start, end = _default_date_range(start, end)
     if start >= end:
         raise HTTPException(400, "Start must be before end")
-    bookings = await exchange_booking_repository.fetch_user_bookings(attendee_email=user.email, start=start, end=end)
+    bookings = await exchange_booking_repository.fetch_user_bookings(
+        attendee_email=user.email, start=start, end=end
+    )
     return set_related_to_me(bookings, user.email)
 
 
@@ -128,7 +151,9 @@ async def my_bookings(
     "/bookings/",
     responses={
         400: {"description": "Start must be before end or invalid recurrence"},
-        403: {"description": "Room declined the booking OR Invalid user OR Recurrence not allowed"},
+        403: {
+            "description": "Room declined the booking OR Invalid user OR Recurrence not allowed"
+        },
         404: {
             "description": "Room not found OR Booking was removed during booking OR Room attendee not found in booking attendees"
         },
@@ -146,7 +171,12 @@ async def create_booking(user: VerifiedDep, request: CreateBookingRequest) -> Bo
     if innohassle_user is None:
         raise HTTPException(403, "Invalid user")
 
-    can, why = can_book(user=innohassle_user.innopolis_info, room=room, start=request.start, end=request.end)
+    can, why = can_book(
+        user=innohassle_user.innopolis_info,
+        room=room,
+        start=request.start,
+        end=request.end,
+    )
     if not can:
         raise HTTPException(403, why)
 
@@ -161,7 +191,8 @@ async def create_booking(user: VerifiedDep, request: CreateBookingRequest) -> Bo
             ews_recurrence = request.recurrence.to_exchangelib_recurrence()
         except ValueError as e:
             raise HTTPException(400, str(e))
-
+    if request.is_public:
+        request.title = "[public] " + request.title
     booking = await exchange_booking_repository.create_booking(
         room=room,
         start=request.start,
@@ -187,15 +218,26 @@ class AttendeeDetails(BaseModel):
 
 @router.get(
     "/bookings/{outlook_booking_id:path}/get-attendee-details",
-    responses={400: {"description": "Invalid email"}, 404: {"description": "Booking not found OR details not found"}},
+    responses={
+        400: {"description": "Invalid email"},
+        404: {"description": "Booking not found OR details not found"},
+    },
 )
 async def get_attendee_details(
     outlook_booking_id: str,
     user_email: EmailStr,
     auth: VerifiedOrRoomTvDep,
 ) -> AttendeeDetails:
-    identification = auth.user.email if auth.user is not None else auth.room.resource_email if auth.room else None
-    logger.info(f"{identification=} trying to get attendee details for {user_email} in booking {outlook_booking_id}")
+    identification = (
+        auth.user.email
+        if auth.user is not None
+        else auth.room.resource_email
+        if auth.room
+        else None
+    )
+    logger.info(
+        f"{identification=} trying to get attendee details for {user_email} in booking {outlook_booking_id}"
+    )
     if not (user_email.endswith(("@innopolis.university", "@innopolis.ru"))):
         logger.warning(
             f"{identification=} trying to get attendee details for {user_email} in booking {outlook_booking_id} but email is not from Innopolis University"
@@ -210,7 +252,9 @@ async def get_attendee_details(
     return AttendeeDetails(
         name=searched_user.innopolis_info.name,
         email=searched_user.innopolis_info.email,
-        telegram_username=searched_user.telegram_info.username if searched_user.telegram_info else None,
+        telegram_username=searched_user.telegram_info.username
+        if searched_user.telegram_info
+        else None,
         is_staff=searched_user.innopolis_info.is_staff,
         is_student=searched_user.innopolis_info.is_student,
         is_college=searched_user.innopolis_info.is_college,
@@ -219,7 +263,11 @@ async def get_attendee_details(
 
 @router.get(
     "/bookings/by-entry-id/{outlook_entry_id:path}",
-    responses={404: {"description": "Booking not found OR Room attendee not found in booking attendees"}},
+    responses={
+        404: {
+            "description": "Booking not found OR Room attendee not found in booking attendees"
+        }
+    },
 )
 async def get_booking_by_entry_id(
     auth: VerifiedOrRoomTvDep,
@@ -270,14 +318,20 @@ async def delete_booking_by_entry_id(
     if user.email not in get_emails_to_attendees_index(calendar_item):
         raise HTTPException(403, "You are not the participant of the booking")
 
-    canceled = await exchange_booking_repository.cancel_booking(calendar_item, email=user.email)
+    canceled = await exchange_booking_repository.cancel_booking(
+        calendar_item, email=user.email
+    )
     if not canceled:
         raise HTTPException(404, "Booking not found")
 
 
 @router.get(
     "/bookings/{outlook_booking_id:path}",
-    responses={404: {"description": "Booking not found OR Room attendee not found in booking attendees"}},
+    responses={
+        404: {
+            "description": "Booking not found OR Room attendee not found in booking attendees"
+        }
+    },
 )
 async def get_booking(outlook_booking_id: str, user: VerifiedDep) -> Booking:
     calendar_item = await exchange_booking_repository.get_booking(outlook_booking_id)
@@ -294,8 +348,12 @@ async def get_booking(outlook_booking_id: str, user: VerifiedDep) -> Booking:
     "/bookings/{outlook_booking_id:path}",
     responses={
         400: {"description": "Invalid booking"},
-        403: {"description": "You are not the participant of the booking OR Invalid user"},
-        404: {"description": "Booking not found OR Room attendee not found in booking attendees"},
+        403: {
+            "description": "You are not the participant of the booking OR Invalid user OR You are not allowed to update public bookings"
+        },
+        404: {
+            "description": "Booking not found OR Room attendee not found in booking attendees"
+        },
     },
 )
 async def update_booking(
@@ -311,8 +369,15 @@ async def update_booking(
     email_index = get_emails_to_attendees_index(booking)
     room = get_first_room_from_emails(email_index.keys())
 
-    if user.email not in email_index:
+    if str(booking.subject)[0:8] != "[public]" and user.email not in email_index:
         raise HTTPException(403, "You are not the participant of the booking")
+
+    if str(booking.subject)[0:8] == "[public]" and (
+        booking.subject != request.title
+        or booking.start != request.start
+        or booking.end != request.end
+    ):
+        raise HTTPException(403, "You are not allowed to update public bookings")
 
     if room is None:
         raise HTTPException(400, "Invalid booking")
@@ -342,7 +407,13 @@ async def update_booking(
     if booking is None:
         raise HTTPException(404, "Booking not found after update")
 
-    return set_related_to_me(booking, user.email)
+    if booking.title[0:8] != "[public]" or (
+        booking.title[0:8] == "[public]" and user.email in email_index
+    ):
+        return set_related_to_me(booking, user.email)
+    else:
+        email_index[user.email] = exchangelib.Attendee(mailbox=user.email)
+        return booking
 
 
 @router.delete(
@@ -367,16 +438,21 @@ async def delete_booking(user: VerifiedDep, outlook_booking_id: str):
 
 @router.get(
     "/user/{user_id}/bookings",
-    responses={400: {"description": "Start must be before end"}, 404: {"description": "User not found"}},
+    responses={
+        400: {"description": "Start must be before end"},
+        404: {"description": "User not found"},
+    },
 )
 async def get_user_bookings(
     user_id: str,
     _: ApiKeyDep,
     start: dtm.datetime | None = Query(
-        None, description="Start date, if not provided, will be set to 7 days before current date"
+        None,
+        description="Start date, if not provided, will be set to 7 days before current date",
     ),
     end: dtm.datetime | None = Query(
-        None, description="End date, if not provided, will be set to 14 days after current date"
+        None,
+        description="End date, if not provided, will be set to 14 days after current date",
     ),
 ) -> list[Booking]:
     start, end = _default_date_range(start, end)

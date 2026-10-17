@@ -29,6 +29,9 @@ def assert_metrics_contract(client: TestClient, namespace: str) -> None:
     )
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/plain")
-    assert f'{namespace}_api_http_requests_total{{handler="/openapi.json",method="GET",status="2xx"}}' in response.text
+    assert (
+        f'{namespace}_api_http_requests_total{{handler="/openapi.json",method="GET",status="2xx"}}'
+        in response.text
+    )
     assert 'handler="/metrics"' not in response.text
     assert METRICS_API_KEY not in response.text

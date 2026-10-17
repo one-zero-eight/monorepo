@@ -35,7 +35,9 @@ class PhotosRepo:
         object_name = self.get_object_name(photo_file_id, size)
         return self.minio_client.presigned_get_object(self.bucket, object_name)
 
-    def put(self, photo_file_id: str, size: int | None, data: bytes, content_type: str) -> None:
+    def put(
+        self, photo_file_id: str, size: int | None, data: bytes, content_type: str
+    ) -> None:
         self.minio_client.put_object(
             bucket_name=self.bucket,
             object_name=self.get_object_name(photo_file_id, size),

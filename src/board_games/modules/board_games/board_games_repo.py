@@ -60,7 +60,9 @@ async def read(id: PydanticObjectId) -> BoardGame | None:
     return await BoardGame.get(id)
 
 
-async def update(id: PydanticObjectId, update_data: UpdateBoardGame) -> BoardGame | None:
+async def update(
+    id: PydanticObjectId, update_data: UpdateBoardGame
+) -> BoardGame | None:
     board_game = await BoardGame.get(id)
     if not board_game:
         return None
@@ -111,13 +113,19 @@ async def read_all_with_availability() -> list[BoardGameWithAvailability]:
         active = await count_active_reservations(str(game.id))
         result.append(
             BoardGameWithAvailability.model_validate(
-                {**game.model_dump(), "id": game.id, "available_copies": max(game.total_copies - active, 0)}
+                {
+                    **game.model_dump(),
+                    "id": game.id,
+                    "available_copies": max(game.total_copies - active, 0),
+                }
             )
         )
     return result
 
 
-async def read_all_with_storage_availability() -> list[BoardGameWithStorageAvailability]:
+async def read_all_with_storage_availability() -> list[
+    BoardGameWithStorageAvailability
+]:
     games = await read_all()
     result: list[BoardGameWithStorageAvailability] = []
     for game in games:
@@ -167,19 +175,27 @@ async def read_reservations() -> list[Reservation]:
 
 
 async def read_current_reservations() -> list[Reservation]:
-    return await Reservation.find({"status": {"$in": [ReservationStatus.RESERVED, ReservationStatus.TAKEN]}}).to_list()
+    return await Reservation.find(
+        {"status": {"$in": [ReservationStatus.RESERVED, ReservationStatus.TAKEN]}}
+    ).to_list()
 
 
-async def read_board_games_reservations(board_game_id: PydanticObjectId) -> list[Reservation] | None:
+async def read_board_games_reservations(
+    board_game_id: PydanticObjectId,
+) -> list[Reservation] | None:
     board_game = await BoardGame.get(board_game_id)
     if not board_game:
         return None
 
-    return await Reservation.find(Reservation.board_game_id == str(board_game_id)).to_list()
+    return await Reservation.find(
+        Reservation.board_game_id == str(board_game_id)
+    ).to_list()
 
 
 async def read_user_reservations(user_innohassle_id: str) -> list[Reservation]:
-    return await Reservation.find(Reservation.user_innohassle_id == user_innohassle_id).to_list()
+    return await Reservation.find(
+        Reservation.user_innohassle_id == user_innohassle_id
+    ).to_list()
 
 
 async def read_user_current_reservations(user_innohassle_id: str) -> list[Reservation]:
@@ -193,7 +209,9 @@ async def read_reservation(id: PydanticObjectId) -> Reservation | None:
     return await Reservation.get(id)
 
 
-async def update_reservation(id: PydanticObjectId, data: UpdateReservation) -> Reservation | None:
+async def update_reservation(
+    id: PydanticObjectId, data: UpdateReservation
+) -> Reservation | None:
     update_dict = data.model_dump(exclude_unset=True)
     if not update_dict:
         return await Reservation.get(id)
@@ -215,7 +233,10 @@ async def delete_reservation(id: PydanticObjectId) -> bool:
 
 
 async def update_reservation_admin(
-    id: PydanticObjectId, status: ReservationStatus | None, borrower_name: str | None, return_date: dtm.date | None
+    id: PydanticObjectId,
+    status: ReservationStatus | None,
+    borrower_name: str | None,
+    return_date: dtm.date | None,
 ) -> Reservation | None:
     reservation = await Reservation.get(id)
     if reservation is None:

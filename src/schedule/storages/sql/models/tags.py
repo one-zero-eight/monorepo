@@ -6,10 +6,17 @@ from sqlalchemy import JSON, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.schedule.storages.sql.models import Base
-from src.schedule.storages.sql.models.__mixin__ import DescriptionMixin, IdMixin, NameMixin, ownerships_mixin_factory
+from src.schedule.storages.sql.models.__mixin__ import (
+    DescriptionMixin,
+    IdMixin,
+    NameMixin,
+    ownerships_mixin_factory,
+)
 
 
-class Tag(Base, IdMixin, NameMixin, DescriptionMixin, ownerships_mixin_factory("tags", Base)):
+class Tag(
+    Base, IdMixin, NameMixin, DescriptionMixin, ownerships_mixin_factory("tags", Base)
+):
     __tags_associations__: ClassVar[dict[str, Any]] = {}
     __tablename__ = "tags"
 

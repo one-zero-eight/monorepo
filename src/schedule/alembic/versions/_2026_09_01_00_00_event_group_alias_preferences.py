@@ -20,7 +20,9 @@ depends_on: str | Sequence[str] | None = None
 def _scalar(statement: sa.Executable, table_name: str) -> int:
     value = op.get_bind().scalar(statement)
     if value is None:
-        raise RuntimeError(f"Migration verification query returned no value for {table_name}")
+        raise RuntimeError(
+            f"Migration verification query returned no value for {table_name}"
+        )
     return int(value)
 
 
@@ -28,16 +30,22 @@ def _row_count(table_name: str, table: sa.Table) -> int:
     return _scalar(sa.select(sa.func.count()).select_from(table), table_name)
 
 
-def _verify_upgrade_source(table_name: str, table: sa.Table, event_groups: sa.TableClause) -> int:
+def _verify_upgrade_source(
+    table_name: str, table: sa.Table, event_groups: sa.TableClause
+) -> int:
     source_count = _row_count(table_name, table)
     unmapped_count = _scalar(
         sa.select(sa.func.count())
-        .select_from(table.outerjoin(event_groups, event_groups.c.id == table.c.group_id))
+        .select_from(
+            table.outerjoin(event_groups, event_groups.c.id == table.c.group_id)
+        )
         .where(sa.or_(event_groups.c.id.is_(None), event_groups.c.alias.is_(None))),
         table_name,
     )
     if unmapped_count:
-        raise RuntimeError(f"Cannot migrate {table_name}: {unmapped_count} rows have no event group alias")
+        raise RuntimeError(
+            f"Cannot migrate {table_name}: {unmapped_count} rows have no event group alias"
+        )
 
     collisions = (
         sa.select(table.c.user_id, event_groups.c.alias)
@@ -46,9 +54,13 @@ def _verify_upgrade_source(table_name: str, table: sa.Table, event_groups: sa.Ta
         .having(sa.func.count() > 1)
         .subquery()
     )
-    collision_count = _scalar(sa.select(sa.func.count()).select_from(collisions), table_name)
+    collision_count = _scalar(
+        sa.select(sa.func.count()).select_from(collisions), table_name
+    )
     if collision_count:
-        raise RuntimeError(f"Cannot migrate {table_name}: alias mapping would merge {collision_count} preference keys")
+        raise RuntimeError(
+            f"Cannot migrate {table_name}: alias mapping would merge {collision_count} preference keys"
+        )
     return source_count
 
 
@@ -76,10 +88,14 @@ def _migrate_table(table_name: str, table: sa.Table) -> None:
     connection = op.get_bind()
     event_groups = sa.table("event_groups", sa.column("id"), sa.column("alias"))
     source_count = _verify_upgrade_source(table_name, table, event_groups)
-    op.add_column(table_name, sa.Column("group_alias", sa.String(length=255), nullable=True))
+    op.add_column(
+        table_name, sa.Column("group_alias", sa.String(length=255), nullable=True)
+    )
     connection.execute(
         table.update().values(
-            group_alias=sa.select(event_groups.c.alias).where(event_groups.c.id == table.c.group_id).scalar_subquery()
+            group_alias=sa.select(event_groups.c.alias)
+            .where(event_groups.c.id == table.c.group_id)
+            .scalar_subquery()
         )
     )
     _verify_upgraded_data(table_name, table, event_groups, source_count)
@@ -89,7 +105,9 @@ def _migrate_table(table_name: str, table: sa.Table) -> None:
     op.drop_column(table_name, "group_id")
     op.create_primary_key(f"{table_name}_pkey", table_name, ["user_id", "group_alias"])
     if _row_count(table_name, table) != source_count:
-        raise RuntimeError(f"Failed to verify {table_name} upgrade after replacing its primary key")
+        raise RuntimeError(
+            f"Failed to verify {table_name} upgrade after replacing its primary key"
+        )
 
 
 def upgrade() -> None:
@@ -122,22 +140,30 @@ def _downgrade_table(table_name: str, table: sa.Table) -> None:
     source_count = _row_count(table_name, table)
     unmapped_count = _scalar(
         sa.select(sa.func.count())
-        .select_from(table.outerjoin(event_groups, event_groups.c.alias == table.c.group_alias))
+        .select_from(
+            table.outerjoin(event_groups, event_groups.c.alias == table.c.group_alias)
+        )
         .where(event_groups.c.id.is_(None)),
         table_name,
     )
     if unmapped_count:
-        raise RuntimeError(f"Cannot downgrade {table_name}: {unmapped_count} aliases do not map to local event groups")
+        raise RuntimeError(
+            f"Cannot downgrade {table_name}: {unmapped_count} aliases do not map to local event groups"
+        )
 
     op.add_column(table_name, sa.Column("group_id", sa.Integer(), nullable=True))
     connection.execute(
         table.update().values(
-            group_id=sa.select(event_groups.c.id).where(event_groups.c.alias == table.c.group_alias).scalar_subquery()
+            group_id=sa.select(event_groups.c.id)
+            .where(event_groups.c.alias == table.c.group_alias)
+            .scalar_subquery()
         )
     )
     invalid_count = _scalar(
         sa.select(sa.func.count())
-        .select_from(table.join(event_groups, event_groups.c.alias == table.c.group_alias))
+        .select_from(
+            table.join(event_groups, event_groups.c.alias == table.c.group_alias)
+        )
         .where(table.c.group_id.is_distinct_from(event_groups.c.id)),
         table_name,
     )
@@ -157,7 +183,9 @@ def _downgrade_table(table_name: str, table: sa.Table) -> None:
         ondelete="CASCADE",
     )
     if _row_count(table_name, table) != source_count:
-        raise RuntimeError(f"Failed to verify {table_name} downgrade after restoring its foreign key")
+        raise RuntimeError(
+            f"Failed to verify {table_name} downgrade after restoring its foreign key"
+        )
 
 
 def downgrade() -> None:

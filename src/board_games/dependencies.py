@@ -14,7 +14,9 @@ async def ensure_board_games_admin(auth: INH_TOKEN_AUTH):
         logger.warning(
             f"User {auth.innohassle_id} ({auth.email}) is not an admin in board games service, but tried to access admin-only endpoint"
         )
-        raise HTTPException(status_code=403, detail="You are not an admin in board games service")
+        raise HTTPException(
+            status_code=403, detail="You are not an admin in board games service"
+        )
     return user
 
 

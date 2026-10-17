@@ -111,7 +111,10 @@ def _event_list_data(data: SubmissionData, hosts: list[PublicHost]) -> EventList
 def build_draft_out(event: Event, roles: UserRoles) -> DraftOut:
     reasons = eligibility_reasons(event, roles)
     feedback = None
-    if event.submission is not None and event.submission.moderation.feedback is not None:
+    if (
+        event.submission is not None
+        and event.submission.moderation.feedback is not None
+    ):
         feedback = event.submission.moderation.feedback
     return DraftOut(
         id=event.id,
@@ -154,7 +157,9 @@ def build_submission_out(event: Event, submission: Submission) -> SubmissionOut:
     )
 
 
-def build_submission_list_item(event: Event, submission: Submission) -> SubmissionListItem:
+def build_submission_list_item(
+    event: Event, submission: Submission
+) -> SubmissionListItem:
     return SubmissionListItem(
         id=event.id,
         creator_id=event.creator_id,
@@ -202,7 +207,10 @@ def build_event_out(
 
 
 def build_event_list_item(
-    event: Event, public: PublicEvent, auth: UserTokenData | None, hosts: list[PublicHost]
+    event: Event,
+    public: PublicEvent,
+    auth: UserTokenData | None,
+    hosts: list[PublicHost],
 ) -> EventListItem:
     item = EventListItem(
         id=event.id,

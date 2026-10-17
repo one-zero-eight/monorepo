@@ -41,12 +41,16 @@ router = APIRouter(
     route_class=AutoDeriveResponsesAPIRoute,
 )
 
-type RoomBookingQueryParams = dict[str, str] | list[tuple[str, str | int | float | None]]
+type RoomBookingQueryParams = (
+    dict[str, str] | list[tuple[str, str | int | float | None]]
+)
 type RoomBookingJsonBody = dict[str, str | list[str] | None]
 type RoomBookingPatchBody = dict[str, str | None]
 
 
-def _build_participant_view(participant: Participant, user: UserSchema | None) -> ParticipantView:
+def _build_participant_view(
+    participant: Participant, user: UserSchema | None
+) -> ParticipantView:
     telegram_info = user.telegram_info if user else None
     telegram_username = telegram_info.username if telegram_info else None
 
@@ -71,7 +75,9 @@ async def _event_view(event: Event) -> EventView:
             ValidationError,
             ValueError,
         ):
-            logger.warning("Failed to enrich When2Meet participants from Accounts", exc_info=True)
+            logger.warning(
+                "Failed to enrich When2Meet participants from Accounts", exc_info=True
+            )
 
     is_archived, archived_at = archive_state(
         event.archive_after,
@@ -79,8 +85,12 @@ async def _event_view(event: Event) -> EventView:
         dtm.datetime.now(dtm.UTC),
     )
     return EventView(
-        **event.model_dump(exclude={"participants", "room_booking_in_progress", "manually_archived_at"}),
-        participants=[_build_participant_view(p, users.get(p.user_id)) for p in event.participants],
+        **event.model_dump(
+            exclude={"participants", "room_booking_in_progress", "manually_archived_at"}
+        ),
+        participants=[
+            _build_participant_view(p, users.get(p.user_id)) for p in event.participants
+        ],
         is_archived=is_archived,
         archived_at=archived_at,
     )
@@ -94,7 +104,15 @@ def _event_summary(event: Event) -> EventSummary:
     )
     return EventSummary(
         **event.model_dump(
-            include={"id", "slug", "name", "description", "created_at", "selected_time", "archive_after"}
+            include={
+                "id",
+                "slug",
+                "name",
+                "description",
+                "created_at",
+                "selected_time",
+                "archive_after",
+            }
         ),
         participants_count=len(event.participants),
         is_archived=is_archived,
@@ -102,7 +120,9 @@ def _event_summary(event: Event) -> EventSummary:
     )
 
 
-def _booking_overlaps(booking: RoomBookingBooking, start: dtm.datetime, end: dtm.datetime) -> bool:
+def _booking_overlaps(
+    booking: RoomBookingBooking, start: dtm.datetime, end: dtm.datetime
+) -> bool:
     return booking.start < end and booking.end > start
 
 
@@ -117,7 +137,10 @@ def _room_view(room: RoomBookingRoom) -> AvailableRoom:
 
 def _selected_time_for_room_booking(event: Event) -> tuple[dtm.datetime, dtm.datetime]:
     if event.selected_time is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selected meeting time is not set")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Selected meeting time is not set",
+        )
     return event.selected_time.start_datetime, event.selected_time.end_datetime
 
 
@@ -153,10 +176,14 @@ def _room_booking_error_detail(response: httpx.Response) -> object:
     return data
 
 
-async def _room_booking_get(path: str, params: RoomBookingQueryParams, user_auth_header: str) -> object:
+async def _room_booking_get(
+    path: str, params: RoomBookingQueryParams, user_auth_header: str
+) -> object:
     url = _room_booking_url(path)
     try:
-        async with httpx.AsyncClient(headers={"Authorization": user_auth_header}, timeout=30) as client:
+        async with httpx.AsyncClient(
+            headers={"Authorization": user_auth_header}, timeout=30
+        ) as client:
             response = await client.get(url, params=params)
             response.raise_for_status()
     except httpx.HTTPStatusError as exc:
@@ -175,10 +202,14 @@ async def _room_booking_get(path: str, params: RoomBookingQueryParams, user_auth
     return _room_booking_json(response)
 
 
-async def _room_booking_post(path: str, json_body: RoomBookingJsonBody, user_auth_header: str) -> object:
+async def _room_booking_post(
+    path: str, json_body: RoomBookingJsonBody, user_auth_header: str
+) -> object:
     url = _room_booking_url(path)
     try:
-        async with httpx.AsyncClient(headers={"Authorization": user_auth_header}, timeout=30) as client:
+        async with httpx.AsyncClient(
+            headers={"Authorization": user_auth_header}, timeout=30
+        ) as client:
             response = await client.post(url, json=json_body)
             response.raise_for_status()
     except httpx.HTTPStatusError as exc:
@@ -207,10 +238,14 @@ async def _room_booking_post(path: str, json_body: RoomBookingJsonBody, user_aut
     return _room_booking_json(response)
 
 
-async def _room_booking_patch(path: str, json_body: RoomBookingPatchBody, user_auth_header: str) -> object:
+async def _room_booking_patch(
+    path: str, json_body: RoomBookingPatchBody, user_auth_header: str
+) -> object:
     url = _room_booking_url(path)
     try:
-        async with httpx.AsyncClient(headers={"Authorization": user_auth_header}, timeout=30) as client:
+        async with httpx.AsyncClient(
+            headers={"Authorization": user_auth_header}, timeout=30
+        ) as client:
             response = await client.patch(url, json=json_body)
             response.raise_for_status()
     except httpx.HTTPStatusError as exc:
@@ -242,7 +277,9 @@ async def _room_booking_patch(path: str, json_body: RoomBookingPatchBody, user_a
 async def _room_booking_delete(path: str, user_auth_header: str) -> None:
     url = _room_booking_url(path)
     try:
-        async with httpx.AsyncClient(headers={"Authorization": user_auth_header}, timeout=30) as client:
+        async with httpx.AsyncClient(
+            headers={"Authorization": user_auth_header}, timeout=30
+        ) as client:
             response = await client.delete(url)
             response.raise_for_status()
     except httpx.HTTPStatusError as exc:
@@ -272,7 +309,9 @@ async def _room_booking_delete(path: str, user_auth_header: str) -> None:
 async def _get_rooms(user_auth_header: str) -> list[RoomBookingRoom]:
     rooms = cast(
         list[object],
-        await _room_booking_get("/rooms/", params={"include_red": "true"}, user_auth_header=user_auth_header),
+        await _room_booking_get(
+            "/rooms/", params={"include_red": "true"}, user_auth_header=user_auth_header
+        ),
     )
     return [RoomBookingRoom.model_validate(room) for room in rooms]
 
@@ -286,7 +325,10 @@ async def _get_room_bookings(
         *[("room_ids", room_id) for room_id in room_ids],
     ]
     bookings = cast(
-        list[object], await _room_booking_get("/bookings/", params=params, user_auth_header=user_auth_header)
+        list[object],
+        await _room_booking_get(
+            "/bookings/", params=params, user_auth_header=user_auth_header
+        ),
     )
     return [RoomBookingBooking.model_validate(booking) for booking in bookings]
 
@@ -298,11 +340,15 @@ async def _get_room_can_book(
         "start": start.isoformat(),
         "end": end.isoformat(),
     }
-    can_book = await _room_booking_get(f"/room/{room_id}/can-book", params=params, user_auth_header=user_auth_header)
+    can_book = await _room_booking_get(
+        f"/room/{room_id}/can-book", params=params, user_auth_header=user_auth_header
+    )
     return RoomBookingCanBook.model_validate(can_book)
 
 
-async def _can_book_room(room_id: str, start: dtm.datetime, end: dtm.datetime, user_auth_header: str) -> bool:
+async def _can_book_room(
+    room_id: str, start: dtm.datetime, end: dtm.datetime, user_auth_header: str
+) -> bool:
     return (await _get_room_can_book(room_id, start, end, user_auth_header)).can_book
 
 
@@ -318,13 +364,21 @@ async def _get_available_rooms_for_time(
         end=end,
         user_auth_header=user_auth_header,
     )
-    busy_room_ids = {booking.room_id for booking in bookings if _booking_overlaps(booking, start, end)}
+    busy_room_ids = {
+        booking.room_id
+        for booking in bookings
+        if _booking_overlaps(booking, start, end)
+    }
     free_rooms = [room for room in rooms if room.id not in busy_room_ids]
 
     can_book_flags = await asyncio.gather(
         *[_can_book_room(room.id, start, end, user_auth_header) for room in free_rooms]
     )
-    return [_room_view(room) for room, can_book in zip(free_rooms, can_book_flags) if can_book]
+    return [
+        _room_view(room)
+        for room, can_book in zip(free_rooms, can_book_flags)
+        if can_book
+    ]
 
 
 async def _book_room(event: Event, room_id: str, user_auth_header: str) -> BookedRoom:
@@ -334,7 +388,8 @@ async def _book_room(event: Event, room_id: str, user_auth_header: str) -> Booke
     if not can_book.can_book:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=can_book.reason_why_cannot or "Room is unavailable for the selected meeting time",
+            detail=can_book.reason_why_cannot
+            or "Room is unavailable for the selected meeting time",
         )
 
     booking = RoomBookingCreatedBooking.model_validate(
@@ -375,15 +430,22 @@ def _manageable_booking_path(booked_room: BookedRoom) -> str:
 
 async def _cancel_room_booking(booked_room: BookedRoom, user_auth_header: str) -> None:
     try:
-        await _room_booking_delete(_manageable_booking_path(booked_room), user_auth_header=user_auth_header)
+        await _room_booking_delete(
+            _manageable_booking_path(booked_room), user_auth_header=user_auth_header
+        )
     except HTTPException as exc:
         if exc.status_code != status.HTTP_404_NOT_FOUND:
             raise
 
 
-async def _update_room_booking(event: Event, selected_time: bool, title: bool, user_auth_header: str) -> BookedRoom:
+async def _update_room_booking(
+    event: Event, selected_time: bool, title: bool, user_auth_header: str
+) -> BookedRoom:
     if event.booked_room is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room is not booked for this meeting")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Room is not booked for this meeting",
+        )
     start, end = _selected_time_for_room_booking(event)
 
     booking = RoomBookingCreatedBooking.model_validate(
@@ -404,10 +466,17 @@ async def _update_room_booking(event: Event, selected_time: bool, title: bool, u
     )
 
 
-async def _acquire_room_booking_lock(event: Event, require_unbooked: bool = True) -> bool:
+async def _acquire_room_booking_lock(
+    event: Event, require_unbooked: bool = True
+) -> bool:
     filters: list[object] = [
         Event.id == event.id,
-        {"$or": [{"room_booking_in_progress": False}, {"room_booking_in_progress": {"$exists": False}}]},
+        {
+            "$or": [
+                {"room_booking_in_progress": False},
+                {"room_booking_in_progress": {"$exists": False}},
+            ]
+        },
     ]
     if require_unbooked:
         filters.append({"booked_room": None})
@@ -420,7 +489,9 @@ async def _acquire_room_booking_lock(event: Event, require_unbooked: bool = True
 
 
 async def _release_room_booking_lock(event: Event) -> None:
-    await Event.find_one(Event.id == event.id).update({"$set": {"room_booking_in_progress": False}})
+    await Event.find_one(Event.id == event.id).update(
+        {"$set": {"room_booking_in_progress": False}}
+    )
 
 
 async def _save_booked_room(event: Event, booked_room: BookedRoom) -> Event:
@@ -452,7 +523,9 @@ async def _replace_booked_room(event: Event, booked_room: BookedRoom | None) -> 
     ).update(
         {
             "$set": {
-                "booked_room": booked_room.model_dump() if booked_room is not None else None,
+                "booked_room": booked_room.model_dump()
+                if booked_room is not None
+                else None,
                 "room_booking_in_progress": False,
             }
         },
@@ -466,7 +539,9 @@ async def _replace_booked_room(event: Event, booked_room: BookedRoom | None) -> 
     return updated_event
 
 
-async def _require_room_booking_lock(event: Event, require_unbooked: bool, detail: str) -> None:
+async def _require_room_booking_lock(
+    event: Event, require_unbooked: bool, detail: str
+) -> None:
     if await _acquire_room_booking_lock(event, require_unbooked=require_unbooked):
         return
     raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
@@ -475,9 +550,14 @@ async def _require_room_booking_lock(event: Event, require_unbooked: bool, detai
 async def _locked_event_with_booked_room(event: Event) -> Event:
     locked_event = await Event.get(event.id)
     if locked_event is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found"
+        )
     if locked_event.booked_room is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room is not booked for this meeting")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Room is not booked for this meeting",
+        )
     return locked_event
 
 
@@ -499,7 +579,9 @@ async def _update_meeting_room_booking(
         locked_event = await _locked_event_with_booked_room(event)
         for field_name in event_update.model_fields_set:
             setattr(locked_event, field_name, getattr(event_update, field_name))
-        locked_event.archive_after = calculate_archive_after(locked_event.slots, locked_event.selected_time)
+        locked_event.archive_after = calculate_archive_after(
+            locked_event.slots, locked_event.selected_time
+        )
         try:
             locked_event.booked_room = await _update_room_booking(
                 locked_event,
@@ -518,7 +600,9 @@ async def _update_meeting_room_booking(
         raise
 
 
-async def _book_meeting_room(event: Event, room_id: str, user_auth_header: str) -> Event:
+async def _book_meeting_room(
+    event: Event, room_id: str, user_auth_header: str
+) -> Event:
     await _require_room_booking_lock(
         event,
         require_unbooked=True,
@@ -534,7 +618,9 @@ async def _book_meeting_room(event: Event, room_id: str, user_auth_header: str) 
     return await _save_booked_room(event, booked_room)
 
 
-async def _change_meeting_room(event: Event, room_id: str, user_auth_header: str) -> Event:
+async def _change_meeting_room(
+    event: Event, room_id: str, user_auth_header: str
+) -> Event:
     await _require_room_booking_lock(
         event,
         require_unbooked=False,
@@ -553,7 +639,10 @@ async def _change_meeting_room(event: Event, room_id: str, user_auth_header: str
             try:
                 await _cancel_room_booking(new_booked_room, user_auth_header)
             except HTTPException:
-                logger.warning("Failed to roll back newly created Room Booking reservation", exc_info=True)
+                logger.warning(
+                    "Failed to roll back newly created Room Booking reservation",
+                    exc_info=True,
+                )
         await _release_room_booking_lock(event)
         raise
 
@@ -601,14 +690,18 @@ async def _cancel_room_before_delete(event: Event, user_auth_header: str) -> Non
 async def _get_meeting_or_404(meeting_ref: str) -> Event:
     event = await events_repo.read_by_ref(meeting_ref)
     if not event:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found"
+        )
     return event
 
 
 def _get_participant_or_404(event: Event, user_id: str) -> Participant:
     participant = next((p for p in event.participants if p.user_id == user_id), None)
     if not participant:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Participant not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Participant not found"
+        )
     return participant
 
 
@@ -636,10 +729,15 @@ def _ensure_active(event: Event) -> None:
 def _same_meeting_time(first: MeetingTime | None, second: MeetingTime | None) -> bool:
     if first is None or second is None:
         return first is second
-    return (first.start_datetime, first.end_datetime) == (second.start_datetime, second.end_datetime)
+    return (first.start_datetime, first.end_datetime) == (
+        second.start_datetime,
+        second.end_datetime,
+    )
 
 
-def _ensure_can_delete_participant(event: Event, participant: Participant, user_id: str) -> None:
+def _ensure_can_delete_participant(
+    event: Event, participant: Participant, user_id: str
+) -> None:
     if event.owner_id == user_id or participant.user_id == user_id:
         return
 
@@ -657,10 +755,14 @@ def _ensure_can_delete_participant(event: Event, participant: Participant, user_
 )
 async def get_my_meetings(
     auth: INH_TOKEN_AUTH,
-    meeting_status: Annotated[MeetingStatus, Query(alias="status")] = MeetingStatus.ACTIVE,
+    meeting_status: Annotated[
+        MeetingStatus, Query(alias="status")
+    ] = MeetingStatus.ACTIVE,
 ) -> list[EventSummary]:
     """Get meetings owned by the authenticated user."""
-    events = await events_repo.get_my_events(auth.innohassle_id, meeting_status, dtm.datetime.now(dtm.UTC))
+    events = await events_repo.get_my_events(
+        auth.innohassle_id, meeting_status, dtm.datetime.now(dtm.UTC)
+    )
     return [_event_summary(event) for event in events]
 
 
@@ -680,12 +782,16 @@ async def create_meeting(event_in: EventCreate, auth: INH_TOKEN_AUTH) -> EventVi
 @router.get(
     "/participating",
     responses={
-        status.HTTP_200_OK: {"description": "List of meetings where the user is a participant"},
+        status.HTTP_200_OK: {
+            "description": "List of meetings where the user is a participant"
+        },
     },
 )
 async def get_participating_meetings(
     auth: INH_TOKEN_AUTH,
-    meeting_status: Annotated[MeetingStatus, Query(alias="status")] = MeetingStatus.ACTIVE,
+    meeting_status: Annotated[
+        MeetingStatus, Query(alias="status")
+    ] = MeetingStatus.ACTIVE,
 ) -> list[EventSummary]:
     """Get meetings where the authenticated user is a participant."""
     events = await events_repo.get_participating_events(
@@ -732,7 +838,9 @@ async def get_meeting(meeting_ref: str, auth: INH_TOKEN_AUTH) -> EventView:
         },
         status.HTTP_403_FORBIDDEN: {"description": "Not an owner"},
         status.HTTP_404_NOT_FOUND: {"description": "Meeting not found"},
-        status.HTTP_409_CONFLICT: {"description": "Meeting is archived or its room booking is being changed"},
+        status.HTTP_409_CONFLICT: {
+            "description": "Meeting is archived or its room booking is being changed"
+        },
     },
 )
 async def update_meeting(
@@ -763,7 +871,9 @@ async def update_meeting(
             },
         )
     updates_booking_title = "name" in changed_fields and event_update.name != event.name
-    if event.booked_room is not None and (updates_booking_time or updates_booking_title):
+    if event.booked_room is not None and (
+        updates_booking_time or updates_booking_title
+    ):
         if event_update.selected_time is None and updates_booking_time:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -808,11 +918,15 @@ async def archive_meeting(meeting_ref: str, auth: INH_TOKEN_AUTH) -> EventView:
         status.HTTP_204_NO_CONTENT: {"description": "Meeting deleted"},
         status.HTTP_403_FORBIDDEN: {"description": "Not an owner"},
         status.HTTP_404_NOT_FOUND: {"description": "Meeting not found"},
-        status.HTTP_409_CONFLICT: {"description": "Room booking is already being changed for this meeting"},
+        status.HTTP_409_CONFLICT: {
+            "description": "Room booking is already being changed for this meeting"
+        },
     },
     status_code=status.HTTP_204_NO_CONTENT,
 )
-async def delete_meeting(meeting_ref: str, auth: INH_TOKEN_AUTH, request: Request) -> None:
+async def delete_meeting(
+    meeting_ref: str, auth: INH_TOKEN_AUTH, request: Request
+) -> None:
     """Delete a meeting (owner only)."""
     event = await _get_meeting_or_404(meeting_ref)
     _ensure_owner(event, auth.innohassle_id, "delete")
@@ -841,7 +955,9 @@ async def update_participant(
     event = await _get_meeting_or_404(meeting_ref)
     _ensure_active(event)
 
-    event = await events_repo.update_participant(event, participant_in, user_id=auth.innohassle_id)
+    event = await events_repo.update_participant(
+        event, participant_in, user_id=auth.innohassle_id
+    )
     return await _event_view(event)
 
 
@@ -849,7 +965,9 @@ async def update_participant(
     "/{meeting_ref}/participants/{user_id}",
     responses={
         status.HTTP_200_OK: {"description": "Participant removed"},
-        status.HTTP_403_FORBIDDEN: {"description": "Not allowed to remove this participant"},
+        status.HTTP_403_FORBIDDEN: {
+            "description": "Not allowed to remove this participant"
+        },
         status.HTTP_404_NOT_FOUND: {"description": "Meeting or participant not found"},
         status.HTTP_409_CONFLICT: {"description": "Meeting is archived"},
     },
@@ -873,10 +991,16 @@ async def delete_participant(
     "/{meeting_ref}/book-room",
     responses={
         status.HTTP_200_OK: {"description": "Room booked for the meeting"},
-        status.HTTP_400_BAD_REQUEST: {"description": "Selected meeting time is not set or room is unavailable"},
-        status.HTTP_403_FORBIDDEN: {"description": "Not an owner or room booking is forbidden"},
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Selected meeting time is not set or room is unavailable"
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "Not an owner or room booking is forbidden"
+        },
         status.HTTP_404_NOT_FOUND: {"description": "Meeting or room not found"},
-        status.HTTP_409_CONFLICT: {"description": "Meeting is archived or already has a booked room"},
+        status.HTTP_409_CONFLICT: {
+            "description": "Meeting is archived or already has a booked room"
+        },
     },
 )
 async def book_room_for_meeting(
@@ -890,14 +1014,19 @@ async def book_room_for_meeting(
     _ensure_owner(event, auth.innohassle_id, "book a room for")
     _ensure_active(event)
     if event.selected_time is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selected meeting time is not set")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Selected meeting time is not set",
+        )
     if event.booked_room is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Room is already booked for this meeting",
         )
 
-    event = await _book_meeting_room(event, request_body.room_id, request.headers["authorization"])
+    event = await _book_meeting_room(
+        event, request_body.room_id, request.headers["authorization"]
+    )
     return await _event_view(event)
 
 
@@ -908,9 +1037,15 @@ async def book_room_for_meeting(
         status.HTTP_400_BAD_REQUEST: {
             "description": "Room is not booked, selected time is not set, or room is unavailable"
         },
-        status.HTTP_403_FORBIDDEN: {"description": "Not an owner or room booking is forbidden"},
-        status.HTTP_404_NOT_FOUND: {"description": "Meeting, booking, or room not found"},
-        status.HTTP_409_CONFLICT: {"description": "Meeting is archived or its room booking is being changed"},
+        status.HTTP_403_FORBIDDEN: {
+            "description": "Not an owner or room booking is forbidden"
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Meeting, booking, or room not found"
+        },
+        status.HTTP_409_CONFLICT: {
+            "description": "Meeting is archived or its room booking is being changed"
+        },
     },
 )
 async def change_room_for_meeting(
@@ -924,13 +1059,21 @@ async def change_room_for_meeting(
     _ensure_owner(event, auth.innohassle_id, "change the booked room for")
     _ensure_active(event)
     if event.booked_room is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room is not booked for this meeting")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Room is not booked for this meeting",
+        )
     if event.selected_time is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selected meeting time is not set")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Selected meeting time is not set",
+        )
     if event.booked_room.room_id == request_body.room_id:
         return await _event_view(event)
 
-    event = await _change_meeting_room(event, request_body.room_id, request.headers["authorization"])
+    event = await _change_meeting_room(
+        event, request_body.room_id, request.headers["authorization"]
+    )
     return await _event_view(event)
 
 
@@ -938,10 +1081,16 @@ async def change_room_for_meeting(
     "/{meeting_ref}/book-room",
     responses={
         status.HTTP_200_OK: {"description": "Booked room canceled for the meeting"},
-        status.HTTP_400_BAD_REQUEST: {"description": "Room is not booked for this meeting"},
-        status.HTTP_403_FORBIDDEN: {"description": "Not an owner or room booking is forbidden"},
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Room is not booked for this meeting"
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "Not an owner or room booking is forbidden"
+        },
         status.HTTP_404_NOT_FOUND: {"description": "Meeting or booking not found"},
-        status.HTTP_409_CONFLICT: {"description": "Meeting is archived or its room booking is being changed"},
+        status.HTTP_409_CONFLICT: {
+            "description": "Meeting is archived or its room booking is being changed"
+        },
     },
 )
 async def cancel_room_for_meeting(
@@ -954,7 +1103,10 @@ async def cancel_room_for_meeting(
     _ensure_owner(event, auth.innohassle_id, "cancel the booked room for")
     _ensure_active(event)
     if event.booked_room is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room is not booked for this meeting")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Room is not booked for this meeting",
+        )
 
     event = await _cancel_meeting_room(event, request.headers["authorization"])
     return await _event_view(event)
@@ -963,8 +1115,12 @@ async def cancel_room_for_meeting(
 @router.get(
     "/{meeting_ref}/available-rooms",
     responses={
-        status.HTTP_200_OK: {"description": "Rooms available for the selected meeting time"},
-        status.HTTP_400_BAD_REQUEST: {"description": "Selected meeting time is not set"},
+        status.HTTP_200_OK: {
+            "description": "Rooms available for the selected meeting time"
+        },
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Selected meeting time is not set"
+        },
         status.HTTP_404_NOT_FOUND: {"description": "Meeting not found"},
     },
 )
@@ -976,7 +1132,10 @@ async def get_available_rooms(
     """Get rooms free for the meeting's selected time window."""
     event = await _get_meeting_or_404(meeting_ref)
     if event.selected_time is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selected meeting time is not set")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Selected meeting time is not set",
+        )
     start, end = _selected_time_for_room_booking(event)
 
     return await _get_available_rooms_for_time(

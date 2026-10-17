@@ -20,7 +20,9 @@ def ensure_clubs_service_api_key(
     """Check that the request comes from an authorized service using the API key."""
     if bearer is None or not bearer.credentials:
         raise IncorrectCredentialsException(no_credentials=True)
-    expected = settings.api_key.get_secret_value() if settings.api_key is not None else None
+    expected = (
+        settings.api_key.get_secret_value() if settings.api_key is not None else None
+    )
     if expected is None or bearer.credentials != expected:
         raise IncorrectCredentialsException(no_credentials=False)
     return bearer.credentials
@@ -35,11 +37,15 @@ async def ensure_clubs_admin(auth: INH_TOKEN_AUTH):
         logger.warning(
             f"User {auth.innohassle_id} ({auth.email}) is not an admin in clubs service, but tried to access admin-only endpoint"
         )
-        raise HTTPException(status_code=403, detail="You are not an admin in clubs service")
+        raise HTTPException(
+            status_code=403, detail="You are not an admin in clubs service"
+        )
     return clubs_user
 
 
-async def ensure_club_leader_or_admin(id: PydanticObjectId, auth: INH_TOKEN_AUTH) -> Club:
+async def ensure_club_leader_or_admin(
+    id: PydanticObjectId, auth: INH_TOKEN_AUTH
+) -> Club:
     club = await clubs_repo.read(id)
     if not club:
         raise HTTPException(status_code=404, detail="Club not found")
@@ -54,7 +60,10 @@ async def ensure_club_leader_or_admin(id: PydanticObjectId, auth: INH_TOKEN_AUTH
     logger.warning(
         f"User {auth.innohassle_id} ({auth.email}) is not a leader or admin for club {id}, but tried to upload description image"
     )
-    raise HTTPException(status_code=403, detail="Only club leader or admin can upload description images")
+    raise HTTPException(
+        status_code=403,
+        detail="Only club leader or admin can upload description images",
+    )
 
 
 CLUBS_ADMIN_AUTH = Annotated[User, Depends(ensure_clubs_admin)]

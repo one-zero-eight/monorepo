@@ -46,7 +46,9 @@ def test_event_location_maps_url_for_known_title(
     user_headers: dict[str, str],
     superadmin_headers: dict[str, str],
 ):
-    draft = create_and_publish(events_client, user_headers, superadmin_headers, location="Main Hall")
+    draft = create_and_publish(
+        events_client, user_headers, superadmin_headers, location="Main Hall"
+    )
     event = events_client.get(f"/events/{draft['id']}").json()
     assert_resolved_location(event["data"]["location"], "Main Hall", on_map=True)
 
@@ -56,10 +58,16 @@ def test_list_events_from_to_filters(
     user_headers: dict[str, str],
     superadmin_headers: dict[str, str],
 ):
-    create_and_publish(events_client, user_headers, superadmin_headers, starts_at=future_iso(5))
-    create_and_publish(events_client, user_headers, superadmin_headers, starts_at=future_iso(20))
+    create_and_publish(
+        events_client, user_headers, superadmin_headers, starts_at=future_iso(5)
+    )
+    create_and_publish(
+        events_client, user_headers, superadmin_headers, starts_at=future_iso(20)
+    )
 
-    response = events_client.get("/events", params={"from": future_iso(10), "to": future_iso(30)})
+    response = events_client.get(
+        "/events", params={"from": future_iso(10), "to": future_iso(30)}
+    )
     assert response.status_code == 200
     assert len(response.json()) == 1
 
@@ -69,12 +77,16 @@ def test_list_events_excludes_events_outside_default_window(
     user_headers: dict[str, str],
     superadmin_headers: dict[str, str],
 ):
-    create_and_publish(events_client, user_headers, superadmin_headers, starts_at=future_iso(45))
+    create_and_publish(
+        events_client, user_headers, superadmin_headers, starts_at=future_iso(45)
+    )
     response = events_client.get("/events")
     assert response.status_code == 200
     assert response.json() == []
 
-    in_window = events_client.get("/events", params={"from": future_iso(40), "to": future_iso(50)})
+    in_window = events_client.get(
+        "/events", params={"from": future_iso(40), "to": future_iso(50)}
+    )
     assert in_window.status_code == 200
     assert len(in_window.json()) == 1
 
@@ -113,10 +125,14 @@ def test_get_event_can_edit_draft(
     as_author = events_client.get(f"/events/{draft['id']}", headers=user_headers).json()
     assert as_author["can_edit_draft"] is True
 
-    as_other = events_client.get(f"/events/{draft['id']}", headers=plain_user_headers).json()
+    as_other = events_client.get(
+        f"/events/{draft['id']}", headers=plain_user_headers
+    ).json()
     assert as_other["can_edit_draft"] is False
 
-    as_moderator = events_client.get(f"/events/{draft['id']}", headers=superadmin_headers).json()
+    as_moderator = events_client.get(
+        f"/events/{draft['id']}", headers=superadmin_headers
+    ).json()
     assert as_moderator["can_edit_draft"] is False
 
 
@@ -125,7 +141,9 @@ def test_events_host_resolves_club(
     club_leader_headers: dict[str, str],
     superadmin_headers: dict[str, str],
 ):
-    draft = create_and_publish(events_client, club_leader_headers, superadmin_headers, host="club")
+    draft = create_and_publish(
+        events_client, club_leader_headers, superadmin_headers, host="club"
+    )
     expected = {
         "display_name": CLUB_TITLE,
         "link": f"https://innohassle.ru/clubs/{CLUB_SLUG}",
@@ -145,7 +163,9 @@ def test_events_host_resolves_club(
     assert listed_host["link"] == expected["link"]
 
 
-def test_enroll_and_unenroll(events_client: TestClient, user_headers: dict[str, str], superadmin_headers):
+def test_enroll_and_unenroll(
+    events_client: TestClient, user_headers: dict[str, str], superadmin_headers
+):
     draft = create_and_publish(events_client, user_headers, superadmin_headers)
 
     enrolled = events_client.post(f"/events/{draft['id']}/enroll", headers=user_headers)
@@ -157,7 +177,9 @@ def test_enroll_and_unenroll(events_client: TestClient, user_headers: dict[str, 
     assert again.status_code == 200
     assert again.json()["enrolled_count"] == 1
 
-    unenrolled = events_client.post(f"/events/{draft['id']}/unenroll", headers=user_headers)
+    unenrolled = events_client.post(
+        f"/events/{draft['id']}/unenroll", headers=user_headers
+    )
     assert unenrolled.status_code == 200
     assert unenrolled.json()["enrolled"] is False
     assert unenrolled.json()["enrolled_count"] == 0
@@ -175,13 +197,22 @@ def test_enroll_respects_capacity(
         superadmin_headers,
         enrollment={"type": "internal", "capacity": 1},
     )
-    assert events_client.post(f"/events/{draft['id']}/enroll", headers=user_headers).status_code == 200
-    full = events_client.post(f"/events/{draft['id']}/enroll", headers=plain_user_headers)
+    assert (
+        events_client.post(
+            f"/events/{draft['id']}/enroll", headers=user_headers
+        ).status_code
+        == 200
+    )
+    full = events_client.post(
+        f"/events/{draft['id']}/enroll", headers=plain_user_headers
+    )
     assert full.status_code == 400
     assert "capacity" in full.json()["detail"]
 
 
-def test_enroll_requires_auth(events_client: TestClient, user_headers: dict[str, str], superadmin_headers):
+def test_enroll_requires_auth(
+    events_client: TestClient, user_headers: dict[str, str], superadmin_headers
+):
     draft = create_and_publish(events_client, user_headers, superadmin_headers)
     response = events_client.post(f"/events/{draft['id']}/enroll")
     assert response.status_code == 401
@@ -202,11 +233,15 @@ def test_event_visibility_for_author_and_moderator(
     assert as_author["approved_at"] is not None
     assert as_author["approved_by"] is None
 
-    as_moderator = events_client.get(f"/events/{draft['id']}", headers=superadmin_headers).json()
+    as_moderator = events_client.get(
+        f"/events/{draft['id']}", headers=superadmin_headers
+    ).json()
     assert as_moderator["approved_by"] == "admin@innopolis.university"
     assert as_moderator["enrolled_emails"] == ["test-user-1@innopolis.university"]
 
-    as_plain_user = events_client.get(f"/events/{draft['id']}", headers=plain_user_headers).json()
+    as_plain_user = events_client.get(
+        f"/events/{draft['id']}", headers=plain_user_headers
+    ).json()
     assert as_plain_user["enrolled_emails"] == ["test-user-1@innopolis.university"]
     assert as_plain_user["revision"] is None
     assert as_plain_user["approved_at"] is None
@@ -221,14 +256,20 @@ def test_unpublish_by_moderator(
 ):
     draft = create_and_publish(events_client, user_headers, superadmin_headers)
 
-    forbidden = events_client.delete(f"/events/{draft['id']}", headers=plain_user_headers)
+    forbidden = events_client.delete(
+        f"/events/{draft['id']}", headers=plain_user_headers
+    )
     assert forbidden.status_code == 403
 
-    response = events_client.delete(f"/events/{draft['id']}", headers=superadmin_headers)
+    response = events_client.delete(
+        f"/events/{draft['id']}", headers=superadmin_headers
+    )
     assert response.status_code == 200
     assert events_client.get(f"/events/{draft['id']}").status_code == 404
 
-    draft_view = events_client.get(f"/drafts/{draft['id']}", headers=user_headers).json()
+    draft_view = events_client.get(
+        f"/drafts/{draft['id']}", headers=user_headers
+    ).json()
     assert draft_view["status"] == "unpublished"
 
 
@@ -249,12 +290,18 @@ def test_event_image_redirect(
     add_external_host(events_client, draft["id"], user_headers)
     fill_locales(events_client, draft["id"], user_headers)
     submit(events_client, draft["id"], user_headers)
-    events_client.post(f"/submissions/{draft['id']}/approve", json={"feedback": ""}, headers=superadmin_headers)
+    events_client.post(
+        f"/submissions/{draft['id']}/approve",
+        json={"feedback": ""},
+        headers=superadmin_headers,
+    )
 
     response = events_client.get(f"/events/{draft['id']}/image", follow_redirects=False)
     assert response.status_code == 307
     assert image_id in response.headers["location"]
 
     no_image = create_and_publish(events_client, user_headers, superadmin_headers)
-    missing = events_client.get(f"/events/{no_image['id']}/image", follow_redirects=False)
+    missing = events_client.get(
+        f"/events/{no_image['id']}/image", follow_redirects=False
+    )
     assert missing.status_code == 404

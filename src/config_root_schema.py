@@ -65,30 +65,49 @@ class Settings(BaseSchema):
     def accounts_mock_requires_development(self) -> Settings:
         if not self.accounts.mock:
             return self
-        contexts: list[tuple[str, Environment]] = [("maps_service", self.maps_service.environment)]
+        contexts: list[tuple[str, Environment]] = [
+            ("maps_service", self.maps_service.environment)
+        ]
         if self.clubs_service is not None:
             contexts.append(("clubs_service", self.clubs_service.environment))
         if self.events_service is not None:
             contexts.append(("events_service", self.events_service.environment))
         if self.student_affairs_service is not None:
-            contexts.append(("student_affairs_service", self.student_affairs_service.environment))
+            contexts.append(
+                ("student_affairs_service", self.student_affairs_service.environment)
+            )
         if self.board_games_service is not None:
-            contexts.append(("board_games_service", self.board_games_service.environment))
+            contexts.append(
+                ("board_games_service", self.board_games_service.environment)
+            )
         if self.when2meet_service is not None:
             contexts.append(("when2meet_service", self.when2meet_service.environment))
         if self.tabletennis_service is not None:
-            contexts.append(("tabletennis_service", self.tabletennis_service.environment))
+            contexts.append(
+                ("tabletennis_service", self.tabletennis_service.environment)
+            )
         if self.guard_service is not None:
             contexts.append(("guard_service", self.guard_service.environment))
         if self.forms_service is not None:
             contexts.append(("forms_service", self.forms_service.environment))
         if self.room_booking_service is not None:
-            contexts.append(("room_booking_service", self.room_booking_service.environment))
+            contexts.append(
+                ("room_booking_service", self.room_booking_service.environment)
+            )
         if self.schedule_service is not None:
             contexts.append(("schedule_service", self.schedule_service.environment))
         if self.schedule_assistant_service is not None:
-            contexts.append(("schedule_assistant_service", self.schedule_assistant_service.environment))
-        bad = [(name, env.value) for name, env in contexts if env != Environment.DEVELOPMENT]
+            contexts.append(
+                (
+                    "schedule_assistant_service",
+                    self.schedule_assistant_service.environment,
+                )
+            )
+        bad = [
+            (name, env.value)
+            for name, env in contexts
+            if env != Environment.DEVELOPMENT
+        ]
         if bad:
             names = ", ".join(f"{n}={e}" for n, e in bad)
             raise ValueError(
@@ -106,7 +125,10 @@ class Settings(BaseSchema):
     @classmethod
     def save_schema(cls, path: Path) -> None:
         with open(path, "w", encoding="utf-8") as f:
-            schema = {"$schema": "https://json-schema.org/draft-07/schema", **cls.model_json_schema()}
+            schema = {
+                "$schema": "https://json-schema.org/draft-07/schema",
+                **cls.model_json_schema(),
+            }
             yaml.dump(schema, f, sort_keys=False)
 
 

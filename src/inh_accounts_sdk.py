@@ -177,9 +177,18 @@ class InNoHassleAccounts:
     def get_public_key(self) -> RSAKey:
         if self.key_set is None:
             raise RuntimeError("Key set should be initialized by `update_key_set`")
-        key_data = next((key for key in self.key_set.get("keys", []) if key.get("kid") == self.PUBLIC_KID), None)
+        key_data = next(
+            (
+                key
+                for key in self.key_set.get("keys", [])
+                if key.get("kid") == self.PUBLIC_KID
+            ),
+            None,
+        )
         if key_data is None:
-            raise RuntimeError(f"Public key with kid={self.PUBLIC_KID!r} is missing in JWKS")
+            raise RuntimeError(
+                f"Public key with kid={self.PUBLIC_KID!r} is missing in JWKS"
+            )
         return RSAKey.import_key(key_data)
 
     async def get_key_set(self) -> dict[str, Any]:
@@ -199,7 +208,10 @@ class InNoHassleAccounts:
                 try:
                     return UserTokenData.model_validate_json(raw)
                 except Exception:
-                    self.logger.warning(f"Invalid mock Bearer JSON for UserTokenData: {raw}", exc_info=True)
+                    self.logger.warning(
+                        f"Invalid mock Bearer JSON for UserTokenData: {raw}",
+                        exc_info=True,
+                    )
                     return None
         try:
             payload = self._get_jwt_claims(token)
@@ -228,7 +240,10 @@ class InNoHassleAccounts:
                 try:
                     return RoomTvTokenData.model_validate_json(raw)
                 except Exception:
-                    self.logger.warning(f"Invalid mock Bearer JSON for RoomTvTokenData: {raw}", exc_info=True)
+                    self.logger.warning(
+                        f"Invalid mock Bearer JSON for RoomTvTokenData: {raw}",
+                        exc_info=True,
+                    )
                     return None
         try:
             payload = self._get_jwt_claims(token)
@@ -284,18 +299,25 @@ class InNoHassleAccounts:
                 raise
         return None
 
-    async def get_users(self, innohassle_ids: list[str]) -> dict[str, UserSchema | None]:
+    async def get_users(
+        self, innohassle_ids: list[str]
+    ) -> dict[str, UserSchema | None]:
         """
         Get multiple users by ids.
         """
         client = self.get_authorized_client()
         response = await client.post("/users/by-id/get-bulk", json=innohassle_ids)
         response.raise_for_status()
-        return {k: UserSchema.model_validate(v) if v else None for k, v in response.json().items()}
+        return {
+            k: UserSchema.model_validate(v) if v else None
+            for k, v in response.json().items()
+        }
 
     async def get_sport_token(self, innohassle_id: str) -> str:
         client = self.get_authorized_client()
-        response = await client.get("/tokens/generate-sport-token", params={"innohassle_id": innohassle_id})
+        response = await client.get(
+            "/tokens/generate-sport-token", params={"innohassle_id": innohassle_id}
+        )
         response.raise_for_status()
         return response.json()["access_token"]
 
@@ -314,5 +336,7 @@ if root_settings.accounts:
         logger=src.logging_.logger,
     )
 else:
-    raise ImportError("InNoHassle Accounts is not configured in ./settings.yaml")  # pragma: no cover
+    raise ImportError(
+        "InNoHassle Accounts is not configured in ./settings.yaml"
+    )  # pragma: no cover
 # ^

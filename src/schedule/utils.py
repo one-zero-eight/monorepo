@@ -87,7 +87,12 @@ def validate_vevent(event: icalendar.Event):
 
     # icalendar.vDate often omits VALUE=DATE; treat pure date DTSTART as all-day.
     is_date_only = type(vddd_dtstart.dt) is dtm.date
-    if not vddd_dtend and not vddd_duration and vddd_dtstart.params.get("VALUE") != "DATE" and not is_date_only:
+    if (
+        not vddd_dtend
+        and not vddd_duration
+        and vddd_dtstart.params.get("VALUE") != "DATE"
+        and not is_date_only
+    ):
         raise ValueError("Event has no DTEND or DURATION", event)
 
     if vddd_dtend and vddd_duration:
@@ -102,7 +107,9 @@ def validate_vevent(event: icalendar.Event):
     if "RRULE" in event:
         rrule_raw = cast(Any, event["RRULE"]).to_ical()
         rrule_str = rrule_raw.decode() if isinstance(rrule_raw, bytes) else rrule_raw
-        rrule: dateutil.rrule.rrule = dateutil.rrule.rrulestr(rrule_str, dtstart=vddd_dtstart.dt)
+        rrule: dateutil.rrule.rrule = dateutil.rrule.rrulestr(
+            rrule_str, dtstart=vddd_dtstart.dt
+        )
         rrule_dates = iter(rrule)
         rrule_first_dt = next(rrule_dates, None)
 
@@ -131,7 +138,9 @@ def locate_ics_by_path(path: str) -> Path:
     if normalized_path.is_absolute() or ".." in normalized_path.parts:
         raise ValueError(f"Path escapes predefined ICS directory: {path!r}")
     if not normalized_path.name or normalized_path.suffix != ".ics":
-        raise ValueError(f"Path must point to an .ics file inside predefined/ics: {path!r}")
+        raise ValueError(
+            f"Path must point to an .ics file inside predefined/ics: {path!r}"
+        )
 
     base_dir = (settings.predefined_dir / "ics").resolve(strict=False)
     ics_path = (base_dir / normalized_path).resolve(strict=False)

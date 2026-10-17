@@ -16,7 +16,10 @@ from types import ModuleType
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
-from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
+from fastapi.exception_handlers import (
+    http_exception_handler,
+    request_validation_exception_handler,
+)
 from fastapi.exceptions import RequestValidationError
 from fastapi.requests import Request
 from fastapi.routing import APIRoute
@@ -36,9 +39,13 @@ def configure_metrics(app: FastAPI, namespace: str, api_key: SecretStr) -> None:
     expected_api_key = api_key.get_secret_value()
 
     async def authorize_metrics(
-        bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(metrics_bearer_scheme)],
+        bearer: Annotated[
+            HTTPAuthorizationCredentials | None, Depends(metrics_bearer_scheme)
+        ],
     ) -> None:
-        if bearer is None or not secrets.compare_digest(bearer.credentials, expected_api_key):
+        if bearer is None or not secrets.compare_digest(
+            bearer.credentials, expected_api_key
+        ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid metrics credentials",

@@ -45,7 +45,14 @@ async def read_by_ref(event_ref: str) -> Event | None:
 
 
 def _find_participant(event: Event, user_id: str) -> Participant | None:
-    return next((participant for participant in event.participants if participant.user_id == user_id), None)
+    return next(
+        (
+            participant
+            for participant in event.participants
+            if participant.user_id == user_id
+        ),
+        None,
+    )
 
 
 def _merge_availability_with_hidden_slots(
@@ -54,11 +61,15 @@ def _merge_availability_with_hidden_slots(
     visible_slots: list[dtm.datetime],
 ) -> list[dtm.datetime]:
     visible_slots_set = set(visible_slots)
-    hidden_availability = [slot for slot in existing_availability if slot not in visible_slots_set]
+    hidden_availability = [
+        slot for slot in existing_availability if slot not in visible_slots_set
+    ]
     return list(dict.fromkeys(hidden_availability + new_availability))
 
 
-async def update_participant(event: Event, data: ParticipantUpdate, user_id: str) -> Event:
+async def update_participant(
+    event: Event, data: ParticipantUpdate, user_id: str
+) -> Event:
     """Update or add participant availability."""
     participant = _find_participant(event, user_id)
     if participant:
@@ -68,12 +79,16 @@ async def update_participant(event: Event, data: ParticipantUpdate, user_id: str
             visible_slots=event.slots,
         )
     else:
-        event.participants.append(Participant(user_id=user_id, availability=data.availability))
+        event.participants.append(
+            Participant(user_id=user_id, availability=data.availability)
+        )
 
     return await event.save()
 
 
-def _status_filter(meeting_status: MeetingStatus, now: dtm.datetime) -> dict[str, object]:
+def _status_filter(
+    meeting_status: MeetingStatus, now: dtm.datetime
+) -> dict[str, object]:
     if meeting_status == MeetingStatus.ACTIVE:
         return {
             "manually_archived_at": None,
@@ -87,10 +102,16 @@ def _status_filter(meeting_status: MeetingStatus, now: dtm.datetime) -> dict[str
     }
 
 
-async def get_my_events(owner_id: str, meeting_status: MeetingStatus, now: dtm.datetime) -> list[Event]:
+async def get_my_events(
+    owner_id: str, meeting_status: MeetingStatus, now: dtm.datetime
+) -> list[Event]:
     """Get events owned by the user."""
     return (
-        await Event.find(Event.owner_id == owner_id, _status_filter(meeting_status, now)).sort("-created_at").to_list()
+        await Event.find(
+            Event.owner_id == owner_id, _status_filter(meeting_status, now)
+        )
+        .sort("-created_at")
+        .to_list()
     )
 
 

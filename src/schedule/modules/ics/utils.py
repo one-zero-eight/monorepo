@@ -59,7 +59,9 @@ def _pin_public_https_url(url: str) -> tuple[str, str]:
     if parsed.hostname is None:
         raise HTTPException(status_code=400, detail="URL must contain a hostname")
     if parsed.port is not None:
-        raise HTTPException(status_code=400, detail="Explicit port in URL is not allowed")
+        raise HTTPException(
+            status_code=400, detail="Explicit port in URL is not allowed"
+        )
     if parsed.username is not None or parsed.password is not None:
         raise HTTPException(status_code=400, detail="User info in URL is not allowed")
 
@@ -67,25 +69,35 @@ def _pin_public_https_url(url: str) -> tuple[str, str]:
     try:
         addrinfo = socket.getaddrinfo(hostname, 443, type=socket.SOCK_STREAM)
     except socket.gaierror as e:
-        raise HTTPException(status_code=400, detail=f"Could not resolve hostname: {hostname}") from e
+        raise HTTPException(
+            status_code=400, detail=f"Could not resolve hostname: {hostname}"
+        ) from e
 
     if not addrinfo:
-        raise HTTPException(status_code=400, detail=f"Could not resolve hostname: {hostname}")
+        raise HTTPException(
+            status_code=400, detail=f"Could not resolve hostname: {hostname}"
+        )
 
     pinned_ip: ipaddress.IPv4Address | ipaddress.IPv6Address | None = None
     for entry in addrinfo:
         ip = ipaddress.ip_address(entry[4][0])
         if not ip.is_global:
-            raise HTTPException(status_code=400, detail=f"URL resolves to non-public IP: {ip}")
+            raise HTTPException(
+                status_code=400, detail=f"URL resolves to non-public IP: {ip}"
+            )
         # Prefer IPv4: production egress is often IPv4-only.
         if pinned_ip is None or (pinned_ip.version == 6 and ip.version == 4):
             pinned_ip = ip
 
     if pinned_ip is None:
-        raise HTTPException(status_code=400, detail=f"Could not resolve hostname: {hostname}")
+        raise HTTPException(
+            status_code=400, detail=f"Could not resolve hostname: {hostname}"
+        )
 
     netloc = f"[{pinned_ip}]" if pinned_ip.version == 6 else str(pinned_ip)
-    pinned_url = urlunparse(("https", netloc, parsed.path, parsed.params, parsed.query, ""))
+    pinned_url = urlunparse(
+        ("https", netloc, parsed.path, parsed.params, parsed.query, "")
+    )
     return pinned_url, hostname
 
 
@@ -102,7 +114,9 @@ async def generate_ics_from_url(
 
     async with httpx.AsyncClient() as client:
         try:
-            request = client.build_request("GET", request_url, timeout=TIMEOUT, headers=request_headers)
+            request = client.build_request(
+                "GET", request_url, timeout=TIMEOUT, headers=request_headers
+            )
             if sni_hostname is not None:
                 request.extensions["sni_hostname"] = sni_hostname
             response = await client.send(request, follow_redirects=False)
@@ -119,7 +133,9 @@ async def generate_ics_from_url(
         if _size is not None:
             content_length = int(_size)
             if content_length > MAX_SIZE:
-                raise HTTPException(status_code=400, detail=f"File is too big: {content_length}")
+                raise HTTPException(
+                    status_code=400, detail=f"File is too big: {content_length}"
+                )
 
         ics_content = await response.aread()
         if len(ics_content) > MAX_SIZE:
@@ -180,7 +196,10 @@ async def get_personal_event_groups_ics(user: ViewUser) -> AsyncGenerator[bytes]
             continue
         external_aliases.discard(event_group_alias)
         if event_group.path is None:
-            raise HTTPException(status_code=501, detail=f"Local event group {event_group_alias} has no static ICS")
+            raise HTTPException(
+                status_code=501,
+                detail=f"Local event group {event_group_alias} has no static ICS",
+            )
         try:
             ics_path = locate_ics_by_path(event_group.path)
         except ValueError as e:
@@ -189,10 +208,17 @@ async def get_personal_event_groups_ics(user: ViewUser) -> AsyncGenerator[bytes]
     external_ics = None
     if external_aliases:
         if settings.schedule_assistant is None:
-            raise HTTPException(status_code=502, detail="Schedule Assistant integration is not configured")
-        from src.schedule.modules.schedule_assistant.client import schedule_assistant_client
+            raise HTTPException(
+                status_code=502,
+                detail="Schedule Assistant integration is not configured",
+            )
+        from src.schedule.modules.schedule_assistant.client import (
+            schedule_assistant_client,
+        )
 
-        external_ics = await schedule_assistant_client.get_event_groups_ics(sorted(external_aliases))
+        external_ics = await schedule_assistant_client.get_event_groups_ics(
+            sorted(external_aliases)
+        )
     ical_generator = _generate_ics_from_multiple(
         user,
         *paths,
@@ -208,18 +234,24 @@ async def get_personal_music_room_ics(user: ViewUser) -> AsyncGenerator[bytes]:
     async with httpx.AsyncClient() as client:
         url = f"{settings.music_room.api_url}/users/user_id"
         query_params = {"email": user.email}
-        headers = {"Authorization": f"Bearer {settings.music_room.api_key.get_secret_value()}"}
+        headers = {
+            "Authorization": f"Bearer {settings.music_room.api_key.get_secret_value()}"
+        }
         response = await client.get(url, params=query_params, headers=headers)
         response.raise_for_status()
         if response.status_code == 200:
             user_id = response.json()
             if user_id is None:
-                raise HTTPException(status_code=404, detail="User not found in music room service")
+                raise HTTPException(
+                    status_code=404, detail="User not found in music room service"
+                )
         else:
             raise HTTPException(status_code=500, detail="Error in music room service")
     ical_generator = generate_ics_from_url(
         f"{settings.music_room.api_url}/users/{user_id}/bookings.ics",
-        headers={"Authorization": f"Bearer {settings.music_room.api_key.get_secret_value()}"},
+        headers={
+            "Authorization": f"Bearer {settings.music_room.api_key.get_secret_value()}"
+        },
         should_validate_url=False,
     )
     return ical_generator
@@ -253,11 +285,18 @@ async def _fetch_workshops(path: str, params: dict | None = None) -> list[dict]:
         raise HTTPException(status_code=404, detail="Workshops are not configured")
 
     async with httpx.AsyncClient(
-        headers={"Authorization": f"Bearer {settings.workshops.api_key.get_secret_value()}"}, timeout=TIMEOUT
+        headers={
+            "Authorization": f"Bearer {settings.workshops.api_key.get_secret_value()}"
+        },
+        timeout=TIMEOUT,
     ) as client:
-        response = await client.get(f"{settings.workshops.api_url}{path}", params=params)
+        response = await client.get(
+            f"{settings.workshops.api_url}{path}", params=params
+        )
         if response.status_code == 404 and "User not found" in response.text:
-            raise HTTPException(status_code=404, detail="User not found in workshops service")
+            raise HTTPException(
+                status_code=404, detail="User not found in workshops service"
+            )
         response.raise_for_status()
         return response.json()
 
@@ -274,7 +313,9 @@ def _generate_workshops_ics(workshops: list[dict], calendar_name: str) -> bytes:
 
 
 async def get_all_workshops_ics(only_published: bool = True) -> bytes:
-    workshops = await _fetch_workshops("/workshops/", params={"limit": WORKSHOPS_ALL_LIMIT})
+    workshops = await _fetch_workshops(
+        "/workshops/", params={"limit": WORKSHOPS_ALL_LIMIT}
+    )
     if only_published:
         workshops = [
             workshop
@@ -304,7 +345,9 @@ async def get_personal_workshops_ics(user: ViewUser) -> bytes:
     """
 
     workshops = await _fetch_workshops(f"/users/{user.innohassle_id}/checkins")
-    return _generate_workshops_ics(workshops, f"{user.email} Events schedule from innohassle.ru")
+    return _generate_workshops_ics(
+        workshops, f"{user.email} Events schedule from innohassle.ru"
+    )
 
 
 class Training(BaseModel):
@@ -390,7 +433,9 @@ async def get_personal_sport_ics(user: ViewUser) -> bytes:
         return vevent
 
     if user.innohassle_id is None:
-        raise HTTPException(status_code=404, detail="User has no innohassle account linked")
+        raise HTTPException(
+            status_code=404, detail="User has no innohassle account linked"
+        )
 
     main_calendar = get_base_calendar()
     main_calendar["x-wr-calname"] = f"{user.email} Sport schedule from innohassle.ru"
@@ -400,7 +445,9 @@ async def get_personal_sport_ics(user: ViewUser) -> bytes:
     _start = _now - dtm.timedelta(days=7)
     _end = _now + dtm.timedelta(days=7)
 
-    async with httpx.AsyncClient(headers={"Authorization": f"Bearer {sport_token}"}, timeout=TIMEOUT) as client:
+    async with httpx.AsyncClient(
+        headers={"Authorization": f"Bearer {sport_token}"}, timeout=TIMEOUT
+    ) as client:
         response = await client.get(
             f"{settings.sport.api_url}/calendar/trainings",
             params={"start": _start.isoformat(), "end": _end.isoformat()},
@@ -504,11 +551,15 @@ def fix_moodle_events(calendar: icalendar.Calendar) -> icalendar.Calendar:
                 key = (quiz_name, course_name)
                 if kind == "opens":
                     if key in quiz_opens:
-                        logger.warning(f"Quiz open '{quiz_name}' for course '{course_name}' appears twice")
+                        logger.warning(
+                            f"Quiz open '{quiz_name}' for course '{course_name}' appears twice"
+                        )
                     quiz_opens[key] = event
                 else:
                     if key in quiz_closes:
-                        logger.warning(f"Quiz close '{quiz_name}' for course '{course_name}' appears twice")
+                        logger.warning(
+                            f"Quiz close '{quiz_name}' for course '{course_name}' appears twice"
+                        )
                     quiz_closes[key] = event
             else:
                 fixed_events.append(_moodle_make_deadline(event))
@@ -524,7 +575,9 @@ def fix_moodle_events(calendar: icalendar.Calendar) -> icalendar.Calendar:
             else:
                 course_name = categories
             event["summary"] = _prop_str(event["summary"]) + f" - {course_name}"
-            description = _prop_str(event["description"]) if event.get("description") else ""
+            description = (
+                _prop_str(event["description"]) if event.get("description") else ""
+            )
             event["description"] = "\n".join(
                 [
                     f"Course: {course_name}",
@@ -534,11 +587,15 @@ def fix_moodle_events(calendar: icalendar.Calendar) -> icalendar.Calendar:
 
         start_prop = event["dtstart"]
         if start_prop:
-            event["dtstart"] = icalendar.vDatetime(_prop_dt(start_prop).astimezone(MOSCOW_TZ))
+            event["dtstart"] = icalendar.vDatetime(
+                _prop_dt(start_prop).astimezone(MOSCOW_TZ)
+            )
 
         end_prop = event["dtend"]
         if end_prop:
-            event["dtend"] = icalendar.vDatetime(_prop_dt(end_prop).astimezone(MOSCOW_TZ))
+            event["dtend"] = icalendar.vDatetime(
+                _prop_dt(end_prop).astimezone(MOSCOW_TZ)
+            )
 
         fixed_events.append(event)
 
@@ -565,13 +622,21 @@ async def get_moodle_ics(user: ViewUser) -> bytes:
 
     async def read_moodle_schedule(url: str) -> icalendar.Calendar:
         _generator = generate_ics_from_url(url)
-        content = "".join([bytes_data.decode("utf-8") async for bytes_data in _generator if bytes_data is not None])
+        content = "".join(
+            [
+                bytes_data.decode("utf-8")
+                async for bytes_data in _generator
+                if bytes_data is not None
+            ]
+        )
         calendar = icalendar.Calendar.from_ical(content)
         return calendar
 
     token = user.moodle_calendar_authtoken
     if token is None:
-        raise HTTPException(status_code=404, detail="Moodle calendar token is not configured")
+        raise HTTPException(
+            status_code=404, detail="Moodle calendar token is not configured"
+        )
     encoded_token = quote(token)
     user_moodle_calendar_url = (
         f"https://moodle.innopolis.university/calendar/export_execute.php?"
@@ -626,7 +691,9 @@ async def get_personal_room_bookings(user: ViewUser) -> bytes:
         return vevent
 
     if settings.room_booking is None:
-        raise HTTPException(status_code=404, detail="Room booking service is not configured")
+        raise HTTPException(
+            status_code=404, detail="Room booking service is not configured"
+        )
 
     main_calendar = get_base_calendar()
     main_calendar["x-wr-calname"] = f"{user.email} Room bookings from innohassle.ru"
@@ -636,14 +703,18 @@ async def get_personal_room_bookings(user: ViewUser) -> bytes:
 
     async with httpx.AsyncClient(
         base_url=settings.room_booking.api_url,
-        headers={"Authorization": f"Bearer {settings.room_booking.api_key.get_secret_value()}"},
+        headers={
+            "Authorization": f"Bearer {settings.room_booking.api_key.get_secret_value()}"
+        },
         timeout=TIMEOUT,
     ) as client:
         response = await client.get(
             f"/user/{user.innohassle_id}/bookings",
             params={
                 "start": start_of_day.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "end": (now_utc + dtm.timedelta(days=14)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "end": (now_utc + dtm.timedelta(days=14)).strftime(
+                    "%Y-%m-%dT%H:%M:%SZ"
+                ),
             },
         )
         response.raise_for_status()

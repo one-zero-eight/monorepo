@@ -29,7 +29,9 @@ from src.schedule_assistant.modules.issues.student_emails import (
     is_valid_student_email,
     student_email_issues_from_sections,
 )
-from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
+from src.schedule_assistant.modules.schedule_config.repository import (
+    ScheduleConfigRepository,
+)
 from src.schedule_assistant.modules.schedule_config.schemas import (
     ComponentSessionSeries,
     CourseConfig,
@@ -144,7 +146,9 @@ def issue_checker() -> IssueChecker:
         ),
     ],
 )
-def test_room_issues(issue_checker: IssueChecker, data: list[ScheduledMeeting], expected_issues: int) -> None:
+def test_room_issues(
+    issue_checker: IssueChecker, data: list[ScheduledMeeting], expected_issues: int
+) -> None:
     issues = issue_checker.check_for_room_issue(data)
     assert len(issues) == expected_issues
     if expected_issues > 0:
@@ -183,7 +187,11 @@ def test_meetings_from_schedule_config() -> None:
             SectionConfig(
                 code="core",
                 name="Core",
-                programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["SUM26-AAI"])],
+                programs=[
+                    SectionConfig.SectionProgram(
+                        code="BS", name="BS", groups=["SUM26-AAI"]
+                    )
+                ],
             )
         ],
         students_groups=[StudentsGroups(code="SUM26-AAI", estimated_size=25)],
@@ -292,7 +300,10 @@ def test_instructor_id_issues_from_schedule_config() -> None:
     issues = instructor_id_issues_from_schedule_config(instructors, courses)
     assert len(issues) == 2
     assert all(isinstance(issue, InstructorIdIssue) for issue in issues)
-    assert {issue.instructor_id for issue in issues} == {"also-bad@gmail.com", "bad_handle"}
+    assert {issue.instructor_id for issue in issues} == {
+        "also-bad@gmail.com",
+        "bad_handle",
+    }
 
 
 @pytest.mark.parametrize(
@@ -336,7 +347,11 @@ def test_co_teaching_produces_single_meeting() -> None:
     sections = SectionsConfig(
         sections=[
             SectionConfig(
-                code="core", name="Core", programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])]
+                code="core",
+                name="Core",
+                programs=[
+                    SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])
+                ],
             )
         ],
         students_groups=[StudentsGroups(code="G1", estimated_size=10)],
@@ -359,7 +374,10 @@ def test_co_teaching_produces_single_meeting() -> None:
                                         start_time=dtm.time(9, 0),
                                         end_time=dtm.time(10, 30),
                                         room="108",
-                                        instructor=["teacher-a@innopolis.ru", "teacher-b@innopolis.ru"],
+                                        instructor=[
+                                            "teacher-a@innopolis.ru",
+                                            "teacher-b@innopolis.ru",
+                                        ],
                                     ),
                                 ],
                             ),
@@ -372,14 +390,21 @@ def test_co_teaching_produces_single_meeting() -> None:
 
     meetings = meetings_from_schedule_config(courses, sections)
     assert len(meetings) == 1
-    assert meetings[0].instructor == ["teacher-a@innopolis.ru", "teacher-b@innopolis.ru"]
+    assert meetings[0].instructor == [
+        "teacher-a@innopolis.ru",
+        "teacher-b@innopolis.ru",
+    ]
 
 
 def test_unplaced_issues_from_schedule_config() -> None:
     sections = SectionsConfig(
         sections=[
             SectionConfig(
-                code="core", name="Core", programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])]
+                code="core",
+                name="Core",
+                programs=[
+                    SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])
+                ],
             )
         ],
         students_groups=[StudentsGroups(code="G1", estimated_size=10)],
@@ -446,14 +471,18 @@ def test_missing_assignment_issues_from_meetings() -> None:
         groups=("G1",),
     )
     no_room = assigned.model_copy(update={"course_name": "No room", "room": None})
-    no_instructor = assigned.model_copy(update={"course_name": "No instructor", "instructor": None})
+    no_instructor = assigned.model_copy(
+        update={"course_name": "No instructor", "instructor": None}
+    )
     blank_instructor = assigned.model_copy(
         update={"course_name": "Blank instructor", "instructor": "  "},
     )
     blank_both = assigned.model_copy(
         update={"course_name": "Blank", "room": "  ", "instructor": []},
     )
-    online = assigned.model_copy(update={"course_name": "Online", "room": "ONLINE", "instructor": None})
+    online = assigned.model_copy(
+        update={"course_name": "Online", "room": "ONLINE", "instructor": None}
+    )
 
     issues = missing_assignment_issues_from_meetings(
         [assigned, no_room, no_instructor, blank_instructor, blank_both, online],
@@ -467,7 +496,9 @@ def test_missing_assignment_issues_from_meetings() -> None:
         (IssueTypeEnum.MISSING_INSTRUCTOR, "Blank"),
         (IssueTypeEnum.MISSING_INSTRUCTOR, "Online"),
     }
-    room_issue = next(issue for issue in issues if issue.meeting.course_name == "No room")
+    room_issue = next(
+        issue for issue in issues if issue.meeting.course_name == "No room"
+    )
     assert "не назначена локация" in room_issue.text
 
 
@@ -477,7 +508,10 @@ async def test_issues_check_endpoint_missing_room_and_instructor(
     issues_repo: ScheduleConfigRepository,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    monkeypatch.setattr(
+        "src.schedule_assistant.dependencies.settings.moderator_emails",
+        ["test@test.com"],
+    )
     issues_repo.set_term(
         TermConfig(
             name="Summer 2026",
@@ -493,13 +527,19 @@ async def test_issues_check_endpoint_missing_room_and_instructor(
                 SectionConfig(
                     code="core",
                     name="Core",
-                    programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])],
+                    programs=[
+                        SectionConfig.SectionProgram(
+                            code="BS", name="BS", groups=["G1"]
+                        )
+                    ],
                 )
             ],
             students_groups=[StudentsGroups(code="G1", estimated_size=10)],
         )
     )
-    issues_repo.set_rooms(RoomConfig(rooms=[RoomConfig.Room(id="107", name="Room 107", capacity=20)]))
+    issues_repo.set_rooms(
+        RoomConfig(rooms=[RoomConfig.Room(id="107", name="Room 107", capacity=20)])
+    )
     issues_repo.set_instructors(InstructorConfig())
     issues_repo.set_courses(
         CoursesConfig(
@@ -546,7 +586,10 @@ async def test_issues_check_endpoint(
     issues_repo: ScheduleConfigRepository,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    monkeypatch.setattr(
+        "src.schedule_assistant.dependencies.settings.moderator_emails",
+        ["test@test.com"],
+    )
     issues_repo.set_term(
         TermConfig(
             name="Summer 2026",
@@ -562,13 +605,19 @@ async def test_issues_check_endpoint(
                 SectionConfig(
                     code="core",
                     name="Core",
-                    programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])],
+                    programs=[
+                        SectionConfig.SectionProgram(
+                            code="BS", name="BS", groups=["G1"]
+                        )
+                    ],
                 )
             ],
             students_groups=[StudentsGroups(code="G1", estimated_size=10)],
         )
     )
-    issues_repo.set_rooms(RoomConfig(rooms=[RoomConfig.Room(id="107", name="Room 107", capacity=20)]))
+    issues_repo.set_rooms(
+        RoomConfig(rooms=[RoomConfig.Room(id="107", name="Room 107", capacity=20)])
+    )
     issues_repo.set_instructors(
         InstructorConfig(
             instructors=[
@@ -647,8 +696,12 @@ async def test_issues_check_endpoint(
     mock_client.get_all_bookings.return_value = []
     mock_client.get_auto_bookings.return_value = []
 
-    with patch("src.schedule_assistant.modules.issues.service.booking_client", mock_client):
-        response = await authenticated_client.post("/issues/check", json={"check_unbooked": False})
+    with patch(
+        "src.schedule_assistant.modules.issues.service.booking_client", mock_client
+    ):
+        response = await authenticated_client.post(
+            "/issues/check", json={"check_unbooked": False}
+        )
 
     assert response.status_code == 200
     issues = response.json()["issues"]

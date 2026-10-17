@@ -4,7 +4,10 @@ from fastapi.responses import Response
 from pydantic import BaseModel, ValidationError
 
 from src.schedule_assistant.core_courses.config import CoreCoursesConfig
-from src.schedule_assistant.core_courses.location_parser import Item, parse_location_string
+from src.schedule_assistant.core_courses.location_parser import (
+    Item,
+    parse_location_string,
+)
 from src.schedule_assistant.dependencies import VerifyTokenDep
 from src.schedule_assistant.electives.config import ElectivesParserConfig
 from src.schedule_assistant.modules.parser.core_courses_adapter import (
@@ -21,7 +24,11 @@ router = APIRouter(prefix="/parser", tags=["Parser"])
 
 def _omit_none_values(value):
     if isinstance(value, dict):
-        return {key: _omit_none_values(nested) for key, nested in value.items() if nested is not None}
+        return {
+            key: _omit_none_values(nested)
+            for key, nested in value.items()
+            if nested is not None
+        }
     if isinstance(value, list):
         return [_omit_none_values(item) for item in value]
     return value
@@ -52,7 +59,9 @@ async def parse_core_courses_route(
     try:
         payload = yaml.safe_load(config_yaml) or {}
     except yaml.YAMLError as e:
-        raise HTTPException(status_code=400, detail="Invalid request body format") from e
+        raise HTTPException(
+            status_code=400, detail="Invalid request body format"
+        ) from e
 
     try:
         parser_config = CoreCoursesConfig.model_validate(payload)
@@ -60,7 +69,9 @@ async def parse_core_courses_route(
         raise HTTPException(status_code=422, detail=e.errors()) from e
 
     grouped = await get_grouped_core_courses_lessons(parser_config)
-    payload = [_omit_none_values(grouped_core_course_to_json(course)) for course in grouped]
+    payload = [
+        _omit_none_values(grouped_core_course_to_json(course)) for course in grouped
+    ]
 
     content = yaml.dump(
         payload,
@@ -71,7 +82,9 @@ async def parse_core_courses_route(
     return Response(
         content=content,
         media_type="text/yaml",
-        headers={"Content-Disposition": 'attachment; filename="core-courses-lessons.yaml"'},
+        headers={
+            "Content-Disposition": 'attachment; filename="core-courses-lessons.yaml"'
+        },
     )
 
 
@@ -82,7 +95,9 @@ async def parse_electives_route(
     try:
         payload = yaml.safe_load(config_yaml) or {}
     except yaml.YAMLError as e:
-        raise HTTPException(status_code=400, detail="Invalid request body format") from e
+        raise HTTPException(
+            status_code=400, detail="Invalid request body format"
+        ) from e
 
     try:
         parser_config = ElectivesParserConfig.model_validate(payload)
@@ -90,7 +105,9 @@ async def parse_electives_route(
         raise HTTPException(status_code=422, detail=e.errors()) from e
 
     electives = await get_grouped_elective_lessons(parser_config)
-    payload = [_omit_none_values(grouped_elective_to_json(elective)) for elective in electives]
+    payload = [
+        _omit_none_values(grouped_elective_to_json(elective)) for elective in electives
+    ]
 
     content = yaml.dump(
         payload,
@@ -101,5 +118,7 @@ async def parse_electives_route(
     return Response(
         content=content,
         media_type="text/yaml",
-        headers={"Content-Disposition": 'attachment; filename="electives-lessons.yaml"'},
+        headers={
+            "Content-Disposition": 'attachment; filename="electives-lessons.yaml"'
+        },
     )

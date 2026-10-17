@@ -4,7 +4,10 @@ import pytest
 from beanie import PydanticObjectId
 from fastapi.testclient import TestClient
 
-from src.guard.modules.google_.exceptions import FileNotFoundException, UserBannedException
+from src.guard.modules.google_.exceptions import (
+    FileNotFoundException,
+    UserBannedException,
+)
 from tests.guard.constants import GUARD_OTHER_OBJECT_ID
 
 CREATE_FILE_PAYLOAD = {
@@ -19,11 +22,21 @@ CREATE_FILE_PAYLOAD = {
 def mock_create_google_apis(monkeypatch: pytest.MonkeyPatch):
     from src.guard.modules.google_ import routes as google_routes
 
-    monkeypatch.setattr(google_routes, "create_google_file", lambda **_kwargs: "google-new-file-id")
-    monkeypatch.setattr(google_routes, "grant_owner_permission", lambda _file_id, _gmail: "owner-perm-1")
-    monkeypatch.setattr(google_routes, "sheets_service", MagicMock(return_value=MagicMock()))
-    monkeypatch.setattr(google_routes, "update_file_title", lambda _file_id, _title: None)
-    monkeypatch.setattr(google_routes, "revoke_file_permission", lambda _file_id, _perm_id: True)
+    monkeypatch.setattr(
+        google_routes, "create_google_file", lambda **_kwargs: "google-new-file-id"
+    )
+    monkeypatch.setattr(
+        google_routes, "grant_owner_permission", lambda _file_id, _gmail: "owner-perm-1"
+    )
+    monkeypatch.setattr(
+        google_routes, "sheets_service", MagicMock(return_value=MagicMock())
+    )
+    monkeypatch.setattr(
+        google_routes, "update_file_title", lambda _file_id, _title: None
+    )
+    monkeypatch.setattr(
+        google_routes, "revoke_file_permission", lambda _file_id, _perm_id: True
+    )
 
 
 def test_create_file_requires_auth(guard_client: TestClient):
@@ -37,7 +50,9 @@ def test_create_file(
     guard_author_headers: dict[str, str],
     mock_create_google_apis: None,
 ):
-    response = guard_client.post("/google/files", json=CREATE_FILE_PAYLOAD, headers=guard_author_headers)
+    response = guard_client.post(
+        "/google/files", json=CREATE_FILE_PAYLOAD, headers=guard_author_headers
+    )
     assert response.status_code == 200
     body = response.json()
     assert body["file_id"] == "google-new-file-id"
@@ -62,13 +77,19 @@ def test_get_file(
     create_google_file,
 ):
     created = create_google_file()
-    response = guard_client.get(f"/google/files/{created.slug}", headers=guard_author_headers)
+    response = guard_client.get(
+        f"/google/files/{created.slug}", headers=guard_author_headers
+    )
     assert response.status_code == 200
     assert response.json()["slug"] == created.slug
 
 
-def test_get_file_not_found(guard_client: TestClient, guard_author_headers: dict[str, str]):
-    response = guard_client.get("/google/files/nonexistent-slug", headers=guard_author_headers)
+def test_get_file_not_found(
+    guard_client: TestClient, guard_author_headers: dict[str, str]
+):
+    response = guard_client.get(
+        "/google/files/nonexistent-slug", headers=guard_author_headers
+    )
     assert response.status_code == 404
 
 
@@ -78,7 +99,9 @@ def test_get_file_forbidden_for_other_user(
     create_google_file,
 ):
     created = create_google_file()
-    response = guard_client.get(f"/google/files/{created.slug}", headers=guard_other_headers)
+    response = guard_client.get(
+        f"/google/files/{created.slug}", headers=guard_other_headers
+    )
     assert response.status_code == 403
 
 
@@ -88,11 +111,15 @@ def test_delete_file(
     create_google_file,
 ):
     created = create_google_file()
-    response = guard_client.delete(f"/google/files/{created.slug}", headers=guard_author_headers)
+    response = guard_client.delete(
+        f"/google/files/{created.slug}", headers=guard_author_headers
+    )
     assert response.status_code == 200
     assert response.json()["message"] == "File deleted"
 
-    get_response = guard_client.get(f"/google/files/{created.slug}", headers=guard_author_headers)
+    get_response = guard_client.get(
+        f"/google/files/{created.slug}", headers=guard_author_headers
+    )
     assert get_response.status_code == 404
 
 
@@ -102,7 +129,9 @@ def test_delete_file_forbidden_for_other_user(
     create_google_file,
 ):
     created = create_google_file()
-    response = guard_client.delete(f"/google/files/{created.slug}", headers=guard_other_headers)
+    response = guard_client.delete(
+        f"/google/files/{created.slug}", headers=guard_other_headers
+    )
     assert response.status_code == 403
 
 
@@ -131,7 +160,9 @@ def test_join_file_success(
     from src.guard.modules.google_ import routes as google_routes
 
     created = create_google_file()
-    monkeypatch.setattr(google_routes, "add_user_to_file", AsyncMock(return_value=created))
+    monkeypatch.setattr(
+        google_routes, "add_user_to_file", AsyncMock(return_value=created)
+    )
 
     response = guard_client.post(
         f"/google/files/{created.slug}/joins",
@@ -154,7 +185,11 @@ def test_join_file_user_banned(
     monkeypatch.setattr(
         google_routes,
         "add_user_to_file",
-        AsyncMock(side_effect=UserBannedException(user_id=PydanticObjectId(GUARD_OTHER_OBJECT_ID))),
+        AsyncMock(
+            side_effect=UserBannedException(
+                user_id=PydanticObjectId(GUARD_OTHER_OBJECT_ID)
+            )
+        ),
     )
 
     response = guard_client.post(

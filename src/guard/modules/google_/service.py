@@ -78,7 +78,10 @@ def create_spreadsheet(title: str) -> str:
 
 
 def create_document(title: str) -> str:
-    raise HTTPException(status_code=HTTPStatuses.NOT_IMPLEMENTED, detail="Document creation is not implemented yet")
+    raise HTTPException(
+        status_code=HTTPStatuses.NOT_IMPLEMENTED,
+        detail="Document creation is not implemented yet",
+    )
 
 
 def create_google_file(file_type: str, title: str) -> str:
@@ -132,7 +135,10 @@ def copy_google_file(file_id: str) -> tuple[str, str, str]:
 
 def verify_file_ownership(file, user_id: str) -> None:
     if str(file.author_id) != user_id:
-        raise HTTPException(status_code=HTTPStatuses.FORBIDDEN, detail="You are not the author of this file")
+        raise HTTPException(
+            status_code=HTTPStatuses.FORBIDDEN,
+            detail="You are not the author of this file",
+        )
 
 
 def delete_google_file(file_id: str) -> bool:
@@ -170,7 +176,11 @@ def revoke_file_permission(file_id: str, permission_id: str) -> bool:
 
 def accept_ownership_if_pending(file_id: str) -> bool:
     drive = drive_service()
-    perms = drive.permissions().list(fileId=file_id, fields="permissions(id,emailAddress,role,pendingOwner)").execute()
+    perms = (
+        drive.permissions()
+        .list(fileId=file_id, fields="permissions(id,emailAddress,role,pendingOwner)")
+        .execute()
+    )
     for p in perms.get("permissions", []):
         if p.get("pendingOwner"):
             try:
@@ -192,21 +202,33 @@ def remove_public_links_and_lock_sharing(file_id: str) -> int:
     """Remove anyone/anyoneWithLink permissions and disable writersCanShare. Returns removed count."""
     drive = drive_service()
     removed = 0
-    perms = drive.permissions().list(fileId=file_id, fields="permissions(id,type,role)").execute()
+    perms = (
+        drive.permissions()
+        .list(fileId=file_id, fields="permissions(id,type,role)")
+        .execute()
+    )
     for p in perms.get("permissions", []):
         if p.get("type") in {"anyone", "domain"}:
             try:
-                drive.permissions().delete(fileId=file_id, permissionId=p["id"]).execute()
+                drive.permissions().delete(
+                    fileId=file_id, permissionId=p["id"]
+                ).execute()
                 removed += 1
             except Exception as e:  # noqa: BLE001
-                logger.error(f"Error removing public permission {p['id']} on {file_id}: {e}")
+                logger.error(
+                    f"Error removing public permission {p['id']} on {file_id}: {e}"
+                )
     _disable_writers_can_share(file_id)
     return removed
 
 
 def count_user_permissions(file_id: str) -> int:
     drive = drive_service()
-    perms = drive.permissions().list(fileId=file_id, fields="permissions(id,type)").execute()
+    perms = (
+        drive.permissions()
+        .list(fileId=file_id, fields="permissions(id,type)")
+        .execute()
+    )
     return sum(1 for p in perms.get("permissions", []) if p.get("type") == "user")
 
 
@@ -219,9 +241,13 @@ def update_user_permission(file_id: str, permission_id: str, role: str) -> None:
             permissionId=permission_id,
             body={"role": role},
         ).execute()
-        logger.info(f"Updated permission {permission_id} to role {role} for file {file_id}")
+        logger.info(
+            f"Updated permission {permission_id} to role {role} for file {file_id}"
+        )
     except Exception as e:
-        logger.error(f"Error updating permission {permission_id} for file {file_id}: {e}")
+        logger.error(
+            f"Error updating permission {permission_id} for file {file_id}: {e}"
+        )
         raise
 
 
@@ -239,9 +265,13 @@ def update_all_user_permissions(file_id: str, role: str, joins: list) -> int:
                     body={"role": role},
                 ).execute()
                 updated += 1
-                logger.info(f"Updated permission {join.permission_id} to role {role} for file {file_id}")
+                logger.info(
+                    f"Updated permission {join.permission_id} to role {role} for file {file_id}"
+                )
             except Exception as e:  # noqa: BLE001
-                logger.error(f"Error updating permission {join.permission_id} for file {file_id}: {e}")
+                logger.error(
+                    f"Error updating permission {join.permission_id} for file {file_id}: {e}"
+                )
 
     return updated
 
@@ -256,7 +286,10 @@ def generate_join_link(slug: str) -> str:
 
 def grant_owner_permission(file_id: str, owner_gmail: str) -> str:
     """Grant write permission to the file owner and return permission_id."""
-    from src.guard.modules.google_.exceptions import InvalidGmailException, UnknownErrorException
+    from src.guard.modules.google_.exceptions import (
+        InvalidGmailException,
+        UnknownErrorException,
+    )
 
     drive = drive_service()
 
@@ -271,7 +304,9 @@ def grant_owner_permission(file_id: str, owner_gmail: str) -> str:
             .execute()
         )
     except HttpError as e:
-        if e.resp.status == 400 and ("invalidSharingRequest" in str(e) or "permission.emailAddress" in str(e)):
+        if e.resp.status == 400 and (
+            "invalidSharingRequest" in str(e) or "permission.emailAddress" in str(e)
+        ):
             raise InvalidGmailException(gmail=owner_gmail)
         raise UnknownErrorException()
 
@@ -289,7 +324,9 @@ def grant_owner_permission(file_id: str, owner_gmail: str) -> str:
 #     return requested_role
 
 
-async def add_user_to_file(file_slug: str, user_id: PydanticObjectId, gmail: str, innomail: str):
+async def add_user_to_file(
+    file_slug: str, user_id: PydanticObjectId, gmail: str, innomail: str
+):
     from src.guard.modules.google_.exceptions import (
         FileNotFoundException,
         GmailAlreadyUsedException,
@@ -306,18 +343,32 @@ async def add_user_to_file(file_slug: str, user_id: PydanticObjectId, gmail: str
 
     # if user is the owner of the file, we don't need to add him again
     if str(file.author_id) == str(user_id):
-        logger.info(f"User {user_id} is the owner of the file {file_slug}, no need to add him again")
+        logger.info(
+            f"User {user_id} is the owner of the file {file_slug}, no need to add him again"
+        )
         return file
     # if user already joined the file with the same gmail, we don't need to add him again
-    if any(join.gmail == gmail and str(join.user_id) == str(user_id) for join in file.sso_joins):
-        logger.info(f"User {user_id} already joined the file {file_slug} with the same gmail, no need to add him again")
+    if any(
+        join.gmail == gmail and str(join.user_id) == str(user_id)
+        for join in file.sso_joins
+    ):
+        logger.info(
+            f"User {user_id} already joined the file {file_slug} with the same gmail, no need to add him again"
+        )
         return file
     # if user already joined the file, but with a different gmail, we need to revoke his permission and add him again with the same role then
-    elif any(join.gmail != gmail and str(join.user_id) == str(user_id) for join in file.sso_joins):
+    elif any(
+        join.gmail != gmail and str(join.user_id) == str(user_id)
+        for join in file.sso_joins
+    ):
         logger.info(
             f"User {user_id} already joined the file {file_slug} with a different gmail, revoking permission and adding again"
         )
-        join = next(join for join in file.sso_joins if join.gmail != gmail and str(join.user_id) == str(user_id))
+        join = next(
+            join
+            for join in file.sso_joins
+            if join.gmail != gmail and str(join.user_id) == str(user_id)
+        )
         drive = drive_service()
 
         try:
@@ -332,7 +383,9 @@ async def add_user_to_file(file_slug: str, user_id: PydanticObjectId, gmail: str
             )
             if join.permission_id:
                 revoke_file_permission(file.file_id, join.permission_id)
-            await google_file_repository.remove_user_from_file(slug=file_slug, user_id=user_id)
+            await google_file_repository.remove_user_from_file(
+                slug=file_slug, user_id=user_id
+            )
 
             await google_file_repository.join_user_to_file(
                 slug=file_slug,
@@ -343,22 +396,31 @@ async def add_user_to_file(file_slug: str, user_id: PydanticObjectId, gmail: str
                 permission_id=permission.get("id"),
             )
 
-            logger.info(f"Successfully added {gmail} as {join.role} to file {file.file_id}")
+            logger.info(
+                f"Successfully added {gmail} as {join.role} to file {file.file_id}"
+            )
 
             return file
         except HttpError as e:
-            if e.resp.status == 400 and ("invalidSharingRequest" in str(e) or "permission.emailAddress" in str(e)):
+            if e.resp.status == 400 and (
+                "invalidSharingRequest" in str(e) or "permission.emailAddress" in str(e)
+            ):
                 raise InvalidGmailException(gmail=gmail)
             raise UnknownErrorException()
 
     # if user joined with gmail that some other user uses, we raise an error
-    elif any(join.gmail == gmail and str(join.user_id) != str(user_id) for join in file.sso_joins):
+    elif any(
+        join.gmail == gmail and str(join.user_id) != str(user_id)
+        for join in file.sso_joins
+    ):
         logger.info(
             f"User {user_id} joined the file {file_slug} with gmail {gmail} that some other user uses, raising an error"
         )
         raise GmailAlreadyUsedException(gmail=gmail)
     else:
-        logger.info(f"User {user_id} is not joined the file {file_slug}, adding him with role {role}")
+        logger.info(
+            f"User {user_id} is not joined the file {file_slug}, adding him with role {role}"
+        )
 
         drive = drive_service()
 
@@ -373,7 +435,9 @@ async def add_user_to_file(file_slug: str, user_id: PydanticObjectId, gmail: str
                 .execute()
             )
         except HttpError as e:
-            if e.resp.status == 400 and ("invalidSharingRequest" in str(e) or "permission.emailAddress" in str(e)):
+            if e.resp.status == 400 and (
+                "invalidSharingRequest" in str(e) or "permission.emailAddress" in str(e)
+            ):
                 raise InvalidGmailException(gmail=gmail)
             raise UnknownErrorException()
 

@@ -105,8 +105,12 @@ def test_group_uses_majority_non_null_course_color() -> None:
     grouped = group_core_course_lessons(
         [
             _lesson(color="#112233"),
-            _lesson(start_time=dtm.time(10, 40), end_time=dtm.time(12, 10), color="#112233"),
-            _lesson(start_time=dtm.time(12, 40), end_time=dtm.time(14, 10), color="#AABBCC"),
+            _lesson(
+                start_time=dtm.time(10, 40), end_time=dtm.time(12, 10), color="#112233"
+            ),
+            _lesson(
+                start_time=dtm.time(12, 40), end_time=dtm.time(14, 10), color="#AABBCC"
+            ),
             _lesson(start_time=dtm.time(14, 20), end_time=dtm.time(15, 50)),
         ],
         term_dates=TERM_DATES,
@@ -123,9 +127,13 @@ def test_group_uses_majority_non_null_course_color() -> None:
     ],
 )
 @pytest.mark.parametrize("merge_in_stages", [False, True])
-def test_shared_lecture_merges_across_colors_and_preserves_majority(colors, merge_in_stages) -> None:
+def test_shared_lecture_merges_across_colors_and_preserves_majority(
+    colors, merge_in_stages
+) -> None:
     lessons = [
-        _lesson(color=color).model_copy(update={"group_name": group, "students_number": 10, "a1_range": cell})
+        _lesson(color=color).model_copy(
+            update={"group_name": group, "students_number": 10, "a1_range": cell}
+        )
         for color, group, cell in zip(colors, ("G1", "G2", "G3"), ("B2", "C2", "D2"))
     ]
     if merge_in_stages:
@@ -150,7 +158,11 @@ def test_group_rejects_tied_course_colors_after_merging(additional_slot) -> None
         lessons.extend(
             [
                 _lesson(color="#112233"),
-                _lesson(start_time=dtm.time(10, 40), end_time=dtm.time(12, 10), color="#AABBCC"),
+                _lesson(
+                    start_time=dtm.time(10, 40),
+                    end_time=dtm.time(12, 10),
+                    color="#AABBCC",
+                ),
             ]
         )
     merged = merge_identical_lessons(lessons)
@@ -164,7 +176,11 @@ def test_group_rejects_tied_course_colors() -> None:
         group_core_course_lessons(
             [
                 _lesson(color="#112233"),
-                _lesson(start_time=dtm.time(10, 40), end_time=dtm.time(12, 10), color="#AABBCC"),
+                _lesson(
+                    start_time=dtm.time(10, 40),
+                    end_time=dtm.time(12, 10),
+                    color="#AABBCC",
+                ),
             ],
             term_dates=TERM_DATES,
         )

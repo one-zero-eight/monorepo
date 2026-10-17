@@ -89,7 +89,9 @@ class Reservation(ReservationSchema, BeanieDocumentMixin, Document):
         indexes: ClassVar = [
             IndexModel("board_game_id"),
             IndexModel("user_innohassle_id"),
-            IndexModel([("board_game_id", 1), ("user_innohassle_id", 1), ("status", 1)]),
+            IndexModel(
+                [("board_game_id", 1), ("user_innohassle_id", 1), ("status", 1)]
+            ),
         ]
 
 

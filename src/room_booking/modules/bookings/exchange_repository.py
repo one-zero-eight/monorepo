@@ -48,7 +48,9 @@ from src.room_booking.modules.bookings.tz_utils import to_msk
 from src.room_booking.modules.rooms.repository import room_repository
 
 # Location format: "Room title (user@innopolis.university)" or "... (user@innopolis.ru)"
-EMAIL_IN_LOCATION_RE = re.compile(r"\(([^)]+@(?:innopolis\.university|innopolis\.ru))\)")
+EMAIL_IN_LOCATION_RE = re.compile(
+    r"\(([^)]+@(?:innopolis\.university|innopolis\.ru))\)"
+)
 
 MEETING_RESPONSE_ITEM_CLASS_TO_STATUS = {
     "IPM.Schedule.Meeting.Resp.Pos": "Accept",
@@ -129,10 +131,18 @@ class ExchangeBookingRepository:
         self.last_callback_time = None
         self._recently = RecentBookings(settings.recently_canceled_booking_ttl_sec)
 
-        self._cache_from_busy_info = CacheForBookings(settings.ttl_bookings_from_busy_info)
-        self._cache_from_account_calendar = CacheForBookings(settings.ttl_bookings_from_account_calendar)
-        self._free_busy_single_flight = SingleFlight[dict[str, list[CalendarEvent]], AccountGetFreeBusyInfoArgs]()
-        self._calendar_view_single_flight = SingleFlight[list[exchangelib.CalendarItem], AccountCalendarViewArgs]()
+        self._cache_from_busy_info = CacheForBookings(
+            settings.ttl_bookings_from_busy_info
+        )
+        self._cache_from_account_calendar = CacheForBookings(
+            settings.ttl_bookings_from_account_calendar
+        )
+        self._free_busy_single_flight = SingleFlight[
+            dict[str, list[CalendarEvent]], AccountGetFreeBusyInfoArgs
+        ]()
+        self._calendar_view_single_flight = SingleFlight[
+            list[exchangelib.CalendarItem], AccountCalendarViewArgs
+        ]()
         self._cancel_single_flight = SingleFlight[bool, str]()
         self._series_recurrence_by_uid: dict[str, str] = {}
         self._operation_lock = asyncio.Lock()
@@ -241,12 +251,16 @@ class ExchangeBookingRepository:
                 title=title,
                 recurrence=recurrence,
                 categories=categories,
-                **kwargs,
             ),
             location=f"{room.title} ({location_email})",
-            resources=[exchangelib.Attendee(mailbox=exchangelib.Mailbox(email_address=room.resource_email))],
+            resources=[
+                exchangelib.Attendee(
+                    mailbox=exchangelib.Mailbox(email_address=room.resource_email)
+                )
+            ],
             required_attendees=[
-                exchangelib.Attendee(mailbox=exchangelib.Mailbox(email_address=email)) for email in required_attendees
+                exchangelib.Attendee(mailbox=exchangelib.Mailbox(email_address=email))
+                for email in required_attendees
             ],
             recurrence=recurrence,
             categories=categories,
@@ -255,18 +269,26 @@ class ExchangeBookingRepository:
     def _remember_series_recurrence(self, item: exchangelib.CalendarItem) -> None:
         if getattr(item, "type", None) != "RecurringMaster" or not item.uid:
             return
-        xml = recurrence_to_xml(cast(Recurrence | None, item.recurrence), version=item.account.version)
+        xml = recurrence_to_xml(
+            cast(Recurrence | None, item.recurrence), version=item.account.version
+        )
         if xml:
             self._series_recurrence_by_uid[cast(str, item.uid)] = xml
 
-    def _resolve_api_calendar_item(self, item: exchangelib.CalendarItem) -> exchangelib.CalendarItem:
+    def _resolve_api_calendar_item(
+        self, item: exchangelib.CalendarItem
+    ) -> exchangelib.CalendarItem:
         """Return the calendar item id we already have (avoid slow calendar.view scan on confirm)."""
         if getattr(item, "type", None) == "RecurringMaster" and item.uid:
             self._remember_series_recurrence(item)
         return item
 
-    def _recurrence_xml_for_calendar_item(self, item: exchangelib.CalendarItem) -> str | None:
-        xml = recurrence_to_xml(cast(Recurrence | None, item.recurrence), version=item.account.version)
+    def _recurrence_xml_for_calendar_item(
+        self, item: exchangelib.CalendarItem
+    ) -> str | None:
+        xml = recurrence_to_xml(
+            cast(Recurrence | None, item.recurrence), version=item.account.version
+        )
         if xml is not None:
             return xml
         uid = getattr(item, "uid", None)
@@ -288,7 +310,9 @@ class ExchangeBookingRepository:
             t1 = tm.monotonic()
             status = {}
             status["version"] = str(self.account.version)
-            calendar_folder_info = await asyncio.to_thread(lambda: self.selected_calendar)
+            calendar_folder_info = await asyncio.to_thread(
+                lambda: self.selected_calendar
+            )
             status["folder"] = str(calendar_folder_info)
             t2 = tm.monotonic()
             status["time_taken"] = f"{t2 - t1:.2f} seconds"
@@ -324,15 +348,22 @@ class ExchangeBookingRepository:
 
         # ---- Get cached bookings ----
         if use_cache:
-            room_x_cached_bookings, cache_misses = await self._cache_from_busy_info.get_cached_bookings(
+            (
+                room_x_cached_bookings,
+                cache_misses,
+            ) = await self._cache_from_busy_info.get_cached_bookings(
                 rooms_ids, start, end
             )
 
             if not cache_misses:  # full cache hit
-                logger.info(f"Cache hit for bookings from busy info for rooms {rooms_ids}")
+                logger.info(
+                    f"Cache hit for bookings from busy info for rooms {rooms_ids}"
+                )
                 return room_x_cached_bookings
             else:  # TODO: request only subset of rooms that are not in cache
-                logger.info(f"Cache miss for bookings from busy info for rooms: {cache_misses}")
+                logger.info(
+                    f"Cache miss for bookings from busy info for rooms: {cache_misses}"
+                )
         # ^^^^^
 
         # ---- Fetch account free busy info with only one request at a time ----
@@ -345,7 +376,9 @@ class ExchangeBookingRepository:
             end=to_msk(end),
         )
 
-        async def free_busy_task(args: AccountGetFreeBusyInfoArgs) -> dict[str, list[CalendarEvent]]:
+        async def free_busy_task(
+            args: AccountGetFreeBusyInfoArgs,
+        ) -> dict[str, list[CalendarEvent]]:
             account_free_busy_info = await asyncio.to_thread(
                 lambda: list(
                     self.account.protocol.get_free_busy_info(
@@ -356,7 +389,9 @@ class ExchangeBookingRepository:
                     )
                 ),
             )
-            account_free_busy_info = cast(Iterable[FreeBusyView], account_free_busy_info)
+            account_free_busy_info = cast(
+                Iterable[FreeBusyView], account_free_busy_info
+            )
 
             room_id_x_calendar_events: dict[str, list[CalendarEvent]] = {}
 
@@ -366,8 +401,13 @@ class ExchangeBookingRepository:
             for room_id, busy_info in zip(args["rooms_ids"], views, strict=True):
                 if isinstance(busy_info, Exception):
                     raise busy_info
-                if busy_info is None or busy_info.view_type not in ("Detailed", "DetailedMerged"):
-                    raise HTTPException(502, f"Detailed availability unavailable for room {room_id}")
+                if busy_info is None or busy_info.view_type not in (
+                    "Detailed",
+                    "DetailedMerged",
+                ):
+                    raise HTTPException(
+                        502, f"Detailed availability unavailable for room {room_id}"
+                    )
                 room_id_x_calendar_events[room_id] = list(
                     cast(Iterable[CalendarEvent], busy_info.calendar_events or [])
                 )
@@ -391,7 +431,13 @@ class ExchangeBookingRepository:
                 outlook_entry_id = None
 
                 if room is not None:
-                    attendee.append(Attendee(email=room.resource_email, status=None, assosiated_room_id=room.id))
+                    attendee.append(
+                        Attendee(
+                            email=room.resource_email,
+                            status=None,
+                            assosiated_room_id=room.id,
+                        )
+                    )
 
                 if calendar_event.details is not None:
                     details = cast(CalendarEventDetails, calendar_event.details)
@@ -402,7 +448,13 @@ class ExchangeBookingRepository:
                         match = EMAIL_IN_LOCATION_RE.search(location)
                         if match is not None:
                             email_in_location = match.group(1)
-                            attendee.append(Attendee(email=email_in_location, status=None, assosiated_room_id=None))
+                            attendee.append(
+                                Attendee(
+                                    email=email_in_location,
+                                    status=None,
+                                    assosiated_room_id=None,
+                                )
+                            )
                     if details.id is not None:
                         outlook_entry_id = str(details.id)
 
@@ -415,7 +467,8 @@ class ExchangeBookingRepository:
                         outlook_booking_id=None,
                         outlook_entry_id=outlook_entry_id,
                         source="free_busy",
-                        source_item_id=outlook_entry_id or f"unidentified-free-busy-{event_index}",
+                        source_item_id=outlook_entry_id
+                        or f"unidentified-free-busy-{event_index}",
                         busy_type=cast(str | None, calendar_event.busy_type),
                         room_presence="present",
                         checked_at=dtm.datetime.now(dtm.UTC),
@@ -431,7 +484,9 @@ class ExchangeBookingRepository:
         )
         # ^^^^^
 
-        logger.info(f"_fetch_bookings_from_busy_info took {tm.monotonic() - t_start:.2f}s")
+        logger.info(
+            f"_fetch_bookings_from_busy_info took {tm.monotonic() - t_start:.2f}s"
+        )
         return room_id_x_bookings
 
     async def _fetch_bookings_from_account_calendar(
@@ -447,21 +502,30 @@ class ExchangeBookingRepository:
 
         # ---- Get cached bookings ----
         if use_cache:
-            room_x_cached_bookings, cache_misses = await self._cache_from_account_calendar.get_cached_bookings(
+            (
+                room_x_cached_bookings,
+                cache_misses,
+            ) = await self._cache_from_account_calendar.get_cached_bookings(
                 rooms_ids, start, end
             )
 
             if not cache_misses:  # full cache hit
-                logger.info(f"Cache hit for bookings from account calendar for rooms: {rooms_ids}")
+                logger.info(
+                    f"Cache hit for bookings from account calendar for rooms: {rooms_ids}"
+                )
                 return room_x_cached_bookings
             else:  # TODO: request only subset of rooms that are not in cache
-                logger.info(f"Cache miss for bookings from account calendar for rooms: {cache_misses}")
+                logger.info(
+                    f"Cache miss for bookings from account calendar for rooms: {cache_misses}"
+                )
         # ^^^^^
 
         # ---- Fetch account calendar view with only one request at a time ----
         args = AccountCalendarViewArgs(start=to_msk(start), end=to_msk(end))
 
-        async def calendar_view_task(args: AccountCalendarViewArgs) -> list[exchangelib.CalendarItem]:
+        async def calendar_view_task(
+            args: AccountCalendarViewArgs,
+        ) -> list[exchangelib.CalendarItem]:
             return await asyncio.to_thread(
                 lambda: list(
                     self.selected_calendar.view(
@@ -505,10 +569,14 @@ class ExchangeBookingRepository:
         )
         # ^^^^^
 
-        logger.info(f"_fetch_bookings_from_account_calendar took {tm.monotonic() - t_start:.2f}s")
+        logger.info(
+            f"_fetch_bookings_from_account_calendar took {tm.monotonic() - t_start:.2f}s"
+        )
         return room_x_bookings
 
-    async def fetch_user_bookings(self, attendee_email: str, start: dtm.datetime, end: dtm.datetime) -> list[Booking]:
+    async def fetch_user_bookings(
+        self, attendee_email: str, start: dtm.datetime, end: dtm.datetime
+    ) -> list[Booking]:
         """
         Fetch bookings from account calendar for all rooms for the given time range and filter out bookings that are not related to the user.
         """
@@ -527,14 +595,21 @@ class ExchangeBookingRepository:
                     continue
 
                 accepted_by_rooms = all(
-                    attendee.status != "Decline" for attendee in booking.attendees if attendee.assosiated_room_id
+                    attendee.status != "Decline"
+                    for attendee in booking.attendees
+                    if attendee.assosiated_room_id
                 )
 
                 if not accepted_by_rooms:
                     continue
 
                 user_attendee = next(
-                    (attendee for attendee in booking.attendees if attendee.email == attendee_email), None
+                    (
+                        attendee
+                        for attendee in booking.attendees
+                        if attendee.email == attendee_email
+                    ),
+                    None,
                 )
 
                 if user_attendee is None or user_attendee.status == "Decline":
@@ -603,7 +678,9 @@ class ExchangeBookingRepository:
                 elif oid in recently_updated_bookings:
                     # add updated booking to the list and remove it from the recently updated bookings, prioritizing updated bookings
                     updated_ts, updated = recently_updated_bookings.pop(oid)
-                    if (t_start - settings.ttl_bookings_from_account_calendar) < updated_ts:
+                    if (
+                        t_start - settings.ttl_bookings_from_account_calendar
+                    ) < updated_ts:
                         bookings_with_recently.append(updated)
                         logger.info(f"Booking {oid}: using recently updated version")
                     else:
@@ -614,7 +691,9 @@ class ExchangeBookingRepository:
                     # add booking to the list and remove it from the recently created bookings, prioritizing fetched bookings
                     bookings_with_recently.append(b)
                     recently_created_bookings.pop(oid)
-                    logger.info(f"Booking {oid}: in fetch and recently created, using fetched")
+                    logger.info(
+                        f"Booking {oid}: in fetch and recently created, using fetched"
+                    )
 
                 else:
                     # just booking from somewhere else, add the booking to the list
@@ -626,7 +705,9 @@ class ExchangeBookingRepository:
             # add remaining recently created bookings to the list, that were not updated or canceled
             if created_booking.room_id in room_ids:
                 bookings_with_recently.append(created_booking)
-                logger.info(f"Booking {created_booking}: remaining recently created (not in fetch), appended")
+                logger.info(
+                    f"Booking {created_booking}: remaining recently created (not in fetch), appended"
+                )
 
         # ^^^^^
 
@@ -643,7 +724,9 @@ class ExchangeBookingRepository:
         """
         Get bookings for a specific room for the given time range.
         """
-        return await self._fetch_bookings_both_from_account_calendar_and_busy_info([room_id], from_dt, to_dt)
+        return await self._fetch_bookings_both_from_account_calendar_and_busy_info(
+            [room_id], from_dt, to_dt
+        )
 
     async def get_bookings_for_certain_rooms(
         self,
@@ -654,7 +737,9 @@ class ExchangeBookingRepository:
         """
         Get bookings for certain rooms for the given time range.
         """
-        return await self._fetch_bookings_both_from_account_calendar_and_busy_info(room_ids, from_dt, to_dt)
+        return await self._fetch_bookings_both_from_account_calendar_and_busy_info(
+            room_ids, from_dt, to_dt
+        )
 
     async def create_booking(
         self,
@@ -683,7 +768,10 @@ class ExchangeBookingRepository:
             categories=categories,
             description=description,
         )
-        await asyncio.to_thread(item.save, send_meeting_invitations=exchangelib.items.SEND_TO_ALL_AND_SAVE_COPY)
+        await asyncio.to_thread(
+            item.save,
+            send_meeting_invitations=exchangelib.items.SEND_TO_ALL_AND_SAVE_COPY,
+        )
         try:
             booking, _ = await self._confirm_booking(room=room, item_id=str(item.id))
             return booking
@@ -695,7 +783,9 @@ class ExchangeBookingRepository:
                 raise
             booking.room_response = "Unknown"
             booking.organizer_mailbox = self.account_email
-            booking.message_body = "Booking sent; response lookup failed. Reconcile before retrying."
+            booking.message_body = (
+                "Booking sent; response lookup failed. Reconcile before retrying."
+            )
             await self._recently.mark_created(str(item.id), booking)
             return booking
 
@@ -705,20 +795,25 @@ class ExchangeBookingRepository:
         calendar_item_id: str,
         calendar_item: exchangelib.CalendarItem | None,
     ) -> bool:
-        assoc = cast(AssociatedCalendarItemId | None, message.associated_calendar_item_id)
+        assoc = cast(
+            AssociatedCalendarItemId | None, message.associated_calendar_item_id
+        )
         if assoc is not None:
             if assoc.id == calendar_item_id:
                 return True
             if calendar_item is None or not calendar_item.uid:
                 return False
             associated_item = self._fetch_calendar_item(cast(str, assoc.id))
-            return associated_item is not None and associated_item.uid == calendar_item.uid
+            return (
+                associated_item is not None and associated_item.uid == calendar_item.uid
+            )
         conversation_id = cast(ConversationId | None, message.conversation_id)
         return bool(
             calendar_item
             and calendar_item.conversation_id
             and conversation_id
-            and conversation_id.id == cast(ConversationId, calendar_item.conversation_id).id
+            and conversation_id.id
+            == cast(ConversationId, calendar_item.conversation_id).id
         )
 
     def _fetch_calendar_item(self, item_id: str) -> exchangelib.CalendarItem | None:
@@ -735,7 +830,9 @@ class ExchangeBookingRepository:
         except exchangelib.errors.ErrorItemNotFound:
             pass
         for fetched in self.account.fetch(ids=[item_id]):
-            if isinstance(fetched, Exception) and not isinstance(fetched, exchangelib.errors.ErrorItemNotFound):
+            if isinstance(fetched, Exception) and not isinstance(
+                fetched, exchangelib.errors.ErrorItemNotFound
+            ):
                 raise fetched
             if isinstance(fetched, exchangelib.CalendarItem):
                 return fetched
@@ -766,18 +863,30 @@ class ExchangeBookingRepository:
     ) -> tuple[str | None, exchangelib.CalendarItem | None, str | None] | None:
         if message.is_out_of_date:
             return None
-        if not self._meeting_response_matches_calendar_item(message, calendar_item_id, calendar_item):
+        if not self._meeting_response_matches_calendar_item(
+            message, calendar_item_id, calendar_item
+        ):
             return None
         sender = cast(exchangelib.properties.Mailbox | None, message.sender)  # ty: ignore[unresolved-attribute]
-        if not sender or not sender.email_address or cast(str, sender.email_address).lower() != room_email.lower():
+        if (
+            not sender
+            or not sender.email_address
+            or cast(str, sender.email_address).lower() != room_email.lower()
+        ):
             return None
-        response_type = MEETING_RESPONSE_ITEM_CLASS_TO_STATUS.get(cast(str, message.item_class or ""))
+        response_type = MEETING_RESPONSE_ITEM_CLASS_TO_STATUS.get(
+            cast(str, message.item_class or "")
+        )
         if response_type is None:
             return None
-        assoc = cast(AssociatedCalendarItemId | None, message.associated_calendar_item_id)
+        assoc = cast(
+            AssociatedCalendarItemId | None, message.associated_calendar_item_id
+        )
         assoc_id = cast(str, assoc.id) if assoc else None
         fetch_id = assoc_id or calendar_item_id
-        if calendar_item is not None and (assoc_id is None or assoc_id == calendar_item_id):
+        if calendar_item is not None and (
+            assoc_id is None or assoc_id == calendar_item_id
+        ):
             resolved_item = calendar_item
         else:
             resolved_item = self._fetch_calendar_item(fetch_id)
@@ -792,15 +901,22 @@ class ExchangeBookingRepository:
                 logger.exception(
                     f"Failed to unsubscribe from inbox pull subscription {self._inbox_pull_subscription_id}"
                 )
-        self._inbox_pull_subscription_id, self._inbox_pull_watermark = self.account.inbox.subscribe_to_pull(
-            event_types=["NewMailEvent", "CreatedEvent"],
-            watermark=self._inbox_pull_watermark,
-            timeout=INBOX_PULL_SUBSCRIPTION_TIMEOUT_MIN,
+        self._inbox_pull_subscription_id, self._inbox_pull_watermark = (
+            self.account.inbox.subscribe_to_pull(
+                event_types=["NewMailEvent", "CreatedEvent"],
+                watermark=self._inbox_pull_watermark,
+                timeout=INBOX_PULL_SUBSCRIPTION_TIMEOUT_MIN,
+            )
         )
-        logger.info(f"Inbox pull subscription created: {self._inbox_pull_subscription_id}")
+        logger.info(
+            f"Inbox pull subscription created: {self._inbox_pull_subscription_id}"
+        )
 
     def _fetch_inbox_notifications(self) -> list:
-        if self._inbox_pull_subscription_id is None or self._inbox_pull_watermark is None:
+        if (
+            self._inbox_pull_subscription_id is None
+            or self._inbox_pull_watermark is None
+        ):
             self._renew_inbox_pull_subscription()
 
         def _pull() -> list:
@@ -857,7 +973,9 @@ class ExchangeBookingRepository:
                         changekey=event_item_id.changekey,
                     )
                 except Exception as e:
-                    logger.warning(f"Inbox pull: failed to fetch {event_item_id.id}: {e}")
+                    logger.warning(
+                        f"Inbox pull: failed to fetch {event_item_id.id}: {e}"
+                    )
                     continue
                 if not isinstance(message, MeetingResponse):
                     logger.debug(
@@ -883,11 +1001,17 @@ class ExchangeBookingRepository:
                     if result is None:
                         continue
                     matched_any = True
-                    wait.loop.call_soon_threadsafe(self._deliver_room_response, wait, result)
-                    logger.info(f"Inbox matched {calendar_item_id} response={result[0]}")
+                    wait.loop.call_soon_threadsafe(
+                        self._deliver_room_response, wait, result
+                    )
+                    logger.info(
+                        f"Inbox matched {calendar_item_id} response={result[0]}"
+                    )
                 if pending and not matched_any:
                     assoc = message.associated_calendar_item_id
-                    assoc_for_registered_wait = assoc is not None and assoc.id in registered_wait_ids
+                    assoc_for_registered_wait = (
+                        assoc is not None and assoc.id in registered_wait_ids
+                    )
                     if not assoc_for_registered_wait:
                         logger.warning(
                             f"Inbox meeting response did not match {len(pending)} pending wait(s) "
@@ -912,7 +1036,10 @@ class ExchangeBookingRepository:
 
     async def start_inbox_poller(self) -> None:
         async with self._poller_lock:
-            if self._inbox_poller_task is not None and not self._inbox_poller_task.done():
+            if (
+                self._inbox_poller_task is not None
+                and not self._inbox_poller_task.done()
+            ):
                 return
             self._inbox_poller_task = asyncio.create_task(
                 self._inbox_poller_loop(),
@@ -945,15 +1072,24 @@ class ExchangeBookingRepository:
         self, item: exchangelib.CalendarItem, room_email: str
     ) -> tuple[str | None, exchangelib.CalendarItem | None, str | None]:
         """Read durable inbox responses, newest first; never correlate by subject."""
-        since = item.datetime_created or dtm.datetime.now(dtm.UTC) - dtm.timedelta(days=7)
-        messages = self.account.inbox.filter(datetime_received__gte=since).order_by("-datetime_received")
+        since = item.datetime_created or dtm.datetime.now(dtm.UTC) - dtm.timedelta(
+            days=7
+        )
+        messages = self.account.inbox.filter(datetime_received__gte=since).order_by(
+            "-datetime_received"
+        )
         attendee = get_emails_to_attendees_index(item).get(room_email)
-        response = cast(str | None, attendee.response_type) if attendee is not None else None
+        response = (
+            cast(str | None, attendee.response_type) if attendee is not None else None
+        )
         for message in messages:
             if not isinstance(message, MeetingResponse):
                 continue
             result = self._result_from_meeting_response(
-                calendar_item_id=str(item.id), calendar_item=item, room_email=room_email, message=message
+                calendar_item_id=str(item.id),
+                calendar_item=item,
+                room_email=room_email,
+                message=message,
             )
             if result is not None:
                 if (
@@ -974,7 +1110,11 @@ class ExchangeBookingRepository:
         timeout_s: int = 30,
     ) -> tuple[str | None, exchangelib.CalendarItem | None, str | None]:
         item = await asyncio.to_thread(self._fetch_calendar_item, calendar_item_id)
-        wait = _RoomWait(room_email=room_email.lower(), calendar_item=item, loop=asyncio.get_running_loop())
+        wait = _RoomWait(
+            room_email=room_email.lower(),
+            calendar_item=item,
+            loop=asyncio.get_running_loop(),
+        )
         with self._waits_lock:
             self._room_waits[calendar_item_id] = wait
             pending_count = len(self._room_waits)
@@ -985,38 +1125,62 @@ class ExchangeBookingRepository:
         try:
             if item is not None:
                 try:
-                    recovered = await asyncio.to_thread(self._recover_room_response, item, room_email)
+                    recovered = await asyncio.to_thread(
+                        self._recover_room_response, item, room_email
+                    )
                     if recovered[0] in ("Accept", "Tentative", "Decline"):
                         return recovered
                 except Exception:
-                    logger.warning(f"Unable to recover inbox response for {calendar_item_id}")
+                    logger.warning(
+                        f"Unable to recover inbox response for {calendar_item_id}"
+                    )
             await asyncio.wait_for(wait.event.wait(), timeout_s)
         except TimeoutError:
-            logger.warning(f"Room response remains unknown: calendar_item_id={calendar_item_id}")
-            refreshed = await asyncio.to_thread(self._fetch_calendar_item, calendar_item_id)
+            logger.warning(
+                f"Room response remains unknown: calendar_item_id={calendar_item_id}"
+            )
+            refreshed = await asyncio.to_thread(
+                self._fetch_calendar_item, calendar_item_id
+            )
             if refreshed is not None:
                 try:
-                    return await asyncio.to_thread(self._recover_room_response, refreshed, room_email)
+                    return await asyncio.to_thread(
+                        self._recover_room_response, refreshed, room_email
+                    )
                 except Exception:
-                    logger.warning(f"Unable to recover final inbox response for {calendar_item_id}")
+                    logger.warning(
+                        f"Unable to recover final inbox response for {calendar_item_id}"
+                    )
             return None, refreshed or item, None
         finally:
             with self._waits_lock:
                 self._room_waits.pop(calendar_item_id, None)
         if wait.result is not None:
             try:
-                refreshed = await asyncio.to_thread(self._fetch_calendar_item, calendar_item_id)
+                refreshed = await asyncio.to_thread(
+                    self._fetch_calendar_item, calendar_item_id
+                )
                 if refreshed is not None:
-                    recovered = await asyncio.to_thread(self._recover_room_response, refreshed, room_email)
+                    recovered = await asyncio.to_thread(
+                        self._recover_room_response, refreshed, room_email
+                    )
                     if recovered[0] in ("Accept", "Tentative", "Decline"):
                         return recovered
             except Exception:
-                logger.warning(f"Unable to refresh response evidence for {calendar_item_id}")
+                logger.warning(
+                    f"Unable to refresh response evidence for {calendar_item_id}"
+                )
             return wait.result
-        return None, await asyncio.to_thread(self._fetch_calendar_item, calendar_item_id), None
+        return (
+            None,
+            await asyncio.to_thread(self._fetch_calendar_item, calendar_item_id),
+            None,
+        )
 
     @staticmethod
-    def _room_response_error_detail(message: str, *, message_body: str | None = None) -> str | dict[str, str]:
+    def _room_response_error_detail(
+        message: str, *, message_body: str | None = None
+    ) -> str | dict[str, str]:
         if message_body:
             return {"message": message, "message_body": message_body}
         return message
@@ -1057,7 +1221,9 @@ class ExchangeBookingRepository:
         booking = self.booking_from_calendar_item(api_item, room_id=room.id)
         if booking is None:
             raise HTTPException(404, "Room attendee not found in booking attendees")
-        booking.room_response = cast(BookingStatus, response_type or booking.room_response or "Unknown")
+        booking.room_response = cast(
+            BookingStatus, response_type or booking.room_response or "Unknown"
+        )
         booking.organizer_mailbox = self.account_email
         booking.message_body = message_body
         booking.checked_at = dtm.datetime.now(dtm.UTC)
@@ -1079,10 +1245,14 @@ class ExchangeBookingRepository:
             return item
         return None
 
-    async def get_booking_by_entry_id(self, outlook_entry_id: str, room: Room) -> Booking | None:
+    async def get_booking_by_entry_id(
+        self, outlook_entry_id: str, room: Room
+    ) -> Booking | None:
         try:
             booking = await asyncio.to_thread(
-                self._get_booking_by_entry_id, outlook_entry_id=outlook_entry_id, room=room
+                self._get_booking_by_entry_id,
+                outlook_entry_id=outlook_entry_id,
+                room=room,
             )
             return booking
         except exchangelib.errors.ErrorItemNotFound:
@@ -1092,12 +1262,20 @@ class ExchangeBookingRepository:
     def _normalize_outlook_entry_id(outlook_entry_id: str) -> str:
         return outlook_entry_id.strip()
 
-    def _get_calendar_item_by_entry_id(self, outlook_entry_id: str, room: Room) -> exchangelib.CalendarItem:
+    def _get_calendar_item_by_entry_id(
+        self, outlook_entry_id: str, room: Room
+    ) -> exchangelib.CalendarItem:
         outlook_entry_id = self._normalize_outlook_entry_id(outlook_entry_id)
         item_id = next(
             iter(
                 self.account.protocol.convert_ids(
-                    [AlternateId(id=outlook_entry_id, format=HEX_ENTRY_ID, mailbox=room.resource_email)],
+                    [
+                        AlternateId(
+                            id=outlook_entry_id,
+                            format=HEX_ENTRY_ID,
+                            mailbox=room.resource_email,
+                        )
+                    ],
                     destination_format=EWS_ID,
                 )
             )
@@ -1151,9 +1329,14 @@ class ExchangeBookingRepository:
             title,
         )
 
-    def _get_booking_by_entry_id(self, outlook_entry_id: str, room: Room) -> Booking | None:
+    def _get_booking_by_entry_id(
+        self, outlook_entry_id: str, room: Room
+    ) -> Booking | None:
         calendar_item = self._get_calendar_item_by_entry_id(outlook_entry_id, room)
-        from_my_calendar = cast(FolderId, calendar_item.parent_folder_id).id == self.selected_calendar.id
+        from_my_calendar = (
+            cast(FolderId, calendar_item.parent_folder_id).id
+            == self.selected_calendar.id
+        )
         return calendar_item_to_booking(
             calendar_item,
             room_id=room.id,
@@ -1236,7 +1419,8 @@ class ExchangeBookingRepository:
             if (
                 new_room_attendee is not None
                 and old_room_attendee is not None
-                and new_room_attendee.last_response_time != old_room_attendee.last_response_time
+                and new_room_attendee.last_response_time
+                != old_room_attendee.last_response_time
             ):
                 booking = calendar_item_to_booking(new_item)
                 if booking is not None:
@@ -1245,7 +1429,9 @@ class ExchangeBookingRepository:
 
         return None
 
-    async def cancel_booking(self, item: exchangelib.CalendarItem, email: str | None) -> bool:
+    async def cancel_booking(
+        self, item: exchangelib.CalendarItem, email: str | None
+    ) -> bool:
         item_id = str(item.id)
 
         if await self._recently.is_canceled(item_id):
@@ -1259,7 +1445,9 @@ class ExchangeBookingRepository:
             await self._recently.mark_canceled(item_id)
             return True
 
-        return await self._cancel_single_flight.run(item_id, lambda: asyncio.create_task(cancel_task()))
+        return await self._cancel_single_flight.run(
+            item_id, lambda: asyncio.create_task(cancel_task())
+        )
 
     async def is_recently_canceled(self, item_id: str) -> bool:
         return await self._recently.is_canceled(item_id)

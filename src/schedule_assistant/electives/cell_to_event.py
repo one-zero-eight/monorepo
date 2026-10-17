@@ -104,7 +104,14 @@ def parse_one_line_in_value(
     # just first word as elective
     splitter = string.split(" ")
     elective_short_name = splitter[0]
-    elective = next((elective for elective in electives if elective.short_name == elective_short_name), None)
+    elective = next(
+        (
+            elective
+            for elective in electives
+            if elective.short_name == elective_short_name
+        ),
+        None,
+    )
     string = " ".join(splitter[1:])
 
     # find time xx:xx-xx:xx
@@ -133,7 +140,9 @@ def parse_one_line_in_value(
         string = string.replace(timeslot_m.group(0), "")
 
     # find (lab), (lec)
-    if class_type_m := re.search(r"\(?(lab|lec|лек|сем)\)?", string, flags=re.IGNORECASE):
+    if class_type_m := re.search(
+        r"\(?(lab|lec|лек|сем)\)?", string, flags=re.IGNORECASE
+    ):
         class_type = class_type_m.group(1).lower()
         string = string.replace(class_type_m.group(0), "")
     else:
@@ -164,7 +173,8 @@ def parse_one_line_in_value(
             end = dtm.datetime.combine(date, ends_at, tzinfo=MOSCOW_TZ)
 
     return ElectiveEvent(
-        elective=elective or Elective(alias=elective_short_name.lower(), short_name=elective_short_name),
+        elective=elective
+        or Elective(alias=elective_short_name.lower(), short_name=elective_short_name),
         location=location,
         class_type=class_type,
         group=group,

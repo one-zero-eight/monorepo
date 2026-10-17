@@ -11,7 +11,15 @@ from pymongo import AsyncMongoClient
 from src.config_root_schema import load_root_settings
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
-MONGO_SERVICES = ("board_games", "clubs", "events", "forms", "guard", "tabletennis", "when2meet")
+MONGO_SERVICES = (
+    "board_games",
+    "clubs",
+    "events",
+    "forms",
+    "guard",
+    "tabletennis",
+    "when2meet",
+)
 SQL_SERVICES = ("schedule", "schedule_assistant")
 SERVICES = (*MONGO_SERVICES, *SQL_SERVICES)
 
@@ -23,7 +31,9 @@ class MigrationConfigurationError(ValueError):
 def mongo_migration_path(service_name: str) -> Path:
     """Return the service's migration directory independently of the working directory."""
     if service_name not in MONGO_SERVICES:
-        raise MigrationConfigurationError(f"Unsupported MongoDB service: {service_name}")
+        raise MigrationConfigurationError(
+            f"Unsupported MongoDB service: {service_name}"
+        )
     return REPOSITORY_ROOT / "src" / service_name / "migrations"
 
 
@@ -45,7 +55,9 @@ async def migrate_mongo(
         path = migration_path
     path = (REPOSITORY_ROOT / path).resolve()
     if not path.is_dir():
-        raise MigrationConfigurationError(f"Migration directory does not exist for {service_name}")
+        raise MigrationConfigurationError(
+            f"Migration directory does not exist for {service_name}"
+        )
 
     client = AsyncMongoClient(mongo_uri)
     try:
@@ -64,7 +76,9 @@ async def migrate_mongo(
 def migrate_service(service_name: str) -> None:
     """Load SETTINGS_PATH and migrate one configured database service to its head."""
     if service_name not in SERVICES:
-        raise MigrationConfigurationError(f"Unsupported migration service: {service_name}")
+        raise MigrationConfigurationError(
+            f"Unsupported migration service: {service_name}"
+        )
 
     settings = load_root_settings()
     service_settings = getattr(settings, f"{service_name}_service")
@@ -72,8 +86,18 @@ def migrate_service(service_name: str) -> None:
         raise MigrationConfigurationError(f"Service {service_name} is not configured")
 
     if service_name in MONGO_SERVICES:
-        default_database_name = service_settings.service_name if service_name == "when2meet" else service_name
-        asyncio.run(migrate_mongo(service_name, service_settings.mongo.uri.get_secret_value(), default_database_name))
+        default_database_name = (
+            service_settings.service_name
+            if service_name == "when2meet"
+            else service_name
+        )
+        asyncio.run(
+            migrate_mongo(
+                service_name,
+                service_settings.mongo.uri.get_secret_value(),
+                default_database_name,
+            )
+        )
         return
 
     from alembic import command

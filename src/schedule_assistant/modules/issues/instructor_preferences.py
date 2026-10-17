@@ -8,7 +8,10 @@ from src.schedule_assistant.modules.issues.schemas import (
     ScheduledMeeting,
     WeeklyPatternPlacement,
 )
-from src.schedule_assistant.modules.schedule_config.schemas import InstructorConfig, TermConfig
+from src.schedule_assistant.modules.schedule_config.schemas import (
+    InstructorConfig,
+    TermConfig,
+)
 from src.schedule_assistant.modules.solver.instructor_preferences import (
     meeting_day_slot_cell,
     resolve_preference_grids,

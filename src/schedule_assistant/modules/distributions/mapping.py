@@ -3,7 +3,10 @@
 import re
 from collections.abc import Callable, Sequence
 
-from src.schedule_assistant.modules.schedule_config.schemas import SectionConfig, StudentsGroups
+from src.schedule_assistant.modules.schedule_config.schemas import (
+    SectionConfig,
+    StudentsGroups,
+)
 
 # Collapse whitespace and common separators so "AWA-I 10" matches "AWA-I-10",
 # and "EAP6" matches "EAP-6".
@@ -42,7 +45,9 @@ def section_target_groups(
     students_groups: list[StudentsGroups],
 ) -> list[StudentsGroups]:
     by_code = {group.code: group for group in students_groups}
-    return [by_code[code] for code in iter_section_group_codes(section) if code in by_code]
+    return [
+        by_code[code] for code in iter_section_group_codes(section) if code in by_code
+    ]
 
 
 def suggest_mapping(

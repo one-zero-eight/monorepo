@@ -155,14 +155,22 @@ def _is_sparse(values: list[str]) -> bool:
 def _should_forward_fill(header: str, values: list[str]) -> bool:
     """Forward-fill only sparse section-header columns (academic Group), not electives."""
     lowered = header.casefold()
-    if any(keyword in lowered for keyword in ("электив", "elective", "e group", "email", "e-mail", "mail")):
+    if any(
+        keyword in lowered
+        for keyword in ("электив", "elective", "e group", "email", "e-mail", "mail")
+    ):
         return False
     if "учебная" in lowered:
         return False
     if not _is_sparse(values):
         return False
     # Sparse generic Group / untitled first column used as section headers.
-    return "group" in lowered or "групп" in lowered or lowered.startswith("column ") or not normalize_cell(header)
+    return (
+        "group" in lowered
+        or "групп" in lowered
+        or lowered.startswith("column ")
+        or not normalize_cell(header)
+    )
 
 
 def _forward_fill(values: list[str]) -> list[str]:
@@ -236,7 +244,9 @@ def parse_distribution_xlsx(
     for row in data_rows:
         padded = list(row) + [None] * max(0, width - len(row))
         for index, name in enumerate(columns):
-            column_values[name].append(normalize_cell(padded[index] if index < len(padded) else None))
+            column_values[name].append(
+                normalize_cell(padded[index] if index < len(padded) else None)
+            )
 
     detected_email = email_column
     if detected_email is None:
@@ -256,10 +266,17 @@ def parse_distribution_xlsx(
 
     detected_membership = membership_columns
     if detected_membership is None:
-        candidates = [name for name in columns if name != detected_email and _column_looks_like_membership(name)]
+        candidates = [
+            name
+            for name in columns
+            if name != detected_email and _column_looks_like_membership(name)
+        ]
         candidates.sort(key=_membership_priority)
         # If elective-like columns exist, drop generic "Group" academic columns from auto-detect.
-        has_priority = any(_membership_priority(name) < len(MEMBERSHIP_PRIORITY_KEYWORDS) - 1 for name in candidates)
+        has_priority = any(
+            _membership_priority(name) < len(MEMBERSHIP_PRIORITY_KEYWORDS) - 1
+            for name in candidates
+        )
         if has_priority:
             candidates = [
                 name
@@ -269,7 +286,9 @@ def parse_distribution_xlsx(
                 or "e group" in name.casefold()
             ]
         if not candidates:
-            candidates = _fallback_membership_columns(columns, detected_email, column_values)
+            candidates = _fallback_membership_columns(
+                columns, detected_email, column_values
+            )
         detected_membership = candidates
     else:
         detected_membership = [name for name in detected_membership if name in columns]
@@ -277,10 +296,15 @@ def parse_distribution_xlsx(
     detected_forward_fill = forward_fill_columns
     if detected_forward_fill is None:
         detected_forward_fill = [
-            name for name in columns if name != detected_email and _should_forward_fill(name, column_values[name])
+            name
+            for name in columns
+            if name != detected_email
+            and _should_forward_fill(name, column_values[name])
         ]
     else:
-        detected_forward_fill = [name for name in detected_forward_fill if name in columns]
+        detected_forward_fill = [
+            name for name in detected_forward_fill if name in columns
+        ]
 
     working_values = {name: list(values) for name, values in column_values.items()}
     for name in detected_forward_fill:
@@ -293,7 +317,11 @@ def parse_distribution_xlsx(
 
     for row_index in range(len(data_rows)):
         row_dict = {name: working_values[name][row_index] for name in columns}
-        email = normalize_email(row_dict.get(detected_email, "")) if detected_email else None
+        email = (
+            normalize_email(row_dict.get(detected_email, ""))
+            if detected_email
+            else None
+        )
         if email is None:
             continue
         email_count += 1
@@ -312,7 +340,10 @@ def parse_distribution_xlsx(
 
     labels = [
         DistributionLabel(label=label, email_count=len(emails))
-        for label, emails in sorted(emails_by_label.items(), key=lambda item: (-len(item[1]), item[0].casefold()))
+        for label, emails in sorted(
+            emails_by_label.items(),
+            key=lambda item: (-len(item[1]), item[0].casefold()),
+        )
     ]
 
     return ParsedDistribution(

@@ -19,7 +19,9 @@ from src.inh_accounts_sdk import UserSchema
 from src.logging_ import logger
 from src.room_booking.config import settings
 from src.room_booking.config_schema import Room
-from src.room_booking.modules.bookings.exchange_repository import ExchangeBookingRepository
+from src.room_booking.modules.bookings.exchange_repository import (
+    ExchangeBookingRepository,
+)
 from src.room_booking.modules.bookings.schemas import (
     Booking,
     BookingStatus,
@@ -131,8 +133,13 @@ class BmpCalendarRepository(ExchangeBookingRepository):
     def _operation_marker(operation_id: str) -> str:
         return f"InnoHassleOperation:{operation_id}"
 
-    def _find_identity_items(self, entry: ReconcileBookingEntry) -> list[exchangelib.CalendarItem]:
-        if entry.organizer_mailbox and entry.organizer_mailbox.lower() != self.account_email.lower():
+    def _find_identity_items(
+        self, entry: ReconcileBookingEntry
+    ) -> list[exchangelib.CalendarItem]:
+        if (
+            entry.organizer_mailbox
+            and entry.organizer_mailbox.lower() != self.account_email.lower()
+        ):
             raise HTTPException(409, "Organizer mailbox does not match BMP mailbox")
         # Search durable identifiers independently of a stale item ID.
         if entry.operation_id:
@@ -145,27 +152,42 @@ class BmpCalendarRepository(ExchangeBookingRepository):
         elif entry.uid:
             # Calendar UID is not an EWS-searchable field. FindItem paginates
             # masters without expanding the whole semester CalendarView.
-            items = [item for item in self.selected_calendar.all() if item.uid == entry.uid]
+            items = [
+                item for item in self.selected_calendar.all() if item.uid == entry.uid
+            ]
         elif entry.outlook_booking_id:
             try:
                 items = [self.selected_calendar.get(id=entry.outlook_booking_id)]
             except ErrorItemNotFound:
                 items = []
         else:
-            raise HTTPException(400, "An operation_id, uid or outlook_booking_id is required")
+            raise HTTPException(
+                400, "An operation_id, uid or outlook_booking_id is required"
+            )
         for item in items:
-            if not isinstance(item, exchangelib.CalendarItem) or not self._is_auto_calendar_item(item):
-                raise HTTPException(409, "Identity does not belong to an Auto calendar item")
+            if not isinstance(
+                item, exchangelib.CalendarItem
+            ) or not self._is_auto_calendar_item(item):
+                raise HTTPException(
+                    409, "Identity does not belong to an Auto calendar item"
+                )
             if entry.uid and item.uid != entry.uid:
                 raise HTTPException(409, "UID does not match the operation")
             organizer = item.organizer
-            if not organizer or str(organizer.email_address).lower() != self.account_email.lower():
+            if (
+                not organizer
+                or str(organizer.email_address).lower() != self.account_email.lower()
+            ):
                 raise HTTPException(409, "Item is not organized by the BMP mailbox")
             room = room_repository.get_by_id(entry.room_id)
-            if room is None or room.resource_email not in get_emails_to_attendees_index(item):
+            if room is None or room.resource_email not in get_emails_to_attendees_index(
+                item
+            ):
                 raise HTTPException(409, "Item does not invite the requested room")
         if len(items) > 1:
-            raise HTTPException(409, "Ambiguous Exchange identity; manual review required")
+            raise HTTPException(
+                409, "Ambiguous Exchange identity; manual review required"
+            )
         return items
 
     def _room_calendar(self, room: Room) -> exchangelib.folders.Calendar:
@@ -178,29 +200,48 @@ class BmpCalendarRepository(ExchangeBookingRepository):
         return cast(exchangelib.folders.Calendar, room_account.calendar)
 
     def _read_room_presence(
-        self, room: Room, uid: str | None, start: dtm.datetime | None, end: dtm.datetime | None, scope: str
+        self,
+        room: Room,
+        uid: str | None,
+        start: dtm.datetime | None,
+        end: dtm.datetime | None,
+        scope: str,
     ) -> tuple[str, list[str]]:
         if not uid:
-            return "unknown", ["Room lookup requires a UID; slot/title matching is not identity"]
+            return "unknown", [
+                "Room lookup requires a UID; slot/title matching is not identity"
+            ]
         calendar = self._room_calendar(room)
         if scope == "occurrence":
             if start is None or end is None or start >= end:
-                raise HTTPException(400, "Occurrence lookup requires a valid start/end window")
+                raise HTTPException(
+                    400, "Occurrence lookup requires a valid start/end window"
+                )
             items = list(
                 calendar.view(
                     exchangelib.EWSDateTime.from_datetime(to_msk(start)),
                     exchangelib.EWSDateTime.from_datetime(to_msk(end)),
                 ).only("uid", "start", "end", "id")
             )
-            matches = [item for item in items if item.uid == uid and item.start == start and item.end == end]
-            return ("present" if matches else "absent"), ["Complete room occurrence window read by UID and time"]
-        items = [item for item in calendar.all().only("uid", "id", "type") if item.uid == uid]
+            matches = [
+                item
+                for item in items
+                if item.uid == uid and item.start == start and item.end == end
+            ]
+            return ("present" if matches else "absent"), [
+                "Complete room occurrence window read by UID and time"
+            ]
+        items = [
+            item for item in calendar.all().only("uid", "id", "type") if item.uid == uid
+        ]
         # A master proves series identity exists, not coverage of every occurrence.
         return ("present" if items else "absent"), [
             "Complete room UID lookup; series presence is not occurrence coverage"
         ]
 
-    async def reconcile_booking(self, entry: ReconcileBookingEntry) -> ReconcileBookingResult:
+    async def reconcile_booking(
+        self, entry: ReconcileBookingEntry
+    ) -> ReconcileBookingResult:
         result = ReconcileBookingResult(
             operation_id=entry.operation_id,
             outlook_booking_id=entry.outlook_booking_id,
@@ -223,8 +264,14 @@ class BmpCalendarRepository(ExchangeBookingRepository):
                 result.booking = self.booking_from_calendar_item(item, room_id=room.id)
                 result.evidence.append("Organizer item found by durable identity")
                 if entry.scope == "occurrence":
-                    if entry.start is None or entry.end is None or entry.start >= entry.end:
-                        raise HTTPException(400, "Occurrence lookup requires a valid start/end window")
+                    if (
+                        entry.start is None
+                        or entry.end is None
+                        or entry.start >= entry.end
+                    ):
+                        raise HTTPException(
+                            400, "Occurrence lookup requires a valid start/end window"
+                        )
                     occurrences = await asyncio.to_thread(
                         lambda: list(
                             self.selected_calendar.view(
@@ -243,44 +290,73 @@ class BmpCalendarRepository(ExchangeBookingRepository):
                         )
                         else "absent"
                     )
-                    result.evidence.append("Complete organizer occurrence window read by UID and time")
+                    result.evidence.append(
+                        "Complete organizer occurrence window read by UID and time"
+                    )
                 response = result.booking.room_response if result.booking else None
                 body = None
                 try:
-                    response, _, body = await asyncio.to_thread(self._recover_room_response, item, room.resource_email)
+                    response, _, body = await asyncio.to_thread(
+                        self._recover_room_response, item, room.resource_email
+                    )
                 except Exception as exc:
                     result.status = "error"
-                    result.error = str(exc.detail) if isinstance(exc, HTTPException) else str(exc)
+                    result.error = (
+                        str(exc.detail) if isinstance(exc, HTTPException) else str(exc)
+                    )
                     result.evidence.append(
                         "Response history read failed; retaining attendee response and checking room"
                     )
                 result.room_response = cast(BookingStatus, response or "Unknown")
                 result.message_body = body
-                if item.meeting_request_was_sent is not True and response not in ("Accept", "Tentative", "Decline"):
+                if item.meeting_request_was_sent is not True and response not in (
+                    "Accept",
+                    "Tentative",
+                    "Decline",
+                ):
                     result.room_response = "Unknown"
-                    result.evidence.append("Organizer draft exists; invitation send is not verified. Do not resend.")
+                    result.evidence.append(
+                        "Organizer draft exists; invitation send is not verified. Do not resend."
+                    )
                 if result.booking:
-                    result.operation_id = result.booking.operation_id or entry.operation_id
+                    result.operation_id = (
+                        result.booking.operation_id or entry.operation_id
+                    )
             elif entry.operation_id or entry.uid:
                 result.organizer_presence = "absent"
-                result.evidence.append("Complete organizer identity lookup returned no items")
+                result.evidence.append(
+                    "Complete organizer identity lookup returned no items"
+                )
             else:
-                result.evidence.append("Old item ID not found; organizer absence is not established")
+                result.evidence.append(
+                    "Old item ID not found; organizer absence is not established"
+                )
         except Exception as exc:
             result.status = "error"
-            result.error = str(exc.detail) if isinstance(exc, HTTPException) else str(exc)
+            result.error = (
+                str(exc.detail) if isinstance(exc, HTTPException) else str(exc)
+            )
             result.evidence.append("Organizer/response lookup failed; do not resend")
             return result
         try:
             presence, evidence = await asyncio.to_thread(
-                self._read_room_presence, room, result.uid, entry.start, entry.end, entry.scope
+                self._read_room_presence,
+                room,
+                result.uid,
+                entry.start,
+                entry.end,
+                entry.scope,
             )
             result.room_presence = cast(Presence, presence)
             result.evidence.extend(evidence)
         except Exception as exc:
             result.status = "error"
-            result.error = str(exc.detail) if isinstance(exc, HTTPException) else str(exc)
-            result.evidence.append("Room calendar read failed or incomplete; presence remains unknown")
+            result.error = (
+                str(exc.detail) if isinstance(exc, HTTPException) else str(exc)
+            )
+            result.evidence.append(
+                "Room calendar read failed or incomplete; presence remains unknown"
+            )
         if result.booking:
             result.booking.room_response = result.room_response
             result.booking.room_presence = result.room_presence
@@ -288,20 +364,25 @@ class BmpCalendarRepository(ExchangeBookingRepository):
             result.booking.checked_at = result.checked_at
         return result
 
-    async def cancel_scoped_booking(self, entry: ScopedCancelBookingRequest) -> ReconcileBookingResult:
+    async def cancel_scoped_booking(
+        self, entry: ScopedCancelBookingRequest
+    ) -> ReconcileBookingResult:
         items = await asyncio.to_thread(self._find_identity_items, entry)
         if not items:
             result = await self.reconcile_booking(entry)
             result.cancellation_status = (
                 "cancelled"
-                if result.organizer_presence == "absent" and result.room_presence == "absent"
+                if result.organizer_presence == "absent"
+                and result.room_presence == "absent"
                 else "requires_review"
             )
             return result
         item = items[0]
         if entry.scope == "occurrence":
             if entry.start is None or entry.end is None or entry.start >= entry.end:
-                raise HTTPException(400, "Occurrence cancellation requires valid start/end")
+                raise HTTPException(
+                    400, "Occurrence cancellation requires valid start/end"
+                )
             occurrences = await asyncio.to_thread(
                 lambda: list(
                     self.selected_calendar.view(
@@ -313,19 +394,28 @@ class BmpCalendarRepository(ExchangeBookingRepository):
             matches = [
                 candidate
                 for candidate in occurrences
-                if candidate.uid == item.uid and candidate.start == entry.start and candidate.end == entry.end
+                if candidate.uid == item.uid
+                and candidate.start == entry.start
+                and candidate.end == entry.end
             ]
             if not matches:
-                result = await self.reconcile_booking(entry.model_copy(update={"uid": item.uid}))
+                result = await self.reconcile_booking(
+                    entry.model_copy(update={"uid": item.uid})
+                )
                 result.cancellation_status = (
                     "cancelled"
-                    if result.organizer_presence == "absent" and result.room_presence == "absent"
+                    if result.organizer_presence == "absent"
+                    and result.room_presence == "absent"
                     else "requires_review"
                 )
-                result.evidence.append("Exact occurrence absent; no cancellation resent and series unchanged")
+                result.evidence.append(
+                    "Exact occurrence absent; no cancellation resent and series unchanged"
+                )
                 return result
             if len(matches) != 1 or matches[0].type == "RecurringMaster":
-                raise HTTPException(409, "Exact occurrence not found; series was not changed")
+                raise HTTPException(
+                    409, "Exact occurrence not found; series was not changed"
+                )
             item = matches[0]
         elif item.type in ("Occurrence", "Exception"):
             raise HTTPException(409, "Series cancellation requires a master identity")
@@ -333,15 +423,20 @@ class BmpCalendarRepository(ExchangeBookingRepository):
         item_id = str(item.id)
         # Do not use recently-cancelled cache as evidence of successful cancellation.
         try:
-            await asyncio.to_thread(item.cancel, new_body=f"Cancelled by BMP; scope={entry.scope}")
+            await asyncio.to_thread(
+                item.cancel, new_body=f"Cancelled by BMP; scope={entry.scope}"
+            )
         except Exception as exc:
             result = await self.reconcile_booking(entry.model_copy(update={"uid": uid}))
             result.cancellation_status = (
                 "cancelled"
-                if result.organizer_presence == "absent" and result.room_presence == "absent"
+                if result.organizer_presence == "absent"
+                and result.room_presence == "absent"
                 else "requires_review"
             )
-            result.evidence.append(f"Cancellation send raised {type(exc).__name__}; reconciled without retry")
+            result.evidence.append(
+                f"Cancellation send raised {type(exc).__name__}; reconciled without retry"
+            )
             return result
         result = await self.reconcile_booking(entry.model_copy(update={"uid": uid}))
         if entry.scope == "occurrence" and result.organizer_presence == "present":
@@ -358,15 +453,24 @@ class BmpCalendarRepository(ExchangeBookingRepository):
                 result.organizer_presence = (
                     "present"
                     if any(
-                        candidate.uid == uid and candidate.start == entry.start and candidate.end == entry.end
+                        candidate.uid == uid
+                        and candidate.start == entry.start
+                        and candidate.end == entry.end
                         for candidate in remaining
                     )
                     else "absent"
                 )
             except Exception as exc:
-                result.organizer_presence, result.status, result.error = "unknown", "error", str(exc)
+                result.organizer_presence, result.status, result.error = (
+                    "unknown",
+                    "error",
+                    str(exc),
+                )
         result.cancellation_status = (
-            "cancelled" if result.organizer_presence == "absent" and result.room_presence == "absent" else "cancelling"
+            "cancelled"
+            if result.organizer_presence == "absent"
+            and result.room_presence == "absent"
+            else "cancelling"
         )
         result.evidence.append("Cancellation sent; room propagation may be delayed")
         if result.cancellation_status == "cancelled":
@@ -405,8 +509,11 @@ class BmpCalendarRepository(ExchangeBookingRepository):
             raise HTTPException(
                 502,
                 {
-                    "message": result.error or "Exchange outcome unknown; reconcile before retrying",
-                    "booking": result.booking.model_dump(mode="json") if result.booking else None,
+                    "message": result.error
+                    or "Exchange outcome unknown; reconcile before retrying",
+                    "booking": result.booking.model_dump(mode="json")
+                    if result.booking
+                    else None,
                     "operation_id": operation_id,
                 },
             )
@@ -484,14 +591,17 @@ class BmpCalendarRepository(ExchangeBookingRepository):
     def _auto_find_items(self, *fields: str) -> list[exchangelib.CalendarItem]:
         return list(
             self.selected_calendar.filter(
-                Q(categories__contains=AUTO_CATEGORY) | Q(subject__startswith=AUTO_SUBJECT_PREFIX)
+                Q(categories__contains=AUTO_CATEGORY)
+                | Q(subject__startswith=AUTO_SUBJECT_PREFIX)
             ).only(*fields)
         )
 
     def _list_auto_chain_items(
         self,
     ) -> list[exchangelib.CalendarItem]:
-        return self._auto_find_items("id", "changekey", "subject", "organizer", "categories")
+        return self._auto_find_items(
+            "id", "changekey", "subject", "organizer", "categories"
+        )
 
     async def _list_auto_calendar_items(
         self,
@@ -505,7 +615,8 @@ class BmpCalendarRepository(ExchangeBookingRepository):
             return [
                 item
                 for item in self._auto_find_items(*_AUTO_FIND_FIELDS)
-                if self._is_auto_calendar_item(item) and auto_item_overlaps_window(item, start_msk, end_msk)
+                if self._is_auto_calendar_item(item)
+                and auto_item_overlaps_window(item, start_msk, end_msk)
             ]
 
         return await asyncio.to_thread(_fetch)
@@ -525,7 +636,9 @@ class BmpCalendarRepository(ExchangeBookingRepository):
     async def cancel_all_auto_bookings(self) -> CancelAllAutoBookingsResult:
         items = await asyncio.to_thread(self._list_auto_chain_items)
         result = await self._bulk_cancel_auto_items(items)
-        logger.info(f"Canceled {len(result.cancelled)}/{len(result.cancelled) + len(result.failed)} auto bookings")
+        logger.info(
+            f"Canceled {len(result.cancelled)}/{len(result.cancelled) + len(result.failed)} auto bookings"
+        )
         return result
 
     async def _bulk_cancel_auto_items(
@@ -556,7 +669,9 @@ class BmpCalendarRepository(ExchangeBookingRepository):
                 continue
             for item, delete_result in zip(chunk, results, strict=True):
                 item_id = str(item.id)
-                if delete_result is True or isinstance(delete_result, ErrorItemNotFound):
+                if delete_result is True or isinstance(
+                    delete_result, ErrorItemNotFound
+                ):
                     await self._recently.mark_canceled(item_id)
                     cancelled.append(item_id)
                     continue
@@ -597,7 +712,9 @@ class BmpCalendarRepository(ExchangeBookingRepository):
         failed.update(bulk_result.failed)
 
         result = CancelAllAutoBookingsResult(cancelled=cancelled, failed=failed)
-        logger.info(f"Batch canceled {len(result.cancelled)}/{len(booking_ids)} auto bookings (email={email})")
+        logger.info(
+            f"Batch canceled {len(result.cancelled)}/{len(booking_ids)} auto bookings (email={email})"
+        )
         return result
 
     async def cancel_auto_booking_by_slot(
@@ -644,14 +761,20 @@ class BmpCalendarRepository(ExchangeBookingRepository):
             return
         for offset in range(0, len(entries), BMP_CREATE_CHUNK_SIZE):
             chunk = entries[offset : offset + BMP_CREATE_CHUNK_SIZE]
-            async for local_index, result, sent_indexes in self._iter_create_bookings_chunk(chunk):
+            async for (
+                local_index,
+                result,
+                sent_indexes,
+            ) in self._iter_create_bookings_chunk(chunk):
                 if sent_indexes is not None:
                     yield (None, None, [offset + index for index in sent_indexes])
                     continue
                 if local_index is None:
                     continue
                 yield (offset + local_index, result, None)
-        logger.info(f"create_bookings_batch: finished {len(entries)} entries in {tm.monotonic() - t_batch:.3f}s")
+        logger.info(
+            f"create_bookings_batch: finished {len(entries)} entries in {tm.monotonic() - t_batch:.3f}s"
+        )
 
     async def _iter_create_bookings_chunk(
         self, entries: list[BmpBatchCreateEntry]
@@ -667,7 +790,8 @@ class BmpCalendarRepository(ExchangeBookingRepository):
                     yield (
                         index,
                         BmpBatchItemResult(
-                            status="error", error="Duplicate operation_id in batch; reconcile existing operation"
+                            status="error",
+                            error="Duplicate operation_id in batch; reconcile existing operation",
                         ),
                         None,
                     )
@@ -690,32 +814,58 @@ class BmpCalendarRepository(ExchangeBookingRepository):
                                 or item.subject != self._auto_subject(entry.title)
                                 or item.recurrence != entry.recurrence
                             ):
-                                raise HTTPException(409, "Operation ID was already used for another booking")
-                            booking = self.booking_from_calendar_item(item, room_id=entry.room.id)
-                            if booking is None:
-                                raise HTTPException(409, "Operation room does not match")
-                            response, _, body = await asyncio.to_thread(
-                                self._recover_room_response, item, entry.room.resource_email
+                                raise HTTPException(
+                                    409,
+                                    "Operation ID was already used for another booking",
+                                )
+                            booking = self.booking_from_calendar_item(
+                                item, room_id=entry.room.id
                             )
-                            booking.room_response = cast(BookingStatus, response or "Unknown")
+                            if booking is None:
+                                raise HTTPException(
+                                    409, "Operation room does not match"
+                                )
+                            response, _, body = await asyncio.to_thread(
+                                self._recover_room_response,
+                                item,
+                                entry.room.resource_email,
+                            )
+                            booking.room_response = cast(
+                                BookingStatus, response or "Unknown"
+                            )
                             booking.message_body = body
-                            if item.meeting_request_was_sent is not True and response not in (
-                                "Accept",
-                                "Tentative",
-                                "Decline",
+                            if (
+                                item.meeting_request_was_sent is not True
+                                and response
+                                not in (
+                                    "Accept",
+                                    "Tentative",
+                                    "Decline",
+                                )
                             ):
                                 booking.room_response = "Unknown"
-                                booking.message_body = (
-                                    "Organizer item exists; invitation send is unverified. Do not resend."
-                                )
+                                booking.message_body = "Organizer item exists; invitation send is unverified. Do not resend."
                             entry.sent_booking = booking
                             yield (None, None, [index])
-                            yield (index, BmpBatchItemResult(status="ok", booking=booking, message_body=body), None)
+                            yield (
+                                index,
+                                BmpBatchItemResult(
+                                    status="ok", booking=booking, message_body=body
+                                ),
+                                None,
+                            )
                             continue
                         if entry.operation_id in self._uncertain_operations:
-                            raise HTTPException(409, "Previous create outcome is unknown; reconcile before retrying")
+                            raise HTTPException(
+                                409,
+                                "Previous create outcome is unknown; reconcile before retrying",
+                            )
                     except Exception as exc:
-                        yield (index, BmpBatchItemResult(status="error", error=str(exc)), None)
+                        yield (
+                            index,
+                            BmpBatchItemResult(status="error", error=str(exc)),
+                            None,
+                        )
                         continue
                 pending.append(entry)
                 indexes.append(index)
@@ -754,12 +904,16 @@ class BmpCalendarRepository(ExchangeBookingRepository):
             )
 
         t_create = tm.monotonic()
-        self._uncertain_operations.update(entry.operation_id for entry in entries if entry.operation_id)
+        self._uncertain_operations.update(
+            entry.operation_id for entry in entries if entry.operation_id
+        )
         try:
             create_results = await asyncio.to_thread(_bulk_create)
         except Exception as exc:
             for index, entry in enumerate(entries):
-                booking = self.booking_from_calendar_item(items[index], room_id=entry.room.id)
+                booking = self.booking_from_calendar_item(
+                    items[index], room_id=entry.room.id
+                )
                 if booking is not None:
                     booking.outlook_booking_id = None
                     booking.source_item_id = None
@@ -774,13 +928,19 @@ class BmpCalendarRepository(ExchangeBookingRepository):
                     None,
                 )
             return
-        logger.info(f"create_bookings_batch: bulk_create {len(entries)} items took {tm.monotonic() - t_create:.3f}s")
+        logger.info(
+            f"create_bookings_batch: bulk_create {len(entries)} items took {tm.monotonic() - t_create:.3f}s"
+        )
 
         sent_indexes: list[int] = []
         confirm_jobs: list[tuple[int, exchangelib.items.BulkCreateResult]] = []
-        for index, (entry, create_result) in enumerate(zip(entries, create_results, strict=True)):
+        for index, (entry, create_result) in enumerate(
+            zip(entries, create_results, strict=True)
+        ):
             if isinstance(create_result, Exception):
-                logger.info(f"create_bookings_batch: confirm room={entry.room.id} failed at create: {create_result}")
+                logger.info(
+                    f"create_bookings_batch: confirm room={entry.room.id} failed at create: {create_result}"
+                )
                 yield (
                     index,
                     BmpBatchItemResult(status="error", error=str(create_result)),
@@ -789,7 +949,9 @@ class BmpCalendarRepository(ExchangeBookingRepository):
                 continue
             items[index].id = create_result.id
             items[index].changekey = create_result.changekey
-            entry.sent_booking = self.booking_from_calendar_item(items[index], room_id=entry.room.id)
+            entry.sent_booking = self.booking_from_calendar_item(
+                items[index], room_id=entry.room.id
+            )
             if entry.sent_booking is not None:
                 entry.sent_booking.organizer_mailbox = self.account_email
                 entry.sent_booking.room_response = "Unknown"
@@ -815,7 +977,9 @@ class BmpCalendarRepository(ExchangeBookingRepository):
                 ].send_error = f"Invitation send raised {error_type}; outcome unknown; reconcile before retrying"
                 sent_booking = entries[index].sent_booking
                 if sent_booking is not None:
-                    sent_booking.message_body = "Invitation send outcome unknown; reconcile before retrying"
+                    sent_booking.message_body = (
+                        "Invitation send outcome unknown; reconcile before retrying"
+                    )
             yield (None, None, [index])
 
         async def _confirm_entry(
@@ -823,7 +987,9 @@ class BmpCalendarRepository(ExchangeBookingRepository):
             create_result: exchangelib.items.BulkCreateResult,
         ) -> BmpBatchItemResult:
             if entry.send_error:
-                return BmpBatchItemResult(status="error", booking=entry.sent_booking, error=entry.send_error)
+                return BmpBatchItemResult(
+                    status="error", booking=entry.sent_booking, error=entry.send_error
+                )
             t_entry = tm.monotonic()
             item_id = str(create_result.id)
             try:
@@ -837,7 +1003,9 @@ class BmpCalendarRepository(ExchangeBookingRepository):
                     f"create_bookings_batch: confirm room={entry.room.id} item_id={item_id} ok "
                     f"({tm.monotonic() - t_entry:.3f}s)"
                 )
-                return BmpBatchItemResult(status="ok", booking=booking, message_body=message_body)
+                return BmpBatchItemResult(
+                    status="ok", booking=booking, message_body=message_body
+                )
             except HTTPException as e:
                 logger.info(
                     f"create_bookings_batch: confirm room={entry.room.id} item_id={item_id} "
@@ -865,7 +1033,9 @@ class BmpCalendarRepository(ExchangeBookingRepository):
                     f"create_bookings_batch: confirm room={entry.room.id} item_id={item_id} error "
                     f"({tm.monotonic() - t_entry:.3f}s)"
                 )
-                return BmpBatchItemResult(status="ok", booking=entry.sent_booking, error=str(e))
+                return BmpBatchItemResult(
+                    status="ok", booking=entry.sent_booking, error=str(e)
+                )
 
         async def _confirm_indexed(
             index: int,
@@ -874,7 +1044,10 @@ class BmpCalendarRepository(ExchangeBookingRepository):
             return index, await _confirm_entry(entries[index], create_result)
 
         for finished in asyncio.as_completed(
-            [_confirm_indexed(index, create_result) for index, create_result in confirm_jobs]
+            [
+                _confirm_indexed(index, create_result)
+                for index, create_result in confirm_jobs
+            ]
         ):
             index, result = await finished
             yield (index, result, None)

@@ -4,7 +4,9 @@ import pytest
 from httpx import AsyncClient
 from pydantic import ValidationError
 
-from src.schedule_assistant.modules.schedule_config.repository import ScheduleConfigRepository
+from src.schedule_assistant.modules.schedule_config.repository import (
+    ScheduleConfigRepository,
+)
 from src.schedule_assistant.modules.schedule_config.schemas import (
     ComponentSessionSeries,
     CourseConfig,
@@ -57,7 +59,9 @@ def test_validate_sections_rejects_duplicate_group_codes() -> None:
 
 def test_validate_courses_rejects_duplicate_names() -> None:
     ctx = ValidationContext(
-        sections=SectionsConfig(sections=[SectionConfig(code="core", name="Core", programs=[])]),
+        sections=SectionsConfig(
+            sections=[SectionConfig(code="core", name="Core", programs=[])]
+        ),
         rooms=RoomConfig(),
         instructors=InstructorConfig(),
         courses=CoursesConfig(),
@@ -73,11 +77,15 @@ def test_validate_courses_rejects_duplicate_names() -> None:
 
 
 def test_course_color_normalizes_and_validates_hex() -> None:
-    course = CourseConfig(name="Algorithms", color="#a1b2c3", section_code="core", components=[])
+    course = CourseConfig(
+        name="Algorithms", color="#a1b2c3", section_code="core", components=[]
+    )
     assert course.color == "#A1B2C3"
 
     with pytest.raises(ValidationError, match="color must match #RRGGBB"):
-        CourseConfig(name="Algorithms", color="A1B2C3", section_code="core", components=[])
+        CourseConfig(
+            name="Algorithms", color="A1B2C3", section_code="core", components=[]
+        )
 
 
 def test_validate_courses_rejects_unknown_student_group() -> None:
@@ -87,7 +95,11 @@ def test_validate_courses_rejects_unknown_student_group() -> None:
                 SectionConfig(
                     code="core",
                     name="Core",
-                    programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["SUM26-AAI"])],
+                    programs=[
+                        SectionConfig.SectionProgram(
+                            code="BS", name="BS", groups=["SUM26-AAI"]
+                        )
+                    ],
                 )
             ],
             students_groups=[
@@ -127,7 +139,11 @@ def test_validate_courses_accepts_online_room() -> None:
                 SectionConfig(
                     code="core",
                     name="Core",
-                    programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["SUM26-AAI"])],
+                    programs=[
+                        SectionConfig.SectionProgram(
+                            code="BS", name="BS", groups=["SUM26-AAI"]
+                        )
+                    ],
                 )
             ],
             students_groups=[
@@ -231,7 +247,9 @@ def test_validate_rooms_update_ignores_online_references() -> None:
 @pytest.mark.parametrize("invalid_room", ["Online", "Онлайн", "ОНЛАЙН", "online"])
 def test_validate_courses_rejects_non_canonical_online_rooms(invalid_room: str) -> None:
     ctx = ValidationContext(
-        sections=SectionsConfig(sections=[SectionConfig(code="core", name="Core", programs=[])]),
+        sections=SectionsConfig(
+            sections=[SectionConfig(code="core", name="Core", programs=[])]
+        ),
         rooms=RoomConfig(),
         instructors=InstructorConfig(),
         courses=CoursesConfig(),
@@ -272,7 +290,11 @@ def test_validate_courses_rejects_unknown_instructor() -> None:
                 SectionConfig(
                     code="core",
                     name="Core",
-                    programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["SUM26-AAI"])],
+                    programs=[
+                        SectionConfig.SectionProgram(
+                            code="BS", name="BS", groups=["SUM26-AAI"]
+                        )
+                    ],
                 )
             ],
             students_groups=[
@@ -281,7 +303,9 @@ def test_validate_courses_rejects_unknown_instructor() -> None:
                 )
             ],
         ),
-        rooms=RoomConfig(rooms=[RoomConfig.Room(id="108", name="Room 108", capacity=100)]),
+        rooms=RoomConfig(
+            rooms=[RoomConfig.Room(id="108", name="Room 108", capacity=100)]
+        ),
         instructors=InstructorConfig(),
         courses=CoursesConfig(),
     )
@@ -323,7 +347,11 @@ def test_validate_courses_allows_missing_room_and_instructor() -> None:
                 SectionConfig(
                     code="core",
                     name="Core",
-                    programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["G1"])],
+                    programs=[
+                        SectionConfig.SectionProgram(
+                            code="BS", name="BS", groups=["G1"]
+                        )
+                    ],
                 )
             ],
             students_groups=[
@@ -332,8 +360,12 @@ def test_validate_courses_allows_missing_room_and_instructor() -> None:
                 )
             ],
         ),
-        rooms=RoomConfig(rooms=[RoomConfig.Room(id="108", name="Room 108", capacity=100)]),
-        instructors=InstructorConfig(instructors=[InstructorConfig.Instructor(id="t@innopolis.ru")]),
+        rooms=RoomConfig(
+            rooms=[RoomConfig.Room(id="108", name="Room 108", capacity=100)]
+        ),
+        instructors=InstructorConfig(
+            instructors=[InstructorConfig.Instructor(id="t@innopolis.ru")]
+        ),
         courses=CoursesConfig(),
     )
     courses = CoursesConfig(
@@ -413,7 +445,9 @@ def test_validate_resource_update_blocks_removing_referenced_instructor() -> Non
         ],
     )
     ctx = ValidationContext(
-        sections=SectionsConfig(sections=[SectionConfig(code="core", name="Core", programs=[])]),
+        sections=SectionsConfig(
+            sections=[SectionConfig(code="core", name="Core", programs=[])]
+        ),
         rooms=RoomConfig(),
         instructors=new,
         courses=courses,
@@ -428,7 +462,10 @@ async def test_put_courses_returns_422_for_invalid_references(
     schedule_config_repo: ScheduleConfigRepository,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.moderator_emails", ["test@test.com"])
+    monkeypatch.setattr(
+        "src.schedule_assistant.dependencies.settings.moderator_emails",
+        ["test@test.com"],
+    )
     schedule_config_repo.set_term(_minimal_term())
     schedule_config_repo.set_sections(
         SectionsConfig(
@@ -436,7 +473,11 @@ async def test_put_courses_returns_422_for_invalid_references(
                 SectionConfig(
                     code="core",
                     name="Core",
-                    programs=[SectionConfig.SectionProgram(code="BS", name="BS", groups=["SUM26-AAI"])],
+                    programs=[
+                        SectionConfig.SectionProgram(
+                            code="BS", name="BS", groups=["SUM26-AAI"]
+                        )
+                    ],
                 )
             ],
             students_groups=[
@@ -466,7 +507,9 @@ async def test_put_courses_returns_422_for_invalid_references(
 
 def test_validate_courses_rejects_unknown_section_code() -> None:
     ctx = ValidationContext(
-        sections=SectionsConfig(sections=[SectionConfig(code="core", name="Core", programs=[])]),
+        sections=SectionsConfig(
+            sections=[SectionConfig(code="core", name="Core", programs=[])]
+        ),
         rooms=RoomConfig(),
         instructors=InstructorConfig(),
         courses=CoursesConfig(),
@@ -488,14 +531,18 @@ def test_validate_courses_rejects_audience_outside_section() -> None:
                     code="core",
                     name="Core",
                     programs=[
-                        SectionConfig.SectionProgram(code="BS", name="BS", groups=["CORE-01"]),
+                        SectionConfig.SectionProgram(
+                            code="BS", name="BS", groups=["CORE-01"]
+                        ),
                     ],
                 ),
                 SectionConfig(
                     code="electives",
                     name="Electives",
                     programs=[
-                        SectionConfig.SectionProgram(code="ELEC", name="Electives", groups=["ELEC-01"]),
+                        SectionConfig.SectionProgram(
+                            code="ELEC", name="Electives", groups=["ELEC-01"]
+                        ),
                     ],
                 ),
             ],

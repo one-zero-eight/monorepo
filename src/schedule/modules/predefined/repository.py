@@ -26,7 +26,9 @@ class PredefinedRepository:
                 group_aliases.append(group.event_group_alias)
 
         if settings.schedule_assistant is not None:
-            group_aliases.extend(await schedule_assistant_client.get_user_predefined(user.email))
+            group_aliases.extend(
+                await schedule_assistant_client.get_user_predefined(user.email)
+            )
 
         return list(dict.fromkeys(group_aliases))
 
