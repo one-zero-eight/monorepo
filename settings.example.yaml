@@ -11,6 +11,7 @@ clubs_service:
   api_key: change-me # service API key for service-to-service integration (e.g. Events service)
 board_games_service: {}
 when2meet_service: {}
+timer_service: {}
 tabletennis_service: {}
 guard_service: # to run guard service you should provide a Google service account file
   google:
