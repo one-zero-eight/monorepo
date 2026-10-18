@@ -1,4 +1,5 @@
 import datetime as dtm
+import json
 from pathlib import Path
 from typing import cast
 from uuid import uuid4
@@ -6,20 +7,25 @@ from uuid import uuid4
 import pytest
 from alembic import command
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from fastapi.testclient import TestClient
 from sqlalchemy import Connection, inspect, text
 from sqlalchemy.dialects.postgresql.base import PGInspector
 
 
 @pytest.mark.parametrize("populated", [False, True])
-@pytest.mark.parametrize("previous_revision", ["0b674e5c891a", "e47b1a90c623"])
-def test_upgrade_timer_storage(timer_client: TestClient, populated: bool, previous_revision: str):
+def test_upgrade_timer_storage(timer_client: TestClient, populated: bool):
     timestamp = dtm.datetime(2026, 10, 17, 9, tzinfo=dtm.UTC)
+    checkpoints = [{"title": "Demo", "time": "2026-10-18T08:00:00Z"}]
+    invitation_uuid = uuid4()
 
     def migrate(connection: Connection):
         config = Config(Path(__file__).parents[2] / "src/timer/alembic.ini")
         config.attributes["connection"] = connection
-        command.upgrade(config, previous_revision)
+        revisions = list(ScriptDirectory.from_config(config).walk_revisions())
+        assert len(revisions) == 1
+        assert revisions[0].down_revision is None
+        command.upgrade(config, "head")
 
         if populated:
             connection.execute(
@@ -33,19 +39,30 @@ def test_upgrade_timer_storage(timer_client: TestClient, populated: bool, previo
                 {"timestamp": timestamp},
             )
             connection.execute(
+                text("UPDATE timers SET checkpoints = CAST(:checkpoints AS jsonb) WHERE id = 1"),
+                {"checkpoints": json.dumps(checkpoints)},
+            )
+            connection.execute(
                 text("""
                     INSERT INTO timer_participants (timer_id, user_id, joined_at, permissions, user_type)
-                    VALUES (1, 'creator', :timestamp, ARRAY['update', 'delete']::timer_permission[], 'creator')
+                    VALUES (1, 'creator', :timestamp, ARRAY['update', 'delete', 'invite']::timer_permission[], 'creator')
                 """),
                 {"timestamp": timestamp},
             )
+            connection.execute(
+                text("INSERT INTO invitations (uuid, timer_id) VALUES (:uuid, 1)"),
+                {"uuid": invitation_uuid},
+            )
 
-        command.upgrade(config, "head")
         first_result = connection.execute(text("SELECT * FROM timers ORDER BY id")).mappings().all()
+        first_participants = connection.execute(text("SELECT * FROM timer_participants")).mappings().all()
+        first_invitations = connection.execute(text("SELECT * FROM invitations")).mappings().all()
         command.upgrade(config, "head")
         assert connection.execute(text("SELECT * FROM timers ORDER BY id")).mappings().all() == first_result
+        assert connection.execute(text("SELECT * FROM timer_participants")).mappings().all() == first_participants
+        assert connection.execute(text("SELECT * FROM invitations")).mappings().all() == first_invitations
         assert not inspect(connection).has_table("timer_checkpoints")
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "8f3c21ad7e60"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "a91d6f2c830b"
         inspector = cast(PGInspector, inspect(connection))
         assert inspector.has_table("invitations")
         assert inspector.get_pk_constraint("invitations")["constrained_columns"] == ["uuid"]
@@ -60,14 +77,15 @@ def test_upgrade_timer_storage(timer_client: TestClient, populated: bool, previo
             assert timer["title"] == "Hackathon"
             assert timer["start_time"] == timer["created_at"] == timer["updated_at"] == timestamp
             assert timer["end_time"] == timestamp + dtm.timedelta(days=1)
-            assert timer["checkpoints"] == []
+            assert timer["checkpoints"] == checkpoints
             assert empty_timer["checkpoints"] == []
             participant = connection.execute(text("SELECT * FROM timer_participants")).mappings().one()
             assert participant["user_id"] == "creator"
             assert participant["timer_id"] == 1
             assert participant["joined_at"] == timestamp
-            assert participant["permissions"] == ["update", "delete"]
+            assert participant["permissions"] == ["update", "delete", "invite"]
             assert participant["user_type"] == "creator"
+            assert first_invitations == [{"uuid": invitation_uuid, "timer_id": 1}]
         else:
             assert first_result == []
 
