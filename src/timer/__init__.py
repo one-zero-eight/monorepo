@@ -1,1 +1,1 @@
-
+"""Timer service."""
