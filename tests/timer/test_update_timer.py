@@ -157,12 +157,18 @@ def test_update_timer_requires_all_fields(
     [
         {"title": "я" * 201},
         {"title": " "},
+        {"title": "Demo\x00title"},
+        {"start_time": "0001-01-01T00:10:00+01:00"},
+        {"end_time": "9999-12-31T23:20:00-01:00"},
+        {"start_time": "0001-01-01T01:00:00+01:00"},
+        {"end_time": "9999-12-31T22:59:59.999999-01:00"},
         {"end_time": "2026-10-20T11:00:00+03:00"},
         {"start_time": "2026-10-21T10:00:00+03:00"},
         {"start_time": "2026-10-20T11:00:00"},
         {"checkpoints": [{"title": "Outside", "time": "2026-10-20T20:00:00+03:00"}]},
         {"checkpoints": [{"title": "я" * 201, "time": "2026-10-20T12:00:00+03:00"}]},
         {"checkpoints": [{"title": "Demo", "time": "2026-10-20T12:00:00"}]},
+        {"checkpoints": [{"title": "Demo\x00title", "time": "2026-10-20T12:00:00+03:00"}]},
         {"permissions": ["update"]},
         {
             "checkpoints": [
