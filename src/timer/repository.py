@@ -62,12 +62,12 @@ async def get_timer(storage: SQLAlchemyStorage, timer_id: int, user_id: str) -> 
         select(TimerParticipant)
         .where(TimerParticipant.timer_id == timer_id, TimerParticipant.user_id == user_id)
         .options(
-            joinedload(TimerParticipant.timer, innerjoin=True).joinedload(Timer.participants),
+            joinedload(TimerParticipant.timer, innerjoin=True).selectinload(Timer.participants),
         )
     )
     async with storage.create_session() as session:
         result = await session.execute(query)
-        participant = result.unique().scalar_one_or_none()
+        participant = result.scalar_one_or_none()
         return ViewTimer.model_validate(participant.timer) if participant is not None else None
 
 

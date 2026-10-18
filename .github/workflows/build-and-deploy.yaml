@@ -39,6 +39,7 @@ on:
           - schedule-api
           - schedule-assistant-api
           - tabletennis-api
+          - timer-api
   push:
     branches:
       - main
