@@ -743,6 +743,37 @@ $defs:
         type: array
     title: TabletennisSettings
     type: object
+  TimerSettings:
+    additionalProperties: false
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: ''
+        description: Prefix for the API path (e.g. "/api/v0")
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      db_url:
+        description: PostgreSQL database connection URL
+        examples:
+        - postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/timer
+        - postgresql+asyncpg://postgres:postgres@postgres:5432/timer
+        format: password
+        title: Db Url
+        type: string
+        writeOnly: true
+    title: TimerSettings
+    type: object
   When2MeetSettings:
     additionalProperties: false
     properties:
@@ -1038,6 +1069,11 @@ properties:
   when2meet_service:
     anyOf:
     - $ref: '#/$defs/When2MeetSettings'
+    - type: 'null'
+    default: null
+  timer_service:
+    anyOf:
+    - $ref: '#/$defs/TimerSettings'
     - type: 'null'
     default: null
   tabletennis_service:

@@ -55,13 +55,14 @@ def test_accounts_mock_validates_clubs_and_student_affairs_environments():
     assert loaded.student_affairs_service is not None
 
 
-def test_accounts_mock_rejected_when_clubs_not_development():
-    with pytest.raises(ValueError, match="clubs_service"):
+@pytest.mark.parametrize("service", ["clubs_service", "timer_service"])
+def test_accounts_mock_rejected_when_service_not_development(service):
+    with pytest.raises(ValueError, match=service):
         Settings.model_validate(
             {
                 "accounts": {**_TEST_ACCOUNTS, "mock": True},
                 "maps_service": {"environment": "development"},
-                "clubs_service": {"environment": "testing"},
+                service: {"environment": "testing"},
             }
         )
 
@@ -98,27 +99,38 @@ def test_postgres_connection_settings(monkeypatch, in_docker, explicit_url):
     host = "postgres" if in_docker else "127.0.0.1"
     schedule_url = f"postgresql+asyncpg://postgres:postgres@{host}:5432/schedule"
     assistant_url = f"postgresql+psycopg://postgres:postgres@{host}:5432/schedule_assistant"
+    timer_url = f"postgresql+asyncpg://postgres:postgres@{host}:5432/timer"
     schedule = {}
+    timer = {}
     assistant = {"api_key": "test-key", "booking": {"api_key": "test-booking-key"}}
     if explicit_url:
         schedule_url = "postgresql+asyncpg://custom:secret@db.example:5433/custom_schedule"
         assistant_url = "postgresql+psycopg://custom:secret@db.example:5433/custom_assistant"
         schedule["db_url"] = schedule_url
         assistant["db_url"] = assistant_url
+        timer_url = "postgresql+asyncpg://custom:secret@db.example:5433/custom_timer"
+        timer["db_url"] = timer_url
 
     loaded = Settings.model_validate(
-        {"accounts": _TEST_ACCOUNTS, "schedule_service": schedule, "schedule_assistant_service": assistant}
+        {
+            "accounts": _TEST_ACCOUNTS,
+            "schedule_service": schedule,
+            "schedule_assistant_service": assistant,
+            "timer_service": timer,
+        }
     )
 
     assert loaded.schedule_service is not None
     assert loaded.schedule_assistant_service is not None
     assert loaded.schedule_service.db_url.get_secret_value() == schedule_url
     assert loaded.schedule_assistant_service.db_url.get_secret_value() == assistant_url
+    assert loaded.timer_service is not None
+    assert loaded.timer_service.db_url.get_secret_value() == timer_url
 
 
 def test_postgres_urls_optional_in_schema():
     definitions = Settings.model_json_schema()["$defs"]
-    for service in ("ScheduleSettings", "ScheduleAssistantSettings"):
+    for service in ("ScheduleSettings", "ScheduleAssistantSettings", "TimerSettings"):
         assert "db_url" not in definitions[service].get("required", [])
 
 

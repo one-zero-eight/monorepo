@@ -17,6 +17,7 @@ from src.schedule.config_schema import ScheduleSettings
 from src.schedule_assistant.config_schema import ScheduleAssistantSettings
 from src.student_affairs.config_schema import StudentAffairsSettings
 from src.tabletennis.config_schema import TabletennisSettings
+from src.timer.config_schema import TimerSettings
 from src.when2meet.config_schema import When2MeetSettings
 
 
@@ -54,6 +55,7 @@ class Settings(BaseSchema):
     student_affairs_service: StudentAffairsSettings | None = None
     board_games_service: BoardGamesSettings | None = None
     when2meet_service: When2MeetSettings | None = None
+    timer_service: TimerSettings | None = None
     tabletennis_service: TabletennisSettings | None = None
     guard_service: GuardSettings | None = None
     forms_service: FormsSettings | None = None
@@ -76,6 +78,8 @@ class Settings(BaseSchema):
             contexts.append(("board_games_service", self.board_games_service.environment))
         if self.when2meet_service is not None:
             contexts.append(("when2meet_service", self.when2meet_service.environment))
+        if self.timer_service is not None:
+            contexts.append(("timer_service", self.timer_service.environment))
         if self.tabletennis_service is not None:
             contexts.append(("tabletennis_service", self.tabletennis_service.environment))
         if self.guard_service is not None:

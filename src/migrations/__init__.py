@@ -12,7 +12,7 @@ from src.config_root_schema import load_root_settings
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 MONGO_SERVICES = ("board_games", "clubs", "events", "forms", "guard", "tabletennis", "when2meet")
-SQL_SERVICES = ("schedule", "schedule_assistant")
+SQL_SERVICES = ("schedule", "schedule_assistant", "timer")
 SERVICES = (*MONGO_SERVICES, *SQL_SERVICES)
 
 
