@@ -3,7 +3,7 @@ from enum import StrEnum
 from uuid import UUID, uuid4
 
 from sqlalchemy import BigInteger, CheckConstraint, DateTime, Enum, ForeignKey, Identity, Index, String, func, text
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -11,6 +11,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 class TimerPermission(StrEnum):
     UPDATE = "update"
     DELETE = "delete"
+    INVITE = "invite"
 
 
 class TimerUserType(StrEnum):
@@ -24,7 +25,10 @@ class Base(DeclarativeBase):
 
 class Timer(Base):
     __tablename__ = "timers"
-    __table_args__ = (CheckConstraint("start_time < end_time", name="ck_timers_time_range"),)
+    __table_args__ = (
+        CheckConstraint("start_time < end_time", name="ck_timers_time_range"),
+        CheckConstraint("jsonb_typeof(checkpoints) = 'array'", name="ck_timers_checkpoints_array"),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     title: Mapped[str] = mapped_column(String(200))
@@ -38,12 +42,8 @@ class Timer(Base):
     participants: Mapped[list[TimerParticipant]] = relationship(
         back_populates="timer", cascade="all, delete-orphan", passive_deletes=True
     )
-    checkpoints: Mapped[list[TimerCheckpoint]] = relationship(
-        back_populates="timer",
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-        order_by="TimerCheckpoint.time, TimerCheckpoint.id",
-    )
+    checkpoints: Mapped[list[dict[str, str]]] = mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb"))
+    "Checkpoints with title/time. Assign a new list when editing to persist JSON changes."
 
 
 class TimerParticipant(Base):
@@ -82,13 +82,8 @@ class TimerParticipant(Base):
     timer: Mapped[Timer] = relationship(back_populates="participants")
 
 
-class TimerCheckpoint(Base):
-    __tablename__ = "timer_checkpoints"
-    __table_args__ = (Index("ix_timer_checkpoints_timer_id_time", "timer_id", "time"),)
+class Invitation(Base):
+    __tablename__ = "invitations"
 
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    timer_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("timers.id", ondelete="CASCADE"))
-    title: Mapped[str] = mapped_column(String(200))
-    time: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True))
-
-    timer: Mapped[Timer] = relationship(back_populates="checkpoints")
+    uuid: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    timer_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("timers.id", ondelete="CASCADE"), index=True)

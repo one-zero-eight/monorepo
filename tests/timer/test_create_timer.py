@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from src.timer.db.models import Timer, TimerCheckpoint, TimerParticipant
+from src.timer.db.models import Timer, TimerParticipant
 from src.timer.schemas import ViewTimer
 
 
@@ -30,6 +30,7 @@ def test_create_timer(
     response = timer_client.post("/timers", json=timer_payload, headers=user_headers)
     assert response.status_code == 201, response.text
     data = response.json()
+    assert all(point.keys() == {"title", "time"} for point in data["checkpoints"])
     assert isinstance(data["id"], int)
     assert data["title"] == timer_payload["title"]
     assert dtm.datetime.fromisoformat(data["start_time"]) == dtm.datetime.fromisoformat(timer_payload["start_time"])
@@ -40,7 +41,7 @@ def test_create_timer(
     creator = data["participants"][0]
     assert creator["user_id"] == "test-user-1"
     assert creator["user_type"] == "creator"
-    assert creator["permissions"] == ["update", "delete"]
+    assert creator["permissions"] == ["update", "delete", "invite"]
     assert dtm.datetime.fromisoformat(creator["joined_at"]).tzinfo is not None
     assert [checkpoint["title"] for checkpoint in data["checkpoints"]] == (
         ["Start", "Demo"] if with_checkpoints else []
@@ -49,11 +50,10 @@ def test_create_timer(
     async def verify_saved():
         async with timer_client.app.state.sql_storage.create_session() as session:
             saved = await session.scalar(
-                select(Timer)
-                .where(Timer.id == data["id"])
-                .options(selectinload(Timer.participants), selectinload(Timer.checkpoints))
+                select(Timer).where(Timer.id == data["id"]).options(selectinload(Timer.participants))
             )
             assert saved is not None
+            assert all(point.keys() == {"title", "time"} for point in saved.checkpoints)
             assert ViewTimer.model_validate(saved) == ViewTimer.model_validate(data)
 
     assert timer_client.portal is not None
@@ -111,7 +111,7 @@ def test_create_timer_rejects_invalid_payload(
 def assert_no_timers(client: TestClient) -> None:
     async def verify_empty():
         async with client.app.state.sql_storage.create_session() as session:
-            for model in (Timer, TimerParticipant, TimerCheckpoint):
+            for model in (Timer, TimerParticipant):
                 assert await session.scalar(select(func.count()).select_from(model)) == 0
 
     assert client.portal is not None

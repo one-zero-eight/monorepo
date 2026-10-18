@@ -1,6 +1,5 @@
 import datetime as dtm
 from pathlib import Path
-from uuid import UUID
 
 import pytest
 from alembic import command
@@ -10,7 +9,7 @@ from sqlalchemy import Connection, delete, inspect, select
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import selectinload
 
-from src.timer.db.models import Timer, TimerCheckpoint, TimerParticipant, TimerPermission, TimerUserType
+from src.timer.db.models import Timer, TimerParticipant, TimerPermission, TimerUserType
 
 
 def make_timer(**overrides) -> Timer:
@@ -35,7 +34,7 @@ def test_store_timer_and_repeat_migration(timer_client: TestClient):
                     ),
                     TimerParticipant(user_id="participant", user_type=TimerUserType.PARTICIPANT),
                 ],
-                checkpoints=[TimerCheckpoint(title="Demo", time=dtm.datetime(2026, 10, 18, 9, tzinfo=dtm.UTC))],
+                checkpoints=[{"title": "Demo", "time": "2026-10-18T09:00:00+00:00"}],
             )
             session.add(timer)
             await session.commit()
@@ -55,9 +54,7 @@ def test_store_timer_and_repeat_migration(timer_client: TestClient):
 
         async with storage.create_session() as session:
             saved = await session.scalar(
-                select(Timer)
-                .where(Timer.id == timer_id)
-                .options(selectinload(Timer.participants), selectinload(Timer.checkpoints))
+                select(Timer).where(Timer.id == timer_id).options(selectinload(Timer.participants))
             )
             assert saved is not None
             assert saved.title == "Release sprint"
@@ -68,8 +65,9 @@ def test_store_timer_and_repeat_migration(timer_client: TestClient):
             assert participants["creator"].permissions == [TimerPermission.UPDATE, TimerPermission.DELETE]
             assert participants["participant"].permissions == []
             assert participants["participant"].joined_at.tzinfo is not None
-            assert isinstance(saved.checkpoints[0].id, UUID)
-            assert saved.checkpoints[0].title == "Demo"
+            assert saved.checkpoints[0].keys() == {"title", "time"}
+            assert saved.checkpoints[0]["title"] == "Demo"
+            saved.checkpoints = [{**saved.checkpoints[0], "title": "Updated demo"}]
             participants["participant"].permissions.append(TimerPermission.UPDATE)
             await session.commit()
 
@@ -77,26 +75,26 @@ def test_store_timer_and_repeat_migration(timer_client: TestClient):
             participant = await session.get(TimerParticipant, (timer_id, "participant"))
             assert participant is not None
             assert participant.permissions == [TimerPermission.UPDATE]
+            saved = await session.get(Timer, timer_id)
+            assert saved is not None
+            assert saved.checkpoints[0]["title"] == "Updated demo"
             await session.execute(delete(Timer).where(Timer.id == timer_id))
             await session.commit()
 
         async with storage.create_session() as session:
             assert await session.scalar(select(TimerParticipant)) is None
-            assert await session.scalar(select(TimerCheckpoint)) is None
+            assert await session.scalar(select(Timer)) is None
 
     assert timer_client.portal is not None
     timer_client.portal.call(exercise)
 
 
-@pytest.mark.parametrize("target", ["timer", "checkpoint"])
 @pytest.mark.parametrize("length", [200, 201])
-def test_title_length(timer_client: TestClient, target: str, length: int):
+def test_title_length(timer_client: TestClient, length: int):
     async def exercise():
         async with timer_client.app.state.sql_storage.create_session() as session:
             title = "я" * length
-            timer = make_timer(title=title if target == "timer" else "Release sprint")
-            if target == "checkpoint":
-                timer.checkpoints = [TimerCheckpoint(title=title, time=timer.start_time)]
+            timer = make_timer(title=title)
             session.add(timer)
             if length == 201:
                 with pytest.raises(DBAPIError) as error:
@@ -105,12 +103,9 @@ def test_title_length(timer_client: TestClient, target: str, length: int):
                 await session.rollback()
             else:
                 await session.commit()
-                if target == "timer":
-                    await session.refresh(timer)
-                    assert timer.title == title
-                else:
-                    await session.refresh(timer, ["checkpoints"])
-                    assert timer.checkpoints[0].title == title
+                await session.refresh(timer)
+                assert timer.title == title
+                assert timer.checkpoints == []
 
     assert timer_client.portal is not None
     timer_client.portal.call(exercise)

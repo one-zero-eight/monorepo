@@ -16,13 +16,13 @@ class CreateCheckpoint(BaseModel):
     time: AwareDatetime
 
 
-class CreateTimer(BaseModel):
+class UpdateTimer(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     title: Title
     start_time: AwareDatetime
     end_time: AwareDatetime
-    checkpoints: list[CreateCheckpoint] = Field(default_factory=list)
+    checkpoints: list[CreateCheckpoint]
 
     @model_validator(mode="after")
     def validate_time_range(self) -> Self:
@@ -33,10 +33,13 @@ class CreateTimer(BaseModel):
         return self
 
 
+class CreateTimer(UpdateTimer):
+    checkpoints: list[CreateCheckpoint] = Field(default_factory=list)
+
+
 class ViewCheckpoint(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID
     title: str
     time: dtm.datetime
 
@@ -61,3 +64,10 @@ class ViewTimer(BaseModel):
     updated_at: dtm.datetime
     checkpoints: list[ViewCheckpoint]
     participants: list[ViewParticipant]
+
+
+class ViewInvitation(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    uuid: UUID
+    timer_id: int
