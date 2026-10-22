@@ -54,6 +54,8 @@ class Scene(BaseSchema):
     "ID of the scene"
     title: str
     "Title of the scene"
+    ru_title: str
+    "Title of the scene in Russian"
     svg_file: str
     "Path to the SVG file in /static"
     pdf_export: PdfExport = Field(default_factory=PdfExport)
