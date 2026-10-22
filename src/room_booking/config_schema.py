@@ -12,6 +12,8 @@ class Room(BaseSchema):
     "Room slug"
     title: str
     "Room title"
+    ru_title: str
+    "Room title in Russian"
     short_name: str
     "Shorter version of room title"
     resource_email: str = Field(exclude=True)

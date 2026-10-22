@@ -7,6 +7,7 @@ rooms:
   - id: "3.1"
     short_name: "3.1"
     title: "Meeting Room 3.1"
+    ru_title: "Переговорка 3.1"
     resource_email: "iu.resource.meetingroom.3.1@innopolis.ru"
     access_level: "yellow"
     capacity: 12
@@ -14,6 +15,7 @@ rooms:
   - id: "3.2"
     short_name: "3.2"
     title: "Meeting Room 3.2"
+    ru_title: "Переговорка 3.2"
     resource_email: "iu.resource.meetingroom.3.2@innopolis.ru"
     access_level: "yellow"
     capacity: 12
@@ -21,6 +23,7 @@ rooms:
   - id: "3.3"
     short_name: "3.3"
     title: "Meeting Room 3.3"
+    ru_title: "Переговорка 3.3"
     resource_email: "iu.resource.meetingroom.3.3@innopolis.ru"
     access_level: "yellow"
     capacity: 12
@@ -28,6 +31,7 @@ rooms:
   - id: "3.4"
     short_name: "3.4"
     title: "Meeting Room 3.4"
+    ru_title: "Переговорка 3.4"
     resource_email: "iu.resource.meetingroom.3.4@innopolis.ru"
     access_level: "yellow"
     capacity: 12
@@ -35,6 +39,7 @@ rooms:
   - id: "3.5"
     short_name: "3.5"
     title: "Meeting Room 3.5"
+    ru_title: "Переговорка 3.5"
     resource_email: "iu.resource.meetingroom3.5@innopolis.ru"
     access_level: "yellow"
     capacity: 12
@@ -42,6 +47,7 @@ rooms:
   - id: "101"
     short_name: "101"
     title: "Lecture Room 101"
+    ru_title: "Аудитория 101"
     resource_email: "iu.resource.lectureroom101@innopolis.ru"
     access_level: "yellow"
     capacity: 32
@@ -50,6 +56,7 @@ rooms:
   - id: "102"
     short_name: "102"
     title: "Lecture Room 102"
+    ru_title: "Аудитория 102"
     resource_email: "iu.resource.lectureroom102@innopolis.ru"
     access_level: "yellow"
     capacity: 18
@@ -58,6 +65,7 @@ rooms:
   - id: "103"
     short_name: "103"
     title: "Lecture Room 103"
+    ru_title: "Аудитория 103"
     resource_email: "iu.resource.lectureroom103@innopolis.ru"
     access_level: "yellow"
     capacity: 21
@@ -66,6 +74,7 @@ rooms:
   - id: "104"
     short_name: "104"
     title: "Lecture Room 104"
+    ru_title: "Аудитория 104"
     resource_email: "iu.resource.lectureroom104@innopolis.ru"
     access_level: "yellow"
     capacity: 20
@@ -74,6 +83,7 @@ rooms:
   - id: "209"
     short_name: "209"
     title: "Lecture Room 209"
+    ru_title: "Аудитория 209"
     resource_email: "iu.resource.lectureroom209@innopolis.ru"
     access_level: "yellow"
     capacity: 36
@@ -82,6 +92,7 @@ rooms:
   - id: "301"
     short_name: "301"
     title: "Lecture Room 301"
+    ru_title: "Аудитория 301"
     resource_email: "iu.resource.lectureroom301@innopolis.ru"
     access_level: "yellow"
     capacity: 24
@@ -90,6 +101,7 @@ rooms:
   - id: "303"
     short_name: "303"
     title: "Lecture Room 303"
+    ru_title: "Аудитория 303"
     resource_email: "iu.resource.lectureroom303@innopolis.ru"
     access_level: "yellow"
     capacity: 30
@@ -98,6 +110,7 @@ rooms:
   - id: "304"
     short_name: "304"
     title: "Lecture Room 304"
+    ru_title: "Аудитория 304"
     resource_email: "iu.resource.lectureroom304@innopolis.ru"
     access_level: "yellow"
     capacity: 25
@@ -106,6 +119,7 @@ rooms:
   - id: "305"
     short_name: "305"
     title: "Lecture Room 305"
+    ru_title: "Аудитория 305"
     resource_email: "iu.resource.lectureroom305@innopolis.ru"
     access_level: "yellow"
     capacity: 25
@@ -114,6 +128,7 @@ rooms:
   - id: "312"
     short_name: "312"
     title: "Lecture Room 312"
+    ru_title: "Аудитория 312"
     resource_email: "iu.resource.lectureroom312@innopolis.ru"
     access_level: "yellow"
     capacity: 30
@@ -122,6 +137,7 @@ rooms:
   - id: "313"
     short_name: "313"
     title: "Lecture Room 313"
+    ru_title: "Аудитория 313"
     resource_email: "iu.resource.lectureroom313@innopolis.ru"
     access_level: "yellow"
     capacity: 60
@@ -130,6 +146,7 @@ rooms:
   - id: "314"
     short_name: "314"
     title: "Lecture Room 314"
+    ru_title: "Аудитория 314"
     resource_email: "iu.resource.lectureroom314@innopolis.ru"
     access_level: "yellow"
     capacity: 34
@@ -138,6 +155,7 @@ rooms:
   - id: "318"
     short_name: "318"
     title: "Lecture Room 318"
+    ru_title: "Аудитория 318"
     resource_email: "iu.resource.lectureroom318@innopolis.ru"
     access_level: "yellow"
     capacity: 30
@@ -146,6 +164,7 @@ rooms:
   - id: "320"
     short_name: "320"
     title: "Lecture Room 320"
+    ru_title: "Аудитория 320"
     resource_email: "iu.resource.lectureroom320@innopolis.ru"
     access_level: "yellow"
     capacity: 28
@@ -154,6 +173,7 @@ rooms:
   - id: "460"
     short_name: "460"
     title: "Lecture Room 460"
+    ru_title: "Аудитория 460"
     resource_email: "iu.resource.lectureroom460@innopolis.ru"
     access_level: "yellow"
     capacity: 30
@@ -162,6 +182,7 @@ rooms:
   - id: "461"
     short_name: "461"
     title: "Lecture Room 461"
+    ru_title: "Аудитория 461"
     resource_email: "iu.resource.lectureroom461@innopolis.ru"
     access_level: "yellow"
     capacity: 30
@@ -170,6 +191,7 @@ rooms:
 
   - id: "309A"
     title: "Clubs Room 309A"
+    ru_title: "Комната клубов 309A"
     short_name: "309A"
     resource_email: "iu.resource.lectureroom309a@innopolis.ru"
     access_level: "special"
@@ -179,6 +201,7 @@ rooms:
   - id: "105"
     short_name: "105"
     title: "Lecture Room 105"
+    ru_title: "Аудитория 105"
     resource_email: "iu.resource.lectureroom105@innopolis.ru"
     access_level: "red"
     capacity: 240
@@ -186,6 +209,7 @@ rooms:
   - id: "106"
     short_name: "106"
     title: "Lecture Room 106"
+    ru_title: "Аудитория 106"
     resource_email: "iu.resource.lectureroom106@innopolis.ru"
     access_level: "red"
     capacity: 140
@@ -193,6 +217,7 @@ rooms:
   - id: "107"
     short_name: "107"
     title: "Lecture Room 107"
+    ru_title: "Аудитория 107"
     resource_email: "iu.resource.lectureroom107@innopolis.ru"
     access_level: "red"
     capacity: 150
@@ -200,6 +225,7 @@ rooms:
   - id: "108"
     short_name: "108"
     title: "Lecture Room 108"
+    ru_title: "Аудитория 108"
     resource_email: "iu.resource.lectureroom108@innopolis.ru"
     access_level: "red"
     capacity: 312
@@ -207,6 +233,7 @@ rooms:
   - id: "111"
     short_name: "111"
     title: "Lecture Room 111"
+    ru_title: "Аудитория 111"
     resource_email: "iu.resource.lectureroom111@innopolis.ru"
     access_level: "red"
     capacity: 24
@@ -214,6 +241,7 @@ rooms:
   - id: "300"
     short_name: "300"
     title: "Lecture Room 300"
+    ru_title: "Аудитория 300"
     resource_email: "iu.resource.lectureroom300@innopolis.ru"
     access_level: "red"
     capacity: 48
@@ -221,6 +249,7 @@ rooms:
   - id: "306"
     short_name: "306"
     title: "Lecture Room 306"
+    ru_title: "Аудитория 306"
     resource_email: "iu.resource.lectureroom306@innopolis.ru"
     access_level: "red"
     capacity: 18
@@ -228,6 +257,7 @@ rooms:
   - id: "307"
     short_name: "307"
     title: "Lecture Room 307"
+    ru_title: "Аудитория 307"
     resource_email: "iu.resource.lectureroom307@innopolis.ru"
     access_level: "red"
     capacity: 60
@@ -235,6 +265,7 @@ rooms:
   - id: "308"
     short_name: "308"
     title: "Lecture Room 308"
+    ru_title: "Аудитория 308"
     resource_email: "iu.resource.lectureroom308@innopolis.ru"
     access_level: "red"
     capacity: 35
@@ -242,6 +273,7 @@ rooms:
   - id: "316"
     short_name: "316"
     title: "Lecture Room 316"
+    ru_title: "Аудитория 316"
     resource_email: "iu.resource.lectureroom316@innopolis.ru"
     access_level: "red"
     capacity: 26
@@ -249,6 +281,7 @@ rooms:
   - id: "317"
     short_name: "317"
     title: "Lecture Room 317"
+    ru_title: "Аудитория 317"
     resource_email: "iu.resource.lectureroom317@innopolis.ru"
     access_level: "red"
     capacity: 26
@@ -256,6 +289,7 @@ rooms:
   - id: "321"
     short_name: "321"
     title: "Lecture Room 321"
+    ru_title: "Аудитория 321"
     resource_email: "iu.resource.lectureroom321@innopolis.ru"
     access_level: "red"
     capacity: 48
@@ -266,6 +300,7 @@ rooms:
   - id: "4.2"
     short_name: "4.2"
     title: "Meeting Room 4.2"
+    ru_title: "Переговорка 4.2"
     resource_email: "iu.resource.meetingroom4.2@innopolis.ru"
     access_level: "red"
     capacity: 12
@@ -273,6 +308,7 @@ rooms:
   - id: "4.3"
     short_name: "4.3"
     title: "Meeting Room 4.3"
+    ru_title: "Переговорка 4.3"
     resource_email: "iu.resource.meetingroom4.3@innopolis.ru"
     access_level: "red"
     capacity: 12
@@ -280,6 +316,7 @@ rooms:
   - id: "4.4"
     short_name: "4.4"
     title: "Meeting Room 4.4"
+    ru_title: "Переговорка 4.4"
     resource_email: "iu.resource.meetingroom4.4@innopolis.ru"
     access_level: "red"
     capacity: 12
@@ -287,6 +324,7 @@ rooms:
   - id: "4.5"
     short_name: "4.5"
     title: "Meeting Room 4.5"
+    ru_title: "Переговорка 4.5"
     resource_email: "iu.resource.meetingroom4.5@innopolis.ru"
     access_level: "special"
     capacity: 12
@@ -295,6 +333,7 @@ rooms:
   - id: "su-office"
     short_name: "SU"
     title: "Student Union Office"
+    ru_title: "Офис Студенческого совета"
     resource_email: "iu.resource.studentunionoffice@innopolis.ru"
     access_level: "special"
     capacity: 10
