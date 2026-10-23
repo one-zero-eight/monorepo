@@ -13,6 +13,7 @@ This is the monorepo for some of the backend services of InNoHassle ecosystem, a
 - Schedule Assistant - build and manage academic schedules, validate placement issues.
 - Student Affairs - omnidesk authentication via SSO for Student Affairs department to issue tickets.
 - Table Tennis - leaderboard and queue for the [Innopolis University table tennis club](https://innohassle.ru/clubs/inno-table-tennis).
+- Timer - PostgreSQL storage for timers, participants, permissions, and checkpoints.
 - When2Meet - meeting availability planner for the InNoHassle ecosystem.
 
 ### Technologies
@@ -154,6 +155,13 @@ our [contribution guide](https://github.com/one-zero-eight/.github/blob/main/CON
    uv run -m src.migrations forms && uv run -m src.forms --reload
    ```
    > It will be available at http://localhost:8017
+
+   For timer service (create the PostgreSQL database once before the first start):
+   ```bash
+   docker compose exec postgres createdb -U postgres timer
+   uv run -m src.migrations timer && uv run -m src.timer --reload
+   ```
+   > It will be available at http://localhost:8025. Configure `timer_service: {}` in `settings.yaml`; provide `db_url` to override the local database defaults.
 
    For when2meet service:
    ```bash

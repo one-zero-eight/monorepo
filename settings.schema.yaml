@@ -64,6 +64,58 @@ $defs:
     - password
     title: BmpExchange
     type: object
+  BoardGamesMinioSettings:
+    additionalProperties: false
+    properties:
+      endpoint:
+        description: URL of the target service.
+        examples:
+        - 127.0.0.1:9000
+        - minio:9000
+        title: Endpoint
+        type: string
+      secure:
+        default: false
+        description: Use https connection to the service.
+        title: Secure
+        type: boolean
+      region:
+        anyOf:
+        - type: string
+        - type: 'null'
+        default: null
+        description: Region of the service.
+        title: Region
+      bucket:
+        default: board-game-photos
+        title: Bucket
+        type: string
+      access_key:
+        default: onezeroeight
+        description: Access key (user ID) of a user account in the service.
+        title: Access Key
+        type: string
+      secret_key:
+        default: '**********'
+        description: Secret key (password) for the user account.
+        format: password
+        title: Secret Key
+        type: string
+        writeOnly: true
+      club_logos_prefix:
+        default: logos/
+        title: Club Logos Prefix
+        type: string
+      club_description_images_prefix:
+        default: description-images/
+        title: Club Description Images Prefix
+        type: string
+      board_game_photos_prefix:
+        default: ''
+        title: Board Game Photos Prefix
+        type: string
+    title: BoardGamesMinioSettings
+    type: object
   BoardGamesSettings:
     additionalProperties: false
     description: Settings for Board Games service.
@@ -89,7 +141,7 @@ $defs:
         $ref: '#/$defs/MongoDatabaseSettings'
         description: Configuration for MongoDB
       minio:
-        $ref: '#/$defs/MinioSettings'
+        $ref: '#/$defs/BoardGamesMinioSettings'
         description: Configuration for S3 object storage
       superadmin_emails:
         description: Innomails of superadmins who can set admin roles
@@ -679,6 +731,37 @@ $defs:
         type: array
     title: TabletennisSettings
     type: object
+  TimerSettings:
+    additionalProperties: false
+    properties:
+      environment:
+        $ref: '#/$defs/Environment'
+        default: development
+        description: App environment flag
+      app_root_path:
+        default: ''
+        description: Prefix for the API path (e.g. "/api/v0")
+        title: App Root Path
+        type: string
+      cors_allow_origin_regex:
+        default: .*
+        description: 'Allowed origins for CORS: from which domains requests to the
+          API are allowed.
+
+          Specify as a regex: `https://.*.innohassle.ru`'
+        title: Cors Allow Origin Regex
+        type: string
+      db_url:
+        description: PostgreSQL database connection URL
+        examples:
+        - postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/timer
+        - postgresql+asyncpg://postgres:postgres@postgres:5432/timer
+        format: password
+        title: Db Url
+        type: string
+        writeOnly: true
+    title: TimerSettings
+    type: object
   When2MeetSettings:
     additionalProperties: false
     properties:
@@ -964,6 +1047,11 @@ properties:
   when2meet_service:
     anyOf:
     - $ref: '#/$defs/When2MeetSettings'
+    - type: 'null'
+    default: null
+  timer_service:
+    anyOf:
+    - $ref: '#/$defs/TimerSettings'
     - type: 'null'
     default: null
   tabletennis_service:

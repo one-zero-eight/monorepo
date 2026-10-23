@@ -29,6 +29,15 @@
       "console": "integratedTerminal"
     },
     {
+      "name": "timer",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src.timer",
+      "args": ["--reload"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
       "name": "when2meet",
       "type": "debugpy",
       "request": "launch",

@@ -1,6 +1,6 @@
 # Databases
 
-Run commands from the repository root. Connection settings come from `settings.yaml` or the service's defaults. When omitted, the MongoDB URI and MinIO endpoint use `mongodb:27017` and `minio:9000` inside Docker, or `127.0.0.1:27017` and `127.0.0.1:9000` outside Docker. PostgreSQL defaults to `postgres:5432` inside Docker or `127.0.0.1:5432` outside Docker, with user/password `postgres` and separate databases named `schedule` and `schedule_assistant`. Explicit connection settings override these local-development defaults; databases must still be created before running migrations.
+Run commands from the repository root. Connection settings come from `settings.yaml` or the service's defaults. When omitted, the MongoDB URI and MinIO endpoint use `mongodb:27017` and `minio:9000` inside Docker, or `127.0.0.1:27017` and `127.0.0.1:9000` outside Docker. PostgreSQL defaults to `postgres:5432` inside Docker or `127.0.0.1:5432` outside Docker, with user/password `postgres` and separate databases named `schedule`, `schedule_assistant`, and `timer`. Explicit connection settings override these local-development defaults; databases must still be created before running migrations.
 
 ## Migrations
 
@@ -10,7 +10,7 @@ Apply pending migrations before starting a database-backed service:
 uv run -m src.migrations clubs && uv run -m src.clubs --reload
 ```
 
-Supported services: `board_games`, `clubs`, `events`, `forms`, `guard`, `tabletennis`, `when2meet`, `schedule`, and `schedule_assistant`. Use Python package names, not Compose names such as `board-games`. No migrations are needed for `maps`, `room_booking`, or `student_affairs`.
+Supported services: `board_games`, `clubs`, `events`, `forms`, `guard`, `tabletennis`, `when2meet`, `schedule`, `schedule_assistant`, and `timer`. Use Python package names, not Compose names such as `board-games`. No migrations are needed for `maps`, `room_booking`, or `student_affairs`.
 
 After pulling new migrations, stop the API, apply them, then restart it; `--reload` does not run migrations. The shared CLI applies forward migrations only. Review generated revisions, keep published revisions unchanged, and write idempotent migrations.
 
@@ -34,11 +34,12 @@ Beanie runs migrations in transactions, but records history after the transactio
 
 See the [official Alembic documentation](https://alembic.sqlalchemy.org/en/latest/tutorial.html) for creating and running migrations.
 
-`schedule` and `schedule_assistant` have independent migration histories. Provision the configured PostgreSQL databases and users first; Alembic creates tables, not databases.
+`schedule`, `schedule_assistant`, and `timer` have independent migration histories. Provision the configured PostgreSQL databases and users first; Alembic creates tables, not databases.
 
 ```bash
 uv run -m src.migrations schedule
 uv run -m src.migrations schedule_assistant
+uv run -m src.migrations timer
 ```
 
 The shared CLI runs `upgrade head`; it does not create application objects through `create_all()` or automatically stamp an existing database.
@@ -51,7 +52,7 @@ uv run alembic -c src/schedule/alembic.ini heads
 uv run alembic -c src/schedule/alembic.ini check
 ```
 
-For Schedule Assistant, substitute `src/schedule_assistant/alembic.ini`. Review generated operations, especially renames, defaults, constraints, and data transformations: autogenerate does not write data migrations. Preserve exactly one head per service.
+For Schedule Assistant, substitute `src/schedule_assistant/alembic.ini`; for Timer, use `src/timer/alembic.ini`. Review generated operations, especially renames, defaults, constraints, and data transformations: autogenerate does not write data migrations. Preserve exactly one head per service.
 
 The Schedule environment is based on the [async Alembic configuration with Ruff post-hook](https://gist.github.com/dantetemplar/cbef8b9f1d9d6cde7547629d6d85fcd1).
 
