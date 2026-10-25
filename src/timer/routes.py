@@ -8,6 +8,8 @@ from src.dependencies import INH_TOKEN_AUTH
 from src.timer import repository
 from src.timer.schemas import CreateTimer, UpdateTimer, ViewInvitation, ViewTimer
 
+type TimerId = Annotated[int, Path(gt=0, le=9223372036854775807)]
+
 router = APIRouter(tags=["Timer"], route_class=AutoDeriveResponsesAPIRoute)
 
 
@@ -29,9 +31,7 @@ async def list_timers(auth: INH_TOKEN_AUTH, request: Request) -> list[ViewTimer]
 
 
 @router.get("/timers/{timer_id}")
-async def get_timer(
-    timer_id: Annotated[int, Path(gt=0, le=9223372036854775807)], auth: INH_TOKEN_AUTH, request: Request
-) -> ViewTimer:
+async def get_timer(timer_id: TimerId, auth: INH_TOKEN_AUTH, request: Request) -> ViewTimer:
     """Get a timer with its checkpoints and participants. Requires membership, regardless of permissions."""
     timer = await repository.get_timer(request.app.state.sql_storage, timer_id, auth.innohassle_id)
     if timer is None:
@@ -41,7 +41,7 @@ async def get_timer(
 
 @router.put("/timers/{timer_id}")
 async def update_timer(
-    timer_id: Annotated[int, Path(gt=0, le=9223372036854775807)],
+    timer_id: TimerId,
     body: UpdateTimer,
     auth: INH_TOKEN_AUTH,
     request: Request,
@@ -56,9 +56,7 @@ async def update_timer(
 
 
 @router.delete("/timers/{timer_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_timer(
-    timer_id: Annotated[int, Path(gt=0, le=9223372036854775807)], auth: INH_TOKEN_AUTH, request: Request
-) -> Response:
+async def delete_timer(timer_id: TimerId, auth: INH_TOKEN_AUTH, request: Request) -> Response:
     """Delete a timer and its participant records. Requires delete permission."""
     try:
         await repository.delete_timer(request.app.state.sql_storage, timer_id, auth.innohassle_id)
@@ -70,9 +68,7 @@ async def delete_timer(
 
 
 @router.post("/timers/{timer_id}/invitations", status_code=status.HTTP_201_CREATED)
-async def create_invitation(
-    timer_id: Annotated[int, Path(gt=0, le=9223372036854775807)], auth: INH_TOKEN_AUTH, request: Request
-) -> ViewInvitation:
+async def create_invitation(timer_id: TimerId, auth: INH_TOKEN_AUTH, request: Request) -> ViewInvitation:
     """Generate and store a new UUID4 invitation. Only the creator with invite permission can do this."""
     try:
         return await repository.create_invitation(request.app.state.sql_storage, timer_id, auth.innohassle_id)
