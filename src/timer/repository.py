@@ -2,7 +2,7 @@ from uuid import UUID
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import selectinload
 
 from src.timer.db.models import Invitation, Timer, TimerParticipant, TimerPermission, TimerUserType
 from src.timer.db.storage import SQLAlchemyStorage
@@ -29,19 +29,11 @@ class InvitationNotFoundError(Exception):
     pass
 
 
-async def _lock_timer_and_participant(session: AsyncSession, timer_id: int, user_id: str) -> TimerParticipant:
-    # All writes lock the timer first, so deletion's participant cascade cannot invert the lock order.
+async def _lock_timer(session: AsyncSession, timer_id: int) -> None:
+    # Serialize timer and participant changes by locking the timer first.
     found_id = await session.scalar(select(Timer.id).where(Timer.id == timer_id).with_for_update())
     if found_id is None:
         raise TimerNotFoundError
-    participant = await session.scalar(
-        select(TimerParticipant)
-        .where(TimerParticipant.timer_id == timer_id, TimerParticipant.user_id == user_id)
-        .with_for_update()
-    )
-    if participant is None:
-        raise TimerNotFoundError
-    return participant
 
 
 async def list_timers(storage: SQLAlchemyStorage, user_id: str) -> list[ViewTimer]:
@@ -59,16 +51,14 @@ async def list_timers(storage: SQLAlchemyStorage, user_id: str) -> list[ViewTime
 
 async def get_timer(storage: SQLAlchemyStorage, timer_id: int, user_id: str) -> ViewTimer | None:
     query = (
-        select(TimerParticipant)
-        .where(TimerParticipant.timer_id == timer_id, TimerParticipant.user_id == user_id)
-        .options(
-            joinedload(TimerParticipant.timer, innerjoin=True).selectinload(Timer.participants),
-        )
+        select(Timer)
+        .join(TimerParticipant, TimerParticipant.timer_id == Timer.id)
+        .where(Timer.id == timer_id, TimerParticipant.user_id == user_id)
+        .options(selectinload(Timer.participants))
     )
     async with storage.create_session() as session:
-        result = await session.execute(query)
-        participant = result.scalar_one_or_none()
-        return ViewTimer.model_validate(participant.timer) if participant is not None else None
+        timer = await session.scalar(query)
+        return ViewTimer.model_validate(timer) if timer is not None else None
 
 
 async def create_timer(storage: SQLAlchemyStorage, data: CreateTimer, creator_id: str) -> ViewTimer:
@@ -97,15 +87,20 @@ async def create_timer(storage: SQLAlchemyStorage, data: CreateTimer, creator_id
 
 async def update_timer(storage: SQLAlchemyStorage, timer_id: int, user_id: str, data: UpdateTimer) -> ViewTimer:
     async with storage.create_session() as session, session.begin():
-        participant = await _lock_timer_and_participant(session, timer_id, user_id)
-        if TimerPermission.UPDATE not in participant.permissions:
-            raise TimerUpdateForbiddenError
-
         timer = await session.scalar(
-            select(Timer).where(Timer.id == timer_id).options(selectinload(Timer.participants))
+            select(Timer)
+            .where(Timer.id == timer_id)
+            .options(selectinload(Timer.participants))
+            .with_for_update(of=Timer)
         )
         if timer is None:
             raise TimerNotFoundError
+        participant = next((participant for participant in timer.participants if participant.user_id == user_id), None)
+        if participant is None:
+            raise TimerNotFoundError
+        if TimerPermission.UPDATE not in participant.permissions:
+            raise TimerUpdateForbiddenError
+
         timer.title = data.title
         timer.start_time = data.start_time
         timer.end_time = data.end_time
@@ -122,7 +117,10 @@ async def update_timer(storage: SQLAlchemyStorage, timer_id: int, user_id: str, 
 
 async def delete_timer(storage: SQLAlchemyStorage, timer_id: int, user_id: str) -> None:
     async with storage.create_session() as session, session.begin():
-        participant = await _lock_timer_and_participant(session, timer_id, user_id)
+        await _lock_timer(session, timer_id)
+        participant = await session.get(TimerParticipant, (timer_id, user_id))
+        if participant is None:
+            raise TimerNotFoundError
         if TimerPermission.DELETE not in participant.permissions:
             raise TimerDeleteForbiddenError
         await session.execute(delete(Timer).where(Timer.id == timer_id))
@@ -130,7 +128,10 @@ async def delete_timer(storage: SQLAlchemyStorage, timer_id: int, user_id: str) 
 
 async def create_invitation(storage: SQLAlchemyStorage, timer_id: int, user_id: str) -> ViewInvitation:
     async with storage.create_session() as session, session.begin():
-        participant = await _lock_timer_and_participant(session, timer_id, user_id)
+        await _lock_timer(session, timer_id)
+        participant = await session.get(TimerParticipant, (timer_id, user_id))
+        if participant is None:
+            raise TimerNotFoundError
         if participant.user_type != TimerUserType.CREATOR or TimerPermission.INVITE not in participant.permissions:
             raise TimerInviteForbiddenError
         invitation = Invitation(timer_id=timer_id)
@@ -146,25 +147,19 @@ async def join_timer(storage: SQLAlchemyStorage, invitation_uuid: UUID, user_id:
             select(Timer)
             .join(Invitation, Invitation.timer_id == Timer.id)
             .where(Invitation.uuid == invitation_uuid)
+            .options(selectinload(Timer.participants))
             .with_for_update(of=Timer)
         )
         if timer is None:
             raise InvitationNotFoundError
-        participant = await session.scalar(
-            select(TimerParticipant)
-            .where(TimerParticipant.timer_id == timer.id, TimerParticipant.user_id == user_id)
-            .with_for_update()
-        )
-        if participant is None:
-            session.add(
+        if not any(participant.user_id == user_id for participant in timer.participants):
+            timer.participants.append(
                 TimerParticipant(
-                    timer_id=timer.id,
                     user_id=user_id,
                     user_type=TimerUserType.PARTICIPANT,
                     permissions=[TimerPermission.UPDATE],
                 )
             )
             await session.flush()
-        await session.refresh(timer, ["participants"])
         result = ViewTimer.model_validate(timer)
     return result
