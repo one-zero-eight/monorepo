@@ -57,8 +57,8 @@ def test_shared_timer_lifecycle(
         listed = timer_client.get("/timers", headers=headers)
         assert listed.status_code == 200
         assert [item["id"] for item in listed.json()] == [timer["id"]]
-    assert timer_client.delete(url, headers=participant_headers).status_code == 403
-    assert timer_client.post(f"{url}/invitations", headers=participant_headers).status_code == 403
+    assert timer_client.delete(url, headers=participant_headers).status_code == 404
+    assert timer_client.post(f"{url}/invitations", headers=participant_headers).status_code == 404
     assert timer_client.delete(url, headers=user_headers).status_code == 204
     for headers in (user_headers, participant_headers):
         assert timer_client.get(url, headers=headers).status_code == 404

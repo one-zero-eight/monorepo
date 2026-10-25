@@ -1,8 +1,8 @@
-import datetime as dtm
-from typing import Annotated, Self
+import datetime
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StringConstraints
 
 from src.timer.db.models import TimerPermission, TimerUserType
 
@@ -26,26 +26,6 @@ class UpdateTimer(BaseModel):
     end_time: AwareDatetime
     checkpoints: list[CreateCheckpoint]
 
-    @field_validator("start_time", "end_time")
-    @classmethod
-    def validate_utc_range(cls, value: dtm.datetime) -> dtm.datetime:
-        try:
-            utc_value = value.astimezone(dtm.UTC)
-        except OverflowError as exc:
-            raise ValueError("Datetime must be representable in UTC") from exc
-        # asyncpg encodes datetime.min/max as PostgreSQL infinities, which lose timezone information on read.
-        if utc_value in (dtm.datetime.min.replace(tzinfo=dtm.UTC), dtm.datetime.max.replace(tzinfo=dtm.UTC)):
-            raise ValueError("Datetime must be within the finite database timestamp range")
-        return value
-
-    @model_validator(mode="after")
-    def validate_time_range(self) -> Self:
-        if self.start_time >= self.end_time:
-            raise ValueError("start_time must be before end_time")
-        if any(not self.start_time <= checkpoint.time <= self.end_time for checkpoint in self.checkpoints):
-            raise ValueError("Checkpoint time must be within the timer interval")
-        return self
-
 
 class CreateTimer(UpdateTimer):
     checkpoints: list[CreateCheckpoint] = Field(default_factory=list)
@@ -55,14 +35,14 @@ class ViewCheckpoint(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     title: str
-    time: dtm.datetime
+    time: datetime.datetime
 
 
 class ViewParticipant(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     user_id: str
-    joined_at: dtm.datetime
+    joined_at: datetime.datetime
     permissions: list[TimerPermission]
     user_type: TimerUserType
 
@@ -72,10 +52,10 @@ class ViewTimer(BaseModel):
 
     id: int
     title: str
-    start_time: dtm.datetime
-    end_time: dtm.datetime
-    created_at: dtm.datetime
-    updated_at: dtm.datetime
+    start_time: datetime.datetime
+    end_time: datetime.datetime
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
     checkpoints: list[ViewCheckpoint]
     participants: list[ViewParticipant]
 

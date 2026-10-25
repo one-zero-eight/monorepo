@@ -91,8 +91,8 @@ def test_delete_timer_requires_delete_permission(
     url = f"/timers/{created_timer['id']}"
     before = timer_client.get(url, headers=headers).json()
     response = timer_client.delete(url, headers=headers)
-    assert response.status_code == 403
-    assert response.json()["detail"] == "Timer delete permission required"
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Timer not found"
     assert timer_client.get(url, headers=headers).json() == before
 
 

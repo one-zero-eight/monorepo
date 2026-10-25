@@ -77,7 +77,8 @@ def test_invitation_requires_creator_and_invite_permission(
     timer_client.portal.call(set_permissions)
     headers = auth_header_factory(user_id, f"{user_id}@innopolis.university")
     response = timer_client.post(f"/timers/{created_timer['id']}/invitations", headers=headers)
-    assert response.status_code == 403
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Timer not found"
     assert_no_invitations(timer_client)
 
 
@@ -93,6 +94,7 @@ def test_other_creator_cannot_invite_to_timer(timer_client: TestClient, auth_hea
         f"/timers/{created_timer['id']}/invitations", headers=headers, params={"user_id": "test-user-1"}
     )
     assert response.status_code == 404
+    assert response.json()["detail"] == "Timer not found"
     assert_no_invitations(timer_client)
 
 

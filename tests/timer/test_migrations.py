@@ -1,4 +1,4 @@
-import datetime as dtm
+import datetime
 import json
 from pathlib import Path
 from typing import cast
@@ -15,7 +15,7 @@ from sqlalchemy.dialects.postgresql.base import PGInspector
 
 @pytest.mark.parametrize("populated", [False, True])
 def test_upgrade_timer_storage(timer_client: TestClient, populated: bool):
-    timestamp = dtm.datetime(2026, 10, 17, 9, tzinfo=dtm.UTC)
+    timestamp = datetime.datetime(2026, 10, 17, 9, tzinfo=datetime.UTC)
     checkpoints = [{"title": "Demo", "time": "2026-10-18T08:00:00Z"}]
     invitation_uuid = uuid4()
 
@@ -76,7 +76,7 @@ def test_upgrade_timer_storage(timer_client: TestClient, populated: bool):
             assert timer["id"] == 1
             assert timer["title"] == "Hackathon"
             assert timer["start_time"] == timer["created_at"] == timer["updated_at"] == timestamp
-            assert timer["end_time"] == timestamp + dtm.timedelta(days=1)
+            assert timer["end_time"] == timestamp + datetime.timedelta(days=1)
             assert timer["checkpoints"] == checkpoints
             assert empty_timer["checkpoints"] == []
             participant = connection.execute(text("SELECT * FROM timer_participants")).mappings().one()

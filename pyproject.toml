@@ -133,6 +133,8 @@ lint.extend-ignore = [
 lint.unfixable = ["F401"] # unused-import — report only, do not remove on fix
 target-version = "py314"
 [tool.ruff.lint.per-file-ignores]
+"src/timer/**" = ["ICN001"] # Timer uses the full datetime module name.
+"tests/timer/**" = ["ICN001"]
 "tests/**" = ["S101"] # assert is standard in pytest
 "tests/schedule_assistant/**" = ["PLC2701", "SIM117"]
 "src/schedule_assistant/core_courses/**" = ["S101", "DTZ", "ICN003"]

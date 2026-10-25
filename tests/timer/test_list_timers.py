@@ -1,4 +1,4 @@
-import datetime as dtm
+import datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -57,13 +57,13 @@ def test_list_created_and_joined_timers(timer_client: TestClient, user_headers: 
             await session.execute(
                 update(Timer)
                 .where(Timer.id.in_([timer["id"] for timer in timers]))
-                .values(created_at=dtm.datetime(2026, 10, 18, 10, tzinfo=dtm.UTC))
+                .values(created_at=datetime.datetime(2026, 10, 18, 10, tzinfo=datetime.UTC))
             )
             # The oldest ID is the newest timer: creation time takes priority over ID.
             await session.execute(
                 update(Timer)
                 .where(Timer.id == first["id"])
-                .values(created_at=dtm.datetime(2026, 10, 19, 10, tzinfo=dtm.UTC))
+                .values(created_at=datetime.datetime(2026, 10, 19, 10, tzinfo=datetime.UTC))
             )
 
     assert timer_client.portal is not None
@@ -75,9 +75,13 @@ def test_list_created_and_joined_timers(timer_client: TestClient, user_headers: 
     assert [timer["title"] for timer in data] == ["Owned first", "Joined", "Owned second"]
     for timer in data:
         assert timer["checkpoints"] == payload["checkpoints"]
-        assert dtm.datetime.fromisoformat(timer["start_time"]) == dtm.datetime.fromisoformat(payload["start_time"])
-        assert dtm.datetime.fromisoformat(timer["end_time"]) == dtm.datetime.fromisoformat(payload["end_time"])
-        assert dtm.datetime.fromisoformat(timer["updated_at"]).tzinfo is not None
+        assert datetime.datetime.fromisoformat(timer["start_time"]) == datetime.datetime.fromisoformat(
+            payload["start_time"]
+        )
+        assert datetime.datetime.fromisoformat(timer["end_time"]) == datetime.datetime.fromisoformat(
+            payload["end_time"]
+        )
+        assert datetime.datetime.fromisoformat(timer["updated_at"]).tzinfo is not None
     memberships = {participant["user_id"]: participant for participant in data[1]["participants"]}
     assert memberships.keys() == {"test-user-1", "other-user"}
     assert memberships["test-user-1"]["user_type"] == "participant"
