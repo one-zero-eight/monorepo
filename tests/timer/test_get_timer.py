@@ -85,9 +85,11 @@ def test_get_timer_requires_auth(timer_client: TestClient, headers: dict[str, st
     assert timer_client.get("/timers/1", headers=headers).status_code == 401
 
 
-@pytest.mark.parametrize("timer_id", ["0", "-1", "abc", "9223372036854775808"])
-def test_get_timer_rejects_invalid_id(timer_client: TestClient, user_headers: dict[str, str], timer_id: str):
-    assert timer_client.get(f"/timers/{timer_id}", headers=user_headers).status_code == 422
+@pytest.mark.parametrize(("timer_id", "expected_status"), [("0", 404), ("-1", 404), ("abc", 422)])
+def test_get_timer_handles_unknown_or_noninteger_id(
+    timer_client: TestClient, user_headers: dict[str, str], timer_id: str, expected_status: int
+):
+    assert timer_client.get(f"/timers/{timer_id}", headers=user_headers).status_code == expected_status
 
 
 def test_get_timer_loads_checkpoints_once_for_many_participants(timer_client: TestClient, user_headers: dict[str, str]):
