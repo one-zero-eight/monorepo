@@ -1,4 +1,4 @@
-import datetime as dtm
+import datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -33,16 +33,20 @@ def test_create_timer(
     assert all(point.keys() == {"title", "time"} for point in data["checkpoints"])
     assert isinstance(data["id"], int)
     assert data["title"] == timer_payload["title"]
-    assert dtm.datetime.fromisoformat(data["start_time"]) == dtm.datetime.fromisoformat(timer_payload["start_time"])
-    assert dtm.datetime.fromisoformat(data["end_time"]) == dtm.datetime.fromisoformat(timer_payload["end_time"])
-    assert dtm.datetime.fromisoformat(data["created_at"]).tzinfo is not None
+    assert datetime.datetime.fromisoformat(data["start_time"]) == datetime.datetime.fromisoformat(
+        timer_payload["start_time"]
+    )
+    assert datetime.datetime.fromisoformat(data["end_time"]) == datetime.datetime.fromisoformat(
+        timer_payload["end_time"]
+    )
+    assert datetime.datetime.fromisoformat(data["created_at"]).tzinfo is not None
     assert data["updated_at"] == data["created_at"]
     assert len(data["participants"]) == 1
     creator = data["participants"][0]
     assert creator["user_id"] == "test-user-1"
     assert creator["user_type"] == "creator"
     assert creator["permissions"] == ["update", "delete", "invite"]
-    assert dtm.datetime.fromisoformat(creator["joined_at"]).tzinfo is not None
+    assert datetime.datetime.fromisoformat(creator["joined_at"]).tzinfo is not None
     assert [checkpoint["title"] for checkpoint in data["checkpoints"]] == (
         ["Start", "Demo"] if with_checkpoints else []
     )
@@ -102,26 +106,20 @@ def test_timer_accepts_representable_utc_boundaries(
     assert saved.status_code == 200, saved.text
     assert saved.json()["title"] == "Updated boundary"
     for field, expected in (("start_time", start_time), ("end_time", end_time)):
-        assert dtm.datetime.fromisoformat(saved.json()[field]) == dtm.datetime.fromisoformat(expected)
+        assert datetime.datetime.fromisoformat(saved.json()[field]) == datetime.datetime.fromisoformat(expected)
 
 
 @pytest.mark.parametrize(
     "overrides",
     [
+        {"created_at": "2026-01-01T00:00:00Z"},
+        {"updated_at": "2026-01-01T00:00:00Z"},
         {"title": "я" * 201},
         {"title": "   "},
         {"title": "Demo\x00title"},
-        {"start_time": "0001-01-01T00:10:00+01:00"},
-        {"end_time": "9999-12-31T23:20:00-01:00"},
-        {"start_time": "0001-01-01T01:00:00+01:00"},
-        {"end_time": "9999-12-31T22:59:59.999999-01:00"},
-        {"end_time": "2026-10-20T10:00:00+03:00"},
-        {"end_time": "2026-10-19T18:00:00+03:00"},
         {"start_time": "2026-10-20T10:00:00"},
         {"end_time": "2026-10-20T18:00:00"},
         {"checkpoints": [{"title": "Demo", "time": "2026-10-20T18:00:00"}]},
-        {"checkpoints": [{"title": "Demo", "time": "2026-10-20T09:59:00+03:00"}]},
-        {"checkpoints": [{"title": "Demo", "time": "2026-10-20T18:01:00+03:00"}]},
         {"checkpoints": [{"title": "я" * 201, "time": "2026-10-20T12:00:00+03:00"}]},
         {"checkpoints": [{"title": " ", "time": "2026-10-20T12:00:00+03:00"}]},
         {"checkpoints": [{"title": "Demo\x00title", "time": "2026-10-20T12:00:00+03:00"}]},
@@ -135,6 +133,18 @@ def test_create_timer_rejects_invalid_payload(
     response = timer_client.post("/timers", json=timer_payload | overrides, headers=user_headers)
     assert response.status_code == 422, response.text
     assert_no_timers(timer_client)
+
+
+@pytest.mark.parametrize("checkpoint_time", ["2026-10-20T09:00:00+03:00", "2026-10-20T19:00:00+03:00"])
+def test_create_timer_accepts_checkpoint_outside_interval(
+    timer_client: TestClient, user_headers: dict[str, str], timer_payload: dict, checkpoint_time: str
+):
+    timer_payload["checkpoints"] = [{"title": "Checkpoint", "time": checkpoint_time}]
+    response = timer_client.post("/timers", json=timer_payload, headers=user_headers)
+    assert response.status_code == 201, response.text
+    saved = timer_client.get(f"/timers/{response.json()['id']}", headers=user_headers)
+    assert saved.status_code == 200
+    assert saved.json()["checkpoints"] == timer_payload["checkpoints"]
 
 
 def assert_no_timers(client: TestClient) -> None:

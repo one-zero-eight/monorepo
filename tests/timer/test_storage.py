@@ -1,4 +1,4 @@
-import datetime as dtm
+import datetime
 from pathlib import Path
 
 import pytest
@@ -15,8 +15,8 @@ from src.timer.db.models import Timer, TimerParticipant, TimerPermission, TimerU
 def make_timer(**overrides) -> Timer:
     values = {
         "title": "Release sprint",
-        "start_time": dtm.datetime(2026, 10, 17, 10, tzinfo=dtm.UTC),
-        "end_time": dtm.datetime(2026, 10, 18, 10, tzinfo=dtm.UTC),
+        "start_time": datetime.datetime(2026, 10, 17, 10, tzinfo=datetime.UTC),
+        "end_time": datetime.datetime(2026, 10, 18, 10, tzinfo=datetime.UTC),
     }
     return Timer(**(values | overrides))
 
@@ -58,7 +58,7 @@ def test_store_timer_and_repeat_migration(timer_client: TestClient):
             )
             assert saved is not None
             assert saved.title == "Release sprint"
-            assert saved.start_time == dtm.datetime(2026, 10, 17, 10, tzinfo=dtm.UTC)
+            assert saved.start_time == datetime.datetime(2026, 10, 17, 10, tzinfo=datetime.UTC)
             assert saved.created_at.tzinfo is not None
             assert saved.updated_at.tzinfo is not None
             participants = {item.user_id: item for item in saved.participants}

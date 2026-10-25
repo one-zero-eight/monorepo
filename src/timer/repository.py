@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -49,7 +49,7 @@ async def list_timers(storage: SQLAlchemyStorage, user_id: str) -> list[ViewTime
         return [ViewTimer.model_validate(timer) for timer in timers]
 
 
-async def get_timer(storage: SQLAlchemyStorage, timer_id: int, user_id: str) -> ViewTimer | None:
+async def get_timer(storage: SQLAlchemyStorage, timer_id: int, user_id: str) -> ViewTimer:
     query = (
         select(Timer)
         .join(TimerParticipant, TimerParticipant.timer_id == Timer.id)
@@ -58,7 +58,9 @@ async def get_timer(storage: SQLAlchemyStorage, timer_id: int, user_id: str) -> 
     )
     async with storage.create_session() as session:
         timer = await session.scalar(query)
-        return ViewTimer.model_validate(timer) if timer is not None else None
+        if timer is None:
+            raise TimerNotFoundError
+        return ViewTimer.model_validate(timer)
 
 
 async def create_timer(storage: SQLAlchemyStorage, data: CreateTimer, creator_id: str) -> ViewTimer:
@@ -108,7 +110,6 @@ async def update_timer(storage: SQLAlchemyStorage, timer_id: int, user_id: str, 
             checkpoint.model_dump(mode="json")
             for checkpoint in sorted(data.checkpoints, key=lambda checkpoint: checkpoint.time)
         ]
-        timer.updated_at = func.now()
         await session.flush()
         await session.refresh(timer, ["updated_at"])
         result = ViewTimer.model_validate(timer)

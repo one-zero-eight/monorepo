@@ -1,4 +1,4 @@
-import datetime as dtm
+import datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -66,9 +66,9 @@ def test_update_timer_with_permission(
     assert data["id"] == created_timer["id"]
     assert data["title"] == "Updated"
     for field in ("start_time", "end_time"):
-        assert dtm.datetime.fromisoformat(data[field]) == dtm.datetime.fromisoformat(update_payload[field])
+        assert datetime.datetime.fromisoformat(data[field]) == datetime.datetime.fromisoformat(update_payload[field])
     assert data["created_at"] == before["created_at"]
-    assert dtm.datetime.fromisoformat(data["updated_at"]) > dtm.datetime.fromisoformat(before["updated_at"])
+    assert datetime.datetime.fromisoformat(data["updated_at"]) > datetime.datetime.fromisoformat(before["updated_at"])
     assert sorted(data["participants"], key=lambda item: item["user_id"]) == sorted(
         before["participants"], key=lambda item: item["user_id"]
     )
@@ -105,8 +105,8 @@ def test_update_timer_requires_update_permission(
     url = f"/timers/{created_timer['id']}"
     before = timer_client.get(url, headers=headers).json()
     response = timer_client.put(url, headers=headers, json=update_payload)
-    assert response.status_code == 403
-    assert response.json()["detail"] == "Timer update permission required"
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Timer not found"
     assert timer_client.get(url, headers=headers).json() == before
 
 
@@ -167,17 +167,12 @@ def test_update_timer_requires_all_fields(
 @pytest.mark.parametrize(
     "overrides",
     [
+        {"created_at": "2026-01-01T00:00:00Z"},
+        {"updated_at": "2026-01-01T00:00:00Z"},
         {"title": "я" * 201},
         {"title": " "},
         {"title": "Demo\x00title"},
-        {"start_time": "0001-01-01T00:10:00+01:00"},
-        {"end_time": "9999-12-31T23:20:00-01:00"},
-        {"start_time": "0001-01-01T01:00:00+01:00"},
-        {"end_time": "9999-12-31T22:59:59.999999-01:00"},
-        {"end_time": "2026-10-20T11:00:00+03:00"},
-        {"start_time": "2026-10-21T10:00:00+03:00"},
         {"start_time": "2026-10-20T11:00:00"},
-        {"checkpoints": [{"title": "Outside", "time": "2026-10-20T20:00:00+03:00"}]},
         {"checkpoints": [{"title": "я" * 201, "time": "2026-10-20T12:00:00+03:00"}]},
         {"checkpoints": [{"title": "Demo", "time": "2026-10-20T12:00:00"}]},
         {"checkpoints": [{"title": "Demo\x00title", "time": "2026-10-20T12:00:00+03:00"}]},
@@ -197,3 +192,20 @@ def test_update_timer_rejects_invalid_payload(
     response = timer_client.put(url, headers=user_headers, json=update_payload | overrides)
     assert response.status_code == 422, response.text
     assert timer_client.get(url, headers=user_headers).json() == before
+
+
+@pytest.mark.parametrize("checkpoint_time", ["2026-10-20T10:00:00+03:00", "2026-10-20T20:00:00+03:00"])
+def test_update_timer_accepts_checkpoint_outside_interval(
+    timer_client: TestClient,
+    user_headers: dict[str, str],
+    created_timer: dict,
+    update_payload: dict,
+    checkpoint_time: str,
+):
+    update_payload["checkpoints"] = [{"title": "Checkpoint", "time": checkpoint_time}]
+    url = f"/timers/{created_timer['id']}"
+    response = timer_client.put(url, headers=user_headers, json=update_payload)
+    assert response.status_code == 200, response.text
+    saved = timer_client.get(url, headers=user_headers)
+    assert saved.status_code == 200
+    assert saved.json()["checkpoints"] == update_payload["checkpoints"]

@@ -1,4 +1,4 @@
-import datetime as dtm
+import datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
 
@@ -32,10 +32,10 @@ class Timer(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     title: Mapped[str] = mapped_column(String(200))
-    start_time: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True))
-    end_time: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True))
-    created_at: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[dtm.datetime] = mapped_column(
+    start_time: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
+    end_time: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
@@ -55,7 +55,7 @@ class TimerParticipant(Base):
     timer_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("timers.id", ondelete="CASCADE"), primary_key=True)
     user_id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     "InNoHassle Accounts user ID"
-    joined_at: Mapped[dtm.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    joined_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     permissions: Mapped[list[TimerPermission]] = mapped_column(
         MutableList.as_mutable(
             ARRAY(

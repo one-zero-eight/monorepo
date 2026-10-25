@@ -30,10 +30,10 @@ async def list_timers(auth: INH_TOKEN_AUTH, request: Request) -> list[ViewTimer]
 @router.get("/timers/{timer_id}")
 async def get_timer(timer_id: int, auth: INH_TOKEN_AUTH, request: Request) -> ViewTimer:
     """Get a timer with its checkpoints and participants. Requires membership, regardless of permissions."""
-    timer = await repository.get_timer(request.app.state.sql_storage, timer_id, auth.innohassle_id)
-    if timer is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Timer not found")
-    return timer
+    try:
+        return await repository.get_timer(request.app.state.sql_storage, timer_id, auth.innohassle_id)
+    except repository.TimerNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Timer not found") from exc
 
 
 @router.put("/timers/{timer_id}")
@@ -46,10 +46,8 @@ async def update_timer(
     """Replace the timer's title, time interval and complete checkpoint list. Requires update permission."""
     try:
         return await repository.update_timer(request.app.state.sql_storage, timer_id, auth.innohassle_id, body)
-    except repository.TimerNotFoundError as exc:
+    except (repository.TimerNotFoundError, repository.TimerUpdateForbiddenError) as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Timer not found") from exc
-    except repository.TimerUpdateForbiddenError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Timer update permission required") from exc
 
 
 @router.delete("/timers/{timer_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -57,10 +55,8 @@ async def delete_timer(timer_id: int, auth: INH_TOKEN_AUTH, request: Request) ->
     """Delete a timer and its participant records. Requires delete permission."""
     try:
         await repository.delete_timer(request.app.state.sql_storage, timer_id, auth.innohassle_id)
-    except repository.TimerNotFoundError as exc:
+    except (repository.TimerNotFoundError, repository.TimerDeleteForbiddenError) as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Timer not found") from exc
-    except repository.TimerDeleteForbiddenError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Timer delete permission required") from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -69,12 +65,8 @@ async def create_invitation(timer_id: int, auth: INH_TOKEN_AUTH, request: Reques
     """Generate and store a new UUID4 invitation. Only the creator with invite permission can do this."""
     try:
         return await repository.create_invitation(request.app.state.sql_storage, timer_id, auth.innohassle_id)
-    except repository.TimerNotFoundError as exc:
+    except (repository.TimerNotFoundError, repository.TimerInviteForbiddenError) as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Timer not found") from exc
-    except repository.TimerInviteForbiddenError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Only the timer creator with invite permission can invite"
-        ) from exc
 
 
 @router.post("/invitations/{invitation_uuid}/join")

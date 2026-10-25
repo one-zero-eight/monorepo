@@ -66,8 +66,8 @@ def test_join_timer_grants_update_only(timer_client: TestClient, auth_header_fac
     update_payload = {field: data[field] for field in ("title", "start_time", "end_time", "checkpoints")}
     update_payload["title"] = "Updated by participant"
     assert timer_client.put(timer_url, headers=headers, json=update_payload).status_code == 200
-    assert timer_client.delete(timer_url, headers=headers).status_code == 403
-    assert timer_client.post(f"{timer_url}/invitations", headers=headers).status_code == 403
+    assert timer_client.delete(timer_url, headers=headers).status_code == 404
+    assert timer_client.post(f"{timer_url}/invitations", headers=headers).status_code == 404
 
 
 def test_invitation_is_reusable_and_join_is_idempotent(timer_client: TestClient, auth_header_factory, invitation: dict):
