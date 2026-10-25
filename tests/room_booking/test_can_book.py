@@ -18,6 +18,7 @@ def _room(
     return Room(
         id=id,
         title="Room",
+        ru_title="Комната",
         short_name="R",
         resource_email=f"{id}@room",
         access_level=access_level,

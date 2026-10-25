@@ -17,7 +17,7 @@ cases = [
     ("105", [("university-floor-1", "105")]),
     ("105a", [("university-floor-0", "105a")]),
     (("Canteen", "Столовая"), [("university-floor-1", "canteen")]),
-    (("Reading Hall", "Читалка"), [("university-floor-1", "reading-hall-1")]),
+    (("Reading Hall", "Читальный зал"), [("university-floor-1", "reading-hall-1")]),
     (("Green Stairs", "Зелёные Ступеньки"), [("university-floor-3", "green-stairs")]),
     (("Garage", "Гараж"), [("university-floor-0", "garage-0")]),
     (("Reza", "Реза"), [("university-floor-5", "506")]),

@@ -3,7 +3,7 @@ from src.maps.schemas import Area, Scene
 
 
 def _scene(scene_id: str, areas: list[Area]) -> Scene:
-    return Scene(scene_id=scene_id, title=scene_id, svg_file=f"{scene_id}.svg", areas=areas)
+    return Scene(scene_id=scene_id, title=scene_id, ru_title=scene_id, svg_file=f"{scene_id}.svg", areas=areas)
 
 
 def test_prepare_for_search_branches():

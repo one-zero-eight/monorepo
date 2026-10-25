@@ -77,6 +77,7 @@ def _room() -> Room:
     return Room(
         id="3.1",
         title="Meeting Room 3.1",
+        ru_title="Переговорка 3.1",
         short_name="3.1",
         resource_email="iu.resource.meetingroom.3.1@innopolis.ru",
         access_level="yellow",

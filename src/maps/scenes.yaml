@@ -13,6 +13,7 @@ scenes:
   - scene_id: "university-floor-1"
     svg_file: "university-floor-1.svg"
     title: "Floor 1"
+    ru_title: "Этаж 1"
     pdf_export:
       orientation: horizontal
     # Every university-floor-* scene shares the same coordinate frame (identical
@@ -136,7 +137,7 @@ scenes:
         svg_polygon_id: garage-1
         description: "Entrance is on the -1 floor"
       - title: "Reading Hall"
-        ru_title: Читалка
+        ru_title: Читальный зал
         svg_polygon_id: reading-hall-1
         prioritized: true
       - title: "Main Hall"
@@ -154,6 +155,7 @@ scenes:
   - scene_id: "university-floor-2"
     svg_file: "university-floor-2.svg"
     title: "Floor 2"
+    ru_title: "Этаж 2"
     pdf_export:
       orientation: horizontal
     geo_reference: *university_building_geo
@@ -258,11 +260,12 @@ scenes:
         svg_polygon_id: garage-2
         description: "Entrance is on the -1 floor"
       - title: "Reading Hall"
-        ru_title: Читалка
+        ru_title: Читальный зал
         svg_polygon_id: reading-hall-2
   - scene_id: "university-floor-3"
     svg_file: "university-floor-3.svg"
     title: "Floor 3"
+    ru_title: "Этаж 3"
     pdf_export:
       orientation: horizontal
     geo_reference: *university_building_geo
@@ -346,8 +349,8 @@ scenes:
         svg_polygon_id: 312b
       - title: 312c
         svg_polygon_id: 312c
-      - title: 312d
-        svg_polygon_id: 312d
+      - title: "312d"
+        svg_polygon_id: "312d"
       - title: "313"
         svg_polygon_id: "313"
         room_booking_id: "313"
@@ -390,7 +393,7 @@ scenes:
         svg_polygon_id: canteen-3
         description: "This is the canteen for events. The main canteen entrance is on the 1st floor."
       - title: "Reading Hall"
-        ru_title: Читалка
+        ru_title: Читальный зал
         svg_polygon_id: reading-hall-3
       - title: "Green Stairs"
         ru_title: "Зелёные Ступеньки"
@@ -398,6 +401,7 @@ scenes:
   - scene_id: "university-floor-4"
     svg_file: "university-floor-4.svg"
     title: "Floor 4"
+    ru_title: "Этаж 4"
     pdf_export:
       orientation: horizontal
     geo_reference: *university_building_geo
@@ -672,6 +676,7 @@ scenes:
   - scene_id: "university-floor-5"
     svg_file: "university-floor-5.svg"
     title: "Floor 5"
+    ru_title: "Этаж 5"
     pdf_export:
       orientation: horizontal
     geo_reference: *university_building_geo
@@ -728,6 +733,7 @@ scenes:
   - scene_id: "university-floor-0"
     svg_file: "university-floor-0.svg"
     title: "Floor -1"
+    ru_title: "Этаж -1"
     pdf_export:
       orientation: horizontal
     geo_reference: *university_building_geo
@@ -748,6 +754,7 @@ scenes:
   - scene_id: "sport-complex"
     svg_file: "sport-complex.svg"
     title: "Sport Complex"
+    ru_title: "Спорткомплекс"
     pdf_export:
       orientation: vertical
     areas:
@@ -850,6 +857,7 @@ scenes:
   - scene_id: "campus"
     svg_file: "campus.svg"
     title: "Campus"
+    ru_title: "Кампус"
     pdf_export:
       orientation: horizontal
     areas:
