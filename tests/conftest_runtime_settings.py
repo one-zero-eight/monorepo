@@ -32,6 +32,7 @@ from src.schedule_assistant.config_schema import (
 )
 from src.student_affairs.config_schema import OmnideskSettings, StudentAffairsSettings
 from src.tabletennis.config_schema import TabletennisSettings
+from src.timer.config_schema import TimerSettings
 from src.when2meet.config_schema import RoomBookingIntegrationSettings, When2MeetSettings
 from tests.metrics import METRICS_API_KEY
 
@@ -51,6 +52,10 @@ def is_xdist_worker() -> bool:
 
 def get_worker_id() -> str:
     return os.environ.get("PYTEST_XDIST_WORKER", "master")
+
+
+def timer_test_database_name() -> str:
+    return f"worker-{get_worker_id()}-timer"
 
 
 def schedule_test_database_name() -> str:
@@ -126,6 +131,12 @@ def load_root_settings() -> Settings:
                 access_key=SUITE_MINIO_ACCESS_KEY,
                 secret_key=SecretStr(SUITE_MINIO_KEY),
                 bucket=minio_bucket.replace("<service_name>", "board-games"),
+            ),
+        ),
+        timer_service=TimerSettings(
+            environment=Environment.TESTING,
+            db_url=SecretStr(
+                f"postgresql+asyncpg://postgres:test@{SUITE_POSTGRES_NETLOC}/{timer_test_database_name()}"
             ),
         ),
         when2meet_service=When2MeetSettings(

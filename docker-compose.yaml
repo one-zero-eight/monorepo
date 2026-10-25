@@ -131,6 +131,29 @@ services:
       minio:
         condition: service_started
 
+  timer-api:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+      args:
+        APP_MODULE: src.timer.app:app
+    pre_start:
+      - command: ["python", "-m", "src.migrations", "timer"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: no
+    ports:
+      - "8025:8000"
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 500m
+
   when2meet-api:
     build:
       context: .

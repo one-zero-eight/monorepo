@@ -43,6 +43,11 @@ dev = [
     "ty>=0.0.80", # ~25.0 MiB
     "types-pyyaml>=6.0.12.20260906", # ~65 KiB
 ]
+timer = [
+    "alembic>=1.20.0",
+    "asyncpg>=0.31.0",
+    "sqlalchemy[postgresql-asyncpg]>=2.0.52",
+]
 schedule = [
     "alembic>=1.20.0", # ~258 KiB
     "asyncpg>=0.31.0", # ~3.4 MiB
@@ -128,6 +133,8 @@ lint.extend-ignore = [
 lint.unfixable = ["F401"] # unused-import — report only, do not remove on fix
 target-version = "py314"
 [tool.ruff.lint.per-file-ignores]
+"src/timer/**" = ["ICN001"] # Timer uses the full datetime module name.
+"tests/timer/**" = ["ICN001"]
 "tests/**" = ["S101"] # assert is standard in pytest
 "tests/schedule_assistant/**" = ["PLC2701", "SIM117"]
 "src/schedule_assistant/core_courses/**" = ["S101", "DTZ", "ICN003"]
