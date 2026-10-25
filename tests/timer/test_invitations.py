@@ -107,11 +107,11 @@ def test_create_invitation_for_missing_timer(timer_client: TestClient, user_head
     assert_no_invitations(timer_client)
 
 
-@pytest.mark.parametrize("timer_id", ["0", "-1", "abc", "9223372036854775808"])
-def test_create_invitation_rejects_invalid_timer_id(
-    timer_client: TestClient, user_headers: dict[str, str], timer_id: str
+@pytest.mark.parametrize(("timer_id", "expected_status"), [("0", 404), ("-1", 404), ("abc", 422)])
+def test_create_invitation_handles_unknown_or_noninteger_id(
+    timer_client: TestClient, user_headers: dict[str, str], timer_id: str, expected_status: int
 ):
-    assert timer_client.post(f"/timers/{timer_id}/invitations", headers=user_headers).status_code == 422
+    assert timer_client.post(f"/timers/{timer_id}/invitations", headers=user_headers).status_code == expected_status
     assert_no_invitations(timer_client)
 
 

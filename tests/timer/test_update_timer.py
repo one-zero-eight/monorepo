@@ -132,6 +132,18 @@ def test_update_missing_timer(timer_client: TestClient, user_headers: dict[str, 
     assert response.status_code == 404
 
 
+@pytest.mark.parametrize(("timer_id", "expected_status"), [("0", 404), ("-1", 404), ("abc", 422)])
+def test_update_timer_handles_unknown_or_noninteger_id(
+    timer_client: TestClient,
+    user_headers: dict[str, str],
+    update_payload: dict,
+    timer_id: str,
+    expected_status: int,
+):
+    response = timer_client.put(f"/timers/{timer_id}", headers=user_headers, json=update_payload)
+    assert response.status_code == expected_status
+
+
 @pytest.mark.parametrize("headers", [{}, {"Authorization": "Bearer invalid-token"}])
 def test_update_timer_requires_auth(timer_client: TestClient, created_timer: dict, update_payload: dict, headers: dict):
     assert timer_client.put(f"/timers/{created_timer['id']}", headers=headers, json=update_payload).status_code == 401
