@@ -929,10 +929,34 @@ def test_available_rooms_returns_only_rooms_free_for_full_selected_time(
             return_value=httpx.Response(
                 200,
                 json=[
-                    {"id": "3.1", "title": "Meeting Room 3.1", "short_name": "3.1", "capacity": 8},
-                    {"id": "3.2", "title": "Meeting Room 3.2", "short_name": "3.2", "capacity": 12},
-                    {"id": "3.3", "title": "Meeting Room 3.3", "short_name": "3.3", "capacity": 10},
-                    {"id": "107", "title": "Red Room 107", "short_name": "107", "capacity": 40},
+                    {
+                        "id": "3.1",
+                        "title": "Meeting Room 3.1",
+                        "ru_title": "Переговорка 3.1",
+                        "short_name": "3.1",
+                        "capacity": 8,
+                    },
+                    {
+                        "id": "3.2",
+                        "title": "Meeting Room 3.2",
+                        "ru_title": "Переговорка 3.2",
+                        "short_name": "3.2",
+                        "capacity": 12,
+                    },
+                    {
+                        "id": "3.3",
+                        "title": "Meeting Room 3.3",
+                        "ru_title": "Переговорка 3.3",
+                        "short_name": "3.3",
+                        "capacity": 10,
+                    },
+                    {
+                        "id": "107",
+                        "title": "Red Room 107",
+                        "ru_title": "Красная комната 107",
+                        "short_name": "107",
+                        "capacity": 40,
+                    },
                 ],
             )
         )
@@ -1025,7 +1049,15 @@ def test_available_rooms_forwards_selected_time_timezone_to_room_booking(
         respx_mock.get(f"{ROOM_BOOKING_API_URL}/rooms/").mock(
             return_value=httpx.Response(
                 200,
-                json=[{"id": "3.2", "title": "Meeting Room 3.2", "short_name": "3.2", "capacity": 12}],
+                json=[
+                    {
+                        "id": "3.2",
+                        "title": "Meeting Room 3.2",
+                        "ru_title": "Переговорка 3.2",
+                        "short_name": "3.2",
+                        "capacity": 12,
+                    }
+                ],
             )
         )
         bookings_route = respx_mock.get(f"{ROOM_BOOKING_API_URL}/bookings/").mock(
@@ -1067,9 +1099,27 @@ def test_available_rooms_excludes_rooms_with_can_book_errors(
             return_value=httpx.Response(
                 200,
                 json=[
-                    {"id": "3.1", "title": "Meeting Room 3.1", "short_name": "3.1", "capacity": 8},
-                    {"id": "3.2", "title": "Meeting Room 3.2", "short_name": "3.2", "capacity": 12},
-                    {"id": "3.3", "title": "Meeting Room 3.3", "short_name": "3.3", "capacity": 10},
+                    {
+                        "id": "3.1",
+                        "title": "Meeting Room 3.1",
+                        "ru_title": "Переговорка 3.1",
+                        "short_name": "3.1",
+                        "capacity": 8,
+                    },
+                    {
+                        "id": "3.2",
+                        "title": "Meeting Room 3.2",
+                        "ru_title": "Переговорка 3.2",
+                        "short_name": "3.2",
+                        "capacity": 12,
+                    },
+                    {
+                        "id": "3.3",
+                        "title": "Meeting Room 3.3",
+                        "ru_title": "Переговорка 3.3",
+                        "short_name": "3.3",
+                        "capacity": 10,
+                    },
                 ],
             )
         )
@@ -1111,8 +1161,20 @@ def test_available_rooms_returns_bad_gateway_when_all_can_book_requests_fail(
             return_value=httpx.Response(
                 200,
                 json=[
-                    {"id": "3.1", "title": "Meeting Room 3.1", "short_name": "3.1", "capacity": 8},
-                    {"id": "3.2", "title": "Meeting Room 3.2", "short_name": "3.2", "capacity": 12},
+                    {
+                        "id": "3.1",
+                        "title": "Meeting Room 3.1",
+                        "ru_title": "Переговорка 3.1",
+                        "short_name": "3.1",
+                        "capacity": 8,
+                    },
+                    {
+                        "id": "3.2",
+                        "title": "Meeting Room 3.2",
+                        "ru_title": "Переговорка 3.2",
+                        "short_name": "3.2",
+                        "capacity": 12,
+                    },
                 ],
             )
         )
@@ -1149,7 +1211,15 @@ def test_available_rooms_skips_bookings_request_when_no_rooms_are_bookable(
         respx_mock.get(f"{ROOM_BOOKING_API_URL}/rooms/").mock(
             return_value=httpx.Response(
                 200,
-                json=[{"id": "3.1", "title": "Meeting Room 3.1", "short_name": "3.1", "capacity": 8}],
+                json=[
+                    {
+                        "id": "3.1",
+                        "title": "Meeting Room 3.1",
+                        "ru_title": "Переговорка 3.1",
+                        "short_name": "3.1",
+                        "capacity": 8,
+                    }
+                ],
             )
         )
         respx_mock.get(f"{ROOM_BOOKING_API_URL}/room/3.1/can-book").mock(
@@ -1184,7 +1254,15 @@ def test_available_rooms_returns_bad_gateway_when_room_booking_fails(
         respx_mock.get(f"{ROOM_BOOKING_API_URL}/rooms/").mock(
             return_value=httpx.Response(
                 200,
-                json=[{"id": "3.1", "title": "Meeting Room 3.1", "short_name": "3.1", "capacity": 8}],
+                json=[
+                    {
+                        "id": "3.1",
+                        "title": "Meeting Room 3.1",
+                        "ru_title": "Переговорка 3.1",
+                        "short_name": "3.1",
+                        "capacity": 8,
+                    }
+                ],
             )
         )
         respx_mock.get(f"{ROOM_BOOKING_API_URL}/room/3.1/can-book").mock(
