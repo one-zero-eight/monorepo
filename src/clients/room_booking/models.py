@@ -222,6 +222,7 @@ class Room(BaseModel):
 
     id: str
     title: str
+    ru_title: str
     short_name: str
     capacity: int | None = None
     access_level: Literal["yellow", "red", "special"] | None = None
