@@ -48,8 +48,9 @@ def expand_weekly_slot(
 ) -> list[WeeklyOccurrence]:
     """Apply edits only to active source dates; keep cancellations as occurrence=None.
 
-    Destination dates may be outside the source week/window. Callers selecting a
-    destination window must filter after expansion, never infer new source dates.
+    Destination dates may be outside the source week/window for legacy patterns.
+    Explicit session active windows validate both source and destination before
+    saving. Destination queries filter after expansion, never infer source dates.
     """
     edits = {week_start_for_date(edit.select_week, starting_day): edit for edit in slot.edits or []}
     result: list[WeeklyOccurrence] = []

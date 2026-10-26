@@ -1,6 +1,6 @@
 from src.schedule_assistant.modules.issues.meetings import meeting_instructor_ids
 from src.schedule_assistant.modules.schedule_config.schemas import CourseConfig, TermConfig
-from src.schedule_assistant.modules.schedule_config.semester_windows import resolve_audience_semester
+from src.schedule_assistant.modules.schedule_config.semester_windows import resolve_session_window
 from src.schedule_assistant.modules.schedule_config.weekly_dates import expand_weekly_slot
 
 
@@ -33,11 +33,12 @@ def count_meetings_by_instructor(
     for course in courses:
         for component in course.components:
             for session in component.sessions or []:
-                window = resolve_audience_semester(term, list(session.audience or component.audience))
+                window = resolve_session_window(term, list(session.audience or component.audience), session.active)
                 if window is None:
                     continue
                 for occurrence in session.dates_pattern or []:
-                    bump(occurrence.instructor)
+                    if session.active is None or window.start_date <= occurrence.date <= window.end_date:
+                        bump(occurrence.instructor)
                 for slot in session.weekly_pattern or []:
                     if term.days and slot.weekday not in term.days:
                         continue

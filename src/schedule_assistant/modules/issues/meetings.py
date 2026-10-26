@@ -12,8 +12,11 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     CoursesConfig,
     InstructorConfig,
     SectionsConfig,
+    TermConfig,
 )
+from src.schedule_assistant.modules.schedule_config.semester_windows import resolve_session_window
 from src.schedule_assistant.modules.schedule_config.validation import build_selector_map, expand_group_tokens
+from src.schedule_assistant.modules.schedule_config.weekly_dates import expand_weekly_slot
 
 meetings_from_schedule_config = schedule_domain.meetings_from_schedule_config
 
@@ -63,11 +66,32 @@ def build_group_to_studying_teachers(
     return group_to_teachers
 
 
-def _session_is_placed(session: ComponentSessionSeries) -> bool:
-    return bool(session.weekly_pattern) or bool(session.dates_pattern)
+def _session_is_placed(
+    session: ComponentSessionSeries,
+    component_groups: list[str],
+    term: TermConfig | None,
+    sections: SectionsConfig,
+) -> bool:
+    if term is None:
+        return bool(session.weekly_pattern) or bool(session.dates_pattern)
+    window = resolve_session_window(term, list(session.audience or component_groups), session.active, sections=sections)
+    if window is None:
+        return False
+    if any(window.start_date <= occurrence.date <= window.end_date for occurrence in session.dates_pattern or []):
+        return True
+    return any(
+        resolved.occurrence is not None
+        for slot in session.weekly_pattern or []
+        if not term.days or slot.weekday in term.days
+        for resolved in expand_weekly_slot(slot, window, term.starting_day)
+    )
 
 
-def unplaced_issues_from_schedule_config(courses: CoursesConfig, sections: SectionsConfig) -> list[UnplacedIssue]:
+def unplaced_issues_from_schedule_config(
+    courses: CoursesConfig,
+    sections: SectionsConfig,
+    term: TermConfig | None = None,
+) -> list[UnplacedIssue]:
     selector_map = build_selector_map(sections)
     issues: list[UnplacedIssue] = []
 
@@ -87,7 +111,7 @@ def unplaced_issues_from_schedule_config(courses: CoursesConfig, sections: Secti
                 continue
 
             for session in sessions:
-                if _session_is_placed(session):
+                if _session_is_placed(session, component.audience, term, sections):
                     continue
                 group_codes = _group_codes_for_session(component.audience, session, selector_map)
                 issue = UnplacedIssue(

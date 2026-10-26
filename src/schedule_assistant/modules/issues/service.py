@@ -43,7 +43,7 @@ async def check_schedule_issues(config: ScheduleConfigRepository, params: CheckP
     instructors = config.get_instructors()
     config_rooms = config.get_rooms()
 
-    meetings = meetings_from_schedule_config(courses, sections, expand_weekly=False)
+    meetings = meetings_from_schedule_config(courses, sections, term=term, expand_weekly=False)
     concrete_meetings = meetings_from_schedule_config(courses, sections, term=term)
     booking_rooms: list[RoomDTO] = []
     if params.check_outlook or params.check_unbooked:
@@ -74,7 +74,7 @@ async def check_schedule_issues(config: ScheduleConfigRepository, params: CheckP
         logger.info(f"Found {len(instructor_preference_issues)} instructor_preference issues")
         issues.extend(instructor_preference_issues)
     if params.check_unplaced:
-        unplaced_issues = unplaced_issues_from_schedule_config(courses, sections)
+        unplaced_issues = unplaced_issues_from_schedule_config(courses, sections, term)
         logger.info(f"Found {len(unplaced_issues)} unplaced issues")
         issues.extend(unplaced_issues)
     if params.check_missing_room or params.check_missing_instructor:
@@ -88,7 +88,7 @@ async def check_schedule_issues(config: ScheduleConfigRepository, params: CheckP
         logger.info(f"Found {len(assignment_issues)} missing assignment issues")
         issues.extend(assignment_issues)
     if params.check_per_week:
-        per_week_issues = per_week_issues_from_schedule_config(courses, sections)
+        per_week_issues = per_week_issues_from_schedule_config(courses, sections, term)
         logger.info(f"Found {len(per_week_issues)} per_week issues")
         issues.extend(per_week_issues)
 

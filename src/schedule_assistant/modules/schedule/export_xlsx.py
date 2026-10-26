@@ -24,7 +24,7 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     TermTimeSlot,
 )
 from src.schedule_assistant.modules.schedule_config.semester_windows import (
-    resolve_audience_semester,
+    resolve_session_window,
     union_semester_window,
 )
 from src.schedule_assistant.modules.schedule_config.validation import build_selector_map, expand_group_tokens
@@ -258,8 +258,13 @@ def expand_meetings(config: ScheduleConfig) -> list[ExportMeeting]:
             for session in component.sessions or []:
                 tokens = session.audience or component.audience
                 groups = tuple(sorted(expand_group_tokens(tokens, selector_map)))
+                window = resolve_session_window(term, list(tokens), session.active)
 
                 for occurrence in session.dates_pattern or []:
+                    if session.active is not None and (
+                        window is None or not window.start_date <= occurrence.date <= window.end_date
+                    ):
+                        continue
                     meetings.append(
                         ExportMeeting(
                             course=course.name,
@@ -278,7 +283,7 @@ def expand_meetings(config: ScheduleConfig) -> list[ExportMeeting]:
                 for slot in session.weekly_pattern or []:
                     if term.days and slot.weekday not in term.days:
                         continue
-                    window = resolve_audience_semester(term, list(tokens))
+                    window = resolve_session_window(term, list(tokens), session.active)
                     if window is None:
                         continue
                     alternation = normalize_alternation(slot.alternation, term.starting_day)

@@ -1,6 +1,6 @@
 import datetime as dtm
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from src.schedule_assistant.modules.schedule_config.schemas import (
     ComponentSessionSeries,
@@ -16,6 +16,8 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     TermConfig,
     WeeklyPatternSlot,
 )
+from src.schedule_assistant.modules.schedule_config.semester_windows import resolve_session_window
+from src.schedule_assistant.modules.schedule_config.weekly_dates import active_weekly_dates
 from src.schedule_assistant.weekday import week_start_for_date
 
 VIRTUAL_ROOM_ID = "ONLINE"
@@ -214,6 +216,8 @@ def _validate_weekly_slot_edits(
     slot: WeeklyPatternSlot,
     term: TermConfig | None,
     errors: list[str],
+    *,
+    validate_dates: bool = True,
 ) -> None:
     if not slot.edits:
         return
@@ -235,7 +239,7 @@ def _validate_weekly_slot_edits(
         if not edit.cancel and not _time_before(resolved_start, resolved_end):
             errors.append(f"{edit_path}: resolved start_time must be before end_time")
 
-        if semester is not None:
+        if semester is not None and validate_dates:
             if edit.select_week < semester.start_date or edit.select_week > semester.end_date:
                 errors.append(
                     f"{edit_path}.select_week {edit.select_week.isoformat()} is outside term.semester",
@@ -271,6 +275,23 @@ def validate_term(term: TermConfig) -> list[str]:
     for index, slot in enumerate(term.time_slots):
         if not _time_before(slot.start_time, slot.end_time):
             errors.append(f"term.time_slots[{index}]: start_time must be before end_time")
+    seen_blocks: set[str] = set()
+    for index, block in enumerate(term.blocks):
+        path = f"term.blocks[{index}]"
+        if not block.id.strip():
+            errors.append(f"{path}.id must not be empty")
+        elif block.id in seen_blocks:
+            errors.append(f"{path}.id {block.id!r} is duplicated")
+        seen_blocks.add(block.id)
+        if not block.name.strip():
+            errors.append(f"{path}.name must not be empty")
+        if block.start_date > block.end_date:
+            errors.append(f"{path}.start_date must be on or before end_date")
+        if not term.semester.start_date <= block.start_date <= block.end_date <= term.semester.end_date:
+            errors.append(f"{path} must be inside term.semester")
+        for previous in term.blocks[:index]:
+            if max(previous.start_date, block.start_date) <= min(previous.end_date, block.end_date):
+                errors.append(f"{path} overlaps block {previous.id!r} (inclusive dates)")
     errors.extend(_validate_room_attribute_defs(term.room_attributes))
     return errors
 
@@ -529,8 +550,84 @@ def validate_sections_update(
     return errors
 
 
-def validate_courses(config: CoursesConfig, ctx: ValidationContext) -> list[str]:
+def _validate_session_window(
+    session: ComponentSessionSeries,
+    audiences: list[str],
+    ctx: ValidationContext,
+    path: str,
+) -> list[str]:
+    # Null is deliberately unchanged, including programs outside term.semester.
+    if session.active is None:
+        return []
     errors: list[str] = []
+    active = session.active
+    if active.start_date > active.end_date:
+        errors.append(f"{path}.active.start_date must be on or before end_date")
+    if ctx.term is None:
+        errors.append(f"{path}.active requires term configuration")
+        return errors
+    term = ctx.term
+    if not term.semester.start_date <= active.start_date <= active.end_date <= term.semester.end_date:
+        errors.append(f"{path}.active must be inside term.semester")
+    window = resolve_session_window(term, audiences, active, sections=ctx.sections)
+    if window is None:
+        errors.append(f"{path}.active has an empty intersection with the audience semester")
+        return errors
+    for index, occurrence in enumerate(session.dates_pattern or []):
+        if not window.start_date <= occurrence.date <= window.end_date:
+            errors.append(f"{path}.dates_pattern[{index}].date is outside the effective session window")
+    for slot_index, slot in enumerate(session.weekly_pattern or []):
+        slot_path = f"{path}.weekly_pattern[{slot_index}]"
+        # Phase-skipped edits may remain dormant; their source must still be in range.
+        source_dates = active_weekly_dates(window, slot.weekday, term.starting_day)
+        source_weeks = {week_start_for_date(date, term.starting_day) for date in source_dates}
+        if not active_weekly_dates(window, slot.weekday, term.starting_day, slot.alternation) or (
+            term.days and slot.weekday not in term.days
+        ):
+            errors.append(f"{slot_path} has no source dates in the effective session window")
+        for edit_index, edit in enumerate(slot.edits or []):
+            edit_path = f"{slot_path}.edits[{edit_index}]"
+            if week_start_for_date(edit.select_week, term.starting_day) not in source_weeks:
+                errors.append(f"{edit_path}.select_week has no source date in the effective session window")
+            if edit.date is not None and not window.start_date <= edit.date <= window.end_date:
+                errors.append(f"{edit_path}.date is outside the effective session window")
+    return errors
+
+
+def validate_course_windows(config: CoursesConfig, ctx: ValidationContext) -> list[str]:
+    """Revalidate block references and explicit windows after term/section changes."""
+    errors: list[str] = []
+    known_blocks = {block.id for block in ctx.term.blocks} if ctx.term is not None else set()
+    for course_index, course in enumerate(config.courses):
+        course_path = f"courses[{course_index}]"
+        if course.blocks is not None:
+            if not course.blocks:
+                errors.append(f"{course_path}.blocks must not be empty; use null for the whole semester")
+            seen_blocks: set[str] = set()
+            for block_index, block_id in enumerate(course.blocks):
+                block_path = f"{course_path}.blocks[{block_index}]"
+                if not block_id.strip():
+                    errors.append(f"{block_path} must not be empty")
+                elif block_id not in known_blocks:
+                    errors.append(f"{block_path} references unknown block {block_id!r}")
+                if block_id in seen_blocks:
+                    errors.append(f"{block_path} is duplicated: {block_id!r}")
+                seen_blocks.add(block_id)
+        for component_index, component in enumerate(course.components):
+            for session_index, session in enumerate(component.sessions or []):
+                errors.extend(
+                    _validate_session_window(
+                        session,
+                        list(session.audience or component.audience),
+                        ctx,
+                        f"{course_path}.components[{component_index}].sessions[{session_index}]",
+                    )
+                )
+    return errors
+
+
+def validate_courses(config: CoursesConfig, ctx: ValidationContext) -> list[str]:
+    errors = validate_course_windows(config, ctx)
     group_codes = collect_student_group_codes(ctx.sections)
     selector_map = build_selector_map(ctx.sections)
     instructor_ids = collect_instructor_ids(ctx.instructors)
@@ -651,7 +748,9 @@ def validate_courses(config: CoursesConfig, ctx: ValidationContext) -> list[str]
                                     f"{slot_path}.instructor references unknown instructor {meeting_instructor_id!r}",
                                 )
                         if slot.edits:
-                            _validate_weekly_slot_edits(slot_path, slot, ctx.term, errors)
+                            _validate_weekly_slot_edits(
+                                slot_path, slot, ctx.term, errors, validate_dates=session.active is None
+                            )
                             for edit_index, edit in enumerate(slot.edits):
                                 edit_path = f"{slot_path}.edits[{edit_index}]"
                                 if edit.room and not _is_known_room_id(edit.room, room_ids):
@@ -672,6 +771,8 @@ def validate_term_config(term: TermConfig, ctx: ValidationContext) -> list[str]:
             SectionsConfig(sections=term.sections, students_groups=ctx.sections.students_groups),
         )
     )
+    sections = SectionsConfig(sections=term.sections, students_groups=ctx.sections.students_groups)
+    errors.extend(validate_course_windows(ctx.courses, replace(ctx, term=term, sections=sections)))
     return errors
 
 
@@ -739,7 +840,7 @@ def validate_resource_update(
 ) -> list[str]:
     if resource == "term":
         assert isinstance(new_value, TermConfig)
-        return validate_term(new_value)
+        return validate_term_config(new_value, ctx)
     if resource == "rooms":
         assert isinstance(new_value, RoomConfig) and isinstance(old_value, RoomConfig)
         return validate_rooms_update(old_value, new_value, courses=ctx.courses, term=ctx.term)

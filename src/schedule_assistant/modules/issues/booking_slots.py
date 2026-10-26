@@ -16,7 +16,7 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     WeeklyPatternSlot,
     WeeklyPatternSlotEdit,
 )
-from src.schedule_assistant.modules.schedule_config.semester_windows import resolve_audience_semester
+from src.schedule_assistant.modules.schedule_config.semester_windows import resolve_session_window
 from src.schedule_assistant.modules.schedule_config.weekly_dates import expand_weekly_slot, normalize_alternation
 from src.schedule_assistant.weekday import Weekday
 
@@ -417,7 +417,7 @@ def build_bookable_slots(
                 audiences = _session_audiences(component, session)
                 if not audiences:
                     continue
-                window = resolve_audience_semester(term, audiences, sections=sections)
+                window = resolve_session_window(term, audiences, session.active, sections=sections)
                 if window is None:
                     continue
                 group_codes = tuple(sorted(expand_group_tokens(audiences, selector_map)))

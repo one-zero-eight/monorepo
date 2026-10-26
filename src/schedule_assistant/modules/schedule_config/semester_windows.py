@@ -84,6 +84,36 @@ def resolve_audience_semester(
     return TermConfig.DateRange(start_date=start, end_date=end)
 
 
+def resolve_session_window(
+    term: TermConfig,
+    audiences: list[str],
+    active: TermConfig.DateRange | None,
+    *,
+    audience_to_program: dict[str, str] | None = None,
+    program_semesters: dict[str, TermConfig.DateRange] | None = None,
+    sections: SectionsConfig | None = None,
+) -> TermConfig.DateRange | None:
+    """Intersect explicit series dates with the audience window.
+
+    Null active preserves program overrides verbatim, including dates outside
+    the default term semester. Course blocks never restrict teaching dates.
+    """
+    window = resolve_audience_semester(
+        term,
+        audiences,
+        audience_to_program=audience_to_program,
+        program_semesters=program_semesters,
+        sections=sections,
+    )
+    if active is None or window is None:
+        return window
+    start = max(window.start_date, active.start_date)
+    end = min(window.end_date, active.end_date)
+    if start > end:
+        return None
+    return TermConfig.DateRange(start_date=start, end_date=end)
+
+
 def union_semester_window(term: TermConfig, *, sections: SectionsConfig | None = None) -> TermConfig.DateRange:
     """Bounding box of term.semester and all program.semester overrides."""
     start = term.semester.start_date

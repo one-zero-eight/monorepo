@@ -17,6 +17,11 @@ class PublicDateRange(PublicTimetableModel):
     end_date: dtm.date
 
 
+class PublicTermBlock(PublicDateRange):
+    id: str
+    name: str
+
+
 class PublicTimeSlot(PublicTimetableModel):
     start_time: dtm.time
     end_time: dtm.time
@@ -47,6 +52,7 @@ class PublicSection(PublicTimetableModel):
 class PublicTerm(PublicTimetableModel):
     name: str
     semester: PublicDateRange
+    blocks: list[PublicTermBlock] = Field(default_factory=list)
     days: list[Weekday]
     starting_day: Weekday
     time_slots: list[PublicTimeSlot]
@@ -111,6 +117,7 @@ class PublicSessionOccurrence(PublicTimetableModel):
 
 class PublicComponentSessionSeries(PublicTimetableModel):
     audience: list[str] = Field(default_factory=list)
+    active: PublicDateRange | None = None
     weekly_pattern: list[PublicWeeklyPatternSlot] | None = None
     dates_pattern: list[PublicSessionOccurrence] | None = None
     notes: str = ""
@@ -132,6 +139,7 @@ class PublicCourse(PublicTimetableModel):
     name: str
     color: str | None = None
     section_code: str
+    blocks: list[str] | None = None
     short_name: str | None = None
     name_ru: str | None = None
     short_name_ru: str | None = None

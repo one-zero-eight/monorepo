@@ -24,21 +24,24 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from src.schedule_assistant.modules.schedule_config.helpers import expand_groups, resolve_selector_map
+from src.schedule_assistant.modules.schedule_config.helpers import resolve_selector_map
 from src.schedule_assistant.modules.schedule_config.schemas import (
     ComponentSessionSeries,
     CourseConfig,
     CoursesConfig,
     ScheduleConfig,
+    TermConfig,
     WeeklyPatternSlot,
 )
-from src.schedule_assistant.modules.solver.helpers import teaching_days
+from src.schedule_assistant.modules.schedule_config.semester_windows import resolve_session_window
+from src.schedule_assistant.modules.schedule_config.weekly_dates import active_weekly_dates
+from src.schedule_assistant.modules.solver.helpers import resource_weeks, scheduling_targets, teaching_days
 from src.schedule_assistant.modules.solver.instructor_preferences import (
     meeting_instructor_ids,
     resolve_preference_grids_from_config,
 )
 from src.schedule_assistant.modules.solver.schemas import SolveResult, SolveStats
-from src.schedule_assistant.weekday import Weekday
+from src.schedule_assistant.weekday import Weekday, week_start_for_date
 
 
 class _YamlDumper(yaml.SafeDumper):
@@ -115,6 +118,11 @@ class Meeting:
     expected_students: int = 0
     is_core_course: bool = False
     component_relates_to: tuple[int, ...] | None = None
+    session_index: int | None = None
+    active: TermConfig.DateRange | None = None
+    window: TermConfig.DateRange | None = None
+    allowed_days: tuple[int, ...] | None = None
+    teaching_weeks: tuple[dtm.date, ...] | None = None
 
 
 @dataclass
@@ -186,10 +194,10 @@ def prepare_model(
     # profile       -> intervals of meetings touching a unique shared-student profile.
     # room_idx      -> intervals of meetings placed in that room (optional if >1 choice).
     # instructor_id -> intervals of meetings assigned to that instructor (optional if >1 option).
-    group_intervals: dict[str, list[cp_model.IntervalVar]] = defaultdict(list)
-    profile_intervals: dict[frozenset[str], list[cp_model.IntervalVar]] = defaultdict(list)
-    room_intervals: dict[int, list[cp_model.IntervalVar]] = defaultdict(list)
-    inst_to_intervals: dict[str, list[cp_model.IntervalVar]] = defaultdict(list)
+    group_intervals: dict[tuple[str, dtm.date | None], list[cp_model.IntervalVar]] = defaultdict(list)
+    profile_intervals: dict[tuple[frozenset[str], dtm.date | None], list[cp_model.IntervalVar]] = defaultdict(list)
+    room_intervals: dict[tuple[int, dtm.date | None], list[cp_model.IntervalVar]] = defaultdict(list)
+    inst_to_intervals: dict[tuple[str, dtm.date | None], list[cp_model.IntervalVar]] = defaultdict(list)
 
     max_abs = num_days * slots_per_day
     fallback_attendance_ratio = 0.9
@@ -255,6 +263,10 @@ def prepare_model(
         day_bools = [model.new_bool_var(f"day_is_{i}_{d}") for d in range(num_days)]
         day_bool_by_meeting.append(day_bools)
         model.add_exactly_one(day_bools)
+        if meeting.allowed_days is not None:
+            for day_index, day_bool in enumerate(day_bools):
+                if day_index not in meeting.allowed_days:
+                    model.add(day_bool == 0)
 
         day_v = model.new_int_var(0, num_days - 1, f"day_{i}")
         model.add(day_v == sum(d * b for d, b in enumerate(day_bools)))
@@ -277,7 +289,8 @@ def prepare_model(
         # Mandatory "core" interval shared by group- and profile-level conflicts.
         core = model.new_interval_var(abs_s, dur, abs_e, f"group_core_{i}")
         for group_id in meeting.groups:
-            group_intervals[group_id].append(core)
+            for week in resource_weeks(meeting.teaching_weeks):
+                group_intervals[group_id, week].append(core)
         if profiles_by_group:
             seen_profiles: set[frozenset[str]] = set()
             for group_id in meeting.groups:
@@ -285,7 +298,8 @@ def prepare_model(
                     if profile in seen_profiles:
                         continue
                     seen_profiles.add(profile)
-                    profile_intervals[profile].append(core)
+                    for week in resource_weeks(meeting.teaching_weeks):
+                        profile_intervals[profile, week].append(core)
 
         # Room decision var: a constant when there's only one feasible room,
         # otherwise a sparse-domain int var (the actual room is channelled to
@@ -357,7 +371,9 @@ def prepare_model(
 
         if len(feasible_room_indices) == 1:
             only_idx = feasible_room_indices[0]
-            room_intervals[only_idx].append(model.new_interval_var(abs_s, dur, abs_e, f"room_iv_{i}"))
+            interval = model.new_interval_var(abs_s, dur, abs_e, f"room_iv_{i}")
+            for week in resource_weeks(meeting.teaching_weeks):
+                room_intervals[only_idx, week].append(interval)
         else:
             meeting_oversize_bools: list[cp_model.IntVar] = []
             has_non_oversize = False
@@ -365,9 +381,9 @@ def prepare_model(
                 room_idx: model.new_bool_var(f"room_pick_{i}_{room_idx}") for room_idx in feasible_room_indices
             }
             for room_idx, b in room_bools.items():
-                room_intervals[room_idx].append(
-                    model.new_optional_interval_var(abs_s, dur, abs_e, b, f"room_iv_{i}_{room_idx}")
-                )
+                interval = model.new_optional_interval_var(abs_s, dur, abs_e, b, f"room_iv_{i}_{room_idx}")
+                for week in resource_weeks(meeting.teaching_weeks):
+                    room_intervals[room_idx, week].append(interval)
                 if _is_oversize(room_idx):
                     meeting_oversize_bools.append(b)
                 else:
@@ -379,9 +395,9 @@ def prepare_model(
                 oversize_bools.extend(meeting_oversize_bools)
                 oversize_opportunities += 1
 
-    for room_idx in tqdm(range(len(room_ids)), desc="Room constraints", disable=not show_progress):
-        if len(room_intervals[room_idx]) > 1:
-            model.add_no_overlap(room_intervals[room_idx])
+    for intervals in tqdm(room_intervals.values(), desc="Room constraints", disable=not show_progress):
+        if len(intervals) > 1:
+            model.add_no_overlap(intervals)
 
     def _meeting_on_day_slot(m_idx: int, day_idx: int, slot_idx: int) -> cp_model.IntVar:
         on_cell = model.new_bool_var(f"on_cell_{m_idx}_{day_idx}_{slot_idx}")
@@ -411,7 +427,9 @@ def prepare_model(
         n_opts = len(meeting.instructor_options)
         if n_opts == 1:
             for inst in meeting.instructor_options[0]:
-                inst_to_intervals[inst].append(model.new_interval_var(abs_s, dur, abs_e, f"inst_iv_{inst}_{i}"))
+                interval = model.new_interval_var(abs_s, dur, abs_e, f"inst_iv_{inst}_{i}")
+                for week in resource_weeks(meeting.teaching_weeks):
+                    inst_to_intervals[inst, week].append(interval)
             continue
         opts_b = [model.new_bool_var(f"inst_opt_{i}_{k}") for k in range(n_opts)]
         meeting_option_bools[i] = opts_b
@@ -419,9 +437,11 @@ def prepare_model(
         model.add(inst_choice_vars[i] == sum(k * b for k, b in enumerate(opts_b)))
         for opt_idx, insts in enumerate(meeting.instructor_options):
             for inst in insts:
-                inst_to_intervals[inst].append(
-                    model.new_optional_interval_var(abs_s, dur, abs_e, opts_b[opt_idx], f"inst_iv_{inst}_{i}_{opt_idx}")
+                interval = model.new_optional_interval_var(
+                    abs_s, dur, abs_e, opts_b[opt_idx], f"inst_iv_{inst}_{i}_{opt_idx}"
                 )
+                for week in resource_weeks(meeting.teaching_weeks):
+                    inst_to_intervals[inst, week].append(interval)
 
     for ivals in inst_to_intervals.values():
         if len(ivals) > 1:
@@ -1122,7 +1142,7 @@ def solve_phase2_rooms(
     model = cp_model.CpModel()
     room_vars: list[cp_model.IntVar] = []
     room_pick_bools: list[dict[int, cp_model.IntVar | int]] = []
-    room_intervals: dict[int, list[cp_model.IntervalVar]] = defaultdict(list)
+    room_intervals: dict[tuple[int, dtm.date | None], list[cp_model.IntervalVar]] = defaultdict(list)
     oversize_bools: list[cp_model.IntVar] = []
     oversize_opportunities = 0
 
@@ -1146,7 +1166,9 @@ def solve_phase2_rooms(
             only_idx = rooms_i[0]
             room_vars.append(model.new_constant(only_idx))
             room_pick_bools.append({only_idx: 1})
-            room_intervals[only_idx].append(model.new_interval_var(abs_s, dur, abs_e, f"p2_room_iv_{i}"))
+            interval = model.new_interval_var(abs_s, dur, abs_e, f"p2_room_iv_{i}")
+            for week in resource_weeks(meeting.teaching_weeks):
+                room_intervals[only_idx, week].append(interval)
             continue
 
         students = meeting.expected_students
@@ -1167,7 +1189,9 @@ def solve_phase2_rooms(
         for r_idx in rooms_i:
             b = model.new_bool_var(f"p2_pick_{i}_{r_idx}")
             bools[r_idx] = b
-            room_intervals[r_idx].append(model.new_optional_interval_var(abs_s, dur, abs_e, b, f"p2_iv_{i}_{r_idx}"))
+            interval = model.new_optional_interval_var(abs_s, dur, abs_e, b, f"p2_iv_{i}_{r_idx}")
+            for week in resource_weeks(meeting.teaching_weeks):
+                room_intervals[r_idx, week].append(interval)
             if _is_oversize(r_idx, required_for_metric):
                 m_oversize.append(b)
             else:
@@ -1432,14 +1456,6 @@ def solve_schedule(
                 relates_to_tuple = tuple(int(v) for v in relates_to_value)
             else:
                 relates_to_tuple = (int(relates_to_value),)
-            groups = expand_groups(cls.audience, selector_map)
-            if not groups:
-                continue
-
-            audiences = [[g] for g in groups] if cls.per_group else [groups]
-
-            count = cls.per_week
-
             instructor_options: list[list[str]] = []
             if cls.instructor_pool:
                 for p in cls.instructor_pool:
@@ -1447,14 +1463,61 @@ def solve_schedule(
             if not instructor_options:
                 instructor_options = [[]]
 
-            for audience in audiences:
+            # Expand selectors and split per-group work inside each series window.
+            for audience, session_index, slot_count in scheduling_targets(cls, selector_map):
+                active = cls.sessions[session_index].active if session_index is not None else None
+                window = resolve_session_window(cfg.term, audience, active)
+                if window is None:
+                    continue
+                source_dates = {
+                    day_index: active_weekly_dates(window, Weekday(day), cfg.term.starting_day)
+                    for day_index, day in enumerate(days)
+                }
+                allowed_days = tuple(index for index, dates in source_dates.items() if dates)
+                if not allowed_days:
+                    continue
+                teaching_weeks = tuple(
+                    sorted(
+                        {
+                            week_start_for_date(date, cfg.term.starting_day)
+                            for dates in source_dates.values()
+                            for date in dates
+                        }
+                    )
+                )
                 aud_key = tuple(audience)
                 expected_students = (
                     cls.expected_enrollment
                     if cls.expected_enrollment is not None
                     else sum(group_size_map.get(group_id, 0) for group_id in audience)
                 )
-                for w in range(count):
+                for w in range(slot_count):
+                    original_slot = (
+                        cls.sessions[session_index].weekly_pattern[w]
+                        if session_index is not None and cls.sessions[session_index].weekly_pattern
+                        else None
+                    )
+                    meeting_allowed_days = allowed_days
+                    meeting_teaching_weeks = teaching_weeks
+                    if original_slot is not None and original_slot.alternation is not None:
+                        phase_dates = {
+                            day_index: active_weekly_dates(
+                                window, Weekday(day), cfg.term.starting_day, original_slot.alternation
+                            )
+                            for day_index, day in enumerate(days)
+                        }
+                        meeting_allowed_days = tuple(index for index, dates in phase_dates.items() if dates)
+                        meeting_teaching_weeks = tuple(
+                            sorted(
+                                {
+                                    week_start_for_date(date, cfg.term.starting_day)
+                                    for dates in phase_dates.values()
+                                    for date in dates
+                                }
+                            )
+                        )
+                    if not meeting_allowed_days:
+                        continue
                     meetings.append(
                         Meeting(
                             course=course.name,
@@ -1468,11 +1531,23 @@ def solve_schedule(
                             expected_students=max(0, int(expected_students)),
                             is_core_course=is_core_course,
                             component_relates_to=relates_to_tuple,
+                            session_index=session_index,
+                            active=active,
+                            window=window,
+                            allowed_days=meeting_allowed_days,
+                            teaching_weeks=meeting_teaching_weeks,
                         )
                     )
 
     if not meetings:
-        return _empty_result("no meetings to schedule", slots_count=num_days * slots_per_day)
+        return _finalize_result(
+            SolveResult(
+                status="EMPTY",
+                schedule=CoursesConfig(courses=cfg.courses),
+                artifacts_dir=artifacts_dir,
+                stats=SolveStats(meetings=0, slots=num_days * slots_per_day, error="no weekly meetings to schedule"),
+            )
+        )
 
     weekend_day_indices = frozenset(i for i, d in enumerate(days) if Weekday(d).day_index >= 5)
     late_cutoff = dtm.time(18, 0)
@@ -1561,10 +1636,7 @@ def solve_schedule(
     output_courses: list[CourseConfig] = []
 
     for c_idx, course_cfg in enumerate(cfg.courses):
-        course_output = CourseConfig(
-            name=course_cfg.name,
-            components=[],
-        )
+        course_output = course_cfg.model_copy(update={"components": []})
 
         for cls_idx, cls_cfg in enumerate(course_cfg.components):
             meeting_indices = sorted(
@@ -1573,9 +1645,11 @@ def solve_schedule(
             )
 
             if not meeting_indices:
+                if cls_cfg.sessions:
+                    course_output.components.append(cls_cfg.model_copy(deep=True))
                 continue
 
-            instances_map: dict[tuple[str, ...], list[WeeklyPatternSlot]] = defaultdict(list)
+            instances_map: dict[tuple[tuple[str, ...], int | None], list[WeeklyPatternSlot]] = defaultdict(list)
 
             for m_idx in meeting_indices:
                 m = meetings[m_idx]
@@ -1595,27 +1669,58 @@ def solve_schedule(
                 else:
                     chosen_inst_entry = list(chosen_insts)
 
-                g_key = tuple(m.groups)
-                instances_map[g_key].append(
-                    WeeklyPatternSlot(
+                g_key = (tuple(m.groups), m.session_index)
+                original_slots = (
+                    cls_cfg.sessions[m.session_index].weekly_pattern
+                    if m.session_index is not None and cls_cfg.sessions is not None
+                    else None
+                )
+                slot = (
+                    original_slots[m.week_index]
+                    if original_slots
+                    else WeeklyPatternSlot(
                         weekday=Weekday(day_name),
                         start_time=term_slot.start_time,
                         end_time=term_slot.end_time,
-                        room=room_id,
-                        instructor=chosen_inst_entry,
-                    ),
+                    )
+                )
+                instances_map[g_key].append(
+                    slot.model_copy(
+                        update={
+                            "weekday": Weekday(day_name),
+                            "start_time": term_slot.start_time,
+                            "end_time": term_slot.end_time,
+                            "room": room_id,
+                            "instructor": chosen_inst_entry,
+                        }
+                    )
                 )
 
-            sessions = [
-                ComponentSessionSeries(
-                    audience=list(audience),
-                    weekly_pattern=sorted(
-                        slots,
-                        key=lambda slot: (Weekday(slot.weekday).day_index, slot.start_time),
-                    ),
+            sessions = []
+            for (audience, session_index), slots in instances_map.items():
+                original = (
+                    cls_cfg.sessions[session_index]
+                    if session_index is not None and cls_cfg.sessions is not None
+                    else ComponentSessionSeries(audience=list(audience))
                 )
-                for audience, slots in instances_map.items()
-            ]
+                sessions.append(
+                    original.model_copy(
+                        update={
+                            "audience": list(audience),
+                            "weekly_pattern": sorted(
+                                slots, key=lambda slot: (Weekday(slot.weekday).day_index, slot.start_time)
+                            ),
+                        }
+                    )
+                )
+            solved_series = {session_index for _, session_index in instances_map if session_index is not None}
+            has_series_windows = any(session.active is not None for session in cls_cfg.sessions or [])
+            sessions.extend(
+                session
+                for index, session in enumerate(cls_cfg.sessions or [])
+                if (has_series_windows and index not in solved_series)
+                or (not has_series_windows and session.dates_pattern and not session.weekly_pattern)
+            )
             class_output = CourseConfig.Component(
                 tag=cls_cfg.tag,
                 per_week=cls_cfg.per_week,

@@ -48,6 +48,17 @@ class RoomAttributeDef(SettingBaseModel):
     "Allowed values when type is enum; ignored otherwise"
 
 
+class TermBlock(SettingBaseModel):
+    id: str
+    "Stable block identifier used only by course pool metadata"
+    name: str
+    "Human-readable teaching block name"
+    start_date: dtm.date
+    "Inclusive block start date"
+    end_date: dtm.date
+    "Inclusive block end date"
+
+
 class TermConfig(SettingBaseModel):
     class DateRange(SettingBaseModel):
         start_date: dtm.date
@@ -59,6 +70,8 @@ class TermConfig(SettingBaseModel):
     "Academic term name (for example, Fall 2025)"
     semester: DateRange
     "Single teaching period (start and end dates inclusive)"
+    blocks: list[TermBlock] = Field(default_factory=list)
+    "Named teaching presets; changing these does not rewrite session active dates"
     days: list[Weekday] = [
         Weekday.MONDAY,
         Weekday.TUESDAY,
@@ -95,6 +108,7 @@ class TermConfig(SettingBaseModel):
 class TermPartialUpdate(SettingBaseModel):
     name: str | None = None
     semester: TermConfig.DateRange | None = None
+    blocks: list[TermBlock] | None = None
     days: list[Weekday] | None = None
     starting_day: Weekday | None = None
     time_slots: list[TermTimeSlot] | None = None
@@ -267,6 +281,8 @@ class ComponentSessionSeries(SettingBaseModel):
 
     audience: list[str] = []
     "Student group ids for this session series (subset of component audience)"
+    active: TermConfig.DateRange | None = None
+    "Explicit inclusive teaching window intersected with audience dates; null preserves audience semester behavior"
     weekly_pattern: list[WeeklyPatternSlot] | None = None
     "Fixed weekly slots for core courses"
     dates_pattern: list[SessionOccurrence] | None = None
@@ -280,7 +296,7 @@ class CourseConfig(SettingBaseModel):
         tag: CommonCourseClassTags | str
         "Class tag (for example, lec, tut, lab, class)"
         per_week: int | None = None
-        "Number of weekly meetings"
+        "Expected configured weekly slots in concurrent teaching weeks; alternation and one-off cancellations do not change this target"
         per_semester: int | None = None
         "Total meetings across the semester (for electives and other non-weekly patterns)"
         instructor_pool: list[str | list[str]] = []
@@ -319,6 +335,8 @@ class CourseConfig(SettingBaseModel):
 
     name: str
     "Course name"
+    blocks: list[str] | None = None
+    "Course pool/filter metadata only; null means whole semester, non-null must be nonempty unique known block ids"
     color: str | None = None
     "Optional display color in #RRGGBB format"
     section_code: str

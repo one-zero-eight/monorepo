@@ -14,7 +14,7 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     TermConfig,
     WeeklyPatternSlot,
 )
-from src.schedule_assistant.modules.schedule_config.semester_windows import resolve_audience_semester
+from src.schedule_assistant.modules.schedule_config.semester_windows import resolve_session_window
 from src.schedule_assistant.modules.schedule_config.validation import build_selector_map, expand_group_tokens
 from src.schedule_assistant.modules.schedule_config.weekly_dates import expand_weekly_slot, normalize_alternation
 from src.schedule_assistant.weekday import Weekday
@@ -102,8 +102,9 @@ def _meeting_from_weekly_slot(
     *,
     term: TermConfig | None = None,
     audiences: list[str] | None = None,
+    active: TermConfig.DateRange | None = None,
 ) -> ScheduledMeeting:
-    window = resolve_audience_semester(term, audiences or []) if term is not None else None
+    window = resolve_session_window(term, audiences or [], active) if term is not None else active
     return _base_meeting(
         course=course,
         component_tag=component_tag,
@@ -135,8 +136,9 @@ def _meetings_from_weekly_slot_concrete(
     *,
     term: TermConfig,
     audiences: list[str],
+    active: TermConfig.DateRange | None = None,
 ) -> list[ScheduledMeeting]:
-    window = resolve_audience_semester(term, audiences)
+    window = resolve_session_window(term, audiences, active)
     if window is None or (term.days and slot.weekday not in term.days):
         return []
 
@@ -156,6 +158,8 @@ def meetings_from_schedule_config(
 ) -> list[ScheduledMeeting]:
     """Build scheduled meetings, optionally expanding weekly patterns to concrete dates."""
     selector_map = build_selector_map(sections)
+    if term is not None:
+        term = term.model_copy(update={"sections": sections.sections})
     should_expand = expand_weekly if expand_weekly is not None else term is not None
     meetings: list[ScheduledMeeting] = []
 
@@ -170,6 +174,8 @@ def meetings_from_schedule_config(
                     students_number = _enrollment_size(group_codes, sections)
                 audiences = list(session.audience or component.audience)
 
+                # Concrete dates are stored user data, not a recurrence to clip.
+                # Mutations validate them against active; reads keep invalid dates visible.
                 for occurrence in session.dates_pattern or []:
                     meetings.append(
                         _meeting_from_occurrence(
@@ -183,7 +189,7 @@ def meetings_from_schedule_config(
                     )
                 for slot in session.weekly_pattern or []:
                     if term is not None and (
-                        resolve_audience_semester(term, audiences) is None
+                        resolve_session_window(term, audiences, session.active) is None
                         or (term.days and slot.weekday not in term.days)
                     ):
                         continue
@@ -198,6 +204,7 @@ def meetings_from_schedule_config(
                                 session.notes,
                                 term=term,
                                 audiences=audiences,
+                                active=session.active,
                             )
                         )
                     else:
@@ -211,6 +218,7 @@ def meetings_from_schedule_config(
                                 session.notes,
                                 term=term,
                                 audiences=audiences,
+                                active=session.active,
                             )
                         )
     return meetings

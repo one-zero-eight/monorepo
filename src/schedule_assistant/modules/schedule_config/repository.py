@@ -31,6 +31,7 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
 from src.schedule_assistant.modules.schedule_config.validation import (
     ValidationContext,
     validate_course,
+    validate_course_windows,
     validate_courses,
     validate_instructor,
     validate_instructor_delete,
@@ -74,6 +75,7 @@ def _course_row_payload(row: CourseRow) -> dict[str, Any]:
         "name": row.name,
         "color": row.color,
         "section_code": row.section_code,
+        "blocks": row.blocks,
         "short_name": row.short_name,
         "name_ru": row.name_ru,
         "short_name_ru": row.short_name_ru,
@@ -87,6 +89,7 @@ def _course_to_row(course: CourseConfig) -> CourseRow:
         name=course.name,
         color=course.color,
         section_code=course.section_code,
+        blocks=course.blocks,
         short_name=course.short_name,
         name_ru=course.name_ru,
         short_name_ru=course.short_name_ru,
@@ -242,6 +245,7 @@ class ScheduleConfigRepository:
                 "course_instructor_roles": row.course_instructor_roles or [],
                 "course_component_tags": row.course_component_tags or [],
                 "room_attributes": row.room_attributes or [],
+                "blocks": row.blocks,
             }
         )
 
@@ -260,6 +264,7 @@ class ScheduleConfigRepository:
         row.course_instructor_roles = payload.get("course_instructor_roles") or []
         row.course_component_tags = payload.get("course_component_tags") or []
         row.room_attributes = payload.get("room_attributes") or []
+        row.blocks = payload["blocks"]
         return row
 
     def _merge_term_partial(self, existing: TermConfig | None, partial: TermPartialUpdate) -> TermConfig:
@@ -364,7 +369,13 @@ class ScheduleConfigRepository:
                 status_code=status.HTTP_404_NOT_FOUND, detail="Schedule config resource not found: term"
             )
         old_dump = self._assembled_dump_if_possible(session)
-        self._raise_validation_errors(validate_sections(config))
+        ctx = self._validation_context(session)
+        assert ctx.term is not None
+        new_term = ctx.term.model_copy(update={"sections": config.sections})
+        self._raise_validation_errors(
+            validate_sections(config)
+            + validate_course_windows(ctx.courses, replace(ctx, sections=config, term=new_term))
+        )
         term_row.sections = [section.model_dump(mode="json") for section in config.sections]
         session.execute(delete(StudentGroupRow))
         for group in config.students_groups:
@@ -433,6 +444,7 @@ class ScheduleConfigRepository:
         else:
             row.color = course.color
             row.section_code = course.section_code
+            row.blocks = course.blocks
             row.short_name = course.short_name
             row.name_ru = course.name_ru
             row.short_name_ru = course.short_name_ru
@@ -940,8 +952,9 @@ class ScheduleConfigRepository:
                 )
             )
             changed_resources.append("instructors")
-        if "courses" in resources:
+        if resources & {"courses", "sections"}:
             errors.extend(validate_courses(new_courses, validation_context))
+        if "courses" in resources:
             changed_resources.append("courses")
         self._raise_validation_errors(errors)
 
