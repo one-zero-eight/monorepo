@@ -104,6 +104,7 @@ def _process_and_store_photo(bytes_: bytes, photo_file_id: str) -> None:
         photos_repo.put(photo_file_id, None, full_buf.getvalue(), "image/webp")
         photos_repo.put(photo_file_id, THUMBNAIL_SIZE, thumbnail_buf.getvalue(), "image/webp")
     except Exception as exc:
+        board_games_repo.delete_photo_blobs(photo_file_id)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to store image") from exc
 
 

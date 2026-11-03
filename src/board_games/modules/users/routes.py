@@ -42,8 +42,8 @@ async def change_role(
         logger.warning(
             f"User {current_user.email} tried to change board games role of {user_to_change_email} to {role} but is not a superadmin"
         )
-        raise HTTPException(status_code=403, detail="Only superadmin can change role")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only superadmin can change role")
     user_to_change = await inh_accounts.get_user(email=user_to_change_email)
     if not user_to_change:
-        raise HTTPException(status_code=404, detail="User to change not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User to change not found")
     await users_repo.change_role_of_user(user_to_change.id, role)

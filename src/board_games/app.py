@@ -2,12 +2,10 @@ __all__ = ["app"]
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
-from starlette import status
+from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
-from src.board_games.modules.board_games import board_games_repo
+from src.board_games.config import settings
 from src.common_beanie import setup_beanie
 from src.common_fastapi import (
     MIT_LICENSE_INFO,
@@ -16,8 +14,6 @@ from src.common_fastapi import (
     tune_fastapi,
 )
 from src.logging_ import logger
-
-from .config import settings
 
 
 @asynccontextmanager
@@ -60,16 +56,6 @@ app = FastAPI(
     swagger_ui_oauth2_redirect_url=None,
 )
 tune_fastapi(app, logger=logger, metrics_namespace="board_games")
-
-
-@app.exception_handler(board_games_repo.BoardGameAlreadyExistsError)
-async def _board_game_exists_handler(
-    request: Request, exc: board_games_repo.BoardGameAlreadyExistsError
-) -> JSONResponse:
-    raise HTTPException(
-        status_code=status.HTTP_409_CONFLICT,
-        detail="Board game with this title already exists",
-    )
 
 
 app.add_middleware(

@@ -1,6 +1,7 @@
 from io import BytesIO
 from urllib.parse import urlsplit
 
+import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
@@ -50,6 +51,50 @@ def test_admin_can_upload_board_game_photo(
     assert photo_url.path.startswith(f"/{board_games_client.app.state.minio_store.bucket_name}/")
     assert photo_url.path.count("/") == 2
     assert photo_url.path.endswith("-512")
+
+
+def test_failed_photo_replacement_removes_partial_upload(
+    board_games_client: TestClient,
+    superadmin_headers: dict[str, str],
+    user_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+):
+    make_admin(board_games_client, superadmin_headers)
+    created = board_games_client.post(
+        "/admin/board-games",
+        json={"title": "Photo Replacement"},
+        headers=user_headers,
+    )
+    assert created.status_code == 200
+    game_id = created.json()["id"]
+
+    image_buffer = BytesIO()
+    Image.new("RGB", (800, 600), "blue").save(image_buffer, format="PNG")
+    files = {"photo_file": ("photo.png", image_buffer.getvalue(), "image/png")}
+    uploaded = board_games_client.post(f"/admin/board-games/{game_id}/photo", files=files, headers=user_headers)
+    assert uploaded.status_code == 200
+    old_photo = board_games_client.get(f"/board-games/{game_id}/photo", follow_redirects=False)
+    assert old_photo.status_code == 307
+
+    minio_store = board_games_client.app.state.minio_store
+    old_objects = {obj.object_name for obj in minio_store.client.list_objects(minio_store.bucket_name)}
+    assert len(old_objects) == 2
+    put_object = minio_store.client.put_object
+
+    def fail_thumbnail_upload(**kwargs):
+        if kwargs["object_name"].endswith("-512"):
+            raise OSError("Thumbnail upload failed")
+        return put_object(**kwargs)
+
+    monkeypatch.setattr(minio_store.client, "put_object", fail_thumbnail_upload)
+    replacement = board_games_client.post(f"/admin/board-games/{game_id}/photo", files=files, headers=user_headers)
+
+    assert replacement.status_code == 500
+    assert replacement.json()["detail"] == "Failed to store image"
+    assert {obj.object_name for obj in minio_store.client.list_objects(minio_store.bucket_name)} == old_objects
+    photo = board_games_client.get(f"/board-games/{game_id}/photo", follow_redirects=False)
+    assert photo.status_code == 307
+    assert photo.headers["location"] == old_photo.headers["location"]
 
 
 def test_photo_file_id_can_only_be_set_through_upload(
