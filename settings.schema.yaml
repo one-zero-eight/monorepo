@@ -64,6 +64,58 @@ $defs:
     - password
     title: BmpExchange
     type: object
+  BoardGamesMinioSettings:
+    additionalProperties: false
+    properties:
+      endpoint:
+        description: URL of the target service.
+        examples:
+        - 127.0.0.1:9000
+        - minio:9000
+        title: Endpoint
+        type: string
+      secure:
+        default: false
+        description: Use https connection to the service.
+        title: Secure
+        type: boolean
+      region:
+        anyOf:
+        - type: string
+        - type: 'null'
+        default: null
+        description: Region of the service.
+        title: Region
+      bucket:
+        default: board-game-photos
+        title: Bucket
+        type: string
+      access_key:
+        default: onezeroeight
+        description: Access key (user ID) of a user account in the service.
+        title: Access Key
+        type: string
+      secret_key:
+        default: '**********'
+        description: Secret key (password) for the user account.
+        format: password
+        title: Secret Key
+        type: string
+        writeOnly: true
+      club_logos_prefix:
+        default: logos/
+        title: Club Logos Prefix
+        type: string
+      club_description_images_prefix:
+        default: description-images/
+        title: Club Description Images Prefix
+        type: string
+      board_game_photos_prefix:
+        default: ''
+        title: Board Game Photos Prefix
+        type: string
+    title: BoardGamesMinioSettings
+    type: object
   BoardGamesSettings:
     additionalProperties: false
     description: Settings for Board Games service.
@@ -89,8 +141,20 @@ $defs:
         $ref: '#/$defs/MongoDatabaseSettings'
         description: Configuration for MongoDB
       minio:
-        $ref: '#/$defs/MinioSettings'
+        $ref: '#/$defs/BoardGamesMinioSettings'
         description: Configuration for S3 object storage
+      max_photo_size_bytes:
+        default: 10485760
+        description: Maximum uploaded board game photo size in bytes
+        minimum: 1
+        title: Max Photo Size Bytes
+        type: integer
+      max_photo_pixels:
+        default: 20000000
+        description: Maximum decoded board game photo size in pixels
+        minimum: 1
+        title: Max Photo Pixels
+        type: integer
       superadmin_emails:
         description: Innomails of superadmins who can set admin roles
         items:

@@ -53,6 +53,75 @@ def test_admin_can_upload_board_game_photo(
     assert photo_url.path.endswith("-512")
 
 
+@pytest.mark.parametrize("extra_bytes", [0, 1])
+def test_admin_photo_upload_enforces_byte_limit(
+    board_games_client: TestClient,
+    superadmin_headers: dict[str, str],
+    user_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+    extra_bytes: int,
+):
+    make_admin(board_games_client, superadmin_headers)
+    created = board_games_client.post(
+        "/admin/board-games",
+        json={"title": "Oversized Photo"},
+        headers=user_headers,
+    )
+    assert created.status_code == 200
+
+    image_buffer = BytesIO()
+    Image.new("RGB", (16, 16), "blue").save(image_buffer, format="PNG")
+    image_bytes = image_buffer.getvalue()
+    monkeypatch.setattr(settings, "max_photo_size_bytes", len(image_bytes))
+    response = board_games_client.post(
+        f"/admin/board-games/{created.json()['id']}/photo",
+        files={"photo_file": ("photo.png", image_bytes + b"x" * extra_bytes, "image/png")},
+        headers=user_headers,
+    )
+
+    if extra_bytes == 0:
+        assert response.status_code == 200
+        assert response.json()["has_photo"] is True
+        return
+
+    assert response.status_code == 413
+    assert response.json()["detail"] == f"Photo is too large; maximum size is {len(image_bytes)} bytes"
+    minio_store = board_games_client.app.state.minio_store
+    assert list(minio_store.client.list_objects(minio_store.bucket_name)) == []
+
+
+@pytest.mark.parametrize("dimensions, max_pixels", [((20, 20), 100), ((16384, 1), 20_000_000)])
+def test_admin_photo_upload_rejects_large_dimensions(
+    board_games_client: TestClient,
+    superadmin_headers: dict[str, str],
+    user_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+    dimensions: tuple[int, int],
+    max_pixels: int,
+):
+    make_admin(board_games_client, superadmin_headers)
+    created = board_games_client.post(
+        "/admin/board-games",
+        json={"title": "Large Dimensions"},
+        headers=user_headers,
+    )
+    assert created.status_code == 200
+
+    monkeypatch.setattr(settings, "max_photo_pixels", max_pixels)
+    image_buffer = BytesIO()
+    Image.new("RGB", dimensions, "blue").save(image_buffer, format="PNG")
+    response = board_games_client.post(
+        f"/admin/board-games/{created.json()['id']}/photo",
+        files={"photo_file": ("photo.png", image_buffer.getvalue(), "image/png")},
+        headers=user_headers,
+    )
+
+    assert response.status_code == 413
+    assert response.json()["detail"] == "Image dimensions are too large"
+    minio_store = board_games_client.app.state.minio_store
+    assert list(minio_store.client.list_objects(minio_store.bucket_name)) == []
+
+
 def test_failed_photo_replacement_removes_partial_upload(
     board_games_client: TestClient,
     superadmin_headers: dict[str, str],

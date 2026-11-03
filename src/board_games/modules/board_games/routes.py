@@ -10,6 +10,7 @@ from PIL import Image, UnidentifiedImageError
 from starlette import status
 from starlette.responses import RedirectResponse
 
+from src.board_games.config import settings
 from src.board_games.dependencies import BOARD_GAMES_ADMIN_AUTH
 from src.board_games.modules.board_games import board_games_repo
 from src.board_games.modules.board_games.photos_repo import photos_repo
@@ -75,6 +76,7 @@ async def remove_board_game(id: PydanticObjectId, _: BOARD_GAMES_ADMIN_AUTH) -> 
 
 ALLOWED_PHOTO_MIME = ("image/jpeg", "image/png", "image/webp")
 THUMBNAIL_SIZE = 512
+MAX_WEBP_DIMENSION = 16383
 
 
 def _process_and_store_photo(bytes_: bytes, photo_file_id: str) -> None:
@@ -84,20 +86,25 @@ def _process_and_store_photo(bytes_: bytes, photo_file_id: str) -> None:
     Raises HTTPException on invalid image / storage failure.
     """
     try:
-        image = Image.open(BytesIO(bytes_))
-        image.load()  # force decode; open() alone is lazy
-    except (UnidentifiedImageError, OSError) as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid image") from exc
+        with Image.open(BytesIO(bytes_)) as image:
+            if image.width * image.height > settings.max_photo_pixels or max(image.size) > MAX_WEBP_DIMENSION:
+                raise HTTPException(
+                    status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail="Image dimensions are too large"
+                )
+            image.load()
 
-    try:
-        full_buf = BytesIO()
-        image.save(full_buf, format="WEBP", quality=95, method=6)
+            full_buf = BytesIO()
+            image.save(full_buf, format="WEBP", quality=95, method=6)
 
-        thumbnail = image.copy()
-        thumbnail.thumbnail((THUMBNAIL_SIZE, THUMBNAIL_SIZE), Image.Resampling.LANCZOS)
-        thumbnail_buf = BytesIO()
-        thumbnail.save(thumbnail_buf, format="WEBP", quality=95, method=6)
-    except OSError as exc:
+            with image.copy() as thumbnail:
+                thumbnail.thumbnail((THUMBNAIL_SIZE, THUMBNAIL_SIZE), Image.Resampling.LANCZOS)
+                thumbnail_buf = BytesIO()
+                thumbnail.save(thumbnail_buf, format="WEBP", quality=95, method=6)
+    except Image.DecompressionBombError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail="Image dimensions are too large"
+        ) from exc
+    except (UnidentifiedImageError, OSError, ValueError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid image") from exc
 
     try:
@@ -118,7 +125,14 @@ async def set_board_game_photo(
     if board_game is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Board game not found")
 
-    bytes_ = await photo_file.read()
+    max_photo_size = settings.max_photo_size_bytes
+    bytes_ = await photo_file.read(max_photo_size + 1)
+    if len(bytes_) > max_photo_size:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=f"Photo is too large; maximum size is {max_photo_size} bytes",
+        )
+
     content_type = photo_file.content_type
     if content_type is None:  # pragma: no cover
         kind = filetype.guess(bytes_)
