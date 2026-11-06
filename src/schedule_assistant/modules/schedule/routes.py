@@ -9,6 +9,8 @@ from src.schedule_assistant.modules.schedule.schemas import (
     BatchAliasesIcsRequest,
     ListVirtualEventGroupsResponse,
     PredefinedAliasesResponse,
+    UserStudentGroup,
+    UserStudentGroupsResponse,
 )
 from src.schedule_assistant.modules.schedule_config.schemas import CoursesConfig, StudentsGroups
 
@@ -39,6 +41,18 @@ async def get_predefined_aliases(
     email: str, _: ServiceTokenDep, config_repo: ScheduleConfigRepoDep
 ) -> PredefinedAliasesResponse:
     return PredefinedAliasesResponse(event_groups=service.get_predefined_aliases(config_repo, email))
+
+
+@integration_router.get("/users/{email}/groups")
+async def get_user_student_groups(
+    email: str, _: ServiceTokenDep, config_repo: ScheduleConfigRepoDep
+) -> UserStudentGroupsResponse:
+    """
+    Student groups of every section whose membership list contains `email` (case-insensitive), sorted by code.
+    Membership lists are never returned.
+    """
+    groups = service.get_my_groups(config_repo, email)
+    return UserStudentGroupsResponse(groups=[UserStudentGroup(code=group.code, name=group.name) for group in groups])
 
 
 @integration_router.post(

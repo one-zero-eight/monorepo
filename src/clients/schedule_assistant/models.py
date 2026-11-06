@@ -53,3 +53,16 @@ class PredefinedAliasesResponse(BaseModel):
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
     event_groups: list[str]
+
+
+class UserStudentGroup(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    code: str
+    name: str | None
+
+
+class UserStudentGroupsResponse(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    groups: list[UserStudentGroup]

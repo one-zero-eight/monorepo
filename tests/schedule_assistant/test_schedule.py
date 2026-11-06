@@ -437,6 +437,36 @@ async def test_predefined_aliases_normalize_email(
 
 
 @pytest.mark.asyncio
+async def test_user_student_groups_cover_all_sections_without_members(
+    fastapi_test_client: AsyncClient,
+    schedule_data_repo: ScheduleConfigRepository,
+    service_headers: dict[str, str],
+) -> None:
+    _seed_config(schedule_data_repo, student_email=" Student@Innopolis.University ")
+    schedule_data_repo.update_student_group(
+        "CORE-ONLY",
+        StudentsGroups(code="CORE-ONLY", name="CORE-ONLY", students=["student@innopolis.university"]),
+    )
+    url = "/integration/users/STUDENT@innopolis.university/groups"
+
+    assert (await fastapi_test_client.get(url)).status_code == 401
+    response = await fastapi_test_client.get(url, headers=service_headers)
+    assert response.status_code == 200
+    assert response.json() == {
+        "groups": [
+            {"code": "B25-CSE-01", "name": "B25-CSE-01"},
+            {"code": "CORE-ONLY", "name": "CORE-ONLY"},
+        ]
+    }
+
+    response = await fastapi_test_client.get(
+        "/integration/users/nobody@innopolis.university/groups", headers=service_headers
+    )
+    assert response.status_code == 200
+    assert response.json() == {"groups": []}
+
+
+@pytest.mark.asyncio
 async def test_instructor_ics_contains_only_matching_meetings(
     fastapi_test_client: AsyncClient,
     schedule_data_repo: ScheduleConfigRepository,

@@ -20,5 +20,16 @@ class PredefinedAliasesResponse(ScheduleAssistantSchema):
     event_groups: list[str] = Field(default_factory=list)
 
 
+class UserStudentGroup(ScheduleAssistantSchema):
+    code: str
+    "Student group code (group/program/selector id)"
+    name: str | None = None
+    "Optional display name"
+
+
+class UserStudentGroupsResponse(ScheduleAssistantSchema):
+    groups: list[UserStudentGroup] = Field(default_factory=list)
+
+
 class BatchAliasesIcsRequest(ScheduleAssistantSchema):
     aliases: list[str] = Field(default_factory=list)
