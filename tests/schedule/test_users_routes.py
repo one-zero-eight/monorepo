@@ -193,3 +193,88 @@ def test_virtual_favorite_is_persisted_by_alias(
     assert route.calls[0].request.headers["authorization"] == "Bearer service-key"
     assert response.status_code == 200
     assert response.json()["favorite_event_groups"] == ["virtual-favorite"]
+
+
+def _setup_academic_groups() -> None:
+    from src.schedule.modules.predefined.storage import JsonPredefinedUsers
+    from src.schedule.modules.predefined.utils import setup_predefined_data_from_object
+
+    setup_predefined_data_from_object(
+        JsonPredefinedUsers(
+            academic_groups=[
+                JsonPredefinedUsers.InJsonAcademicGroup(
+                    name="B24-DS-01",
+                    event_group_alias="b24-ds-01",
+                    user_emails=[TEST_USER_EMAIL, "other@innopolis.university"],
+                ),
+                JsonPredefinedUsers.InJsonAcademicGroup(name="B24-AI360", user_emails=[TEST_USER_EMAIL]),
+                JsonPredefinedUsers.InJsonAcademicGroup(name="B25-CS-01", user_emails=["other@innopolis.university"]),
+            ]
+        )
+    )
+
+
+def _make_scoped_headers(jwt_keypair, scope: str) -> dict[str, str]:
+    import datetime as dtm
+
+    from joserfc import jwt
+
+    private_key, _ = jwt_keypair
+    now = int(dtm.datetime.now(dtm.UTC).timestamp())
+    token = jwt.encode({"alg": "RS256", "kid": "public"}, {"scope": scope, "iat": now, "exp": now + 3600}, private_key)
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_me_academic_groups(schedule_client: TestClient, user_headers: dict[str, str]):
+    _setup_academic_groups()
+    response = schedule_client.get("/users/me/academic-groups", headers=user_headers)
+    assert response.status_code == 200
+    assert response.json() == [
+        {"name": "B24-DS-01", "event_group_alias": "b24-ds-01"},
+        {"name": "B24-AI360", "event_group_alias": None},
+    ]
+
+
+def test_me_academic_groups_empty(schedule_client: TestClient, user_headers: dict[str, str]):
+    from src.schedule.modules.predefined.storage import JsonPredefinedUsers
+    from src.schedule.modules.predefined.utils import setup_predefined_data_from_object
+
+    setup_predefined_data_from_object(JsonPredefinedUsers())
+    response = schedule_client.get("/users/me/academic-groups", headers=user_headers)
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_me_academic_groups_requires_auth(schedule_client: TestClient):
+    response = schedule_client.get("/users/me/academic-groups")
+    assert response.status_code == 401
+
+
+@pytest.mark.parametrize("scope", ["users", "users:test-user-1"])
+def test_academic_groups_by_id_with_allowed_scope(schedule_client: TestClient, jwt_keypair, scope: str):
+    _setup_academic_groups()
+    response = schedule_client.get(
+        "/users/by-id/test-user-1/academic-groups", headers=_make_scoped_headers(jwt_keypair, scope)
+    )
+    assert response.status_code == 200
+    assert [group["name"] for group in response.json()] == ["B24-DS-01", "B24-AI360"]
+
+
+@pytest.mark.parametrize("scope", ["users:another-user", "sport", "parser"])
+def test_academic_groups_by_id_forbidden_scope(schedule_client: TestClient, jwt_keypair, scope: str):
+    response = schedule_client.get(
+        "/users/by-id/test-user-1/academic-groups", headers=_make_scoped_headers(jwt_keypair, scope)
+    )
+    assert response.status_code == 403
+
+
+def test_academic_groups_by_id_requires_auth(schedule_client: TestClient):
+    response = schedule_client.get("/users/by-id/test-user-1/academic-groups")
+    assert response.status_code == 401
+
+
+def test_academic_groups_by_id_unknown_user(schedule_client: TestClient, jwt_keypair):
+    response = schedule_client.get(
+        "/users/by-id/unknown-user/academic-groups", headers=_make_scoped_headers(jwt_keypair, "users")
+    )
+    assert response.status_code == 404

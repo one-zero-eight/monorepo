@@ -3,11 +3,17 @@ from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 
-from src.schedule.dependencies import CurrentUserIdDep, EventGroupRepoDep, UserRepoDep
-from src.schedule.exceptions import EventGroupNotFoundException, IncorrectCredentialsException, ObjectNotFound
+from src.inh_accounts_sdk import inh_accounts
+from src.schedule.dependencies import CurrentUserIdDep, EventGroupRepoDep, UserRepoDep, VerifyUsersScopeDep
+from src.schedule.exceptions import (
+    EventGroupNotFoundException,
+    ForbiddenException,
+    IncorrectCredentialsException,
+    ObjectNotFound,
+)
 from src.schedule.modules.predefined.repository import predefined_repository
 from src.schedule.modules.users.linked import LinkedCalendarCreate, LinkedCalendarUpdate, LinkedCalendarView
-from src.schedule.modules.users.schemas import TargetForExport, ViewUser, ViewUserScheduleKey
+from src.schedule.modules.users.schemas import AcademicGroupView, TargetForExport, ViewUser, ViewUserScheduleKey
 
 router = APIRouter(
     prefix="/users",
@@ -45,6 +51,37 @@ async def get_predefined(user_id: CurrentUserIdDep, users: UserRepoDep) -> UserP
         raise ObjectNotFound()
     groups = await predefined_repository.get_user_predefined(user.email)
     return UserPredefinedGroupsResponse(event_groups=groups)
+
+
+@router.get("/me/academic-groups", responses={200: {"description": "Academic groups of current user"}})
+async def get_my_academic_groups(user_id: CurrentUserIdDep, users: UserRepoDep) -> list[AcademicGroupView]:
+    """
+    Get academic groups of current user, e.g. `B24-DS-01`
+    """
+    user = await users.read(user_id)
+    if user is None:
+        raise ObjectNotFound()
+    return predefined_repository.get_user_academic_groups(user.email)
+
+
+@router.get(
+    "/by-id/{innohassle_id}/academic-groups",
+    responses={
+        200: {"description": "Academic groups of the user"},
+        **ForbiddenException.responses,
+        **ObjectNotFound.responses,
+    },
+)
+async def get_academic_groups_by_innohassle_id(innohassle_id: str, _: VerifyUsersScopeDep) -> list[AcademicGroupView]:
+    """
+    Get academic groups of the user by InNoHassle Accounts ID.
+
+    Requires token with scope `users` (any user) or `users:<innohassle_id>` (only this user).
+    """
+    accounts_user = await inh_accounts.get_user(innohassle_id=innohassle_id)
+    if accounts_user is None:
+        raise ObjectNotFound()
+    return predefined_repository.get_user_academic_groups(accounts_user.innopolis_info.email)
 
 
 @router.post(

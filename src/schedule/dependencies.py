@@ -6,6 +6,7 @@ __all__ = [
     "UserRepoDep",
     "VerifyParserDep",
     "VerifyParserOrAdminDep",
+    "VerifyUsersScopeDep",
     "get_current_user_id",
     "get_event_group_repository",
     "get_session",
@@ -13,6 +14,7 @@ __all__ = [
     "get_user_repository",
     "verify_parser",
     "verify_parser_or_admin",
+    "verify_users_scope",
 ]
 
 from collections.abc import AsyncIterator
@@ -128,6 +130,29 @@ async def verify_parser_or_admin(
     return True
 
 
+async def verify_users_scope(
+    innohassle_id: str,
+    bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> bool:
+    """
+    Allow token with scope `users` (any user) or `users:<innohassle_id>` (only this user).
+    """
+    if bearer is None:
+        raise IncorrectCredentialsException(no_credentials=True)
+    token = bearer.credentials
+    if not token:
+        raise IncorrectCredentialsException(no_credentials=True)
+    try:
+        payload = inh_accounts._get_jwt_claims(token)
+    except JoseError:
+        raise IncorrectCredentialsException()
+    scopes = (payload.get("scope") or "").split()
+    if "users" in scopes or f"users:{innohassle_id}" in scopes:
+        return True
+    raise ForbiddenException()
+
+
 CurrentUserIdDep = Annotated[int, Depends(get_current_user_id)]
 VerifyParserDep = Annotated[bool, Depends(verify_parser)]
 VerifyParserOrAdminDep = Annotated[bool, Depends(verify_parser_or_admin)]
+VerifyUsersScopeDep = Annotated[bool, Depends(verify_users_scope)]

@@ -1,4 +1,4 @@
-__all__ = ["CreateUser", "UpdateUser", "ViewUser", "ViewUserScheduleKey"]
+__all__ = ["AcademicGroupView", "CreateUser", "UpdateUser", "ViewUser", "ViewUserScheduleKey"]
 
 
 from enum import StrEnum
@@ -14,6 +14,15 @@ class TargetForExport(StrEnum):
     MOODLE = "moodle"
     ROOM_BOOKINGS = "room-bookings"
     EVENTS = "events"
+
+
+class AcademicGroupView(BaseModel):
+    """
+    Academic group of a user, e.g. `B24-DS-01`.
+    """
+
+    name: str
+    event_group_alias: str | None = None
 
 
 class CreateUser(BaseModel):

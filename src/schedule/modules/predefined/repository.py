@@ -1,6 +1,7 @@
 from src.schedule.config import settings
 from src.schedule.modules.predefined.storage import JsonPredefinedUsers
 from src.schedule.modules.schedule_assistant.client import schedule_assistant_client
+from src.schedule.modules.users.schemas import AcademicGroupView
 
 
 class PredefinedRepository:
@@ -8,6 +9,12 @@ class PredefinedRepository:
 
     def update_storage(self, storage: JsonPredefinedUsers):
         self.storage = storage
+
+    def get_user_academic_groups(self, email: str) -> list[AcademicGroupView]:
+        return [
+            AcademicGroupView(name=group.name, event_group_alias=group.event_group_alias)
+            for group in self.storage.get_academic_groups(email)
+        ]
 
     async def get_user_predefined(self, email: str) -> list[str]:
         predefind_user = self.storage.get_user(email)
