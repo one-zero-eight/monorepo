@@ -2,7 +2,6 @@ import httpx
 import pytest
 import respx
 from fastapi.testclient import TestClient
-from pydantic import SecretStr
 
 from tests.schedule.conftest import create_event_group
 from tests.schedule.constants import AUTH_REQUIRED_DETAIL, MAX_USER_ID, MIN_USER_ID, TEST_USER_EMAIL
@@ -157,14 +156,14 @@ def test_virtual_favorite_is_persisted_by_alias(
     user_headers: dict[str, str],
     monkeypatch: pytest.MonkeyPatch,
 ):
-    from src.schedule.config import settings
+    from src.schedule.config import root_settings, settings
     from src.schedule.config_schema import ScheduleAssistantIntegrationSettings
 
     api_url = "https://assistant.test"
     monkeypatch.setattr(
         settings,
         "schedule_assistant",
-        ScheduleAssistantIntegrationSettings(api_url=api_url, api_key=SecretStr("service-key")),
+        ScheduleAssistantIntegrationSettings(api_url=api_url),
     )
     with respx.mock(assert_all_called=True) as mock:
         route = mock.get(f"{api_url}/integration/event-groups").mock(
@@ -190,6 +189,7 @@ def test_virtual_favorite_is_persisted_by_alias(
             headers=user_headers,
         )
 
-    assert route.calls[0].request.headers["authorization"] == "Bearer service-key"
+    service_token = root_settings.accounts.api_jwt_token.get_secret_value()
+    assert route.calls[0].request.headers["authorization"] == f"Bearer {service_token}"
     assert response.status_code == 200
     assert response.json()["favorite_event_groups"] == ["virtual-favorite"]

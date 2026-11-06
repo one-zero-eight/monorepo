@@ -3,7 +3,7 @@ from urllib.parse import quote
 from fastapi import APIRouter
 from fastapi.responses import Response as FastAPIResponse
 
-from src.schedule_assistant.dependencies import ScheduleConfigRepoDep, ServiceApiKeyDep, VerifyTokenDep
+from src.schedule_assistant.dependencies import ScheduleConfigRepoDep, ServiceTokenDep, VerifyTokenDep
 from src.schedule_assistant.modules.schedule import service
 from src.schedule_assistant.modules.schedule.schemas import (
     BatchAliasesIcsRequest,
@@ -30,15 +30,13 @@ async def get_my_groups(user_and_token: VerifyTokenDep, config_repo: ScheduleCon
 
 
 @integration_router.get("/event-groups")
-async def list_event_groups(
-    _api_key: ServiceApiKeyDep, config_repo: ScheduleConfigRepoDep
-) -> ListVirtualEventGroupsResponse:
+async def list_event_groups(_: ServiceTokenDep, config_repo: ScheduleConfigRepoDep) -> ListVirtualEventGroupsResponse:
     return ListVirtualEventGroupsResponse(event_groups=service.list_virtual_event_groups(config_repo))
 
 
 @integration_router.get("/users/{email}/predefined")
 async def get_predefined_aliases(
-    email: str, _api_key: ServiceApiKeyDep, config_repo: ScheduleConfigRepoDep
+    email: str, _: ServiceTokenDep, config_repo: ScheduleConfigRepoDep
 ) -> PredefinedAliasesResponse:
     return PredefinedAliasesResponse(event_groups=service.get_predefined_aliases(config_repo, email))
 
@@ -50,7 +48,7 @@ async def get_predefined_aliases(
 )
 async def get_event_groups_ics(
     request: BatchAliasesIcsRequest,
-    _api_key: ServiceApiKeyDep,
+    _: ServiceTokenDep,
     config_repo: ScheduleConfigRepoDep,
 ) -> FastAPIResponse:
     return FastAPIResponse(content=service.get_aliases_ics(config_repo, request.aliases), media_type=ICS_MEDIA_TYPE)
@@ -61,9 +59,7 @@ async def get_event_groups_ics(
     response_class=FastAPIResponse,
     responses={200: {"content": {"text/calendar": {"schema": {"type": "string"}}}}},
 )
-async def get_event_group_ics(
-    alias: str, _api_key: ServiceApiKeyDep, config_repo: ScheduleConfigRepoDep
-) -> FastAPIResponse:
+async def get_event_group_ics(alias: str, _: ServiceTokenDep, config_repo: ScheduleConfigRepoDep) -> FastAPIResponse:
     return FastAPIResponse(content=service.get_group_ics(config_repo, alias), media_type=ICS_MEDIA_TYPE)
 
 

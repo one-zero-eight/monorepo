@@ -2,7 +2,6 @@ import httpx
 import pytest
 import respx
 from fastapi.testclient import TestClient
-from pydantic import SecretStr
 
 from tests.schedule.conftest import create_event_group
 from tests.schedule.constants import AUTH_REQUIRED_DETAIL, SAMPLE_EVENT_GROUP
@@ -109,7 +108,7 @@ def test_list_and_read_include_assistant_groups(schedule_client: TestClient, mon
     monkeypatch.setattr(
         settings,
         "schedule_assistant",
-        ScheduleAssistantIntegrationSettings(api_url=api_url, api_key=SecretStr("service-key")),
+        ScheduleAssistantIntegrationSettings(api_url=api_url),
     )
     payload = {
         "event_groups": [

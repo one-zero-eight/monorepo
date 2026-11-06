@@ -3,7 +3,7 @@ __all__ = [
     "ModeratorDep",
     "PreferenceInviteRepoDep",
     "ScheduleConfigRepoDep",
-    "ServiceApiKeyDep",
+    "ServiceTokenDep",
     "SessionDep",
     "VerifyTokenDep",
     "get_distribution_upload_repository",
@@ -12,7 +12,7 @@ __all__ = [
     "get_session",
     "is_moderator_email",
     "verify_moderator_dep",
-    "verify_service_api_key",
+    "verify_service_token",
     "verify_token_dep",
 ]
 
@@ -23,6 +23,8 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session, sessionmaker
 
+from src.common_config import Environment
+from src.dependencies import has_service_scope
 from src.inh_accounts_sdk import UserTokenData, inh_accounts
 from src.schedule_assistant.config import settings
 from src.schedule_assistant.modules.distributions.repository import DistributionUploadRepository
@@ -71,25 +73,35 @@ PreferenceInviteRepoDep = Annotated[PreferenceInviteRepository, Depends(get_pref
 DistributionUploadRepoDep = Annotated[DistributionUploadRepository, Depends(get_distribution_upload_repository)]
 
 
-async def verify_service_api_key(
+SERVICE_SCOPE = "users"
+"Scope of the InNoHassle Accounts service JWT (`accounts.api_jwt_token`) shared by monorepo services."
+
+
+async def verify_service_token(
     bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
-) -> str:
+) -> None:
+    """
+    Require an InNoHassle Accounts service JWT with exactly the `users` scope.
+
+    Issued by admins via `/tokens/generate-service-token?scopes=users&only_for_me=false`. Per-user
+    `users:<id>` tokens that any user can generate are accepted only in the development environment.
+    """
     if bearer is None or not bearer.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No credentials provided",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if bearer.credentials != settings.api_key.get_secret_value():
+    allow_user_bound = settings.environment == Environment.DEVELOPMENT
+    if not has_service_scope(bearer.credentials, SERVICE_SCOPE, allow_user_bound=allow_user_bound):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid service API key",
+            detail="Invalid service token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return bearer.credentials
 
 
-ServiceApiKeyDep = Annotated[str, Depends(verify_service_api_key)]
+ServiceTokenDep = Annotated[None, Depends(verify_service_token)]
 
 
 async def verify_token_dep(

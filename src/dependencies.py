@@ -3,12 +3,14 @@ __all__ = [
     "OPTIONAL_INH_TOKEN_AUTH",
     "get_innohassle_token_auth",
     "get_optional_innohassle_token_auth",
+    "has_service_scope",
 ]
 
 from typing import Annotated, ClassVar
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from joserfc.errors import JoseError
 
 from src.inh_accounts_sdk import UserTokenData, inh_accounts
 from src.logging_ import logger
@@ -56,6 +58,21 @@ class NotAdminException(HTTPException):
         super().__init__(status_code=status.HTTP_403_FORBIDDEN, detail=self.responses[403]["description"])
 
     responses: ClassVar = {403: {"description": "You are not an admin, not allowed to access this endpoint"}}
+
+
+def has_service_scope(token: str, scope: str, *, allow_user_bound: bool = False) -> bool:
+    """
+    Whether `token` is a valid InNoHassle Accounts service JWT whose `scope` claim grants `scope`.
+
+    User-bound scopes (`users:<id>` from `generate-service-token?only_for_me=true`, which any user can issue)
+    match only with `allow_user_bound`.
+    """
+    try:
+        claims = inh_accounts._get_jwt_claims(token)
+    except JoseError:
+        return False
+    scopes = (claims.get("scope") or "").split()
+    return scope in scopes or (allow_user_bound and any(item.startswith(f"{scope}:") for item in scopes))
 
 
 async def get_innohassle_token_auth(

@@ -20,9 +20,9 @@ from typing import Annotated
 
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from joserfc.errors import JoseError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.dependencies import has_service_scope
 from src.inh_accounts_sdk import inh_accounts
 from src.schedule.exceptions import ForbiddenException, IncorrectCredentialsException
 from src.schedule.modules.event_groups.repository import SqlEventGroupRepository
@@ -96,13 +96,9 @@ def verify_parser(
     token = bearer.credentials
     if not token:
         raise IncorrectCredentialsException(no_credentials=True)
-    try:
-        payload = inh_accounts._get_jwt_claims(token)
-        if "parser" in (payload.get("scope") or "").split():
-            return True
+    if not has_service_scope(token, "parser"):
         raise IncorrectCredentialsException()
-    except JoseError:
-        raise IncorrectCredentialsException()
+    return True
 
 
 async def verify_parser_or_admin(
@@ -113,12 +109,8 @@ async def verify_parser_or_admin(
     token = bearer.credentials
     if not token:
         raise IncorrectCredentialsException(no_credentials=True)
-    try:
-        payload = inh_accounts._get_jwt_claims(token)
-        if "parser" in (payload.get("scope") or "").split():
-            return True
-    except JoseError:
-        raise IncorrectCredentialsException()
+    if has_service_scope(token, "parser"):
+        return True
     token_data = inh_accounts.decode_user_token(token)
     if token_data is None:
         raise IncorrectCredentialsException()
