@@ -4,6 +4,7 @@ __all__ = [
     "get_innohassle_token_auth",
     "get_optional_innohassle_token_auth",
     "has_service_scope",
+    "service_token_scopes",
 ]
 
 from typing import Annotated, ClassVar
@@ -60,19 +61,23 @@ class NotAdminException(HTTPException):
     responses: ClassVar = {403: {"description": "You are not an admin, not allowed to access this endpoint"}}
 
 
-def has_service_scope(token: str, scope: str, *, allow_user_bound: bool = False) -> bool:
-    """
-    Whether `token` is a valid InNoHassle Accounts service JWT whose `scope` claim grants `scope`.
-
-    User-bound scopes (`users:<id>` from `generate-service-token?only_for_me=true`, which any user can issue)
-    match only with `allow_user_bound`.
-    """
+def service_token_scopes(token: str) -> list[str] | None:
+    """Scopes of a valid InNoHassle Accounts service JWT; None if `token` is not one."""
     try:
         claims = inh_accounts._get_jwt_claims(token)
     except JoseError:
-        return False
-    scopes = (claims.get("scope") or "").split()
-    return scope in scopes or (allow_user_bound and any(item.startswith(f"{scope}:") for item in scopes))
+        return None
+    return str(claims.get("scope") or "").split()
+
+
+def has_service_scope(token: str, scope: str) -> bool:
+    """
+    Whether `token` is a valid InNoHassle Accounts service JWT whose `scope` claim contains exactly `scope`.
+
+    Prefixed scopes (e.g. `users:<id>` from `generate-service-token?only_for_me=true`) do not match `users`.
+    """
+    scopes = service_token_scopes(token)
+    return scopes is not None and scope in scopes
 
 
 async def get_innohassle_token_auth(

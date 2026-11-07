@@ -38,7 +38,7 @@ room_booking_service: # configure exchange credentials, api_key, and access_list
     "321": []
 schedule_service:
   db_url: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/postgres
-  schedule_assistant: # authorized with accounts.api_jwt_token (`users`; `users:<id>` only in development)
+  schedule_assistant: # authorized with accounts.api_jwt_token (`users`; `users:<id>` sees only its owner's data)
     api_url: http://127.0.0.1:8012
 schedule_assistant_service:
   booking:

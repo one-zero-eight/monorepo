@@ -5,7 +5,6 @@ import icalendar
 import pytest
 from httpx import AsyncClient
 
-from src.common_config import Environment
 from src.schedule_assistant.modules.schedule import service
 from src.schedule_assistant.modules.schedule.course_colors import course_color, ics_color_name
 from src.schedule_assistant.modules.schedule.ics import teacher_alias
@@ -279,10 +278,14 @@ def test_teacher_alias_only_strips_email() -> None:
     [
         ("users", 3600, 200),
         ("sport users", 3600, 200),
-        ("users:test-user-1", 3600, 401),
+        ("users:test-user-1", 3600, 200),
+        ("sport:test-user-1 users:test-user-1", 3600, 200),
+        ("sport:test-user-1", 3600, 401),
+        ("users-extra:test-user-1", 3600, 401),
         ("parser", 3600, 401),
         ("", 3600, 401),
         ("users", -3600, 401),
+        ("users:test-user-1", -3600, 401),
     ],
 )
 async def test_integration_requires_users_service_token(
@@ -300,27 +303,29 @@ async def test_integration_requires_users_service_token(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("scope", "expected_status"),
+    ("scope", "email", "expected_status"),
     [
-        ("users", 200),
-        ("users:test-user-1", 200),
-        ("sport:test-user-1 users:test-user-1", 200),
-        ("sport:test-user-1", 401),
-        ("users-extra:test-user-1", 401),
-        ("parser", 401),
+        ("users:test-user-1", "test-user-1@innopolis.university", 200),
+        ("users:test-user-1", " TEST-USER-1@Innopolis.University ", 200),
+        ("users:test-user-1", "admin@innopolis.university", 403),
+        ("users:unknown-user", "test-user-1@innopolis.university", 403),
+        ("users", "admin@innopolis.university", 200),
     ],
 )
-async def test_integration_accepts_user_bound_service_token_in_development(
+@pytest.mark.parametrize("endpoint", ["groups", "predefined"])
+async def test_user_bound_service_token_reads_only_owner_data(
     fastapi_test_client: AsyncClient,
+    schedule_data_repo: ScheduleConfigRepository,
     inh_accounts_key_set: None,
     make_service_token: MakeServiceToken,
-    monkeypatch: pytest.MonkeyPatch,
     scope: str,
+    email: str,
     expected_status: int,
+    endpoint: str,
 ) -> None:
-    monkeypatch.setattr("src.schedule_assistant.dependencies.settings.environment", Environment.DEVELOPMENT)
+    _seed_config(schedule_data_repo, student_email="test-user-1@innopolis.university")
     response = await fastapi_test_client.get(
-        "/integration/event-groups", headers={"Authorization": f"Bearer {make_service_token(scope)}"}
+        f"/integration/users/{email}/{endpoint}", headers={"Authorization": f"Bearer {make_service_token(scope)}"}
     )
     assert response.status_code == expected_status
 

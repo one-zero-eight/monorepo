@@ -3,7 +3,12 @@ from urllib.parse import quote
 from fastapi import APIRouter
 from fastapi.responses import Response as FastAPIResponse
 
-from src.schedule_assistant.dependencies import ScheduleConfigRepoDep, ServiceTokenDep, VerifyTokenDep
+from src.schedule_assistant.dependencies import (
+    ScheduleConfigRepoDep,
+    ServiceEmailAccessDep,
+    ServiceTokenDep,
+    VerifyTokenDep,
+)
 from src.schedule_assistant.modules.schedule import service
 from src.schedule_assistant.modules.schedule.schemas import (
     BatchAliasesIcsRequest,
@@ -38,13 +43,15 @@ async def list_event_groups(_: ServiceTokenDep, config_repo: ScheduleConfigRepoD
 
 @integration_router.get("/users/{email}/predefined")
 async def get_predefined_aliases(
-    email: str, _: ServiceTokenDep, config_repo: ScheduleConfigRepoDep
+    email: str, _: ServiceEmailAccessDep, config_repo: ScheduleConfigRepoDep
 ) -> PredefinedAliasesResponse:
     return PredefinedAliasesResponse(event_groups=service.get_predefined_aliases(config_repo, email))
 
 
 @integration_router.get("/users/{email}/groups")
-async def get_user_groups(email: str, _: ServiceTokenDep, config_repo: ScheduleConfigRepoDep) -> UserGroupsResponse:
+async def get_user_groups(
+    email: str, _: ServiceEmailAccessDep, config_repo: ScheduleConfigRepoDep
+) -> UserGroupsResponse:
     """
     Groups of `email` (case-insensitive), sorted by code: student groups of every section whose membership list contains
     it, and groups the instructor with this email teaches. Membership lists are never returned.
