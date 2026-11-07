@@ -17,6 +17,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from tests import conftest_runtime_settings
+from tests.conftest_auth import MakeServiceToken
 from tests.conftest_runtime_settings import SUITE_POSTGRES_NETLOC, get_worker_id
 
 
@@ -186,6 +187,18 @@ async def fastapi_test_client(
 ) -> AsyncGenerator[AsyncClient]:
     async with AsyncClient(transport=ASGITransport(app=fastapi_app), base_url="http://test") as client:
         yield client
+
+
+@pytest_asyncio.fixture(scope="function")
+async def inh_accounts_key_set() -> None:
+    from src.inh_accounts_sdk import inh_accounts
+
+    await inh_accounts.update_key_set()
+
+
+@pytest.fixture(scope="function")
+def service_headers(inh_accounts_key_set: None, make_service_token: MakeServiceToken) -> dict[str, str]:
+    return {"Authorization": f"Bearer {make_service_token('users')}"}
 
 
 @pytest_asyncio.fixture(scope="function")

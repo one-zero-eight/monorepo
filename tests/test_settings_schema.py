@@ -99,7 +99,7 @@ def test_postgres_connection_settings(monkeypatch, in_docker, explicit_url):
     schedule_url = f"postgresql+asyncpg://postgres:postgres@{host}:5432/schedule"
     assistant_url = f"postgresql+psycopg://postgres:postgres@{host}:5432/schedule_assistant"
     schedule = {}
-    assistant = {"api_key": "test-key", "booking": {"api_key": "test-booking-key"}}
+    assistant = {"booking": {"api_key": "test-booking-key"}}
     if explicit_url:
         schedule_url = "postgresql+asyncpg://custom:secret@db.example:5433/custom_schedule"
         assistant_url = "postgresql+psycopg://custom:secret@db.example:5433/custom_assistant"

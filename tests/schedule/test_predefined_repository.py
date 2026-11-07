@@ -2,7 +2,6 @@ import httpx
 import pytest
 import respx
 from fastapi.testclient import TestClient
-from pydantic import SecretStr
 
 from src.schedule.modules.predefined.repository import predefined_repository
 from src.schedule.modules.predefined.storage import JsonPredefinedUsers
@@ -49,7 +48,7 @@ def test_get_user_predefined_combines_static_and_assistant(
     monkeypatch.setattr(
         settings,
         "schedule_assistant",
-        ScheduleAssistantIntegrationSettings(api_url=api_url, api_key=SecretStr("service-key")),
+        ScheduleAssistantIntegrationSettings(api_url=api_url),
     )
     with respx.mock(assert_all_called=True) as mock:
         route = mock.get(f"{api_url}/integration/users/{TEST_USER_EMAIL}/predefined").mock(
