@@ -21,7 +21,7 @@ from src.clients.schedule_assistant.models import (
     HTTPValidationError,
     ListVirtualEventGroupsResponse,
     PredefinedAliasesResponse,
-    UserStudentGroupsResponse,
+    UserGroupsResponse,
 )
 from src.clients.schedule_assistant.serialization import (
     apply_security,
@@ -205,12 +205,12 @@ class ScheduleAssistantClient:
             )
             raise validation_error from error
 
-    async def schedule_integration_get_user_student_groups(
+    async def schedule_integration_get_user_groups(
         self,
         email: str,
         *,
         timeout: float | None = None,
-    ) -> UserStudentGroupsResponse:
+    ) -> UserGroupsResponse:
         try:
             path = "/integration/users/{email}/groups"
             path = path.replace("{email}", serialize_path("email", email))
@@ -239,7 +239,7 @@ class ScheduleAssistantClient:
 
         try:
             if response.status_code == 200:
-                return UserStudentGroupsResponse.model_validate(response.json())
+                return UserGroupsResponse.model_validate(response.json())
             if response.status_code == 422:
                 detail = HTTPValidationError.model_validate(response.json())
                 raise ApiError(response.status_code, response.text, detail, response)

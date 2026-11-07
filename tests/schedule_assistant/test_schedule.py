@@ -437,7 +437,7 @@ async def test_predefined_aliases_normalize_email(
 
 
 @pytest.mark.asyncio
-async def test_user_student_groups_cover_all_sections_without_members(
+async def test_user_groups_cover_student_and_taught_groups_without_members(
     fastapi_test_client: AsyncClient,
     schedule_data_repo: ScheduleConfigRepository,
     service_headers: dict[str, str],
@@ -447,23 +447,33 @@ async def test_user_student_groups_cover_all_sections_without_members(
         "CORE-ONLY",
         StudentsGroups(code="CORE-ONLY", name="CORE-ONLY", students=["student@innopolis.university"]),
     )
-    url = "/integration/users/STUDENT@innopolis.university/groups"
 
-    assert (await fastapi_test_client.get(url)).status_code == 401
-    response = await fastapi_test_client.get(url, headers=service_headers)
-    assert response.status_code == 200
-    assert response.json() == {
-        "groups": [
+    async def groups(email: str) -> dict:
+        response = await fastapi_test_client.get(f"/integration/users/{email}/groups", headers=service_headers)
+        assert response.status_code == 200
+        return response.json()
+
+    assert (await fastapi_test_client.get("/integration/users/student@innopolis.university/groups")).status_code == 401
+    assert await groups("STUDENT@innopolis.university") == {
+        "student_groups": [
             {"code": "B25-CSE-01", "name": "B25-CSE-01"},
             {"code": "CORE-ONLY", "name": "CORE-ONLY"},
-        ]
+        ],
+        "taught_groups": [],
     }
-
-    response = await fastapi_test_client.get(
-        "/integration/users/nobody@innopolis.university/groups", headers=service_headers
-    )
-    assert response.status_code == 200
-    assert response.json() == {"groups": []}
+    assert await groups("Teacher@Innopolis.RU") == {
+        "student_groups": [],
+        "taught_groups": [
+            {"code": "B25-CSE-01", "name": "B25-CSE-01"},
+            {"code": "SUM26-AAI", "name": "SUM26-AAI"},
+        ],
+    }
+    # Matched by instructor id in the sessions, while also a student of the same group.
+    assert await groups("other@innopolis.university") == {
+        "student_groups": [{"code": "SUM26-AAI", "name": "SUM26-AAI"}],
+        "taught_groups": [{"code": "SUM26-AAI", "name": "SUM26-AAI"}],
+    }
+    assert await groups("unscheduled@innopolis.ru") == {"student_groups": [], "taught_groups": []}
 
 
 @pytest.mark.asyncio

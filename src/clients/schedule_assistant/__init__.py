@@ -12,8 +12,8 @@ from .models import (
     HTTPValidationError,
     ListVirtualEventGroupsResponse,
     PredefinedAliasesResponse,
-    UserStudentGroup,
-    UserStudentGroupsResponse,
+    UserGroup,
+    UserGroupsResponse,
     ValidationError,
     VirtualEventGroup,
 )
@@ -35,8 +35,8 @@ __all__ = [
     "ScheduleAssistantClient",
     "TransportError",
     "UploadFile",
-    "UserStudentGroup",
-    "UserStudentGroupsResponse",
+    "UserGroup",
+    "UserGroupsResponse",
     "ValidationError",
     "VirtualEventGroup",
 ]
