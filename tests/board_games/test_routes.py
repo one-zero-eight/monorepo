@@ -281,6 +281,50 @@ def test_user_can_see_available_games_and_reserve(
     assert listed_admin_after_reservation.json()[0]["available_in_storage"] == 1
 
 
+def test_taken_reservation_blocks_another_copy_until_returned(
+    board_games_client: TestClient,
+    superadmin_headers: dict[str, str],
+    user_headers: dict[str, str],
+):
+    make_admin(board_games_client, superadmin_headers)
+    created = board_games_client.post(
+        "/admin/board-games",
+        json={"title": "Multiple Copies", "total_copies": 2},
+        headers=user_headers,
+    )
+    assert created.status_code == 200
+    game_id = created.json()["id"]
+    reservation_body = {"tg_alias": "@test_user_one", "return_date": "2026-06-30"}
+    reservation = board_games_client.post(
+        f"/board-games/{game_id}/reservations", json=reservation_body, headers=user_headers
+    )
+    assert reservation.status_code == 200
+    reservation_id = reservation.json()["id"]
+    lent = board_games_client.patch(
+        f"/admin/reservations/{reservation_id}",
+        json={"status": "taken", "borrower_name": "Test User One"},
+        headers=user_headers,
+    )
+    assert lent.status_code == 200
+
+    duplicate = board_games_client.post(
+        f"/board-games/{game_id}/reservations", json=reservation_body, headers=user_headers
+    )
+    assert duplicate.status_code == 409
+    assert duplicate.json()["detail"] == "You already have an active reservation for this board game"
+
+    returned = board_games_client.patch(
+        f"/admin/reservations/{reservation_id}", json={"status": "returned"}, headers=user_headers
+    )
+    assert returned.status_code == 200
+    new_reservation = board_games_client.post(
+        f"/board-games/{game_id}/reservations", json=reservation_body, headers=user_headers
+    )
+    assert new_reservation.status_code == 200
+    assert new_reservation.json()["status"] == "reserved"
+    assert new_reservation.json()["id"] != reservation_id
+
+
 def test_admin_can_lend_reservation_and_see_borrower(
     board_games_client: TestClient,
     superadmin_headers: dict[str, str],

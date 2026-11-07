@@ -257,7 +257,7 @@ async def create_reservation_for_game(
     existing = await Reservation.find_one(
         Reservation.board_game_id == str(game.id),
         Reservation.user_innohassle_id == user_innohassle_id,
-        Reservation.status == ReservationStatus.RESERVED,
+        {"status": {"$in": [s.value for s in ACTIVE_STATUSES]}},
     )
     if existing:
         raise ReservationConflictError("You already have an active reservation for this board game")
