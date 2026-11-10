@@ -1,0 +1,5 @@
+# Replace CRLF with LF on Windows
+* text=auto eol=lf
+
+# Spreadsheet fixtures: never normalize line endings
+*.xlsx binary
