@@ -3,7 +3,7 @@ __all__ = [
     "ModeratorDep",
     "PreferenceInviteRepoDep",
     "ScheduleConfigRepoDep",
-    "ServiceApiKeyDep",
+    "ServiceTokenDep",
     "SessionDep",
     "VerifyTokenDep",
     "get_distribution_upload_repository",
@@ -12,17 +12,20 @@ __all__ = [
     "get_session",
     "is_moderator_email",
     "verify_moderator_dep",
-    "verify_service_api_key",
+    "verify_service_email_access",
+    "verify_service_token",
     "verify_token_dep",
 ]
 
 from collections.abc import Generator
+from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session, sessionmaker
 
+from src.dependencies import service_token_scopes
 from src.inh_accounts_sdk import UserTokenData, inh_accounts
 from src.schedule_assistant.config import settings
 from src.schedule_assistant.modules.distributions.repository import DistributionUploadRepository
@@ -71,25 +74,66 @@ PreferenceInviteRepoDep = Annotated[PreferenceInviteRepository, Depends(get_pref
 DistributionUploadRepoDep = Annotated[DistributionUploadRepository, Depends(get_distribution_upload_repository)]
 
 
-async def verify_service_api_key(
+SERVICE_SCOPE = "users"
+"Scope of the InNoHassle Accounts service JWT (`accounts.api_jwt_token`) shared by monorepo services."
+USER_BOUND_SCOPE_PREFIX = f"{SERVICE_SCOPE}:"
+"Prefix of per-user `users:<innohassle_id>` scopes issued by `generate-service-token?only_for_me=true`."
+
+
+@dataclass(frozen=True)
+class ServiceCaller:
+    innohassle_id: str | None
+    "Owner of a per-user `users:<id>` token; None for a service token with the full `users` scope"
+
+
+async def verify_service_token(
     bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
-) -> str:
+) -> ServiceCaller:
+    """
+    Require an InNoHassle Accounts service JWT with the `users` scope or a per-user `users:<id>` scope.
+
+    `users` is issued by admins via `/tokens/generate-service-token?scopes=users&only_for_me=false`. Any user can issue
+    `users:<id>` for themselves, so endpoints about a person accept it only for its owner
+    (`ServiceEmailAccessDep`).
+    """
     if bearer is None or not bearer.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No credentials provided",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if bearer.credentials != settings.api_key.get_secret_value():
+    scopes = service_token_scopes(bearer.credentials) or []
+    if SERVICE_SCOPE in scopes:
+        return ServiceCaller(innohassle_id=None)
+    owner_id = next(
+        (scope.removeprefix(USER_BOUND_SCOPE_PREFIX) for scope in scopes if scope.startswith(USER_BOUND_SCOPE_PREFIX)),
+        None,
+    )
+    if owner_id:
+        return ServiceCaller(innohassle_id=owner_id)
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid service token",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+ServiceTokenDep = Annotated[ServiceCaller, Depends(verify_service_token)]
+
+
+async def verify_service_email_access(email: str, caller: ServiceTokenDep) -> None:
+    """Allow a per-user `users:<id>` token to read only data about its owner's own Innopolis email."""
+    if caller.innohassle_id is None:
+        return
+    owner = await inh_accounts.get_user(innohassle_id=caller.innohassle_id)
+    if owner is None or owner.innopolis_info.email.strip().casefold() != email.strip().casefold():
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid service API key",
-            headers={"WWW-Authenticate": "Bearer"},
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Per-user service token may access only its owner's data",
         )
-    return bearer.credentials
 
 
-ServiceApiKeyDep = Annotated[str, Depends(verify_service_api_key)]
+ServiceEmailAccessDep = Annotated[None, Depends(verify_service_email_access)]
 
 
 async def verify_token_dep(

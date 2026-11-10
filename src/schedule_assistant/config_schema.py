@@ -17,8 +17,6 @@ class ScheduleAssistantSettings(ServiceSettingsBase):
     """Settings for the Schedule Assistant service."""
 
     app_root_path: str = "/schedule-assistant/v0"
-    api_key: SecretStr
-    "Shared secret for service-to-service Schedule Assistant API access"
     moderator_emails: list[str] = Field(default_factory=list)
     "Innopolis emails allowed to access moderator-only endpoints"
     db_url: SecretStr = Field(

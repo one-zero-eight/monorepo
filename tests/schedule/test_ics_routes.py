@@ -274,14 +274,14 @@ def test_event_group_alias_ics_from_assistant(
     schedule_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ):
-    from src.schedule.config import settings
+    from src.schedule.config import root_settings, settings
     from src.schedule.config_schema import ScheduleAssistantIntegrationSettings
 
     api_url = "https://assistant.test"
     monkeypatch.setattr(
         settings,
         "schedule_assistant",
-        ScheduleAssistantIntegrationSettings(api_url=api_url, api_key=SecretStr("service-key")),
+        ScheduleAssistantIntegrationSettings(api_url=api_url),
     )
     ical = "BEGIN:VCALENDAR\nVERSION:2.0\nEND:VCALENDAR\n"
     with respx.mock(assert_all_called=True) as mock:
@@ -293,7 +293,8 @@ def test_event_group_alias_ics_from_assistant(
             params={"user_id": 1, "export_type": "default"},
         )
 
-    assert route.calls[0].request.headers["authorization"] == "Bearer service-key"
+    service_token = root_settings.accounts.api_jwt_token.get_secret_value()
+    assert route.calls[0].request.headers["authorization"] == f"Bearer {service_token}"
     assert response.status_code == 200
     assert response.content.startswith(b"BEGIN:VCALENDAR")
 
@@ -320,7 +321,7 @@ def test_personal_ics_merges_local_and_assistant_groups(
     monkeypatch.setattr(
         settings,
         "schedule_assistant",
-        ScheduleAssistantIntegrationSettings(api_url=api_url, api_key=SecretStr("service-key")),
+        ScheduleAssistantIntegrationSettings(api_url=api_url),
     )
     local = create_event_group(schedule_client, parser_headers, alias="local-group", path="local.ics")
     schedule_client.post(
@@ -393,7 +394,7 @@ def test_personal_ics_keeps_local_and_assistant_english(
     monkeypatch.setattr(
         settings,
         "schedule_assistant",
-        ScheduleAssistantIntegrationSettings(api_url=api_url, api_key=SecretStr("service-key")),
+        ScheduleAssistantIntegrationSettings(api_url=api_url),
     )
     local = create_event_group(schedule_client, parser_headers, alias="core-group", path="core.ics")
     schedule_client.post(
@@ -437,7 +438,7 @@ def test_personal_ics_propagates_assistant_failure(
     monkeypatch.setattr(
         settings,
         "schedule_assistant",
-        ScheduleAssistantIntegrationSettings(api_url=api_url, api_key=SecretStr("service-key")),
+        ScheduleAssistantIntegrationSettings(api_url=api_url),
     )
     with respx.mock(assert_all_called=True) as mock:
         mock.get(f"{api_url}/integration/event-groups").mock(
@@ -485,10 +486,7 @@ def test_unknown_event_group_returns_404_when_assistant_does_not_have_it(
     monkeypatch.setattr(
         settings,
         "schedule_assistant",
-        ScheduleAssistantIntegrationSettings(
-            api_url=api_url,
-            api_key=SecretStr("service-key"),
-        ),
+        ScheduleAssistantIntegrationSettings(api_url=api_url),
     )
     with respx.mock(assert_all_called=True) as mock:
         mock.get(f"{api_url}/integration/event-groups/old-group/schedule.ics").mock(

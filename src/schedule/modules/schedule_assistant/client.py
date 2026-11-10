@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from src.clients.schedule_assistant import ScheduleAssistantClient as GeneratedScheduleAssistantClient
 from src.clients.schedule_assistant.exceptions import ApiError, ClientError
 from src.clients.schedule_assistant.models import BatchAliasesIcsRequest
-from src.schedule.config import settings
+from src.schedule.config import root_settings, settings
 
 TIMEOUT = 60
 
@@ -40,7 +40,7 @@ class ScheduleAssistantClient:
         return GeneratedScheduleAssistantClient(
             self._http,
             base_url=integration.api_url,
-            credentials={"Bearer": integration.api_key.get_secret_value()},
+            credentials={"Bearer": root_settings.accounts.api_jwt_token.get_secret_value()},
             timeout=TIMEOUT,
         )
 

@@ -4,7 +4,6 @@ from typing import Any, cast
 import icalendar
 import pytest
 from httpx import AsyncClient
-from pydantic import SecretStr
 
 from src.schedule_assistant.modules.schedule import service
 from src.schedule_assistant.modules.schedule.course_colors import course_color, ics_color_name
@@ -24,6 +23,7 @@ from src.schedule_assistant.modules.schedule_config.schemas import (
     WeeklyPatternSlotEdit,
 )
 from src.schedule_assistant.weekday import Weekday
+from tests.conftest_auth import MakeServiceToken
 
 
 def _seed_config(repo: ScheduleConfigRepository, *, student_email: str = "test@test.com") -> None:
@@ -267,35 +267,87 @@ async def test_instructor_schedule_not_found(
     assert response.status_code == 404
 
 
-def _service_headers() -> dict[str, str]:
-    return {"Authorization": "Bearer test-schedule-assistant-api-key"}
-
-
 def test_teacher_alias_only_strips_email() -> None:
     assert teacher_alias(" Teacher@Innopolis.RU ") == "teacher-Teacher@Innopolis.RU"
     assert teacher_alias("Teacher@Innopolis.RU") != teacher_alias("teacher@innopolis.ru")
 
 
 @pytest.mark.asyncio
-async def test_virtual_event_groups_require_service_api_key(
+@pytest.mark.parametrize(
+    ("scope", "expires_in_seconds", "expected_status"),
+    [
+        ("users", 3600, 200),
+        ("sport users", 3600, 200),
+        ("users:test-user-1", 3600, 200),
+        ("sport:test-user-1 users:test-user-1", 3600, 200),
+        ("sport:test-user-1", 3600, 401),
+        ("users-extra:test-user-1", 3600, 401),
+        ("parser", 3600, 401),
+        ("", 3600, 401),
+        ("users", -3600, 401),
+        ("users:test-user-1", -3600, 401),
+    ],
+)
+async def test_integration_requires_users_service_token(
     fastapi_test_client: AsyncClient,
+    inh_accounts_key_set: None,
+    make_service_token: MakeServiceToken,
+    scope: str,
+    expires_in_seconds: int,
+    expected_status: int,
 ) -> None:
-    response = await fastapi_test_client.get("/integration/event-groups")
-    assert response.status_code == 401
+    token = make_service_token(scope, expires_in_seconds=expires_in_seconds)
+    response = await fastapi_test_client.get("/integration/event-groups", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == expected_status
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("scope", "email", "expected_status"),
+    [
+        ("users:test-user-1", "test-user-1@innopolis.university", 200),
+        ("users:test-user-1", " TEST-USER-1@Innopolis.University ", 200),
+        ("users:test-user-1", "admin@innopolis.university", 403),
+        ("users:unknown-user", "test-user-1@innopolis.university", 403),
+        ("users", "admin@innopolis.university", 200),
+    ],
+)
+@pytest.mark.parametrize("endpoint", ["groups", "predefined"])
+async def test_user_bound_service_token_reads_only_owner_data(
+    fastapi_test_client: AsyncClient,
+    schedule_data_repo: ScheduleConfigRepository,
+    inh_accounts_key_set: None,
+    make_service_token: MakeServiceToken,
+    scope: str,
+    email: str,
+    expected_status: int,
+    endpoint: str,
+) -> None:
+    _seed_config(schedule_data_repo, student_email="test-user-1@innopolis.university")
+    response = await fastapi_test_client.get(
+        f"/integration/users/{email}/{endpoint}", headers={"Authorization": f"Bearer {make_service_token(scope)}"}
+    )
+    assert response.status_code == expected_status
+
+
+@pytest.mark.asyncio
+async def test_integration_rejects_missing_and_user_tokens(
+    fastapi_test_client: AsyncClient,
+    inh_accounts_key_set: None,
+    user_headers: dict[str, str],
+) -> None:
+    assert (await fastapi_test_client.get("/integration/event-groups")).status_code == 401
+    assert (await fastapi_test_client.get("/integration/event-groups", headers=user_headers)).status_code == 401
 
 
 @pytest.mark.asyncio
 async def test_virtual_event_groups_publish_english_section_groups(
     fastapi_test_client: AsyncClient,
     schedule_data_repo: ScheduleConfigRepository,
-    monkeypatch: pytest.MonkeyPatch,
+    service_headers: dict[str, str],
 ) -> None:
     _seed_config(schedule_data_repo)
-    monkeypatch.setattr(
-        "src.schedule_assistant.dependencies.settings.api_key",
-        SecretStr("test-schedule-assistant-api-key"),
-    )
-    response = await fastapi_test_client.get("/integration/event-groups", headers=_service_headers())
+    response = await fastapi_test_client.get("/integration/event-groups", headers=service_headers)
     assert response.status_code == 200
     assert response.json() == {
         "event_groups": [
@@ -339,13 +391,14 @@ async def test_virtual_event_groups_publish_english_section_groups(
 async def test_missing_english_section_publishes_no_student_groups(
     fastapi_test_client: AsyncClient,
     schedule_data_repo: ScheduleConfigRepository,
+    service_headers: dict[str, str],
 ) -> None:
     _seed_config(schedule_data_repo)
     sections = schedule_data_repo.get_sections()
     sections.sections = [section for section in sections.sections if section.code != "english"]
     schedule_data_repo.set_sections(sections)
 
-    response = await fastapi_test_client.get("/integration/event-groups", headers=_service_headers())
+    response = await fastapi_test_client.get("/integration/event-groups", headers=service_headers)
     assert response.status_code == 200
     assert [group["alias"] for group in response.json()["event_groups"]] == [
         teacher_alias("other@innopolis.university"),
@@ -357,19 +410,20 @@ async def test_missing_english_section_publishes_no_student_groups(
 async def test_predefined_aliases_normalize_email(
     fastapi_test_client: AsyncClient,
     schedule_data_repo: ScheduleConfigRepository,
+    service_headers: dict[str, str],
 ) -> None:
     _seed_config(schedule_data_repo, student_email=" Student@Innopolis.University ")
 
     response = await fastapi_test_client.get(
         "/integration/users/student@innopolis.university/predefined",
-        headers=_service_headers(),
+        headers=service_headers,
     )
     assert response.status_code == 200
     assert response.json() == {"event_groups": ["english-b25-cse-01"]}
 
     response = await fastapi_test_client.get(
         "/integration/users/OTHER@INNOPOLIS.UNIVERSITY/predefined",
-        headers=_service_headers(),
+        headers=service_headers,
     )
     assert response.status_code == 200
     assert response.json() == {
@@ -381,16 +435,57 @@ async def test_predefined_aliases_normalize_email(
 
     response = await fastapi_test_client.get(
         "/integration/users/TEACHER@INNOPOLIS.RU/predefined",
-        headers=_service_headers(),
+        headers=service_headers,
     )
     assert response.status_code == 200
     assert response.json() == {"event_groups": [teacher_alias("teacher@innopolis.ru")]}
 
 
 @pytest.mark.asyncio
+async def test_user_groups_cover_student_and_taught_groups_without_members(
+    fastapi_test_client: AsyncClient,
+    schedule_data_repo: ScheduleConfigRepository,
+    service_headers: dict[str, str],
+) -> None:
+    _seed_config(schedule_data_repo, student_email=" Student@Innopolis.University ")
+    schedule_data_repo.update_student_group(
+        "CORE-ONLY",
+        StudentsGroups(code="CORE-ONLY", name="CORE-ONLY", students=["student@innopolis.university"]),
+    )
+
+    async def groups(email: str) -> dict:
+        response = await fastapi_test_client.get(f"/integration/users/{email}/groups", headers=service_headers)
+        assert response.status_code == 200
+        return response.json()
+
+    assert (await fastapi_test_client.get("/integration/users/student@innopolis.university/groups")).status_code == 401
+    assert await groups("STUDENT@innopolis.university") == {
+        "student_groups": [
+            {"code": "B25-CSE-01", "name": "B25-CSE-01"},
+            {"code": "CORE-ONLY", "name": "CORE-ONLY"},
+        ],
+        "taught_groups": [],
+    }
+    assert await groups("Teacher@Innopolis.RU") == {
+        "student_groups": [],
+        "taught_groups": [
+            {"code": "B25-CSE-01", "name": "B25-CSE-01"},
+            {"code": "SUM26-AAI", "name": "SUM26-AAI"},
+        ],
+    }
+    # Matched by instructor id in the sessions, while also a student of the same group.
+    assert await groups("other@innopolis.university") == {
+        "student_groups": [{"code": "SUM26-AAI", "name": "SUM26-AAI"}],
+        "taught_groups": [{"code": "SUM26-AAI", "name": "SUM26-AAI"}],
+    }
+    assert await groups("unscheduled@innopolis.ru") == {"student_groups": [], "taught_groups": []}
+
+
+@pytest.mark.asyncio
 async def test_instructor_ics_contains_only_matching_meetings(
     fastapi_test_client: AsyncClient,
     schedule_data_repo: ScheduleConfigRepository,
+    service_headers: dict[str, str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _seed_config(schedule_data_repo)
@@ -407,7 +502,7 @@ async def test_instructor_ics_contains_only_matching_meetings(
 
     response = await fastapi_test_client.get(
         f"/integration/event-groups/{alias}/schedule.ics",
-        headers=_service_headers(),
+        headers=service_headers,
     )
 
     assert response.status_code == 200
@@ -429,6 +524,7 @@ async def test_instructor_ics_contains_only_matching_meetings(
 async def test_batch_aliases_ics_deduplicates_student_and_instructor_match(
     fastapi_test_client: AsyncClient,
     schedule_data_repo: ScheduleConfigRepository,
+    service_headers: dict[str, str],
 ) -> None:
     _seed_config(schedule_data_repo)
 
@@ -440,7 +536,7 @@ async def test_batch_aliases_ics_deduplicates_student_and_instructor_match(
                 teacher_alias("teacher@innopolis.ru"),
             ]
         },
-        headers=_service_headers(),
+        headers=service_headers,
     )
 
     assert response.status_code == 200
@@ -459,16 +555,17 @@ async def test_batch_aliases_ics_deduplicates_student_and_instructor_match(
 async def test_group_ics_is_valid_and_deterministic(
     fastapi_test_client: AsyncClient,
     schedule_data_repo: ScheduleConfigRepository,
+    service_headers: dict[str, str],
 ) -> None:
     _seed_config(schedule_data_repo)
 
     first = await fastapi_test_client.get(
         "/integration/event-groups/english-sum26-aai/schedule.ics",
-        headers=_service_headers(),
+        headers=service_headers,
     )
     second = await fastapi_test_client.get(
         "/integration/event-groups/english-sum26-aai/schedule.ics",
-        headers=_service_headers(),
+        headers=service_headers,
     )
     assert first.status_code == 200
     assert first.content == second.content
@@ -565,6 +662,7 @@ def test_weekly_ics_uses_rrule_exdate_and_recurrence_override(
 async def test_batch_aliases_ics_combines_selected_groups(
     fastapi_test_client: AsyncClient,
     schedule_data_repo: ScheduleConfigRepository,
+    service_headers: dict[str, str],
 ) -> None:
     _seed_config(schedule_data_repo)
 
@@ -577,7 +675,7 @@ async def test_batch_aliases_ics_combines_selected_groups(
                 "english-sum26-aai",
             ]
         },
-        headers=_service_headers(),
+        headers=service_headers,
     )
     assert response.status_code == 200
     calendar = icalendar.Calendar.from_ical(response.text)

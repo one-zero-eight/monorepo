@@ -41,12 +41,10 @@ class RoomBookingIntegrationSettings(BaseSchema):
 
 
 class ScheduleAssistantIntegrationSettings(BaseSchema):
-    """Schedule Assistant integration settings."""
+    """Schedule Assistant integration settings. Requests are authorized with `accounts.api_jwt_token`."""
 
     api_url: str = "https://api.innohassle.ru/schedule-assistant/v0"
     "URL of the Schedule Assistant API"
-    api_key: SecretStr
-    "Service API key for the Schedule Assistant API"
 
 
 class ScheduleSettings(ServiceSettingsBase):

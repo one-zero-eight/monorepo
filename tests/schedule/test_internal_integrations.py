@@ -18,7 +18,7 @@ def test_assistant_errors_are_bad_gateway(schedule_client: TestClient, monkeypat
     monkeypatch.setattr(
         settings,
         "schedule_assistant",
-        ScheduleAssistantIntegrationSettings(api_url="https://assistant-errors.test", api_key=SecretStr("key")),
+        ScheduleAssistantIntegrationSettings(api_url="https://assistant-errors.test"),
     )
     with respx.mock(assert_all_called=True) as mock:
         mock.get("https://assistant-errors.test/integration/event-groups").respond(status, text="unavailable")
@@ -34,7 +34,7 @@ def test_assistant_transport_failure_is_bad_gateway(schedule_client: TestClient,
     monkeypatch.setattr(
         settings,
         "schedule_assistant",
-        ScheduleAssistantIntegrationSettings(api_url="https://assistant-timeout.test", api_key=SecretStr("key")),
+        ScheduleAssistantIntegrationSettings(api_url="https://assistant-timeout.test"),
     )
     with respx.mock(assert_all_called=True) as mock:
         mock.get("https://assistant-timeout.test/integration/event-groups").mock(
@@ -124,7 +124,7 @@ def test_room_booking_requires_linked_account(schedule_client: TestClient, monke
 
 
 def test_generated_wrappers_observe_current_settings(schedule_client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    from src.schedule.config import settings
+    from src.schedule.config import root_settings, settings
     from src.schedule.config_schema import EventsSettings, ScheduleAssistantIntegrationSettings
 
     calendar = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n"
@@ -136,7 +136,7 @@ def test_generated_wrappers_observe_current_settings(schedule_client: TestClient
             monkeypatch.setattr(
                 settings,
                 "schedule_assistant",
-                ScheduleAssistantIntegrationSettings(api_url=url, api_key=SecretStr(key)),
+                ScheduleAssistantIntegrationSettings(api_url=url),
             )
             events = mock.get(f"{url}/events.ics").respond(200, text=calendar)
             assistant = mock.get(f"{url}/integration/event-groups/group/schedule.ics").respond(200, text=calendar)
@@ -146,7 +146,10 @@ def test_generated_wrappers_observe_current_settings(schedule_client: TestClient
                 == calendar.encode()
             )
             assert events.calls[0].request.headers["authorization"] == f"Bearer {key}"
-            assert assistant.calls[0].request.headers["authorization"] == f"Bearer {key}"
+            assert (
+                assistant.calls[0].request.headers["authorization"]
+                == f"Bearer {root_settings.accounts.api_jwt_token.get_secret_value()}"
+            )
 
 
 def test_integration_clients_close_and_reopen(schedule_client: TestClient, monkeypatch: pytest.MonkeyPatch):
@@ -163,7 +166,7 @@ def test_integration_clients_close_and_reopen(schedule_client: TestClient, monke
     monkeypatch.setattr(
         settings,
         "schedule_assistant",
-        ScheduleAssistantIntegrationSettings(api_url="https://lifecycle.test", api_key=SecretStr("key")),
+        ScheduleAssistantIntegrationSettings(api_url="https://lifecycle.test"),
     )
 
     async def exercise() -> None:

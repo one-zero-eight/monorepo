@@ -1,5 +1,4 @@
 import asyncio
-import datetime as dtm
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -9,12 +8,11 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from joserfc import jwt
-from joserfc.jwk import RSAKey
 from sqlalchemy import Connection, text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from tests import conftest_runtime_settings
+from tests.conftest_auth import MakeServiceToken
 from tests.conftest_runtime_settings import SUITE_POSTGRES_NETLOC, get_worker_id
 from tests.schedule.constants import SAMPLE_EVENT_GROUP, SAMPLE_TAG
 
@@ -94,16 +92,8 @@ def schedule_portal(schedule_client: TestClient):
 
 
 @pytest.fixture(scope="session")
-def parser_headers(jwt_keypair: tuple[RSAKey, RSAKey]) -> dict[str, str]:
-    private_key, _ = jwt_keypair
-    now = int(dtm.datetime.now(dtm.UTC).timestamp())
-    token = jwt.encode(
-        {"alg": "RS256", "kid": "public"},
-        {"scope": "parser", "iat": now, "exp": now + 3600},
-        private_key,
-    )
-    token_str = token.decode() if isinstance(token, bytes) else token
-    return {"Authorization": f"Bearer {token_str}"}
+def parser_headers(make_service_token: MakeServiceToken) -> dict[str, str]:
+    return {"Authorization": f"Bearer {make_service_token('parser')}"}
 
 
 async def _truncate_schedule_tables(storage) -> None:

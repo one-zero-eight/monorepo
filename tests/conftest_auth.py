@@ -24,6 +24,10 @@ class MakeUserToken(Protocol):
     ) -> str: ...
 
 
+class MakeServiceToken(Protocol):
+    def __call__(self, scope: str, expires_in_seconds: int = 3600) -> str: ...
+
+
 @pytest.fixture(scope="session")
 def jwt_keypair() -> tuple[RSAKey, RSAKey]:
     private_key_obj = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -66,6 +70,20 @@ def make_user_token(jwt_keypair: tuple[RSAKey, RSAKey]) -> MakeUserToken:
 
         token = jwt.encode({"alg": "RS256", "kid": "public"}, claims, private_key)
 
+        return token.decode() if isinstance(token, bytes) else token
+
+    return _make
+
+
+@pytest.fixture(scope="session")
+def make_service_token(jwt_keypair: tuple[RSAKey, RSAKey]) -> MakeServiceToken:
+    """Accounts-signed service JWT, like `/tokens/generate-service-token`."""
+    private_key, _ = jwt_keypair
+
+    def _make(scope: str, expires_in_seconds: int = 3600) -> str:
+        now = int(dtm.datetime.now(dtm.UTC).timestamp())
+        claims = {"sub": "test-service", "scope": scope, "iat": now, "exp": now + expires_in_seconds}
+        token = jwt.encode({"alg": "RS256", "kid": "public"}, claims, private_key)
         return token.decode() if isinstance(token, bytes) else token
 
     return _make

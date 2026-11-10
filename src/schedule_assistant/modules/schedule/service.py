@@ -330,6 +330,23 @@ def get_my_groups(config: ScheduleConfigRepository, user_email: str) -> list[Stu
     return groups
 
 
+def get_taught_groups(config: ScheduleConfigRepository, user_email: str) -> list[StudentsGroups]:
+    """Student groups in the audience of sessions taught by the instructor with `user_email`, sorted by code."""
+    instructor = find_instructor_by_email(config.get_instructors(), user_email)
+    if instructor is None:
+        return []
+    sections = config.get_sections()
+    selector_map = _build_selector_map(sections)
+    taught_courses = filter_courses_for_instructor(config.get_courses().courses, instructor_identity_values(instructor))
+    codes: set[str] = set()
+    for course in taught_courses:
+        for component in course.components:
+            for session in component.sessions or []:
+                codes |= _expand_audience(session.audience or component.audience, selector_map)
+    by_code = {group.code: group for group in sections.students_groups}
+    return [by_code.get(code) or StudentsGroups(code=code) for code in sorted(codes)]
+
+
 def _filter_courses_for_group(
     courses: list[CourseConfig],
     group_code: str,
