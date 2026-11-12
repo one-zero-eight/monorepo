@@ -13,7 +13,7 @@ This is the monorepo for some of the backend services of InNoHassle ecosystem, a
 - Schedule Assistant - build and manage academic schedules, validate placement issues.
 - Student Affairs - omnidesk authentication via SSO for Student Affairs department to issue tickets.
 - Table Tennis - leaderboard and queue for the [Innopolis University table tennis club](https://innohassle.ru/clubs/inno-table-tennis).
-- Timer - PostgreSQL storage for timers, participants, permissions, and checkpoints.
+- Timer - timers for exams, hackathons, pomodoro.
 - When2Meet - meeting availability planner for the InNoHassle ecosystem.
 
 ### Technologies
