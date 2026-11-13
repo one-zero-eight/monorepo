@@ -30,7 +30,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 ###########################################################
 # Production stage.
-FROM python:3.14-slim-bookworm AS production
+FROM python:3.15-slim-bookworm AS production
 
 ARG SOURCE_DATE_EPOCH
 ARG APP_MODULE
