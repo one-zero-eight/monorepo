@@ -51,9 +51,9 @@ def is_running_in_docker() -> bool:  # pragma: no cover
                 break
 
     if result:
-        logger.info("Running in Docker, using MongoDB at mongodb:27017, MinIO at minio:9000")
+        logger.info("Running in Docker. Will use docker containers for databases by default")
     else:
-        logger.info("Running locally, using MongoDB at 127.0.0.1:27017, MinIO at 127.0.0.1:9000")
+        logger.info("Running locally. Will use 127.0.0.1 for databases by default")
 
     return result
 
