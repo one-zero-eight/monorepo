@@ -59,7 +59,7 @@ class UpdateReservation(BaseSchema):
 
 class UpdateReservationAdmin(BaseSchema):
     status: ReservationStatus | None = None
-    borrower_name: str | None = None
+    admin_comment: str | None = None
     return_date: dtm.date | None = None
 
 
@@ -312,23 +312,14 @@ async def delete_user_reservation(id: PydanticObjectId, user_innohassle_id: str)
 # --------------------------------------------------------------------------- #
 
 
-async def update_reservation_admin(
-    id: PydanticObjectId,
-    status: ReservationStatus | None,
-    borrower_name: str | None,
-    return_date: dtm.date | None,
-) -> Reservation | None:
+async def update_reservation_admin(id: PydanticObjectId, data: UpdateReservationAdmin) -> Reservation | None:
     reservation = await Reservation.get(id)
     if reservation is None:
         return None
 
-    if status:
-        reservation.status = status
-        if status == ReservationStatus.TAKEN and borrower_name is not None:
-            reservation.borrower_name = borrower_name
-
-    if return_date:
-        reservation.return_date = return_date
+    update_dict = data.model_dump(exclude_unset=True)
+    for field, value in update_dict.items():
+        setattr(reservation, field, value)
 
     await reservation.save()
     return reservation

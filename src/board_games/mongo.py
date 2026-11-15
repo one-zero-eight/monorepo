@@ -78,8 +78,8 @@ class ReservationSchema(BaseSchema):
     "Human-readable availability information"
     comments: str | None = None
     "Reservation comments"
-    borrower_name: str | None = None
-    "Name saved by admin when the board game is taken"
+    admin_comment: str | None = None
+    "Optional comment saved by admin for the reservation"
     created_at: dtm.datetime = Field(default_factory=lambda: dtm.datetime.now(dtm.UTC))
     "Reservation creation time"
 

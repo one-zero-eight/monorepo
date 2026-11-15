@@ -302,10 +302,11 @@ def test_taken_reservation_blocks_another_copy_until_returned(
     reservation_id = reservation.json()["id"]
     lent = board_games_client.patch(
         f"/admin/reservations/{reservation_id}",
-        json={"status": "taken", "borrower_name": "Test User One"},
+        json={"status": "taken"},
         headers=user_headers,
     )
     assert lent.status_code == 200
+    assert lent.json()["admin_comment"] is None
 
     duplicate = board_games_client.post(
         f"/board-games/{game_id}/reservations", json=reservation_body, headers=user_headers
@@ -325,7 +326,7 @@ def test_taken_reservation_blocks_another_copy_until_returned(
     assert new_reservation.json()["id"] != reservation_id
 
 
-def test_admin_can_lend_reservation_and_see_borrower(
+def test_admin_can_lend_reservation_and_see_admin_comment(
     board_games_client: TestClient,
     superadmin_headers: dict[str, str],
     user_headers: dict[str, str],
@@ -354,12 +355,12 @@ def test_admin_can_lend_reservation_and_see_borrower(
 
     lent = board_games_client.patch(
         f"/admin/reservations/{reservation_id}",
-        json={"status": "taken", "borrower_name": "Test User One"},
+        json={"status": "taken", "admin_comment": "Test User One"},
         headers=user_headers,
     )
     assert lent.status_code == 200
     assert lent.json()["status"] == "taken"
-    assert lent.json()["borrower_name"] == "Test User One"
+    assert lent.json()["admin_comment"] == "Test User One"
 
     edit_taken = board_games_client.patch(
         f"/users/me/reservations/{reservation_id}",
@@ -383,7 +384,7 @@ def test_admin_can_lend_reservation_and_see_borrower(
 
     returned = board_games_client.patch(
         f"/admin/reservations/{reservation_id}",
-        json={"status": "returned", "borrower_name": None},
+        json={"status": "returned"},
         headers=user_headers,
     )
     assert returned.status_code == 200
@@ -401,7 +402,7 @@ def test_admin_can_lend_reservation_and_see_borrower(
 
     reservations = board_games_client.get("/users/me/reservations", params={"how": "all"}, headers=user_headers)
     assert reservations.status_code == 200
-    assert reservations.json()[0]["borrower_name"] == "Test User One"
+    assert reservations.json()[0]["admin_comment"] == "Test User One"
 
     edit_returned = board_games_client.patch(
         f"/users/me/reservations/{reservation_id}",

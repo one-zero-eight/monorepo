@@ -64,7 +64,7 @@ class ReservationOut(BaseSchema):
     return_date: dtm.date | None
     when_available: str | None
     comments: str | None
-    borrower_name: str | None
+    admin_comment: str | None
     created_at: dtm.datetime
 
     @classmethod
@@ -79,6 +79,6 @@ class ReservationOut(BaseSchema):
             return_date=r.return_date,
             when_available=r.when_available,
             comments=r.comments,
-            borrower_name=r.borrower_name,
+            admin_comment=r.admin_comment,
             created_at=r.created_at,
         )

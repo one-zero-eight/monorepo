@@ -191,7 +191,7 @@ async def edit_reservation(
     body: board_games_repo.UpdateReservationAdmin,
     _: BOARD_GAMES_ADMIN_AUTH,
 ) -> ReservationOut:
-    reservation = await board_games_repo.update_reservation_admin(id, body.status, body.borrower_name, body.return_date)
+    reservation = await board_games_repo.update_reservation_admin(id, body)
     if reservation is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reservation not found")
     return ReservationOut.from_document(reservation)
