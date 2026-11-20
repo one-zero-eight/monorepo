@@ -374,9 +374,9 @@ scenes:
       - title: "319"
         svg_polygon_id: "319"
         description: |
-          Student Affairs Office
-          Working hours: 9:00 — 18:00 (weekdays)
-          Telegram bot: https://t.me/StudentAffairs_bot
+          Department of Documentary support for Students
+
+          Note: Student Affairs Office is now in 435.
       - title: "319 Printer"
         ru_title: "Принтер 319"
         svg_polygon_id: printer-319
@@ -531,6 +531,10 @@ scenes:
         svg_polygon_id: "434"
       - title: "435"
         svg_polygon_id: "435"
+        description: |
+          Student Affairs Office
+          Working hours: 9:00 — 18:00 (Mon-Thu), 9:00 — 16:45 (Fri)
+          Telegram bot: https://t.me/StudentAffairs_bot
       - title: "436"
         svg_polygon_id: "436"
       - title: "437"
