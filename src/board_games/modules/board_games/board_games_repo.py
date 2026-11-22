@@ -49,6 +49,12 @@ class CreateReservation(BaseSchema):
     when_available: str | None = None
     comments: str | None = None
 
+    @model_validator(mode="after")
+    def return_date_must_be_future(self):
+        if self.return_date < dtm.datetime.now(dtm.UTC).date():
+            raise ValueError("return_date must be not later than today")
+        return self
+
 
 class UpdateReservation(BaseSchema):
     tg_alias: str | None = None
@@ -101,7 +107,7 @@ async def read(id: PydanticObjectId) -> BoardGame | None:
 
 
 async def read_all() -> list[BoardGame]:
-    return await BoardGame.all().to_list()
+    return await BoardGame.find_all().sort("title").to_list()
 
 
 async def update(id: PydanticObjectId, update_data: UpdateBoardGame) -> BoardGame | None:
