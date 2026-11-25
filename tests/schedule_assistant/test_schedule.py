@@ -562,7 +562,7 @@ def test_weekly_ics_uses_rrule_exdate_and_recurrence_override(
 
 
 @pytest.mark.asyncio
-async def test_batch_aliases_ics_combines_selected_groups(
+async def test_batch_aliases_ics_combines_selected_groups_and_skips_stale_aliases(
     fastapi_test_client: AsyncClient,
     schedule_data_repo: ScheduleConfigRepository,
 ) -> None:
@@ -575,6 +575,7 @@ async def test_batch_aliases_ics_combines_selected_groups(
                 "english-sum26-aai",
                 "english-b25-cse-01",
                 "english-sum26-aai",
+                "fall25-b25-cse-03",
             ]
         },
         headers=_service_headers(),
@@ -587,3 +588,27 @@ async def test_batch_aliases_ics_combines_selected_groups(
         "Agentic AI (class)",
         "Algorithms (lec)",
     }
+
+
+@pytest.mark.asyncio
+async def test_stale_alias_returns_empty_batch_calendar_and_single_group_404(
+    fastapi_test_client: AsyncClient,
+    schedule_data_repo: ScheduleConfigRepository,
+) -> None:
+    _seed_config(schedule_data_repo)
+    stale_alias = "fall25-b25-cse-03"
+
+    batch_response = await fastapi_test_client.post(
+        "/integration/event-groups/schedule.ics",
+        json={"aliases": [stale_alias]},
+        headers=_service_headers(),
+    )
+    assert batch_response.status_code == 200
+    assert not icalendar.Calendar.from_ical(batch_response.text).walk("VEVENT")
+
+    single_response = await fastapi_test_client.get(
+        f"/integration/event-groups/{stale_alias}/schedule.ics",
+        headers=_service_headers(),
+    )
+    assert single_response.status_code == 404
+    assert single_response.json()["detail"] == "Event group not found"

@@ -266,21 +266,25 @@ def _meeting_identity(meeting: ScheduledMeeting) -> tuple[object, ...]:
 
 
 def get_aliases_ics(config: ScheduleConfigRepository, aliases: list[str]) -> bytes:
-    normalized_aliases = sorted(set(aliases))
-    groups = {alias: _group_by_alias(config, alias) for alias in normalized_aliases}
+    """Export requested groups that are still published."""
+    requested_aliases = set(aliases)
+    groups = [group for group in list_virtual_event_groups(config) if group.alias in requested_aliases]
+    if not groups:
+        return render_calendar("Schedule Assistant", [])
+
     instructors = config.get_instructors()
-    instructor_identities = _instructor_identities_by_group(list(groups.values()), instructors)
+    instructor_identities = _instructor_identities_by_group(groups, instructors)
     courses = config.get_courses().courses
     meetings = _calendar_meetings(config, courses)
     alias_meetings: list[tuple[str, ScheduledMeeting]] = []
     seen_meetings: set[tuple[object, ...]] = set()
-    for alias, group in groups.items():
+    for group in groups:
         for meeting in _meetings_for_group(meetings, group, instructor_identities):
             identity = _meeting_identity(meeting)
             if identity in seen_meetings:
                 continue
             seen_meetings.add(identity)
-            alias_meetings.append((alias, meeting))
+            alias_meetings.append((group.alias, meeting))
     return render_calendar(
         "Schedule Assistant",
         alias_meetings,
